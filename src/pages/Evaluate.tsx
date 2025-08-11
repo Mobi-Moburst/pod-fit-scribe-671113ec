@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { callAnalyze, callScrape, AnalyzeResult } from '@/utils/api';
@@ -32,7 +33,8 @@ const Evaluate = () => {
   }, []);
 
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<(AnalyzeResult & { show_title?: string }) | null>(null);
+const [result, setResult] = useState<(AnalyzeResult & { show_title?: string }) | null>(null);
+const [showNotesOpen, setShowNotesOpen] = useState(false);
 
   const handleAnalyze = async () => {
     setLoading(true); setResult(null);
@@ -119,8 +121,17 @@ const Evaluate = () => {
             <div className="grid gap-3">
               <Label htmlFor="url">Podcast URL</Label>
               <Input id="url" placeholder="Apple Podcasts or Spotify URL" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleAnalyze(); }} />
-              <Label htmlFor="paste" className="mt-2">Optional: Paste show notes (fallback)</Label>
-              <Textarea id="paste" rows={6} placeholder="Paste raw show notes if fetching fails" value={paste} onChange={(e) => setPaste(e.target.value)} />
+<Collapsible open={showNotesOpen} onOpenChange={setShowNotesOpen}>
+  <CollapsibleTrigger asChild>
+    <Button type="button" variant="outline" className="mt-2">
+      Optional: Paste show notes (fallback)
+    </Button>
+  </CollapsibleTrigger>
+  <CollapsibleContent className="mt-2 space-y-2">
+    <Label htmlFor="paste" className="sr-only">Optional: Paste show notes (fallback)</Label>
+    <Textarea id="paste" rows={6} placeholder="Paste raw show notes if fetching fails" value={paste} onChange={(e) => setPaste(e.target.value)} />
+  </CollapsibleContent>
+</Collapsible>
             </div>
           </Card>
           <Card className="p-4 card-surface">

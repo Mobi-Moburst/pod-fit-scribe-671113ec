@@ -58,7 +58,7 @@ const save = () => {
         <Card className="p-4 card-surface flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">Clients</h1>
-            <p className="text-sm text-muted-foreground">Only Name is required. Paste your Campaign strategy below; the evaluator will infer the rest.</p>
+            <p className="text-sm text-muted-foreground">Only Name is required. Add details and paste your campaign strategy; the evaluator will infer the rest.</p>
           </div>
           <Button variant="hero" onClick={startNew}>New Client</Button>
         </Card>
