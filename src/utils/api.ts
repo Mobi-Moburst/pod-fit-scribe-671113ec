@@ -25,10 +25,6 @@ export interface AnalyzeResult {
   what_would_change?: string[]; // 1–2 items
   summary_text?: string; // 140–200 words for Copy Summary
   show_title?: string; // UI convenience (set client-side)
-
-  // Score auditing (new)
-  applied_adjustments?: { type: 'cap' | 'floor' | 'penalty' | 'bonus'; label: string; amount?: number }[];
-  audit_notes?: string[];
 }
 
 export async function callScrape(url: string) {

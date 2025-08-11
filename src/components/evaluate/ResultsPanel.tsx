@@ -79,15 +79,6 @@ export const ResultsPanel = ({
             {verdict_reason && (
               <p className="text-sm mt-1">{verdict_reason}</p>
             )}
-            {Array.isArray(result.applied_adjustments) && result.applied_adjustments.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {result.applied_adjustments.map((adj: any, i: number) => (
-                  <Badge key={i} variant={adj.type === 'cap' ? 'outline' : adj.type === 'floor' ? 'secondary' : 'outline'}>
-                    {adj.type?.toUpperCase?.() || 'ADJ'}: {adj.label}{typeof adj.amount === 'number' ? ` (${adj.amount > 0 ? '+' : ''}${adj.amount.toFixed(1)})` : ''}
-                  </Badge>
-                ))}
-              </div>
-            )}
           </div>
         </div>
         <div className="flex gap-2">

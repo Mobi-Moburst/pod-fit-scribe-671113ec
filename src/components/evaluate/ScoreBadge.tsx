@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 
 export const scoreToColor = (score: number) => {
-  if (score < 4.5) return 'from-red-500 to-red-400';
-  if (score < 6.5) return 'from-amber-500 to-amber-400';
+  if (score < 3.5) return 'from-red-500 to-red-400';
+  if (score < 5.5) return 'from-amber-500 to-amber-400';
   if (score < 7.5) return 'from-yellow-500 to-yellow-400';
   if (score < 9) return 'from-green-500 to-green-400';
   return 'from-emerald-500 to-teal-400';

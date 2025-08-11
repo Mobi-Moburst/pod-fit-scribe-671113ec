@@ -84,11 +84,6 @@ function expandConcepts(client: any) {
     pushNear(["ml governance","model monitoring","evaluation","alignment"]);
   };
 
-  const pushEducation = () => {
-    pushStrong(["k-12","k12","education","educators","teacher","teachers","classroom","curriculum","standards","stem","steam","project-based learning","pedagogy","literacy","numeracy","principal","superintendent","district","school","edtech","professional development","lesson plan","assessment"]);
-    pushNear(["students","parent","pta","grants","foundation","nonprofit","after-school","maker","labs","science fair","math","science","technology","engineering"]);
-  };
-
   const allSeeds = [...talking, ...audiences];
   for (const seed of allSeeds) {
     const s = norm(seed);
@@ -102,16 +97,23 @@ function expandConcepts(client: any) {
       pushNear(["active directory","azure ad","aad","intune","sharepoint","onedrive","copilot"]);
       pushCommonSecurity();
     }
-    if (/identity|zero\s*trust|iam|sso|mfa/.test(s)) { pushCommonSecurity(); }
-    if (/security|siem|soc|xdr|detection|threat|governance|compliance/.test(s)) { pushCommonSecurity(); }
-    if (/critical\s*infrastructure|utilities|grid|ot|ics|scada|nerc/.test(s)) { pushCriticalInfra(); }
-    if (/ai\s*governance|responsible\s*ai|model\s*risk/.test(s)) { pushAIGov(); }
-    if (/cloud|data|warehouse|analytics/.test(s)) { pushNear(["aws","amazon web services","gcp","google cloud","snowflake","databricks","bigquery","redshift"]); }
-    if (/enterprise|b2b|it|ciso|cio|security\s*leaders|platform\s*teams/.test(s)) { pushNear(["enterprise","b2b","ciso","cio","platform team","secops","it operations","cto","vp security"]); }
-
-    // Education / K-12 expansions
-    if (/k-?12|education|teacher|classroom|curriculum|stem|principal|superintendent|district|school|edtech|students|pedagogy|lesson|assessment/.test(s)) {
-      pushEducation();
+    if (/identity|zero\s*trust|iam|sso|mfa/.test(s)) {
+      pushCommonSecurity();
+    }
+    if (/security|siem|soc|xdr|detection|threat|governance|compliance/.test(s)) {
+      pushCommonSecurity();
+    }
+    if (/critical\s*infrastructure|utilities|grid|ot|ics|scada|nerc/.test(s)) {
+      pushCriticalInfra();
+    }
+    if (/ai\s*governance|responsible\s*ai|model\s*risk/.test(s)) {
+      pushAIGov();
+    }
+    if (/cloud|data|warehouse|analytics/.test(s)) {
+      pushNear(["aws","amazon web services","gcp","google cloud","snowflake","databricks","bigquery","redshift"]);
+    }
+    if (/enterprise|b2b|it|ciso|cio|security\s*leaders|platform\s*teams/.test(s)) {
+      pushNear(["enterprise","b2b","ciso","cio","platform team","secops","it operations","cto","vp security"]);
     }
   }
 
@@ -138,65 +140,45 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
 
   // Topic relevance (0.35)
-  const topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
+  const topicRelevance = roundToHalf(clamp(3 + weightedConceptScore * 0.5));
 
   // ICP alignment (0.25): ANY primary or adjacent audience is enough; diminishing returns
   const audStrong = findPositions(notes, audiences.map(norm)).length;
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
-  const icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
+  const icpAlignment = roundToHalf(clamp(3 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
 
   // Recency/consistency (0.15)
   const recentYear = /(202[3-6])/.test(notes) ? 1 : 0;
   const monthMention = /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i.test(notes) ? 1 : 0;
   const cadence = /(episode\s*#?\s*\d{1,4}|season\s*\d{1,2}|weekly|biweekly|monthly)/i.test(notes) ? 1 : 0;
-  const recencyConsistency = roundToHalf(clamp(2 + (recentYear + monthMention + cadence) * 2 + Math.min(2, Math.floor(tokens.length / 800))));
+  const recencyConsistency = roundToHalf(clamp(3 + (recentYear + monthMention + cadence) * 2 + Math.min(2, Math.floor(tokens.length / 800))));
 
   // CTA synergy (0.15)
   const ctaTerms = ["book","demo","consult","download","guide","report","contact","learn more","talk to","sales","trial","start"];
   const ctaOverlap = count(notes, ctaTerms);
   const enterpriseVibe = /(enterprise|b2b|ciso|cio|governance|compliance|risk|security)/i.test(notes) ? 1 : 0;
-  const ctaSynergy = roundToHalf(clamp(2 + Math.min(7, ctaOverlap * 1.5 + enterpriseVibe * 2)));
+  const ctaSynergy = roundToHalf(clamp(3 + Math.min(7, ctaOverlap * 1.5 + enterpriseVibe * 2)));
 
   // Brand suitability (0.10)
   const tonePref = norm(notesPref);
   const tonePos = ["authoritative","technical","tactical","educational","interview","case study","no pay-to-play"].filter(t => tonePref.includes(t)).length;
   const toneNegInNotes = /(explicit|nsfw|politics|gambling|hype|clickbait)/i.test(notes) ? 1 : 0;
-  const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
+  const brandSuitability = roundToHalf(clamp(5 + tonePos * 1.2 - toneNegInNotes * 2));
 
   // Combine
   const weights = { topic: 0.35, icp: 0.25, recency: 0.15, cta: 0.15, brand: 0.10 } as const;
   let overall = topicRelevance * weights.topic + icpAlignment * weights.icp + recencyConsistency * weights.recency + ctaSynergy * weights.cta + brandSuitability * weights.brand;
 
-  // Adjustments audit
-  const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
-
-  // Genericness penalty: if we cannot surface at least 2 specific evidence snippets, reduce slightly
-  const penaltyTerms = [...new Set([...strongHits.map(h => h.term), ...nearHits.map(h => h.term)])];
-  const penaltyPositions = findPositions(notes, penaltyTerms, 6);
-  if (penaltyPositions.length <= 1) {
-    overall -= 0.5; // push weak cases down toward the 1–4 range
-    applied_adjustments.push({ type: 'penalty', label: 'Low specific evidence', amount: -0.5 });
-  }
-
-  // Caps & floors (recalibrated)
+  // Caps & floors (new policy)
   const avoidCounts = avoids.map(a => ({ a, c: count(notes, [a]) })).sort((x,y)=>y.c - x.c);
   const strongAvoidCentral = avoidCounts[0]?.c >= 2; // heuristic: central if repeated
   const zeroConceptOverlap = (strongHits.length + nearHits.length) === 0;
   const strongAudienceEvidence = audStrong >= 1 || audAdj >= 2;
   const threeDistinctConcepts = distinctConcepts >= 3;
-  const eduAdjacency = /(k-?12|education|teacher|classroom|curriculum|students|district|school|edtech|stem)/i.test(notes);
 
-  if (strongAvoidCentral) { overall = Math.min(overall, 5.0); applied_adjustments.push({ type: 'cap', label: `Avoid term prominent: ${avoidCounts[0].a}`, amount: 5.0 }); }
-  if (zeroConceptOverlap) {
-    if (strongAudienceEvidence || eduAdjacency) {
-      overall = Math.min(overall, 6.5);
-      applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap (adjacency present)', amount: 6.5 });
-    } else {
-      overall = Math.min(overall, 4.0);
-      applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap', amount: 4.0 });
-    }
-  }
-  if (threeDistinctConcepts && strongAudienceEvidence) { overall = Math.max(overall, 8.0); applied_adjustments.push({ type: 'floor', label: 'Multiple concepts + strong audience', amount: 8.0 }); }
+  if (strongAvoidCentral) overall = Math.min(overall, 5.0);
+  if (zeroConceptOverlap) overall = Math.min(overall, 6.5);
+  if (threeDistinctConcepts && strongAudienceEvidence) overall = Math.max(overall, 7.5);
   overall = roundToHalf(clamp(overall, 0, 10));
 
   // Evidence extraction (prefer non-generic)
@@ -330,14 +312,6 @@ function scoreGoalCentric(client: any, show_notes: string) {
     confidence_note,
     what_would_change,
     summary_text,
-    applied_adjustments,
-    audit_notes: [
-      `strongHits=${strongHits.length}`,
-      `nearHits=${nearHits.length}`,
-      `distinctConcepts=${distinctConcepts}`,
-      `audStrong=${audStrong}`,
-      `audAdj=${audAdj}`,
-    ],
   };
 }
 
@@ -440,35 +414,22 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true, data: fb }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Post-process AI result: enforce caps/floors, attach adjustments, ensure summary consistency
+      // Post-process AI result: enforce caps/floors and ensure required fields
       const notesText = String(show_notes || "");
       const expanded = expandConcepts(client);
-      const conceptOverlapCount = (findPositions(notesText, expanded.strong).length + findPositions(notesText, expanded.near).length);
-      const conceptOverlap = conceptOverlapCount > 0;
+      const conceptOverlap = (findPositions(notesText, expanded.strong).length + findPositions(notesText, expanded.near).length) > 0;
       const avoids: string[] = (client?.avoid || []) as string[];
       const avoidCounts = avoids.map(a => ({ a, c: count(notesText, [a]) })).sort((x,y)=>y.c - x.c);
       const strongAvoidCentral = avoidCounts[0]?.c >= 2;
 
       let adjusted = Number(data?.overall_score) || 0;
-      const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
-
-      if (strongAvoidCentral) { adjusted = Math.min(adjusted, 5.0); applied_adjustments.push({ type: 'cap', label: `Avoid term prominent: ${avoidCounts[0].a}`, amount: 5.0 }); }
+      if (strongAvoidCentral) adjusted = Math.min(adjusted, 5.0);
+      if (!conceptOverlap) adjusted = Math.min(adjusted, 6.5);
       // Floor if strong evidence present
       const aud: string[] = (client?.target_audiences || []) as string[];
       const audStrong = findPositions(notesText, aud.map(norm)).length;
-      const nearHitsCount = findPositions(notesText, expanded.near).length;
-      const eduAdjacency = /(k-?12|education|teacher|classroom|curriculum|students|district|school|edtech|stem)/i.test(notesText);
-
-      if (!conceptOverlap) {
-        if (audStrong >= 1 || nearHitsCount >= 2 || eduAdjacency) {
-          adjusted = Math.min(adjusted, 6.5);
-          applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap (adjacency present)', amount: 6.5 });
-        } else {
-          adjusted = Math.min(adjusted, 4.0);
-          applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap', amount: 4.0 });
-        }
-      }
-      if (expanded.strong.length >= 3 && (audStrong >= 1 || nearHitsCount >= 2)) { adjusted = Math.max(adjusted, 8.0); applied_adjustments.push({ type: 'floor', label: 'Multiple concepts + strong audience', amount: 8.0 }); }
+      const nearHits = findPositions(notesText, expanded.near).length;
+      if (expanded.strong.length >= 3 && (audStrong >= 1 || nearHits >= 2)) adjusted = Math.max(adjusted, 7.5);
       adjusted = roundToHalf(clamp(adjusted, 0, 10));
 
       const ensureArray = (v: any) => Array.isArray(v) ? v : [];
@@ -481,7 +442,7 @@ serve(async (req) => {
       const why_not_fit = why_not_fit_structured.map((w: any) => `${w.claim} [${w.severity}] — "${w.evidence}" (${w.interpretation})`).slice(0, 4);
       const risk_flags = risk_flags_structured.map((r: any) => `${r.flag} [${r.severity}]`);
 
-      // Verdict from adjusted
+      // Verdict if missing
       const hasCritical = why_not_fit_structured.some((w: any) => w.severity === 'Critical') || risk_flags_structured.some((r: any) => r.severity === 'Critical');
       const verdict: 'recommend' | 'consider' | 'not_recommended' = hasCritical ? 'not_recommended' : adjusted >= 7.5 ? 'recommend' : adjusted < 6.0 ? 'not_recommended' : 'consider';
       const confidence_label = data?.confidence_label || ((Number(data?.confidence) || 0.5) >= 0.75 ? 'High' : (Number(data?.confidence) || 0.5) >= 0.5 ? 'Med' : 'Low');
@@ -498,7 +459,7 @@ serve(async (req) => {
         scored_by: 'ai' as const,
         confidence: typeof data?.confidence === 'number' ? data.confidence : undefined,
         // new
-        verdict: verdict,
+        verdict: data?.verdict || verdict,
         verdict_reason: data?.verdict_reason || undefined,
         why_fit_structured,
         why_not_fit_structured,
@@ -506,19 +467,20 @@ serve(async (req) => {
         confidence_label,
         confidence_note,
         what_would_change: ensureArray(data?.what_would_change).slice(0,2),
-        applied_adjustments,
-        summary_text: '',
-      } as any;
+        summary_text: data?.summary_text || undefined,
+      };
 
-      // Always build summary from the final verdict and score for consistency
-      merged.summary_text = buildSummary({
-        overall: merged.overall_score,
-        verdict: merged.verdict!,
-        why_fit_structured: merged.why_fit_structured || [],
-        why_not_fit_structured: merged.why_not_fit_structured || [],
-        risk_flags_structured: merged.risk_flags_structured || [],
-        clientName: client?.name || client?.company || 'the client',
-      });
+      // If summary missing, synthesize
+      if (!merged.summary_text) {
+        merged.summary_text = buildSummary({
+          overall: merged.overall_score,
+          verdict: merged.verdict!,
+          why_fit_structured: merged.why_fit_structured || [],
+          why_not_fit_structured: merged.why_not_fit_structured || [],
+          risk_flags_structured: merged.risk_flags_structured || [],
+          clientName: client?.name || client?.company || 'the client',
+        });
+      }
 
       return new Response(JSON.stringify({ success: true, data: merged }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (e) {
