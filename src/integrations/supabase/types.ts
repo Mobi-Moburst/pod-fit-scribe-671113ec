@@ -14,7 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          campaign_strategy: string | null
+          company: string | null
+          content_goals: string | null
+          created_at: string | null
+          cta: string | null
+          icp: string | null
+          id: string
+          industry: string | null
+          keywords_negative: string[] | null
+          keywords_positive: string[] | null
+          media_kit_url: string | null
+          name: string
+          notes: string | null
+          target_company_sizes: string[] | null
+          target_regions: string[] | null
+          target_roles: string[] | null
+          topics_to_avoid: string[] | null
+          topics_to_prioritize: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_strategy?: string | null
+          company?: string | null
+          content_goals?: string | null
+          created_at?: string | null
+          cta?: string | null
+          icp?: string | null
+          id?: string
+          industry?: string | null
+          keywords_negative?: string[] | null
+          keywords_positive?: string[] | null
+          media_kit_url?: string | null
+          name: string
+          notes?: string | null
+          target_company_sizes?: string[] | null
+          target_regions?: string[] | null
+          target_roles?: string[] | null
+          topics_to_avoid?: string[] | null
+          topics_to_prioritize?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_strategy?: string | null
+          company?: string | null
+          content_goals?: string | null
+          created_at?: string | null
+          cta?: string | null
+          icp?: string | null
+          id?: string
+          industry?: string | null
+          keywords_negative?: string[] | null
+          keywords_positive?: string[] | null
+          media_kit_url?: string | null
+          name?: string
+          notes?: string | null
+          target_company_sizes?: string[] | null
+          target_regions?: string[] | null
+          target_roles?: string[] | null
+          topics_to_avoid?: string[] | null
+          topics_to_prioritize?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      evaluations: {
+        Row: {
+          citations: string[] | null
+          client_id: string
+          confidence: number | null
+          created_at: string | null
+          id: string
+          overall_score: number | null
+          rubric_json: Json
+          show_notes_excerpt: string | null
+          show_title: string | null
+          url: string
+        }
+        Insert: {
+          citations?: string[] | null
+          client_id: string
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          overall_score?: number | null
+          rubric_json: Json
+          show_notes_excerpt?: string | null
+          show_title?: string | null
+          url: string
+        }
+        Update: {
+          citations?: string[] | null
+          client_id?: string
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          overall_score?: number | null
+          rubric_json?: Json
+          show_notes_excerpt?: string | null
+          show_title?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
