@@ -38,40 +38,20 @@ export const ResultsPanel = ({
   const verdictLabel = verdict === 'recommend' ? 'Recommend' : verdict === 'consider' ? 'Consider' : verdict === 'not_recommended' ? 'Not recommended' : undefined;
   const verdictVariant: 'default' | 'secondary' | 'outline' | undefined = verdict === 'recommend' ? 'default' : verdict === 'consider' ? 'secondary' : verdict === 'not_recommended' ? 'outline' : undefined;
 
-  const fitItemsRaw = (why_fit_structured && why_fit_structured.length
+  const fitItems = (why_fit_structured && why_fit_structured.length
     ? why_fit_structured
     : (why_fit || []).map((s) => ({ claim: s, evidence: '', interpretation: '' }))
   ).slice(0, 5);
 
-  const notFitItemsRaw = (why_not_fit_structured && why_not_fit_structured.length
+  const notFitItems = (why_not_fit_structured && why_not_fit_structured.length
     ? why_not_fit_structured
     : (why_not_fit || []).map((s) => ({ severity: 'Minor' as const, claim: s, evidence: '', interpretation: '' }))
   ).slice(0, 4);
 
-  const riskItemsRaw = (risk_flags_structured && risk_flags_structured.length
+  const riskItems = (risk_flags_structured && risk_flags_structured.length
     ? risk_flags_structured
     : (risk_flags || []).map((r) => ({ severity: 'Minor' as const, flag: r, mitigation: '' }))
   ).slice(0, 6);
-
-  // Ensure no blank sections by synthesizing minimum insights from rubric/citations
-  const fitItems = fitItemsRaw.length ? fitItemsRaw : rubric_breakdown.filter(r => r.raw_score >= 6).slice(0, 2).map(r => ({
-    claim: `${r.dimension} strength`,
-    evidence: r.notes,
-    interpretation: ''
-  }));
-
-  const notFitItems = notFitItemsRaw.length ? notFitItemsRaw : rubric_breakdown.filter(r => r.raw_score < 5.5).slice(0, 2).map(r => ({
-    severity: r.raw_score < 4 ? 'Major' : 'Minor',
-    claim: `Low ${r.dimension.toLowerCase()}`,
-    evidence: r.notes,
-    interpretation: ''
-  }));
-
-  const riskItems = riskItemsRaw.length ? riskItemsRaw : ([{
-    severity: 'Minor' as const,
-    flag: 'No critical risks detected',
-    mitigation: 'Confirm editorial policy and audience match before pitching'
-  }] as const);
 
   return (
     <section className="mt-6 grid gap-6">
@@ -98,6 +78,15 @@ export const ResultsPanel = ({
             )}
             {verdict_reason && (
               <p className="text-sm mt-1">{verdict_reason}</p>
+            )}
+            {Array.isArray(result.applied_adjustments) && result.applied_adjustments.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {result.applied_adjustments.map((adj: any, i: number) => (
+                  <Badge key={i} variant={adj.type === 'cap' ? 'outline' : adj.type === 'floor' ? 'secondary' : 'outline'}>
+                    {adj.type?.toUpperCase?.() || 'ADJ'}: {adj.label}{typeof adj.amount === 'number' ? ` (${adj.amount > 0 ? '+' : ''}${adj.amount.toFixed(1)})` : ''}
+                  </Badge>
+                ))}
+              </div>
             )}
           </div>
         </div>
