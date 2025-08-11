@@ -88,11 +88,8 @@ const Clients = () => {
           <div className="grid gap-2">
             {list.map(c => (
               <div key={c.id} className="grid grid-cols-6 gap-3 items-center border-b border-border/60 py-3">
-                <div className="col-span-2 truncate">
-                  <div className="font-medium truncate">{c.name}</div>
-                  <div className="text-xs text-muted-foreground truncate">Goals: {deriveGoals(c.campaign_strategy, c.media_kit_url).join(' • ') || '—'}</div>
-                </div>
-                <div className="text-sm text-muted-foreground truncate">{c.campaign_strategy}</div>
+                <div className="col-span-2 font-medium truncate">{c.name}</div>
+                <div className="text-sm text-muted-foreground truncate">Goals: {deriveGoals(c.campaign_strategy, c.media_kit_url).join(' • ') || '—'}</div>
                 <div className="text-sm text-muted-foreground truncate">{c.media_kit_url}</div>
                 <div className="flex justify-end gap-2 col-span-2">
                   <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
