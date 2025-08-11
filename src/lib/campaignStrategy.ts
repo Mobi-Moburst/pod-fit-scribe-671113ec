@@ -1,6 +1,14 @@
 // Utilities to parse and build a unified campaign strategy text
 // Extracts Target Audiences and Talking Points sections from freeform text
 
+// Ignore common intro sentences coworkers may paste into strategies
+const isIntroLine = (s: string) => {
+  const t = String(s || "").trim().replace(/^["']|["']$/g, "").replace(/\r/g, "");
+  const lower = t.toLowerCase().replace(/’/g, "'");
+  return /^we'll be pitching you to podcasts that reach these key audiences:?\s*$/.test(lower)
+    || /^every show is different,? but we'll position you around these core themes:?\s*$/.test(lower);
+};
+
 export function parseCampaignStrategy(text: string): { audiences: string[]; talking: string[] } {
   const t = (text || "").replace(/\r/g, "");
   const lines = t.split("\n");
@@ -11,7 +19,7 @@ export function parseCampaignStrategy(text: string): { audiences: string[]; talk
   const isAudHdr = (s: string) => /^(\s)*(target\s*audiences?|audience|icp)\s*:?\s*$/i.test(s);
   const isTalkHdr = (s: string) => /^(talking\s*points|topics\s*to\s*prioritize|key\s*topics|messaging\s*pillars)\s*:?\s*$/i.test(s);
   const isHdr = (s: string) => isAudHdr(s) || isTalkHdr(s);
-
+  
   const add = (arr: string[], raw: string) => {
     const s = String(raw || "").trim().replace(/^[-*•]\s*/, "");
     if (!s) return;
@@ -29,6 +37,7 @@ export function parseCampaignStrategy(text: string): { audiences: string[]; talk
       continue;
     }
     if (!mode) continue;
+    if (isIntroLine(line)) continue;
     add(mode === "aud" ? audiences : talking, line);
   }
 
@@ -81,7 +90,7 @@ export function pickTopAudienceTags(opts: {
       .replace(/^\s*:\s*$/, '')
       .trim();
 
-  const isHeaderLike = (s: string) => /^(target\s*audiences?|audience|icp|talking\s*points|topics\s*to\s*prioritize|key\s*topics|messaging\s*pillars)\s*:?\s*$/i.test(s);
+  const isHeaderLike = (s: string) => isIntroLine(s) || /^(target\s*audiences?|audience|icp|talking\s*points|topics\s*to\s*prioritize|key\s*topics|messaging\s*pillars)\s*:?\s*$/i.test(s);
 
   // Unique by lowercase text while preserving first occurrence
   const seen = new Set<string>();
