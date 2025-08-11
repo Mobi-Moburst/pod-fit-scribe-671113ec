@@ -28,6 +28,20 @@ const History = () => {
 
   const filtered = useMemo(() => list.filter(r => (!clientFilter || r.clientId === clientFilter) && (minScore === '' || (r.overall_score ?? 0) >= (minScore as number))), [list, clientFilter, minScore]);
 
+  const prettifyFromUrl = (u: string) => {
+    try {
+      const urlObj = new URL(u);
+      const segments = urlObj.pathname.split('/').filter(Boolean);
+      const base = segments[segments.length - 1] || urlObj.hostname.replace(/^www\./, '');
+      const cleaned = decodeURIComponent(base).replace(/[-_]+/g, ' ').trim();
+      return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : urlObj.hostname.replace(/^www\./, '');
+    } catch {
+      return u;
+    }
+  };
+
+  const getDisplayTitle = (r: any) => r.show_title || prettifyFromUrl(r.url || '');
+
   return (
     <div>
       <BackgroundFX />
@@ -54,7 +68,7 @@ const History = () => {
           <div className="grid gap-2">
             {filtered.map((r,i)=> (
               <div key={i} className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
-                <div className="col-span-5 truncate"><a className="underline" href={r.url} target="_blank" rel="noreferrer">{r.url}</a></div>
+                <div className="col-span-5 truncate">{r.url ? <a className="underline" href={r.url} target="_blank" rel="noreferrer" title={r.url}>{getDisplayTitle(r)}</a> : <span>{getDisplayTitle(r)}</span>}</div>
                 <div className="col-span-3 text-sm text-muted-foreground truncate">{clientNameById[r.clientId] || r.clientId}</div>
                 <div className="col-span-2 font-semibold">{r.overall_score}</div>
                 <div className="col-span-2 text-sm text-muted-foreground">{new Date(r.date).toLocaleString()}</div>
