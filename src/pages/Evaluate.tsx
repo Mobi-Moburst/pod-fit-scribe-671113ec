@@ -106,8 +106,18 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
 
   const handleCopySummary = async () => {
     if (!result) return;
-    const summary = `Score ${result.overall_score}/10. Why fit: ${result.why_fit.join('; ')}. Risks: ${result.risk_flags.join('; ')}.`;
-    await navigator.clipboard.writeText(summary);
+    const text = result.summary_text || (() => {
+      const verdict = result.verdict === 'recommend' ? 'Recommend' : result.verdict === 'consider' ? 'Consider' : 'Not recommended';
+      const fits = (result.why_fit_structured || []).slice(0, 2).map(i => `${i.claim} — "${i.evidence}"${i.interpretation ? ` (${i.interpretation})` : ''}`).join(' ');
+      const gaps = (result.why_not_fit_structured || []).slice(0, 1).map(i => `${i.claim} [${i.severity}] — "${i.evidence}"`).join(' ');
+      const next = result.verdict === 'recommend'
+        ? 'Next step: pitch a tailored angle tied to the strongest theme.'
+        : result.verdict === 'consider'
+          ? 'Next step: proceed if ICP/theme is confirmed.'
+          : 'Next step: skip or pick a better-aligned episode.';
+      return `${verdict} (${result.overall_score.toFixed(1)}/10). ${fits}${gaps ? ' ' + gaps : ''} ${next}`;
+    })();
+    await navigator.clipboard.writeText(text);
     toast({ title: 'Copied', description: 'Summary copied to clipboard.' });
   };
 

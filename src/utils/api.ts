@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface AnalyzeResult {
   overall_score: number;
   rubric_breakdown: { dimension: string; weight: number; raw_score: number; notes: string }[];
+  // Legacy fields (kept for backward compatibility)
   why_fit: string[];
   why_not_fit: string[];
   recommended_talking_points: string[];
@@ -12,6 +13,18 @@ export interface AnalyzeResult {
   scored_by?: 'local-heuristic' | 'ai';
   confidence?: number;
   fallback_reason?: string;
+
+  // New goal-centric fields (optional)
+  verdict?: 'recommend' | 'consider' | 'not_recommended';
+  verdict_reason?: string;
+  why_fit_structured?: { claim: string; evidence: string; interpretation: string }[];
+  why_not_fit_structured?: { severity: 'Critical' | 'Major' | 'Minor'; claim: string; evidence: string; interpretation: string }[];
+  risk_flags_structured?: { severity: 'Critical' | 'Major' | 'Minor'; flag: string; mitigation: string }[];
+  confidence_label?: 'High' | 'Med' | 'Low';
+  confidence_note?: string;
+  what_would_change?: string[]; // 1–2 items
+  summary_text?: string; // 140–200 words for Copy Summary
+  show_title?: string; // UI convenience (set client-side)
 }
 
 export async function callScrape(url: string) {
