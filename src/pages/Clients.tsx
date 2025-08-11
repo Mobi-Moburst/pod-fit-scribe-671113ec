@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import type { MinimalClient } from '@/types/clients';
 import { getClients, saveClients } from '@/data/clientStore';
 
@@ -39,6 +40,31 @@ function deriveGoals(strategy: string, mediaKitUrl: string): string[] {
   const combined = [...goalsFromLabel, ...out];
   const deduped = Array.from(new Set(combined));
   return deduped.slice(0, 3);
+}
+
+function deriveAudienceTags(strategy: string): string[] {
+  const tags = new Set<string>();
+  const s = strategy || '';
+  if (/(k\s*[–-]?\s*12|k12|k-12)/i.test(s) || /(teacher|educator|school|district|superintendent)/i.test(s)) {
+    tags.add('K-12'); tags.add('Education');
+  }
+  if (/(university|college|higher\s*ed|campus)/i.test(s)) tags.add('Higher Ed');
+  if (/(health\s*it|healthcare|hospital|clinical|clinician|patient)/i.test(s)) { tags.add('Healthcare'); tags.add('Health IT'); }
+  if (/(security|ciso|cso|infosec|cyber)/i.test(s)) { tags.add('Security'); }
+  if (/(developer|engineer|devops|cto|it\b)/i.test(s)) { tags.add('Developers'); tags.add('IT'); }
+  if (/(marketing|marketer|cmo|demand|growth|brand)/i.test(s)) tags.add('Marketing');
+  if (/(sales|sdr|ae|revops)/i.test(s)) tags.add('Sales');
+  if (/(fintech|bank|payments|finance|accounting)/i.test(s)) { tags.add('Fintech'); tags.add('Finance'); }
+  if (/(policy|regulation|public sector|government|gov\b)/i.test(s)) tags.add('Public Sector');
+  if (/(smb|small business)/i.test(s)) tags.add('SMB');
+  if (/(enterprise|fortune\s*\d+)/i.test(s)) tags.add('Enterprise');
+  if (/(startup|scaleup|founder)/i.test(s)) tags.add('Startups');
+  if (/(e[-\s]?commerce|shopify)/i.test(s)) tags.add('E‑commerce');
+  if (/(ai|machine learning|ml\b|data\b|analytics)/i.test(s)) { tags.add('AI/ML'); tags.add('Data'); }
+  if (/(legal|compliance|general\s*counsel|gc\b)/i.test(s)) tags.add('Legal/Compliance');
+  if (/(product\b|pm\b|design|ux)/i.test(s)) tags.add('Product/Design');
+  if (/(hr\b|people ops|recruit|talent)/i.test(s)) tags.add('HR/People');
+  return Array.from(tags).slice(0, 6);
 }
 
 const Clients = () => {
@@ -89,8 +115,19 @@ const Clients = () => {
             {list.map(c => (
               <div key={c.id} className="grid grid-cols-6 gap-3 items-center border-b border-border/60 py-3">
                 <div className="col-span-2 font-medium truncate">{c.name}</div>
-                <div className="text-sm text-muted-foreground truncate">Goals: {deriveGoals(c.campaign_strategy, c.media_kit_url).join(' • ') || '—'}</div>
-                <div className="text-sm text-muted-foreground truncate">{c.media_kit_url}</div>
+                <div className="text-sm text-muted-foreground">
+                  <div className="flex flex-wrap gap-1">
+                    {deriveAudienceTags(c.campaign_strategy).map(tag => (
+                      <Badge key={tag} variant="secondary">{tag}</Badge>
+                    ))}
+                    {deriveAudienceTags(c.campaign_strategy).length === 0 && <span className="opacity-70">—</span>}
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground truncate">
+                  {c.media_kit_url ? (
+                    <a className="underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.media_kit_url}</a>
+                  ) : '—'}
+                </div>
                 <div className="flex justify-end gap-2 col-span-2">
                   <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
                   <Button size="sm" variant="destructive" onClick={() => remove(c.id)}>Delete</Button>
