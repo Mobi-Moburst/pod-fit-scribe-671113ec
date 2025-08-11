@@ -57,6 +57,16 @@ function isGenericSlogan(q: string) {
   return /thought leader|leaders in|trailblazing|cutting-edge|unlock potential|empower|innovation hub|join us/i.test(l);
 }
 
+// Loose normalization and inclusion helpers for broader phrase matching
+function normalizeLoose(s: string) {
+  return norm(s).replace(/[-_/]/g, " ").replace(/\s+/g, " ").trim();
+}
+function includesLoose(haystack: string, needle: string) {
+  const h = normalizeLoose(haystack);
+  const n = normalizeLoose(needle);
+  return !!n && h.includes(n);
+}
+
 // ---------------- Concept Set Expansion ----------------
 function expandConcepts(client: any) {
   const talking: string[] = (client?.talking_points || client?.keywords_positive || []) as string[];
@@ -133,19 +143,25 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const notesPref: string = String(client?.notes || client?.campaign_strategy || "");
   const mediaKitUrl: string = String(client?.media_kit_url || "");
 
-  // Concept hits
-  const strongHits = findPositions(notes, strong).slice(0, 10);
-  const nearHits = findPositions(notes, near).slice(0, 10);
-  const distinctConcepts = new Set([...strongHits.map(h => h.term), ...nearHits.map(h => h.term)]).size;
-  const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
+// Concept hits
+const strongHits = findPositions(notes, strong).slice(0, 10);
+const nearHits = findPositions(notes, near).slice(0, 10);
+const distinctConcepts = new Set([...strongHits.map(h => h.term), ...nearHits.map(h => h.term)]).size;
+const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
 
-  // Topic relevance (0.35)
-  const topicRelevance = roundToHalf(clamp(3 + weightedConceptScore * 0.5));
+// Loose matching for raw seeds
+const lowerNotes = norm(notes);
+const rawTalking: string[] = (client?.talking_points || client?.keywords_positive || []) as string[];
+const looseConceptHit = rawTalking.some(tp => includesLoose(lowerNotes, tp));
 
-  // ICP alignment (0.25): ANY primary or adjacent audience is enough; diminishing returns
-  const audStrong = findPositions(notes, audiences.map(norm)).length;
-  const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
-  const icpAlignment = roundToHalf(clamp(3 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
+// Topic relevance (0.35)
+const topicRelevance = roundToHalf(clamp(3 + weightedConceptScore * 0.5));
+
+// ICP alignment (0.25): ANY primary or adjacent audience is enough; diminishing returns
+const audStrong = findPositions(notes, audiences.map(norm)).length;
+const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
+const looseAudienceHit = audiences.some(a => includesLoose(lowerNotes, a));
+const icpAlignment = roundToHalf(clamp(3 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
 
   // Recency/consistency (0.15)
   const recentYear = /(202[3-6])/.test(notes) ? 1 : 0;
@@ -172,10 +188,10 @@ function scoreGoalCentric(client: any, show_notes: string) {
   // Caps & floors (new policy)
   const avoidCounts = avoids.map(a => ({ a, c: count(notes, [a]) })).sort((x,y)=>y.c - x.c);
   const strongAvoidCentral = avoidCounts[0]?.c >= 2; // heuristic: central if repeated
-  const zeroConceptOverlap = (strongHits.length + nearHits.length) === 0;
-  const strongAudienceEvidence = audStrong >= 1 || audAdj >= 2;
+  const zeroConceptOverlap = (strongHits.length + nearHits.length) === 0 && !looseConceptHit;
+  const strongAudienceEvidence = audStrong >= 1 || audAdj >= 2 || looseAudienceHit;
   const threeDistinctConcepts = distinctConcepts >= 3;
-  const zeroIcpOverlap = audStrong === 0 && audAdj === 0;
+  const zeroIcpOverlap = (audStrong === 0 && audAdj === 0) && !looseAudienceHit;
 
   // New hard low caps for severe misalignment
   if (zeroConceptOverlap && zeroIcpOverlap) overall = Math.min(overall, 2.0);
@@ -231,7 +247,7 @@ function scoreGoalCentric(client: any, show_notes: string) {
     why_not_fit_structured.push({
       severity: 'Major',
       claim: 'No overlap with concept sets',
-      evidence: 'No relevant terms detected',
+      evidence: 'No relevant terms detected (including loose phrase match)',
       interpretation: 'Topic/theme mismatch; low relevance',
     });
   }
@@ -318,6 +334,17 @@ function scoreGoalCentric(client: any, show_notes: string) {
     confidence_note,
     what_would_change,
     summary_text,
+    debug: {
+      source: 'heuristic',
+      zeroConceptOverlap,
+      zeroIcpOverlap,
+      audStrong,
+      audAdj,
+      looseConceptHit,
+      looseAudienceHit,
+      strongAvoidCentral,
+      distinctConcepts,
+    },
   };
 }
 
@@ -375,7 +402,7 @@ serve(async (req) => {
 }`;
 
     const body = {
-      model: "gpt-4.1-2025-04-14",
+      model: "gpt-4o-mini",
       temperature: 0.15,
       response_format: { type: "json_object" },
       messages: [
@@ -425,34 +452,46 @@ serve(async (req) => {
       const expanded = expandConcepts(client);
       const strongPos = findPositions(notesText, expanded.strong);
       const nearPos = findPositions(notesText, expanded.near);
-      const conceptOverlap = (strongPos.length + nearPos.length) > 0;
+      const lowerNotes = norm(notesText);
+      const rawTalking: string[] = (client?.talking_points || client?.keywords_positive || []) as string[];
+      const rawAudiences: string[] = (client?.target_audiences || client?.target_roles || []) as string[];
+      const looseConceptHit = rawTalking.some(tp => includesLoose(lowerNotes, tp));
+      const looseAudienceHit = rawAudiences.some(a => includesLoose(lowerNotes, a));
+      const conceptOverlap = (strongPos.length + nearPos.length) > 0 || looseConceptHit;
       const avoids: string[] = (client?.avoid || []) as string[];
       const avoidCounts = avoids.map(a => ({ a, c: count(notesText, [a]) })).sort((x,y)=>y.c - x.c);
       const strongAvoidCentral = avoidCounts[0]?.c >= 2;
 
-      let adjusted = Number(data?.overall_score) || 0;
+      const preAdjusted = Number(data?.overall_score) || 0;
+      let adjusted = preAdjusted;
       if (strongAvoidCentral) adjusted = Math.min(adjusted, 5.0);
 
       // Audience overlap checks
       const aud: string[] = (client?.target_audiences || []) as string[];
       const audStrong = findPositions(notesText, aud.map(norm)).length;
       const audAdj = nearPos.filter(h => aud.some(a => norm(h.term).includes(norm(a)))).length;
-      const zeroIcpOverlap = audStrong === 0 && audAdj === 0;
+      const zeroIcpOverlap = (audStrong === 0 && audAdj === 0) && !looseAudienceHit;
 
-      // New hard low caps for severe misalignment
-      if (!conceptOverlap && zeroIcpOverlap) adjusted = Math.min(adjusted, 2.0);
-      else if (!conceptOverlap || zeroIcpOverlap) adjusted = Math.min(adjusted, 4.0);
+      // Caps will be applied after inspecting AI verdict and evidence
 
-      // Existing caps/floors
-      if (!conceptOverlap) adjusted = Math.min(adjusted, 6.5);
-      // Floor if strong evidence present
-      if (expanded.strong.length >= 3 && (audStrong >= 1 || nearPos.length >= 2)) adjusted = Math.max(adjusted, 7.5);
-      adjusted = roundToHalf(clamp(adjusted, 0, 10));
 
       const ensureArray = (v: any) => Array.isArray(v) ? v : [];
       const why_fit_structured = ensureArray(data?.why_fit_structured);
       const why_not_fit_structured = ensureArray(data?.why_not_fit_structured);
       const risk_flags_structured = ensureArray(data?.risk_flags_structured);
+
+      const citationsArr = ensureArray(data?.citations);
+      const aiSuggestsGood = (data?.verdict === 'recommend') || (preAdjusted >= 7.5 && (why_fit_structured.length >= 1 || citationsArr.length >= 2));
+
+      // Apply caps/floors now, trusting strong AI rubrics when present
+      if (!aiSuggestsGood) {
+        if (!conceptOverlap && zeroIcpOverlap) adjusted = Math.min(adjusted, 2.0);
+        else if (!conceptOverlap || zeroIcpOverlap) adjusted = Math.min(adjusted, 4.0);
+        if (!conceptOverlap) adjusted = Math.min(adjusted, 6.5);
+      }
+      // Floor if strong evidence present
+      if (expanded.strong.length >= 3 && (audStrong >= 1 || nearPos.length >= 2)) adjusted = Math.max(adjusted, 7.5);
+      adjusted = roundToHalf(clamp(adjusted, 0, 10));
 
       // Derive legacy arrays for UI compatibility
       const why_fit = why_fit_structured.map((w: any) => `${w.claim} — "${w.evidence}" (${w.interpretation})`).slice(0, 5);
@@ -485,6 +524,18 @@ serve(async (req) => {
         confidence_note,
         what_would_change: ensureArray(data?.what_would_change).slice(0,2),
         summary_text: data?.summary_text || undefined,
+        debug: {
+          source: 'ai',
+          conceptOverlap,
+          zeroIcpOverlap,
+          audStrong,
+          audAdj,
+          looseConceptHit,
+          looseAudienceHit,
+          strongAvoidCentral,
+          pre_adjusted: preAdjusted,
+          aiSuggestsGood,
+        },
       };
 
       // If summary missing, synthesize
