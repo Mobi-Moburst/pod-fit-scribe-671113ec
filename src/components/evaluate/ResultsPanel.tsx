@@ -23,7 +23,13 @@ export const ResultsPanel = ({
         <div className="flex items-center gap-4">
           <ScoreBadge score={overall_score} />
           <div>
-            <h2 className="text-xl font-semibold">{show_title || 'Analysis Result'}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold">{show_title || 'Analysis Result'}</h2>
+              <Badge variant="outline">{result.scored_by === 'ai' ? 'AI model' : 'Local heuristic'}</Badge>
+              {typeof result.confidence === 'number' && (
+                <Badge variant="secondary">{Math.round(result.confidence * 100)}% conf</Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">Confidence improves with longer notes and more citations.</p>
           </div>
         </div>

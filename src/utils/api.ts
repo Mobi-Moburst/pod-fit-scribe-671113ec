@@ -9,6 +9,8 @@ export interface AnalyzeResult {
   recommended_talking_points: string[];
   risk_flags: string[];
   citations: string[];
+  scored_by?: 'local-heuristic' | 'ai';
+  confidence?: number;
 }
 
 export async function callScrape(url: string) {
