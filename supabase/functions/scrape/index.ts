@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 function stripTags(html: string) {
@@ -49,9 +50,23 @@ serve(async (req) => {
     const jsonld = extractJSONLD(html);
     let ldDesc = '';
     for (const j of jsonld) {
-      if (j?.description) { ldDesc = j.description; break; }
-      if (Array.isArray(j)) { const f = j.find((x: any)=>x?.description); if (f) { ldDesc = f.description; break; } }
-      if (j?.@type && (j.@type === 'PodcastEpisode' || j.@type === 'PodcastSeries') && j?.description) { ldDesc = j.description; break; }
+      if ((j as any)?.description) {
+        ldDesc = (j as any).description;
+        break;
+      }
+      if (Array.isArray(j)) {
+        const f = (j as any[]).find((x: any) => x?.description);
+        if (f) {
+          ldDesc = f.description;
+          break;
+        }
+      }
+      // FIX: use bracket notation for "@type"
+      const jType = (j as any)?.['@type'];
+      if (jType && (jType === 'PodcastEpisode' || jType === 'PodcastSeries') && (j as any)?.description) {
+        ldDesc = (j as any).description;
+        break;
+      }
     }
 
     // Combine candidates
