@@ -8,8 +8,8 @@ export function parseCampaignStrategy(text: string): { audiences: string[]; talk
   const talking: string[] = [];
 
   let mode: "aud" | "talk" | null = null;
-  const isAudHdr = (s: string) => /^(\s)*(target\s*audiences?|audience|icp)\s*:/i.test(s);
-  const isTalkHdr = (s: string) => /(talking\s*points|topics\s*to\s*prioritize|key\s*topics|messaging\s*pillars)\s*:/i.test(s);
+  const isAudHdr = (s: string) => /^(\s)*(target\s*audiences?|audience|icp)\s*:?\s*$/i.test(s);
+  const isTalkHdr = (s: string) => /^(talking\s*points|topics\s*to\s*prioritize|key\s*topics|messaging\s*pillars)\s*:?\s*$/i.test(s);
   const isHdr = (s: string) => isAudHdr(s) || isTalkHdr(s);
 
   const add = (arr: string[], raw: string) => {

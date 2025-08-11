@@ -34,6 +34,7 @@ function seedFromMock(): MinimalClient[] {
       target_audiences,
       talking_points,
       avoid,
+      avoid_text: avoid.join(", "),
       notes: c.notes || undefined,
       campaign_strategy: buildCampaignStrategyFromArrays(target_audiences, talking_points),
     } as MinimalClient;
@@ -62,6 +63,16 @@ function normalizeClient(c: any): MinimalClient {
   let audiences = toList(c.target_audiences);
   let talking = toList(c.talking_points);
 
+  // Preserve raw free-text for "Things to Avoid"
+  const avoidText =
+    typeof c.avoid_text === "string"
+      ? c.avoid_text
+      : Array.isArray(c.avoid)
+      ? c.avoid.join(", ")
+      : typeof c.avoid === "string"
+      ? c.avoid
+      : "";
+
   if (strategy.trim()) {
     const { audiences: a, talking: t } = parseCampaignStrategy(strategy);
     audiences = a;
@@ -78,7 +89,8 @@ function normalizeClient(c: any): MinimalClient {
     media_kit_url: String(c.media_kit_url || ""),
     target_audiences: audiences,
     talking_points: talking,
-    avoid: toList(c.avoid),
+    avoid_text: avoidText,
+    avoid: toList(avoidText),
     notes: c.notes ? String(c.notes) : undefined,
     campaign_strategy: strategy,
   };

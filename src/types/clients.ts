@@ -7,6 +7,7 @@ export interface MinimalClient {
   target_audiences?: string[];
   talking_points?: string[];
   avoid?: string[];
+  avoid_text?: string;
   notes?: string;
   // Kept for backward compatibility with older seeds/forms
   campaign_strategy?: string;

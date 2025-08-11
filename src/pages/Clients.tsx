@@ -21,6 +21,7 @@ const empty: MinimalClient = {
   target_audiences: [],
   talking_points: [],
   avoid: [],
+  avoid_text: '',
   notes: '',
   campaign_strategy: '', // keep for backward compatibility
 };
@@ -73,8 +74,8 @@ const save = () => {
                   {c.company && <span className="ml-2 text-sm text-muted-foreground">— {c.company}</span>}
                 </div>
                 <div className="col-span-7 text-sm text-muted-foreground">
-                  <div className="flex gap-2 overflow-x-auto whitespace-nowrap pr-2">
-                    {(c.target_audiences || []).slice(0,6).map(tag => (
+                  <div className="flex flex-wrap gap-2">
+                    {(c.target_audiences || []).map(tag => (
                       <Badge key={tag} variant="secondary" className="shrink-0">{tag}</Badge>
                     ))}
                     {!c.target_audiences?.length && <span className="opacity-70">—</span>}
@@ -129,8 +130,8 @@ const save = () => {
                 <Textarea
                   rows={4}
                   placeholder="crypto, MLM, NFT, Competitor: Duo"
-                  value={(editing.avoid || []).join('\n')}
-                  onChange={(e) => setEditing({ ...editing, avoid: toList(e.target.value) })}
+                  value={editing.avoid_text || ''}
+                  onChange={(e) => setEditing({ ...editing, avoid_text: e.target.value, avoid: toList(e.target.value) })}
                 />
               </div>
               <div className="md:col-span-2">
