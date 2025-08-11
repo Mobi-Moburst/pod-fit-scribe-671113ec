@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { TagInput } from '@/components/TagInput';
 import type { MinimalClient } from '@/types/clients';
 import { getClients, saveClients } from '@/data/clientStore';
+import { useToast } from '@/components/ui/use-toast';
 
 const empty: MinimalClient = {
   id: '',
@@ -28,6 +29,7 @@ const Clients = () => {
   useEffect(() => { document.title = 'Clients — Podcast Fit Rater'; }, []);
   const [list, setList] = useState<MinimalClient[]>(() => getClients());
   const [editing, setEditing] = useState<MinimalClient | null>(null);
+  const { toast } = useToast();
 
   const saveAll = (arr: MinimalClient[]) => { setList(arr); saveClients(arr); };
   const startNew = () => setEditing({ ...empty, id: crypto.randomUUID() });
@@ -36,12 +38,13 @@ const Clients = () => {
 
   const canSave = useMemo(() => !!editing && editing.name.trim().length > 0, [editing]);
 
-  const save = () => {
+const save = () => {
     if (!editing || !canSave) return;
     const idx = list.findIndex(l => l.id === editing.id);
     const next = idx === -1 ? [editing, ...list] : list.map(l => l.id === editing.id ? editing : l);
     saveAll(next);
     setEditing(null);
+    toast({ title: 'Client saved', description: 'Audience, talking points, and avoid tags saved.' });
   };
   const remove = (id: string) => saveAll(list.filter(l => l.id !== id));
 

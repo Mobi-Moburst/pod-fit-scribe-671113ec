@@ -25,6 +25,12 @@ const Evaluate = () => {
   const [clientId, setClientId] = useState(() => (getClients()[0]?.id ?? ''));
   const client = useMemo(() => clients.find(c => c.id === clientId)!, [clients, clientId]);
 
+  useEffect(() => {
+    const reload = () => setClients(getClients());
+    window.addEventListener('pfr_clients_updated', reload);
+    return () => window.removeEventListener('pfr_clients_updated', reload);
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<(AnalyzeResult & { show_title?: string }) | null>(null);
 
