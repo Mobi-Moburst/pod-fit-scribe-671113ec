@@ -33,9 +33,14 @@ const Evaluate = () => {
     try {
       let notes = paste.trim();
       let title: string | undefined;
+      const isAllowedPodcastUrl = (u: string) => /^(https?:\/\/)?(podcasts\.apple\.com|open\.spotify\.com)\//i.test(u);
       if (!notes) {
         if (!url) {
           toast({ title: 'Need notes', description: 'Enter a URL or paste show notes.', variant: 'destructive' });
+          return;
+        }
+        if (!isAllowedPodcastUrl(url)) {
+          toast({ title: 'Unsupported URL', description: 'Please use an Apple Podcasts or Spotify URL.', variant: 'destructive' });
           return;
         }
         const s = await callScrape(url);
@@ -78,6 +83,7 @@ const Evaluate = () => {
     const key = 'pfr_history';
     const prev = JSON.parse(localStorage.getItem(key) || '[]');
     localStorage.setItem(key, JSON.stringify([{ date: Date.now(), clientId, url, ...result }, ...prev].slice(0, 200)));
+    window.dispatchEvent(new Event('pfr_history_updated'));
     toast({ title: 'Saved', description: 'Added to History.' });
   };
 
@@ -106,7 +112,7 @@ const Evaluate = () => {
           <Card className="p-4 card-surface md:col-span-2">
             <div className="grid gap-3">
               <Label htmlFor="url">Podcast URL</Label>
-              <Input id="url" placeholder="Apple, Spotify, ListenNotes, or site URL" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleAnalyze(); }} />
+              <Input id="url" placeholder="Apple Podcasts or Spotify URL" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleAnalyze(); }} />
               <Label htmlFor="paste" className="mt-2">Optional: Paste show notes (fallback)</Label>
               <Textarea id="paste" rows={6} placeholder="Paste raw show notes if fetching fails" value={paste} onChange={(e) => setPaste(e.target.value)} />
             </div>

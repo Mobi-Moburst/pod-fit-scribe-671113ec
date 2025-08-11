@@ -15,6 +15,17 @@ const History = () => {
   const clients = useMemo(() => getClients(), []);
   const clientNameById = useMemo(() => Object.fromEntries(clients.map(c => [c.id, c.name])), [clients]);
 
+  useEffect(() => {
+    const reload = () => setList(JSON.parse(localStorage.getItem('pfr_history') || '[]'));
+    const onStorage = (e: StorageEvent) => { if (e.key === 'pfr_history') reload(); };
+    window.addEventListener('pfr_history_updated', reload);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('pfr_history_updated', reload);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
   const filtered = useMemo(() => list.filter(r => (!clientFilter || r.clientId === clientFilter) && (minScore === '' || (r.overall_score ?? 0) >= (minScore as number))), [list, clientFilter, minScore]);
 
   return (
