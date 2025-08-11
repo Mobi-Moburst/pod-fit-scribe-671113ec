@@ -58,7 +58,7 @@ const save = () => {
         <Card className="p-4 card-surface flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">Clients</h1>
-            <p className="text-sm text-muted-foreground">Name is required to save. Add company, media kit, and paste your campaign strategy; we’ll infer audiences and talking points.</p>
+            <p className="text-sm text-muted-foreground">Add client details and paste the campaign strategy; we’ll parse it and handle the rest.</p>
           </div>
           <Button variant="hero" onClick={startNew}>New Client</Button>
         </Card>
