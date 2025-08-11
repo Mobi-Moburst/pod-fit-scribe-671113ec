@@ -498,12 +498,25 @@ serve(async (req) => {
       const why_not_fit = why_not_fit_structured.map((w: any) => `${w.claim} [${w.severity}] — "${w.evidence}" (${w.interpretation})`).slice(0, 4);
       const risk_flags = risk_flags_structured.map((r: any) => `${r.flag} [${r.severity}]`);
 
-      // Verdict if missing
+      // Align verdict with adjusted score; prefer AI verdict only if consistent
       const hasCritical = why_not_fit_structured.some((w: any) => w.severity === 'Critical') || risk_flags_structured.some((r: any) => r.severity === 'Critical');
-      const verdict: 'recommend' | 'consider' | 'not_recommended' = hasCritical ? 'not_recommended' : adjusted >= 7.5 ? 'recommend' : adjusted < 6.0 ? 'not_recommended' : 'consider';
+      const aiVerdict = (data?.verdict as 'recommend' | 'consider' | 'not_recommended' | undefined) || undefined;
+      let verdict: 'recommend' | 'consider' | 'not_recommended' = hasCritical ? 'not_recommended' : adjusted >= 7.5 ? 'recommend' : adjusted < 6.0 ? 'not_recommended' : 'consider';
+      let alignmentApplied = false;
+      if (aiVerdict && aiVerdict !== verdict) {
+        // Nudge score to match the AI verdict rather than contradict it
+        verdict = aiVerdict;
+        alignmentApplied = true;
+        if (verdict === 'not_recommended' && adjusted >= 6.0) adjusted = 5.5;
+        if (verdict === 'recommend' && adjusted < 7.5) adjusted = 7.5;
+        if (verdict === 'consider') {
+          if (adjusted < 6.0) adjusted = 6.0;
+          if (adjusted > 7.0) adjusted = 7.0;
+        }
+      }
+      adjusted = roundToHalf(clamp(adjusted, 0, 10));
       const confidence_label = data?.confidence_label || ((Number(data?.confidence) || 0.5) >= 0.75 ? 'High' : (Number(data?.confidence) || 0.5) >= 0.5 ? 'Med' : 'Low');
       const confidence_note = data?.confidence_note || `${(data?.citations || []).length} usable quotes`;
-
       const merged = {
         overall_score: adjusted,
         rubric_breakdown: data?.rubric_breakdown || [],
@@ -515,7 +528,7 @@ serve(async (req) => {
         scored_by: 'ai' as const,
         confidence: typeof data?.confidence === 'number' ? data.confidence : undefined,
         // new
-        verdict: data?.verdict || verdict,
+        verdict: verdict,
         verdict_reason: data?.verdict_reason || undefined,
         why_fit_structured,
         why_not_fit_structured,
@@ -535,6 +548,10 @@ serve(async (req) => {
           strongAvoidCentral,
           pre_adjusted: preAdjusted,
           aiSuggestsGood,
+          ai_verdict: aiVerdict || null,
+          alignment_applied: alignmentApplied,
+          final_verdict: verdict,
+          final_score: adjusted,
         },
       };
 
