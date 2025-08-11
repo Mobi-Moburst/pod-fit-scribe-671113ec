@@ -1,3 +1,6 @@
+
+import { supabase } from "@/integrations/supabase/client";
+
 export interface AnalyzeResult {
   overall_score: number;
   rubric_breakdown: { dimension: string; weight: number; raw_score: number; notes: string }[];
@@ -9,26 +12,24 @@ export interface AnalyzeResult {
 }
 
 export async function callScrape(url: string) {
-  const base = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  const res = await fetch(`${base}/functions/v1/scrape`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, apikey: key },
-    body: JSON.stringify({ url })
+  const { data, error } = await supabase.functions.invoke('scrape', {
+    body: { url },
   });
-  return res.json();
+  if (error) {
+    return { success: false, error: error.message };
+  }
+  return data;
 }
 
 export async function callAnalyze(payload: {
   client: any;
   show_notes: string;
 }) {
-  const base = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  const res = await fetch(`${base}/functions/v1/analyze`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, apikey: key },
-    body: JSON.stringify(payload)
+  const { data, error } = await supabase.functions.invoke('analyze', {
+    body: payload,
   });
-  return res.json() as Promise<{ success: boolean; error?: string; data?: AnalyzeResult }>;
+  if (error) {
+    return { success: false, error: error.message } as { success: boolean; error?: string; data?: AnalyzeResult };
+  }
+  return data as { success: boolean; error?: string; data?: AnalyzeResult };
 }

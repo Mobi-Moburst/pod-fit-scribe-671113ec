@@ -16,7 +16,7 @@ export type Database = {
     Tables: {
       clients: {
         Row: {
-          campaign_strategy: string | null
+          campaign_strategy: string
           company: string | null
           content_goals: string | null
           created_at: string | null
@@ -26,9 +26,10 @@ export type Database = {
           industry: string | null
           keywords_negative: string[] | null
           keywords_positive: string[] | null
-          media_kit_url: string | null
+          media_kit_url: string
           name: string
           notes: string | null
+          org_id: string
           target_company_sizes: string[] | null
           target_regions: string[] | null
           target_roles: string[] | null
@@ -37,7 +38,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          campaign_strategy?: string | null
+          campaign_strategy: string
           company?: string | null
           content_goals?: string | null
           created_at?: string | null
@@ -47,9 +48,10 @@ export type Database = {
           industry?: string | null
           keywords_negative?: string[] | null
           keywords_positive?: string[] | null
-          media_kit_url?: string | null
+          media_kit_url: string
           name: string
           notes?: string | null
+          org_id: string
           target_company_sizes?: string[] | null
           target_regions?: string[] | null
           target_roles?: string[] | null
@@ -58,7 +60,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          campaign_strategy?: string | null
+          campaign_strategy?: string
           company?: string | null
           content_goals?: string | null
           created_at?: string | null
@@ -68,9 +70,10 @@ export type Database = {
           industry?: string | null
           keywords_negative?: string[] | null
           keywords_positive?: string[] | null
-          media_kit_url?: string | null
+          media_kit_url?: string
           name?: string
           notes?: string | null
+          org_id?: string
           target_company_sizes?: string[] | null
           target_regions?: string[] | null
           target_roles?: string[] | null
@@ -87,6 +90,7 @@ export type Database = {
           confidence: number | null
           created_at: string | null
           id: string
+          org_id: string
           overall_score: number | null
           rubric_json: Json
           show_notes_excerpt: string | null
@@ -99,6 +103,7 @@ export type Database = {
           confidence?: number | null
           created_at?: string | null
           id?: string
+          org_id: string
           overall_score?: number | null
           rubric_json: Json
           show_notes_excerpt?: string | null
@@ -111,6 +116,7 @@ export type Database = {
           confidence?: number | null
           created_at?: string | null
           id?: string
+          org_id?: string
           overall_score?: number | null
           rubric_json?: Json
           show_notes_excerpt?: string | null

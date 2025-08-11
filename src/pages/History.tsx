@@ -1,16 +1,19 @@
+
 import { useEffect, useMemo, useState } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { BackgroundFX } from '@/components/BackgroundFX';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { mockClients } from '@/data/mockClients';
+import { getClients } from '@/data/clientStore';
 
 const History = () => {
   useEffect(() => { document.title = 'History — Podcast Fit Rater'; }, []);
   const [clientFilter, setClientFilter] = useState('');
   const [minScore, setMinScore] = useState<number | ''>('');
   const [list, setList] = useState<any[]>(() => JSON.parse(localStorage.getItem('pfr_history') || '[]'));
+  const clients = useMemo(() => getClients(), []);
+  const clientNameById = useMemo(() => Object.fromEntries(clients.map(c => [c.id, c.name])), [clients]);
 
   const filtered = useMemo(() => list.filter(r => (!clientFilter || r.clientId === clientFilter) && (minScore === '' || (r.overall_score ?? 0) >= (minScore as number))), [list, clientFilter, minScore]);
 
@@ -24,7 +27,7 @@ const History = () => {
             <label className="text-sm">Client</label>
             <select className="h-10 rounded-md border bg-background px-3 w-full" value={clientFilter} onChange={(e)=>setClientFilter(e.target.value)}>
               <option value="">All</option>
-              {mockClients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+              {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
           </div>
           <div>
@@ -41,7 +44,7 @@ const History = () => {
             {filtered.map((r,i)=> (
               <div key={i} className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
                 <div className="col-span-5 truncate"><a className="underline" href={r.url} target="_blank" rel="noreferrer">{r.url}</a></div>
-                <div className="col-span-3 text-sm text-muted-foreground truncate">{mockClients.find(c=>c.id===r.clientId)?.name || r.clientId}</div>
+                <div className="col-span-3 text-sm text-muted-foreground truncate">{clientNameById[r.clientId] || r.clientId}</div>
                 <div className="col-span-2 font-semibold">{r.overall_score}</div>
                 <div className="col-span-2 text-sm text-muted-foreground">{new Date(r.date).toLocaleString()}</div>
               </div>

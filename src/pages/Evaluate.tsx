@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { BackgroundFX } from '@/components/BackgroundFX';
@@ -9,9 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { callAnalyze, callScrape, AnalyzeResult } from '@/utils/api';
-import { mockClients, ClientProfile } from '@/data/mockClients';
 import { sampleUrls } from '@/data/sampleUrls';
 import { ResultsPanel } from '@/components/evaluate/ResultsPanel';
+import type { MinimalClient } from '@/types/clients';
+import { getClients } from '@/data/clientStore';
 
 const Evaluate = () => {
   useEffect(() => { document.title = 'Evaluate — Podcast Fit Rater'; }, []);
@@ -19,8 +21,9 @@ const Evaluate = () => {
 
   const [url, setUrl] = useState('');
   const [paste, setPaste] = useState('');
-  const [clientId, setClientId] = useState(mockClients[0]?.id ?? '');
-  const client = useMemo(() => mockClients.find(c => c.id === clientId)!, [clientId]);
+  const [clients, setClients] = useState<MinimalClient[]>(() => getClients());
+  const [clientId, setClientId] = useState(clients[0]?.id ?? '');
+  const client = useMemo(() => clients.find(c => c.id === clientId)!, [clients, clientId]);
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<(AnalyzeResult & { show_title?: string }) | null>(null);
@@ -42,6 +45,11 @@ const Evaluate = () => {
         }
         notes = s.show_notes as string;
         title = s.title;
+      }
+
+      if (!client) {
+        toast({ title: 'Select a client', description: 'Choose a client before analyzing.', variant: 'destructive' });
+        return;
       }
 
       const resp = await callAnalyze({ client, show_notes: notes });
@@ -100,13 +108,13 @@ const Evaluate = () => {
             <div className="grid gap-3">
               <Label htmlFor="client">Client</Label>
               <select id="client" className="h-10 rounded-md border bg-background px-3" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-                {mockClients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
               </select>
-              <div className="text-xs text-muted-foreground">Seeded clients. Manage in Clients tab.</div>
+              <div className="text-xs text-muted-foreground">Seeded from saved Clients. Manage in Clients tab.</div>
               <div className="flex gap-2 mt-2">
                 <Button variant="hero" className="flex-1" onClick={handleAnalyze}>Analyze</Button>
                 <Button variant="outline" type="button" onClick={() => {
-                  const list = sampleUrls[clientId] || [];
+                  const list = (sampleUrls as Record<string, string[]>)[clientId] || [];
                   setUrl(list[Math.floor(Math.random()*list.length)] || '');
                 }}>Try Sample</Button>
               </div>
