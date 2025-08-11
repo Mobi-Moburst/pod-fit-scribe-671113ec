@@ -13,6 +13,34 @@ const empty: MinimalClient = {
   id: '', name: '', campaign_strategy: '', media_kit_url: ''
 };
 
+function deriveGoals(strategy: string, mediaKitUrl: string): string[] {
+  const goalsFromLabel = (() => {
+    const m = strategy.match(/goals?:\s*([^|\n]+)/i);
+    if (m && m[1]) {
+      return m[1]
+        .split(/[;,•|]/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+    }
+    return [] as string[];
+  })();
+
+  const out: string[] = [];
+  if (/(demo|trial|book a demo|sales call)/i.test(strategy)) out.push('Drive demo bookings');
+  if (/(lead|pipeline|mql|sql)/i.test(strategy)) out.push('Generate qualified leads');
+  if (/(awareness|brand|top of funnel|reach)/i.test(strategy)) out.push('Grow brand awareness');
+  if (/(subscribe|newsletter|followers)/i.test(strategy)) out.push('Increase subscribers/followers');
+  if (/(traffic|seo|blog|content)/i.test(strategy)) out.push('Increase qualified site traffic');
+  if (/(community|slack|discord|forum)/i.test(strategy)) out.push('Grow community engagement');
+  if (/(retention|churn|adoption|activation)/i.test(strategy)) out.push('Improve retention/adoption');
+  if (/(thought leadership|authority|category)/i.test(strategy)) out.push('Establish thought leadership');
+  if (mediaKitUrl && mediaKitUrl.trim()) out.push('Align with media kit guidelines');
+
+  const combined = [...goalsFromLabel, ...out];
+  const deduped = Array.from(new Set(combined));
+  return deduped.slice(0, 3);
+}
+
 const Clients = () => {
   useEffect(() => { document.title = 'Clients — Podcast Fit Rater'; }, []);
   const [list, setList] = useState<MinimalClient[]>(() => getClients());
@@ -60,7 +88,10 @@ const Clients = () => {
           <div className="grid gap-2">
             {list.map(c => (
               <div key={c.id} className="grid grid-cols-6 gap-3 items-center border-b border-border/60 py-3">
-                <div className="col-span-2 font-medium truncate">{c.name}</div>
+                <div className="col-span-2 truncate">
+                  <div className="font-medium truncate">{c.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">Goals: {deriveGoals(c.campaign_strategy, c.media_kit_url).join(' • ') || '—'}</div>
+                </div>
                 <div className="text-sm text-muted-foreground truncate">{c.campaign_strategy}</div>
                 <div className="text-sm text-muted-foreground truncate">{c.media_kit_url}</div>
                 <div className="flex justify-end gap-2 col-span-2">
