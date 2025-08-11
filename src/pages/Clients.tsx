@@ -42,29 +42,40 @@ function deriveGoals(strategy: string, mediaKitUrl: string): string[] {
   return deduped.slice(0, 3);
 }
 
+function extractAudienceSlice(strategy: string): string {
+  const m = strategy.match(/(?:^|\b)(?:ICP|Target Audiences?|Audience|Target)\s*:\s*([^|\n]+)/i);
+  return m ? m[1] : '';
+}
+
 function deriveAudienceTags(strategy: string): string[] {
-  const tags = new Set<string>();
-  const s = strategy || '';
-  if (/(k\s*[–-]?\s*12|k12|k-12)/i.test(s) || /(teacher|educator|school|district|superintendent)/i.test(s)) {
-    tags.add('K-12'); tags.add('Education');
-  }
-  if (/(university|college|higher\s*ed|campus)/i.test(s)) tags.add('Higher Ed');
-  if (/(health\s*it|healthcare|hospital|clinical|clinician|patient)/i.test(s)) { tags.add('Healthcare'); tags.add('Health IT'); }
-  if (/(security|ciso|cso|infosec|cyber)/i.test(s)) { tags.add('Security'); }
-  if (/(developer|engineer|devops|cto|it\b)/i.test(s)) { tags.add('Developers'); tags.add('IT'); }
-  if (/(marketing|marketer|cmo|demand|growth|brand)/i.test(s)) tags.add('Marketing');
-  if (/(sales|sdr|ae|revops)/i.test(s)) tags.add('Sales');
-  if (/(fintech|bank|payments|finance|accounting)/i.test(s)) { tags.add('Fintech'); tags.add('Finance'); }
-  if (/(policy|regulation|public sector|government|gov\b)/i.test(s)) tags.add('Public Sector');
-  if (/(smb|small business)/i.test(s)) tags.add('SMB');
-  if (/(enterprise|fortune\s*\d+)/i.test(s)) tags.add('Enterprise');
-  if (/(startup|scaleup|founder)/i.test(s)) tags.add('Startups');
-  if (/(e[-\s]?commerce|shopify)/i.test(s)) tags.add('E‑commerce');
-  if (/(ai|machine learning|ml\b|data\b|analytics)/i.test(s)) { tags.add('AI/ML'); tags.add('Data'); }
-  if (/(legal|compliance|general\s*counsel|gc\b)/i.test(s)) tags.add('Legal/Compliance');
-  if (/(product\b|pm\b|design|ux)/i.test(s)) tags.add('Product/Design');
-  if (/(hr\b|people ops|recruit|talent)/i.test(s)) tags.add('HR/People');
-  return Array.from(tags).slice(0, 6);
+  const slice = extractAudienceSlice(strategy);
+  if (!slice) return [];
+  const rules: { label: string; re: RegExp }[] = [
+    { label: 'K-12', re: /(k\s*[-–]?\s*12|teachers?|educators?|schools?|districts?|superintendents?)/i },
+    { label: 'Education', re: /(education|edtech|students?|parents?)/i },
+    { label: 'Higher Ed', re: /(university|college|higher\s*ed|campus)/i },
+    { label: 'Healthcare', re: /(healthcare|hospital|provider|clinicians?|patients?)/i },
+    { label: 'Security', re: /(security|ciso|cso|infosec|cyber)/i },
+    { label: 'Developers', re: /(developers?|engineers?|devops)/i },
+    { label: 'IT', re: /(it\b|sysadmin|cto)/i },
+    { label: 'Marketing', re: /(marketing|marketers?|cmo|demand|growth|brand)/i },
+    { label: 'Sales', re: /(sales|sdr|ae|revops)/i },
+    { label: 'Finance', re: /(finance|accounting|cfo)/i },
+    { label: 'Fintech', re: /(fintech|payments|banking)/i },
+    { label: 'Public Sector', re: /(public\s*sector|government|gov\b|policy|regulation)/i },
+    { label: 'SMB', re: /(smb|small\s*business)/i },
+    { label: 'Enterprise', re: /(enterprise|fortune\s*\d+)/i },
+    { label: 'Startups', re: /(startup|scaleup|founders?)/i },
+    { label: 'E‑commerce', re: /(e[-\s]?commerce|shopify)/i },
+    { label: 'AI/ML', re: /(\bai\b|machine\s*learning|ml\b)/i },
+    { label: 'Data', re: /(data\b|analytics)/i },
+    { label: 'Legal/Compliance', re: /(legal|compliance|general\s*counsel|gc\b)/i },
+    { label: 'Product/Design', re: /(product\b|pm\b|design|ux)/i },
+    { label: 'HR/People', re: /(hr\b|people\s*ops|recruit|talent)/i },
+  ];
+  const tags: string[] = [];
+  for (const r of rules) if (r.re.test(slice)) tags.push(r.label);
+  return tags.slice(0, 8);
 }
 
 const Clients = () => {
@@ -113,12 +124,12 @@ const Clients = () => {
         <Card className="p-4 card-surface">
           <div className="grid gap-2">
             {list.map(c => (
-              <div key={c.id} className="grid grid-cols-6 gap-3 items-center border-b border-border/60 py-3">
-                <div className="col-span-2 font-medium truncate">{c.media_kit_url ? (<a className="underline-offset-2 hover:underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.name}</a>) : c.name}</div>
-                <div className="col-span-2 text-sm text-muted-foreground">
-                  <div className="flex flex-wrap gap-1">
+              <div key={c.id} className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
+                <div className="col-span-3 font-medium truncate">{c.media_kit_url ? (<a className="underline-offset-2 hover:underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.name}</a>) : c.name}</div>
+                <div className="col-span-7 text-sm text-muted-foreground">
+                  <div className="flex gap-2 overflow-x-auto whitespace-nowrap pr-2">
                     {deriveAudienceTags(c.campaign_strategy).map(tag => (
-                      <Badge key={tag} variant="secondary">{tag}</Badge>
+                      <Badge key={tag} variant="secondary" className="shrink-0">{tag}</Badge>
                     ))}
                     {deriveAudienceTags(c.campaign_strategy).length === 0 && <span className="opacity-70">—</span>}
                   </div>
