@@ -29,7 +29,7 @@ export async function callAnalyze(payload: {
     body: payload,
   });
   if (error) {
-    return { success: false, error: error.message } as { success: boolean; error?: string; data?: AnalyzeResult };
+    return { success: false, error: error.message } as { success: boolean; error?: string; raw?: string; data?: AnalyzeResult };
   }
-  return data as { success: boolean; error?: string; data?: AnalyzeResult };
+  return data as { success: boolean; error?: string; raw?: string; data?: AnalyzeResult };
 }

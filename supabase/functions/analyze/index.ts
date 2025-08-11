@@ -71,6 +71,7 @@ JSON schema to return:
     const body = {
       model: 'gpt-4.1-2025-04-14',
       temperature: 0.15,
+      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: 'Be precise and concise. Return JSON ONLY. No prose.' },
         { role: 'user', content: prompt }
@@ -82,18 +83,37 @@ JSON schema to return:
       headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    const json = await resp.json();
-    const text = json.choices?.[0]?.message?.content || '';
-
-    // Try to parse JSON from response
+    let json: any = null;
+    try {
+      json = await resp.json();
+    } catch (err) {
+      console.error('OpenAI response JSON parse error', err);
+    }
+    if (!resp.ok) {
+      console.error('OpenAI API error', json || { status: resp.status, statusText: resp.statusText });
+      const errMsg = json?.error?.message || resp.statusText || 'Unknown error';
+      return new Response(JSON.stringify({ success: false, error: `OpenAI API error: ${errMsg}` , raw: json ? JSON.stringify(json).slice(0, 800) : undefined }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, status: 200 });
+    }
+    const text = json?.choices?.[0]?.message?.content || '';
+    // Try to parse JSON from response, handling code fences and extra text
     let data: any = null;
-    try { data = JSON.parse(text); } catch (_e) {
-      const m = text.match(/\{[\s\S]*\}$/);
-      if (m) { try { data = JSON.parse(m[0]); } catch {} }
+    let cleaned = (text || '').trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
+    }
+    try {
+      data = JSON.parse(cleaned);
+    } catch (_e) {
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && end > start) {
+        try { data = JSON.parse(cleaned.slice(start, end + 1)); } catch {}
+      }
     }
 
     if (!data) {
-      return new Response(JSON.stringify({ success: false, error: 'LLM returned invalid JSON' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, status: 500 });
+      console.error('LLM returned invalid JSON', cleaned.slice(0, 500));
+      return new Response(JSON.stringify({ success: false, error: 'LLM returned invalid JSON', raw: cleaned }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, status: 200 });
     }
 
     return new Response(JSON.stringify({ success: true, data }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });

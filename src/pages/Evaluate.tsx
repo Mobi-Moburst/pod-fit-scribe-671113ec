@@ -45,6 +45,10 @@ const Evaluate = () => {
         }
         notes = s.show_notes as string;
         title = s.title;
+        // Warn if the scraped content looks like bot-protection or a captcha page
+        if (/(captcha|are you a robot|verify you(?:'|’)re a human|access denied|cloudflare|just a moment|attention required)/i.test(notes)) {
+          toast({ title: 'Site blocked scraping', description: 'Try pasting notes manually or use Apple/Spotify/ListenNotes.', variant: 'default' });
+        }
       }
 
       if (!client) {
@@ -54,7 +58,10 @@ const Evaluate = () => {
 
       const resp = await callAnalyze({ client, show_notes: notes });
       if (!resp.success || !resp.data) {
-        toast({ title: 'Analysis failed', description: resp.error || 'Add your OpenAI key in Supabase Edge Function secrets.', variant: 'destructive' });
+        const rawStr = resp.raw ? String(resp.raw) : '';
+        const snippet = rawStr ? rawStr.slice(0, 200) + (rawStr.length > 200 ? '…' : '') : '';
+        const desc = resp.error ? `${resp.error}${snippet ? ' — ' + snippet : ''}` : 'Add your OpenAI key in Supabase Edge Function secrets.';
+        toast({ title: 'Analysis failed', description: desc, variant: 'destructive' });
         return;
       }
       setResult({ ...resp.data, show_title: title });
