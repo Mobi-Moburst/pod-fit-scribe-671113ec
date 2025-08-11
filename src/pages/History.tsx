@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getClients } from '@/data/clientStore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const History = () => {
   useEffect(() => { document.title = 'History — Podcast Fit Rater'; }, []);
@@ -14,6 +15,8 @@ const History = () => {
   const [list, setList] = useState<any[]>(() => JSON.parse(localStorage.getItem('pfr_history') || '[]'));
   const clients = useMemo(() => getClients(), []);
   const clientNameById = useMemo(() => Object.fromEntries(clients.map(c => [c.id, c.name])), [clients]);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<any | null>(null);
 
   useEffect(() => {
     const reload = () => setList(JSON.parse(localStorage.getItem('pfr_history') || '[]'));
@@ -70,13 +73,52 @@ const History = () => {
               <div key={i} className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
                 <div className="col-span-5 truncate">{r.url ? <a className="underline" href={r.url} target="_blank" rel="noreferrer" title={r.url}>{getDisplayTitle(r)}</a> : <span>{getDisplayTitle(r)}</span>}</div>
                 <div className="col-span-3 text-sm text-muted-foreground truncate">{clientNameById[r.clientId] || r.clientId}</div>
-                <div className="col-span-2 font-semibold">{r.overall_score}</div>
+                <div className="col-span-2"><button className="font-semibold underline" onClick={()=>{ setSelected(r); setOpen(true); }} aria-label="View insights">{r.overall_score}</button></div>
                 <div className="col-span-2 text-sm text-muted-foreground">{new Date(r.date).toLocaleString()}</div>
               </div>
             ))}
             {!filtered.length && <div className="text-sm text-muted-foreground">No results match your filters.</div>}
           </div>
         </Card>
+
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Insights for {selected ? getDisplayTitle(selected) : 'episode'}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {selected?.summary_text && (
+                <p className="text-sm text-muted-foreground">{selected.summary_text}</p>
+              )}
+              <div className="grid md:grid-cols-3 gap-4">
+                <section>
+                  <h3 className="text-sm font-medium">Why it fits</h3>
+                  <ul className="text-sm list-disc pl-4">
+                    {(selected?.why_fit || []).slice(0,5).map((x: string, idx: number) => (
+                      <li key={idx}>{x}</li>
+                    ))}
+                  </ul>
+                </section>
+                <section>
+                  <h3 className="text-sm font-medium">Why it doesn’t</h3>
+                  <ul className="text-sm list-disc pl-4">
+                    {(selected?.why_not_fit || []).slice(0,5).map((x: string, idx: number) => (
+                      <li key={idx}>{x}</li>
+                    ))}
+                  </ul>
+                </section>
+                <section>
+                  <h3 className="text-sm font-medium">Risk flags</h3>
+                  <ul className="text-sm list-disc pl-4">
+                    {(selected?.risk_flags || []).slice(0,5).map((x: string, idx: number) => (
+                      <li key={idx}>{x}</li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

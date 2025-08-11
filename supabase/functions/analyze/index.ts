@@ -175,7 +175,13 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const zeroConceptOverlap = (strongHits.length + nearHits.length) === 0;
   const strongAudienceEvidence = audStrong >= 1 || audAdj >= 2;
   const threeDistinctConcepts = distinctConcepts >= 3;
+  const zeroIcpOverlap = audStrong === 0 && audAdj === 0;
 
+  // New hard low caps for severe misalignment
+  if (zeroConceptOverlap && zeroIcpOverlap) overall = Math.min(overall, 2.0);
+  else if (zeroConceptOverlap || zeroIcpOverlap) overall = Math.min(overall, 4.0);
+
+  // Existing policy caps/floors
   if (strongAvoidCentral) overall = Math.min(overall, 5.0);
   if (zeroConceptOverlap) overall = Math.min(overall, 6.5);
   if (threeDistinctConcepts && strongAudienceEvidence) overall = Math.max(overall, 7.5);
@@ -417,19 +423,30 @@ serve(async (req) => {
       // Post-process AI result: enforce caps/floors and ensure required fields
       const notesText = String(show_notes || "");
       const expanded = expandConcepts(client);
-      const conceptOverlap = (findPositions(notesText, expanded.strong).length + findPositions(notesText, expanded.near).length) > 0;
+      const strongPos = findPositions(notesText, expanded.strong);
+      const nearPos = findPositions(notesText, expanded.near);
+      const conceptOverlap = (strongPos.length + nearPos.length) > 0;
       const avoids: string[] = (client?.avoid || []) as string[];
       const avoidCounts = avoids.map(a => ({ a, c: count(notesText, [a]) })).sort((x,y)=>y.c - x.c);
       const strongAvoidCentral = avoidCounts[0]?.c >= 2;
 
       let adjusted = Number(data?.overall_score) || 0;
       if (strongAvoidCentral) adjusted = Math.min(adjusted, 5.0);
-      if (!conceptOverlap) adjusted = Math.min(adjusted, 6.5);
-      // Floor if strong evidence present
+
+      // Audience overlap checks
       const aud: string[] = (client?.target_audiences || []) as string[];
       const audStrong = findPositions(notesText, aud.map(norm)).length;
-      const nearHits = findPositions(notesText, expanded.near).length;
-      if (expanded.strong.length >= 3 && (audStrong >= 1 || nearHits >= 2)) adjusted = Math.max(adjusted, 7.5);
+      const audAdj = nearPos.filter(h => aud.some(a => norm(h.term).includes(norm(a)))).length;
+      const zeroIcpOverlap = audStrong === 0 && audAdj === 0;
+
+      // New hard low caps for severe misalignment
+      if (!conceptOverlap && zeroIcpOverlap) adjusted = Math.min(adjusted, 2.0);
+      else if (!conceptOverlap || zeroIcpOverlap) adjusted = Math.min(adjusted, 4.0);
+
+      // Existing caps/floors
+      if (!conceptOverlap) adjusted = Math.min(adjusted, 6.5);
+      // Floor if strong evidence present
+      if (expanded.strong.length >= 3 && (audStrong >= 1 || nearPos.length >= 2)) adjusted = Math.max(adjusted, 7.5);
       adjusted = roundToHalf(clamp(adjusted, 0, 10));
 
       const ensureArray = (v: any) => Array.isArray(v) ? v : [];
