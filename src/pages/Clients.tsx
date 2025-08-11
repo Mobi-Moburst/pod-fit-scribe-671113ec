@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import type { MinimalClient } from '@/types/clients';
 import { getClients, saveClients, toList } from '@/data/clientStore';
 import { useToast } from '@/components/ui/use-toast';
-import { parseCampaignStrategy } from '@/lib/campaignStrategy';
+import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
 
 const empty: MinimalClient = {
   id: '',
@@ -75,10 +75,18 @@ const save = () => {
                 </div>
                 <div className="col-span-7 text-sm text-muted-foreground">
                   <div className="flex flex-wrap gap-2">
-                    {(c.target_audiences || []).map(tag => (
-                      <Badge key={tag} variant="secondary" className="shrink-0">{tag}</Badge>
-                    ))}
-                    {!c.target_audiences?.length && <span className="opacity-70">—</span>}
+                    {(() => {
+                      const top = pickTopAudienceTags({
+                        strategyText: c.campaign_strategy || '',
+                        audiences: c.target_audiences || [],
+                        max: 3,
+                      });
+                      return top.length
+                        ? top.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="shrink-0">{tag}</Badge>
+                          ))
+                        : <span className="opacity-70">—</span>;
+                    })()}
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 col-span-2">
