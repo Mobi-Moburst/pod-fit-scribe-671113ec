@@ -11,6 +11,7 @@ export interface AnalyzeResult {
   citations: string[];
   scored_by?: 'local-heuristic' | 'ai';
   confidence?: number;
+  fallback_reason?: string;
 }
 
 export async function callScrape(url: string) {

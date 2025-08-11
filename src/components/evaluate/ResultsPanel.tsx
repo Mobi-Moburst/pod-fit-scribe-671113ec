@@ -31,6 +31,11 @@ export const ResultsPanel = ({
               )}
             </div>
             <p className="text-sm text-muted-foreground">Confidence improves with longer notes and more citations.</p>
+            {result.scored_by !== 'ai' && result.fallback_reason && (
+              <div className="mt-1">
+                <Badge variant="outline">LLM unavailable: {result.fallback_reason}</Badge>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-2">

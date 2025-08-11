@@ -183,9 +183,9 @@ serve(async (req) => {
     const campaign_strategy = client?.campaign_strategy ?? "";
     const media_kit_url = client?.media_kit_url ?? "";
 
-    // If no API key, use heuristic immediately
     if (!OPENAI_API_KEY || !OPENAI_API_KEY.trim()) {
-      const data = scoreHeuristic(client, String(show_notes || ""));
+      const base = scoreHeuristic(client, String(show_notes || ""));
+      const data = { ...base, fallback_reason: "Missing OPENAI_API_KEY" };
       return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -269,15 +269,16 @@ JSON schema to return:
 
       if (!resp.ok) {
         console.error("OpenAI API error", json || { status: resp.status, statusText: resp.statusText });
-        // Fallback to heuristic
-        const data = scoreHeuristic(client, String(show_notes || ""));
+        const errMsg = json?.error?.message || resp.statusText || `status ${resp.status}`;
+        const base = scoreHeuristic(client, String(show_notes || ""));
+        const data = { ...base, fallback_reason: `OpenAI API error: ${errMsg}` };
         return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const text = json?.choices?.[0]?.message?.content || "";
       let data: any = null;
       let cleaned = (text || "").trim();
-      if (cleaned.startsWith("````")) cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/```$/, "").trim();
+      if (cleaned.startsWith("```")) cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/```$/, "").trim();
       try { data = JSON.parse(cleaned); } catch (_e) {
         const start = cleaned.indexOf("{");
         const end = cleaned.lastIndexOf("}");
@@ -288,18 +289,20 @@ JSON schema to return:
 
       if (!data) {
         console.error("LLM returned invalid JSON", String(cleaned).slice(0, 500));
-        // Fallback to heuristic
         const fb = scoreHeuristic(client, String(show_notes || ""));
-        return new Response(JSON.stringify({ success: true, data: fb }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const data = { ...fb, fallback_reason: "LLM returned invalid JSON" };
+        return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // Tag with source
       const tagged = { ...data, scored_by: "ai" as const };
       return new Response(JSON.stringify({ success: true, data: tagged }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    } catch (e) {
+    } catch (e: any) {
       clearTimeout(t);
       console.error("OpenAI call error, using heuristic fallback", e);
-      const data = scoreHeuristic(client, String(show_notes || ""));
+      const base = scoreHeuristic(client, String(show_notes || ""));
+      const reason = e?.name === 'AbortError' ? 'LLM timeout (>20s)' : (e?.message || 'LLM call failed');
+      const data = { ...base, fallback_reason: reason };
       return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   } catch (_e) {
