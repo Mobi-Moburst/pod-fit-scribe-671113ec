@@ -117,8 +117,10 @@ function scoreHeuristic(client: any, show_notes: string) {
 
   const weights = { topic: 0.35, icp: 0.25, recency: 0.15, cta: 0.15, brand: 0.10 } as const;
   let overall = topicRelevance * weights.topic + icpAlignment * weights.icp + recencyConsistency * weights.recency + ctaSynergy * weights.cta + brandSuitability * weights.brand;
-  if (strongAvoid) overall = Math.min(overall, 5.0);
-  if (zeroTalkingOverlap) overall = Math.min(overall, 6.5);
+  const bothZero = (talking.length > 0 && matchedTalking.length === 0) && (audiences.length > 0 && matchedAud.length === 0);
+  if (strongAvoid) overall = Math.min(overall, 4.0);
+  if (bothZero) overall = Math.min(overall, 3.0);
+  else if (zeroTalkingOverlap) overall = Math.min(overall, 4.0);
   if (strongAlignment) overall = Math.max(overall, 7.5);
   overall = roundToHalf(overall);
 
@@ -256,8 +258,28 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Tag with source
-      const tagged = { ...data, scored_by: "ai" as const };
+      // Post-process AI result to enforce strict caps/floors using client vs notes
+      const notesText = String(show_notes || "");
+      const tp = (client?.talking_points || []) as string[];
+      const aud = (client?.target_audiences || []) as string[];
+      const av = (client?.avoid || []) as string[];
+      const tpMatches = tp.filter((t) => t && new RegExp(t.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"), 'i').test(notesText));
+      const audMatches = aud.filter((a) => a && new RegExp(a.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"), 'i').test(notesText));
+      const avoidHits = av.filter((a) => a && new RegExp(a.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"), 'i').test(notesText));
+      const zeroTP = tp.length > 0 && tpMatches.length === 0;
+      const zeroAUD = aud.length > 0 && audMatches.length === 0;
+      const bothZeroMatch = zeroTP && zeroAUD;
+      const strongAvoidLLM = avoidHits.length > 0;
+
+      let adjusted = Number(data?.overall_score) || 0;
+      if (strongAvoidLLM) adjusted = Math.min(adjusted, 4.0);
+      if (bothZeroMatch) adjusted = Math.min(adjusted, 3.0);
+      else if (zeroTP) adjusted = Math.min(adjusted, 4.0);
+      // Preserve positive floor if exceptionally strong match
+      if (tpMatches.length >= 3 && audMatches.length >= 2) adjusted = Math.max(adjusted, 7.5);
+      adjusted = roundToHalf(Math.max(0, Math.min(10, adjusted)));
+
+      const tagged = { ...data, scored_by: "ai" as const, overall_score: adjusted };
       return new Response(JSON.stringify({ success: true, data: tagged }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (e: any) {
       clearTimeout(t);

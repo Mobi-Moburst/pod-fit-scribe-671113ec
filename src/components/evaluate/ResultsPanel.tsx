@@ -48,7 +48,7 @@ export const ResultsPanel = ({
       <div className="grid md:grid-cols-5 gap-4">
         {rubric_breakdown.map((r) => (
           <Card key={r.dimension} className="p-4 card-surface">
-            <div className="text-sm text-muted-foreground">{r.dimension} · wt {r.weight}</div>
+            <div className="text-sm text-muted-foreground">{r.dimension}</div>
             <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
             <p className="text-sm mt-2">{r.notes}</p>
           </Card>
