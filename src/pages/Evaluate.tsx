@@ -106,19 +106,91 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
 
   const handleCopySummary = async () => {
     if (!result) return;
-    const text = result.summary_text || (() => {
-      const verdict = result.verdict === 'recommend' ? 'Recommend' : result.verdict === 'consider' ? 'Consider' : 'Not recommended';
-      const fits = (result.why_fit_structured || []).slice(0, 2).map(i => `${i.claim} — "${i.evidence}"${i.interpretation ? ` (${i.interpretation})` : ''}`).join(' ');
-      const gaps = (result.why_not_fit_structured || []).slice(0, 1).map(i => `${i.claim} [${i.severity}] — "${i.evidence}"`).join(' ');
-      const next = result.verdict === 'recommend'
-        ? 'Next step: pitch a tailored angle tied to the strongest theme.'
-        : result.verdict === 'consider'
-          ? 'Next step: proceed if ICP/theme is confirmed.'
-          : 'Next step: skip or pick a better-aligned episode.';
-      return `${verdict} (${result.overall_score.toFixed(1)}/10). ${fits}${gaps ? ' ' + gaps : ''} ${next}`;
+
+    const verdictWord = result.verdict === 'recommend'
+      ? 'Recommend'
+      : result.verdict === 'consider'
+      ? 'Consider'
+      : 'Not a fit';
+
+    const show = result.show_title || 'this episode';
+    const scoreStr = typeof result.overall_score === 'number' ? `${result.overall_score.toFixed(1)}/10` : '';
+
+    // Build fit reasons
+    const fitStructured = (result.why_fit_structured && result.why_fit_structured.length
+      ? result.why_fit_structured
+      : (result.why_fit || []).map((s) => ({ claim: s, evidence: '', interpretation: '' }))
+    ) as Array<{ claim: string; evidence?: string; interpretation?: string }>;
+
+    let fits = fitStructured.slice(0, 3);
+
+    // If empty, synthesize from top scoring rubric dimensions
+    if (!fits.length && Array.isArray(result.rubric_breakdown)) {
+      const topDims = [...result.rubric_breakdown]
+        .sort((a, b) => b.raw_score - a.raw_score)
+        .filter((d) => d.raw_score >= 6.5)
+        .slice(0, 2)
+        .map((d) => ({ claim: `Strong ${d.dimension.toLowerCase()}`, evidence: d.notes }));
+      fits = topDims;
+    }
+
+    // Build gaps/caveats
+    const notFitStructured = (result.why_not_fit_structured && result.why_not_fit_structured.length
+      ? result.why_not_fit_structured
+      : (result.why_not_fit || []).map((s) => ({ severity: 'Minor' as const, claim: s, evidence: '', interpretation: '' }))
+    ) as Array<{ claim: string; severity?: string; evidence?: string; interpretation?: string }>;
+
+    let gaps = notFitStructured.slice(0, 2);
+
+    if (!gaps.length && Array.isArray(result.rubric_breakdown)) {
+      const lowDims = [...result.rubric_breakdown]
+        .sort((a, b) => a.raw_score - b.raw_score)
+        .filter((d) => d.raw_score <= 5.0)
+        .slice(0, 2)
+        .map((d) => ({ claim: `Limited ${d.dimension.toLowerCase()}`, severity: 'Note', evidence: d.notes }));
+      gaps = lowDims;
+    }
+
+    // Risks (optional, include at most 1 to keep concise)
+    const risks = (result.risk_flags_structured && result.risk_flags_structured.length
+      ? result.risk_flags_structured.map((r) => r.flag || r).filter(Boolean)
+      : (result.risk_flags || [])
+    ).slice(0, 1) as string[];
+
+    const topReasons = fits.map((f) => f.claim).filter(Boolean).slice(0, 3);
+    const topGaps = gaps.map((g) => g.claim).filter(Boolean).slice(0, 2);
+
+    const opening = ((): string => {
+      if (result.verdict === 'recommend') return `We recommend ${show}${scoreStr ? ` (${scoreStr})` : ''} for this client.`;
+      if (result.verdict === 'consider') return `${show} is a potential fit${scoreStr ? ` (${scoreStr})` : ''}.`;
+      return `${show} is not a strong fit${scoreStr ? ` (${scoreStr})` : ''}.`;
     })();
+
+    const reasons = topReasons.length
+      ? `Top reasons: ${topReasons.join('; ')}.`
+      : '';
+
+    const caveatsParts: string[] = [];
+    if (topGaps.length) caveatsParts.push(topGaps.join('; '));
+    if (risks.length) caveatsParts.push(risks[0] as string);
+    const caveats = caveatsParts.length ? `Key caveats: ${caveatsParts.join('; ')}.` : '';
+
+    const talkingPoint = (result.recommended_talking_points || [])[0];
+    const bottomLine = ((): string => {
+      if (result.verdict === 'recommend') {
+        return `Bottom line: proceed and pitch${talkingPoint ? ` ${talkingPoint.toLowerCase()}` : ' a tailored angle aligned with the above strengths'}.`;
+      }
+      if (result.verdict === 'consider') {
+        return `Bottom line: proceed if we can confirm ${topGaps[0] ? topGaps[0].toLowerCase() : 'ICP match or upcoming content alignment'}.`;
+      }
+      return `Bottom line: pass for now and revisit episodes focused on ${topReasons[0] ? topReasons[0].toLowerCase() : 'better ICP alignment'}.`;
+    })();
+
+    const parts = [opening, reasons, caveats, bottomLine].filter(Boolean);
+    const text = parts.join(' ');
+
     await navigator.clipboard.writeText(text);
-    toast({ title: 'Copied', description: 'Summary copied to clipboard.' });
+    toast({ title: 'Copied', description: 'Sharable summary copied to clipboard.' });
   };
 
   return (
