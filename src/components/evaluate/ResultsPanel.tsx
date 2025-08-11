@@ -15,7 +15,7 @@ export const ResultsPanel = ({
   onCopySummary: () => void;
   onExportJson: () => void;
 }) => {
-  const { overall_score, rubric_breakdown, why_fit, why_not_fit, recommended_talking_points, risk_flags, citations, show_title } = result;
+  const { overall_score, rubric_breakdown, why_fit, why_not_fit, recommended_talking_points, risk_flags, show_title } = result;
 
   return (
     <section className="mt-6 grid gap-6">
@@ -84,11 +84,12 @@ export const ResultsPanel = ({
           </ul>
         </Card>
         <Card className="p-4 card-surface">
-          <h3 className="text-lg font-semibold mb-2">Citations</h3>
-          <div className="flex flex-wrap gap-2">
-            {citations.map((c, i) => (
-              <Badge key={i} variant="secondary">“{c}”</Badge>
-            ))}
+          <h3 className="text-lg font-semibold mb-2">Recommendation</h3>
+          <div className="flex items-center gap-2">
+            <Badge variant={overall_score >= 7.5 && risk_flags.length === 0 ? 'default' : 'outline'}>
+              {overall_score >= 7.5 && risk_flags.length === 0 ? 'Book it' : 'Not recommended'}
+            </Badge>
+            <span className="text-sm text-muted-foreground">Based on overall score and risk flags.</span>
           </div>
         </Card>
       </div>
