@@ -140,36 +140,43 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
 
   // Topic relevance (0.35)
-  const topicRelevance = roundToHalf(clamp(3 + weightedConceptScore * 0.5));
+  const topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
 
   // ICP alignment (0.25): ANY primary or adjacent audience is enough; diminishing returns
   const audStrong = findPositions(notes, audiences.map(norm)).length;
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
-  const icpAlignment = roundToHalf(clamp(3 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
+  const icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
 
   // Recency/consistency (0.15)
   const recentYear = /(202[3-6])/.test(notes) ? 1 : 0;
   const monthMention = /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i.test(notes) ? 1 : 0;
   const cadence = /(episode\s*#?\s*\d{1,4}|season\s*\d{1,2}|weekly|biweekly|monthly)/i.test(notes) ? 1 : 0;
-  const recencyConsistency = roundToHalf(clamp(3 + (recentYear + monthMention + cadence) * 2 + Math.min(2, Math.floor(tokens.length / 800))));
+  const recencyConsistency = roundToHalf(clamp(2 + (recentYear + monthMention + cadence) * 2 + Math.min(2, Math.floor(tokens.length / 800))));
 
   // CTA synergy (0.15)
   const ctaTerms = ["book","demo","consult","download","guide","report","contact","learn more","talk to","sales","trial","start"];
   const ctaOverlap = count(notes, ctaTerms);
   const enterpriseVibe = /(enterprise|b2b|ciso|cio|governance|compliance|risk|security)/i.test(notes) ? 1 : 0;
-  const ctaSynergy = roundToHalf(clamp(3 + Math.min(7, ctaOverlap * 1.5 + enterpriseVibe * 2)));
+  const ctaSynergy = roundToHalf(clamp(2 + Math.min(7, ctaOverlap * 1.5 + enterpriseVibe * 2)));
 
   // Brand suitability (0.10)
   const tonePref = norm(notesPref);
   const tonePos = ["authoritative","technical","tactical","educational","interview","case study","no pay-to-play"].filter(t => tonePref.includes(t)).length;
   const toneNegInNotes = /(explicit|nsfw|politics|gambling|hype|clickbait)/i.test(notes) ? 1 : 0;
-  const brandSuitability = roundToHalf(clamp(5 + tonePos * 1.2 - toneNegInNotes * 2));
+  const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
 
   // Combine
   const weights = { topic: 0.35, icp: 0.25, recency: 0.15, cta: 0.15, brand: 0.10 } as const;
   let overall = topicRelevance * weights.topic + icpAlignment * weights.icp + recencyConsistency * weights.recency + ctaSynergy * weights.cta + brandSuitability * weights.brand;
 
-  // Caps & floors (new policy)
+  // Genericness penalty: if we cannot surface at least 2 specific evidence snippets, reduce slightly
+  const penaltyTerms = [...new Set([...strongHits.map(h => h.term), ...nearHits.map(h => h.term)])];
+  const penaltyPositions = findPositions(notes, penaltyTerms, 6);
+  if (penaltyPositions.length <= 1) {
+    overall -= 0.5; // push weak cases down toward the 1–4 range
+  }
+
+  // Caps & floors (recalibrated)
   const avoidCounts = avoids.map(a => ({ a, c: count(notes, [a]) })).sort((x,y)=>y.c - x.c);
   const strongAvoidCentral = avoidCounts[0]?.c >= 2; // heuristic: central if repeated
   const zeroConceptOverlap = (strongHits.length + nearHits.length) === 0;
@@ -177,8 +184,8 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const threeDistinctConcepts = distinctConcepts >= 3;
 
   if (strongAvoidCentral) overall = Math.min(overall, 5.0);
-  if (zeroConceptOverlap) overall = Math.min(overall, 6.5);
-  if (threeDistinctConcepts && strongAudienceEvidence) overall = Math.max(overall, 7.5);
+  if (zeroConceptOverlap) overall = Math.min(overall, 4.0);
+  if (threeDistinctConcepts && strongAudienceEvidence) overall = Math.max(overall, 8.0);
   overall = roundToHalf(clamp(overall, 0, 10));
 
   // Evidence extraction (prefer non-generic)
@@ -424,12 +431,12 @@ serve(async (req) => {
 
       let adjusted = Number(data?.overall_score) || 0;
       if (strongAvoidCentral) adjusted = Math.min(adjusted, 5.0);
-      if (!conceptOverlap) adjusted = Math.min(adjusted, 6.5);
+      if (!conceptOverlap) adjusted = Math.min(adjusted, 4.0);
       // Floor if strong evidence present
       const aud: string[] = (client?.target_audiences || []) as string[];
       const audStrong = findPositions(notesText, aud.map(norm)).length;
       const nearHits = findPositions(notesText, expanded.near).length;
-      if (expanded.strong.length >= 3 && (audStrong >= 1 || nearHits >= 2)) adjusted = Math.max(adjusted, 7.5);
+      if (expanded.strong.length >= 3 && (audStrong >= 1 || nearHits >= 2)) adjusted = Math.max(adjusted, 8.0);
       adjusted = roundToHalf(clamp(adjusted, 0, 10));
 
       const ensureArray = (v: any) => Array.isArray(v) ? v : [];
@@ -459,7 +466,7 @@ serve(async (req) => {
         scored_by: 'ai' as const,
         confidence: typeof data?.confidence === 'number' ? data.confidence : undefined,
         // new
-        verdict: data?.verdict || verdict,
+        verdict: verdict,
         verdict_reason: data?.verdict_reason || undefined,
         why_fit_structured,
         why_not_fit_structured,
