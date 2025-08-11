@@ -22,7 +22,7 @@ const Evaluate = () => {
   const [url, setUrl] = useState('');
   const [paste, setPaste] = useState('');
   const [clients, setClients] = useState<MinimalClient[]>(() => getClients());
-  const [clientId, setClientId] = useState(clients[0]?.id ?? '');
+  const [clientId, setClientId] = useState(() => (getClients()[0]?.id ?? ''));
   const client = useMemo(() => clients.find(c => c.id === clientId)!, [clients, clientId]);
 
   const [loading, setLoading] = useState(false);

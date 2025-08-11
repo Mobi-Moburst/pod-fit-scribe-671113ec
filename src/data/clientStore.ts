@@ -6,19 +6,43 @@ const KEY = "pfr_clients";
 
 function seedFromMock(): MinimalClient[] {
   // Derive a simple campaign strategy from legacy mock data to avoid empty fields
-  // This is just a convenience for initial seeds; new clients will set real fields.
-  return mockClients.map((c) => {
+  // Also map legacy fields into new minimal profile arrays when present
+  return mockClients.map((c: any) => {
     const parts = [
       c.content_goals ? `Goals: ${c.content_goals}` : "",
       c.ICP ? `ICP: ${c.ICP}` : "",
       c.CTA ? `CTA: ${c.CTA}` : "",
     ].filter(Boolean);
+
+    const splitList = (v?: string) =>
+      (v || "")
+        .split(/[;,•|]/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+
+    const target_audiences = Array.from(
+      new Set([...(c.target_roles || []), ...splitList(c.ICP)])
+    );
+
+    const talking_points = Array.from(
+      new Set([...(c.topics_to_prioritize || []), ...(c.keywords_positive || [])])
+    );
+
+    const avoid = Array.from(
+      new Set([...(c.topics_to_avoid || []), ...(c.keywords_negative || [])])
+    );
+
     return {
       id: c.id,
       name: c.name,
-      campaign_strategy: parts.join(" | ") || "",
+      company: c.company || undefined,
       media_kit_url: "", // not present in mocks; user can edit later
-    };
+      target_audiences,
+      talking_points,
+      avoid,
+      notes: c.notes || undefined,
+      campaign_strategy: parts.join(" | ") || "",
+    } as MinimalClient;
   });
 }
 

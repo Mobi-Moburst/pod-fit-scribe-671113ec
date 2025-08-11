@@ -7,131 +7,34 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { TagInput } from '@/components/TagInput';
 import type { MinimalClient } from '@/types/clients';
 import { getClients, saveClients } from '@/data/clientStore';
 
 const empty: MinimalClient = {
-  id: '', name: '', campaign_strategy: '', media_kit_url: ''
+  id: '',
+  name: '',
+  media_kit_url: '',
+  company: '',
+  target_audiences: [],
+  talking_points: [],
+  avoid: [],
+  notes: '',
+  campaign_strategy: '', // keep for backward compatibility
 };
-
-function deriveGoals(strategy: string, mediaKitUrl: string): string[] {
-  const goalsFromLabel = (() => {
-    const m = strategy.match(/goals?:\s*([^|\n]+)/i);
-    if (m && m[1]) {
-      return m[1]
-        .split(/[;,•|]/)
-        .map((x) => x.trim())
-        .filter(Boolean);
-    }
-    return [] as string[];
-  })();
-
-  const out: string[] = [];
-  if (/(demo|trial|book a demo|sales call)/i.test(strategy)) out.push('Drive demo bookings');
-  if (/(lead|pipeline|mql|sql)/i.test(strategy)) out.push('Generate qualified leads');
-  if (/(awareness|brand|top of funnel|reach)/i.test(strategy)) out.push('Grow brand awareness');
-  if (/(subscribe|newsletter|followers)/i.test(strategy)) out.push('Increase subscribers/followers');
-  if (/(traffic|seo|blog|content)/i.test(strategy)) out.push('Increase qualified site traffic');
-  if (/(community|slack|discord|forum)/i.test(strategy)) out.push('Grow community engagement');
-  if (/(retention|churn|adoption|activation)/i.test(strategy)) out.push('Improve retention/adoption');
-  if (/(thought leadership|authority|category)/i.test(strategy)) out.push('Establish thought leadership');
-  if (mediaKitUrl && mediaKitUrl.trim()) out.push('Align with media kit guidelines');
-
-  const combined = [...goalsFromLabel, ...out];
-  const deduped = Array.from(new Set(combined));
-  return deduped.slice(0, 3);
-}
-
-function extractAudienceSlice(strategy: string): string {
-  if (!strategy) return '';
-  // Normalize curly quotes/dashes
-  const norm = strategy
-    .replace(/[’‘]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[–—]/g, '-');
-
-  // Try to grab the phrase starting at one of the audience labels
-  const labels = [
-    /target\s+audiences?/i,
-    /audiences?/i,
-    /ideal\s+customer\s+profile|icp/i,
-    /target\s+roles?/i,
-    /target\b/i,
-  ];
-  for (const re of labels) {
-    const idx = norm.search(re);
-    if (idx !== -1) {
-      const after = norm.slice(idx);
-      // Stop at separators or next labeled section
-      const stops = [
-        after.indexOf('|'), after.indexOf('\n'), after.toLowerCase().indexOf('goals:'),
-        after.toLowerCase().indexOf('cta:'), after.toLowerCase().indexOf('topics:'),
-      ].filter(n => n > 0) as number[];
-      const end = stops.length ? Math.min(...stops) : Math.min(after.length, 240);
-      const chunk = after.slice(0, end);
-      return chunk;
-    }
-  }
-  return '';
-}
-
-function deriveAudienceTags(strategy: string): string[] {
-  const rules: { label: string; re: RegExp }[] = [
-    { label: 'K-12', re: /(k\s*[-–]?\s*12|teachers?|educators?|schools?|districts?|superintendents?)/i },
-    { label: 'Education', re: /(education|edtech|students?|parents?)/i },
-    { label: 'Higher Ed', re: /(university|college|higher\s*ed|campus)/i },
-    { label: 'Healthcare', re: /(healthcare|hospital|provider|clinicians?|patients?|health\s*it)/i },
-    { label: 'Security', re: /(security|ciso|cso|infosec|cyber)/i },
-    { label: 'Developers', re: /(developers?|engineers?|devops)/i },
-    { label: 'IT', re: /(\bit\b|sysadmins?|cto)/i },
-    { label: 'Marketing', re: /(marketing|marketers?|cmo|demand|growth|brand)/i },
-    { label: 'Sales', re: /(\bsales\b|sdr|account\s*executives?|ae|revops)/i },
-    { label: 'Finance', re: /(finance|accounting|cfo)/i },
-    { label: 'Fintech', re: /(fintech|payments|banking)/i },
-    { label: 'Public Sector', re: /(public\s*sector|government|gov\b|policy|regulation)/i },
-    { label: 'SMB', re: /(smb|small\s*business)/i },
-    { label: 'Enterprise', re: /(enterprise|fortune\s*\d+)/i },
-    { label: 'Startups', re: /(startup|scaleup|founders?)/i },
-    { label: 'E‑commerce', re: /(e[-\s]?commerce|shopify)/i },
-    { label: 'AI/ML', re: /(\bai\b|machine\s*learning|ml\b)/i },
-    { label: 'Data', re: /(\bdata\b|analytics)/i },
-    { label: 'Legal/Compliance', re: /(legal|compliance|general\s*counsel|gc\b)/i },
-    { label: 'Product/Design', re: /(product\b|pm\b|design|ux)/i },
-    { label: 'HR/People', re: /(\bhr\b|people\s*ops|recruit|talent)/i },
-  ];
-
-  const slice = extractAudienceSlice(strategy);
-  const tryMatch = (text: string) => {
-    const tags: string[] = [];
-    for (const r of rules) if (r.re.test(text)) tags.push(r.label);
-    return Array.from(new Set(tags)).slice(0, 8);
-  };
-
-  let tags = slice ? tryMatch(slice) : [];
-  if (!tags.length) tags = tryMatch(strategy); // fallback to whole strategy if needed
-  return tags;
-}
 
 const Clients = () => {
   useEffect(() => { document.title = 'Clients — Podcast Fit Rater'; }, []);
   const [list, setList] = useState<MinimalClient[]>(() => getClients());
   const [editing, setEditing] = useState<MinimalClient | null>(null);
 
-  const saveAll = (arr: MinimalClient[]) => {
-    setList(arr);
-    saveClients(arr);
-  };
-
+  const saveAll = (arr: MinimalClient[]) => { setList(arr); saveClients(arr); };
   const startNew = () => setEditing({ ...empty, id: crypto.randomUUID() });
-  const startEdit = (c: MinimalClient) => setEditing(c);
+  const startEdit = (c: MinimalClient) => setEditing({ ...empty, ...c, target_audiences: c.target_audiences || [], talking_points: c.talking_points || [], avoid: c.avoid || [], notes: c.notes || '' });
   const cancel = () => setEditing(null);
 
-  const canSave = useMemo(() => {
-    if (!editing) return false;
-    return editing.name.trim().length > 0
-      && editing.campaign_strategy.trim().length > 0
-      && editing.media_kit_url.trim().length > 0;
-  }, [editing]);
+  const canSave = useMemo(() => !!editing && editing.name.trim().length > 0, [editing]);
 
   const save = () => {
     if (!editing || !canSave) return;
@@ -142,6 +45,10 @@ const Clients = () => {
   };
   const remove = (id: string) => saveAll(list.filter(l => l.id !== id));
 
+  const allAudienceSuggestions = useMemo(() => Array.from(new Set(list.flatMap(c => c.target_audiences || []))), [list]);
+  const allTalkingSuggestions = useMemo(() => Array.from(new Set(list.flatMap(c => c.talking_points || []))), [list]);
+  const allAvoidSuggestions = useMemo(() => Array.from(new Set(list.flatMap(c => c.avoid || []))), [list]);
+
   return (
     <div>
       <BackgroundFX />
@@ -150,7 +57,7 @@ const Clients = () => {
         <Card className="p-4 card-surface flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">Clients</h1>
-            <p className="text-sm text-muted-foreground">Only Name, Campaign Strategy, and Media Kit URL are required.</p>
+            <p className="text-sm text-muted-foreground">Only Name is required. Use tags for fast entry; the evaluator will infer the rest.</p>
           </div>
           <Button variant="hero" onClick={startNew}>New Client</Button>
         </Card>
@@ -159,13 +66,18 @@ const Clients = () => {
           <div className="grid gap-2">
             {list.map(c => (
               <div key={c.id} className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
-                <div className="col-span-3 font-medium truncate">{c.media_kit_url ? (<a className="underline-offset-2 hover:underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.name}</a>) : c.name}</div>
+                <div className="col-span-3 font-medium truncate">
+                  {c.media_kit_url ? (
+                    <a className="underline-offset-2 hover:underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.name}</a>
+                  ) : c.name}
+                  {c.company && <span className="ml-2 text-sm text-muted-foreground">— {c.company}</span>}
+                </div>
                 <div className="col-span-7 text-sm text-muted-foreground">
                   <div className="flex gap-2 overflow-x-auto whitespace-nowrap pr-2">
-                    {deriveAudienceTags(c.campaign_strategy).map(tag => (
+                    {(c.target_audiences || []).slice(0,6).map(tag => (
                       <Badge key={tag} variant="secondary" className="shrink-0">{tag}</Badge>
                     ))}
-                    {deriveAudienceTags(c.campaign_strategy).length === 0 && <span className="opacity-70">—</span>}
+                    {!c.target_audiences?.length && <span className="opacity-70">—</span>}
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 col-span-2">
@@ -179,20 +91,56 @@ const Clients = () => {
         </Card>
 
         {editing && (
-          <Card className="p-4 card-surface grid gap-3">
+          <Card className="p-4 card-surface grid gap-4">
             <h2 className="text-lg font-semibold">{editing.id ? 'Edit Client' : 'New Client'}</h2>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm">Name</label>
+                <Label>Name</Label>
                 <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
               </div>
               <div>
-                <label className="text-sm">Media Kit URL</label>
+                <Label>Company</Label>
+                <Input placeholder="Acme Inc." value={editing.company || ''} onChange={(e) => setEditing({ ...editing, company: e.target.value })} />
+              </div>
+              <div>
+                <Label>Media Kit URL</Label>
                 <Input placeholder="https://..." value={editing.media_kit_url} onChange={(e) => setEditing({ ...editing, media_kit_url: e.target.value })} />
               </div>
               <div className="md:col-span-2">
-                <label className="text-sm">Campaign Strategy</label>
-                <Textarea rows={6} value={editing.campaign_strategy} onChange={(e) => setEditing({ ...editing, campaign_strategy: e.target.value })} />
+                <Label>Target Audiences</Label>
+                <TagInput
+                  value={editing.target_audiences || []}
+                  onChange={(v) => setEditing({ ...editing, target_audiences: v })}
+                  placeholder="CISOs at mid-enterprise • founders • RevOps"
+                  suggestions={allAudienceSuggestions}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Talking Points</Label>
+                <TagInput
+                  value={editing.talking_points || []}
+                  onChange={(v) => setEditing({ ...editing, talking_points: v })}
+                  placeholder="zero trust • FIDO2/WebAuthn • helpdesk identity"
+                  suggestions={allTalkingSuggestions}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Things to Avoid</Label>
+                <TagInput
+                  value={editing.avoid || []}
+                  onChange={(v) => setEditing({ ...editing, avoid: v })}
+                  placeholder="crypto • MLM • NFT • Competitor: Duo"
+                  suggestions={allAvoidSuggestions}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Additional Notes</Label>
+                <Textarea
+                  rows={4}
+                  placeholder="Authoritative, technical; no pay-to-play; prefers interview format."
+                  value={editing.notes || ''}
+                  onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
+                />
               </div>
             </div>
             <div className="flex justify-end gap-2">

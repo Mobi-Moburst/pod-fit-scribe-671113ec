@@ -5,9 +5,25 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Papa from 'papaparse';
 import { callAnalyze, callScrape, AnalyzeResult } from '@/utils/api';
-import { mockClients } from '@/data/mockClients';
+import { getClients } from '@/data/clientStore';
 
-interface Row { client_id: string; podcast_url: string }
+interface Row {
+  client_id?: string;
+  client_name?: string;
+  company?: string;
+  media_kit_url?: string;
+  target_audiences?: string; // comma/pipe/• separated
+  talking_points?: string;
+  avoid?: string;
+  notes?: string;
+  podcast_url?: string;
+  url?: string; // alias
+}
+
+const parseList = (s?: string) => (s || '')
+  .split(/[;,|•]/)
+  .map((x) => x.trim())
+  .filter(Boolean);
 
 const Batch = () => {
   useEffect(() => { document.title = 'Batch — Podcast Fit Rater'; }, []);
@@ -19,33 +35,54 @@ const Batch = () => {
     Papa.parse<Row>(file, {
       header: true,
       skipEmptyLines: true,
-      complete: ({ data }) => setRows(data.filter(r => r.client_id && r.podcast_url))
+      complete: ({ data }) => setRows(data.filter(r => (r.podcast_url || r.url))),
     });
+  };
+
+  const savedClients = useMemo(() => getClients(), []);
+
+  const resolveClient = (r: Row) => {
+    const byId = r.client_id && savedClients.find(c => c.id === r.client_id);
+    if (byId) return byId;
+    const byName = r.client_name && savedClients.find(c => c.name.toLowerCase() === r.client_name!.toLowerCase());
+    if (byName) return byName;
+    // Compose a minimal client from CSV row
+    return {
+      id: r.client_id || crypto.randomUUID(),
+      name: r.client_name || 'Unnamed',
+      company: r.company,
+      media_kit_url: r.media_kit_url || '',
+      target_audiences: parseList(r.target_audiences),
+      talking_points: parseList(r.talking_points),
+      avoid: parseList(r.avoid),
+      notes: r.notes || '',
+    };
   };
 
   const start = async () => {
     setProcessing(true); setResults([]);
     for (const r of rows) {
       try {
-        const client = mockClients.find(c => c.id === r.client_id);
-        if (!client) { continue; }
-        const s = await callScrape(r.podcast_url);
+        const client = resolveClient(r);
+        const purl = r.podcast_url || r.url || '';
+        const s = await callScrape(purl);
         const notes = s?.show_notes || '';
         if (!notes) {
-          setResults(prev => [...prev, { url: r.podcast_url, error: 'No notes' }]);
+          setResults(prev => [...prev, { url: purl, error: 'No notes' }]);
           continue;
         }
         const resp = await callAnalyze({ client, show_notes: notes });
         const data = resp.data as AnalyzeResult | undefined;
         setResults(prev => [...prev, {
-          url: r.podcast_url,
+          url: purl,
           show_title: s?.title,
           overall_score: data?.overall_score,
           top_3_reasons: data?.why_fit?.slice(0,3)?.join(' | '),
           risk_flags: data?.risk_flags?.join(' | '),
         }]);
-      } catch (e) {
-        setResults(prev => [...prev, { url: r.podcast_url, error: 'Failed' }]);
+      } catch (_e) {
+        const purl = r.podcast_url || r.url || '';
+        setResults(prev => [...prev, { url: purl, error: 'Failed' }]);
       }
     }
     setProcessing(false);
@@ -69,7 +106,7 @@ const Batch = () => {
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-xl font-semibold">Batch Evaluation</h1>
-              <p className="text-sm text-muted-foreground">Upload CSV with columns: client_id, podcast_url</p>
+              <p className="text-sm text-muted-foreground">Upload CSV with columns: client_id, client_name, company, media_kit_url, target_audiences, talking_points, avoid, notes, podcast_url</p>
             </div>
             <div className="flex items-center gap-2">
               <input type="file" accept=".csv" onChange={(e) => e.target.files && handleCSV(e.target.files[0])} />

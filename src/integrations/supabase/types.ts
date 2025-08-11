@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       clients: {
         Row: {
+          avoid: string[] | null
           campaign_strategy: string
           company: string | null
           content_goals: string | null
@@ -30,6 +31,8 @@ export type Database = {
           name: string
           notes: string | null
           org_id: string
+          talking_points: string[] | null
+          target_audiences: string[] | null
           target_company_sizes: string[] | null
           target_regions: string[] | null
           target_roles: string[] | null
@@ -38,6 +41,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          avoid?: string[] | null
           campaign_strategy: string
           company?: string | null
           content_goals?: string | null
@@ -52,6 +56,8 @@ export type Database = {
           name: string
           notes?: string | null
           org_id: string
+          talking_points?: string[] | null
+          target_audiences?: string[] | null
           target_company_sizes?: string[] | null
           target_regions?: string[] | null
           target_roles?: string[] | null
@@ -60,6 +66,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          avoid?: string[] | null
           campaign_strategy?: string
           company?: string | null
           content_goals?: string | null
@@ -74,6 +81,8 @@ export type Database = {
           name?: string
           notes?: string | null
           org_id?: string
+          talking_points?: string[] | null
+          target_audiences?: string[] | null
           target_company_sizes?: string[] | null
           target_regions?: string[] | null
           target_roles?: string[] | null
