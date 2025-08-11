@@ -95,9 +95,18 @@ const History = () => {
                               </div>
                             ))}
                           </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">No rubric breakdown available.</div>
-                        )}
+                          {Array.isArray(r.applied_adjustments) && r.applied_adjustments.length > 0 && (
+                            <div className="mt-4">
+                              <div className="text-sm font-medium mb-1">Score adjustments</div>
+                              <div className="flex flex-wrap gap-2">
+                                {r.applied_adjustments.map((adj: any, i: number) => (
+                                  <span key={i} className="text-xs px-2 py-1 rounded border bg-muted">
+                                    {(adj.type || 'adj').toUpperCase()}: {adj.label}{typeof adj.amount === 'number' ? ` (${adj.amount > 0 ? '+' : ''}${adj.amount.toFixed(1)})` : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                       </DialogContent>
                     </Dialog>
                   </div>
