@@ -43,23 +43,49 @@ function deriveGoals(strategy: string, mediaKitUrl: string): string[] {
 }
 
 function extractAudienceSlice(strategy: string): string {
-  const m = strategy.match(/(?:^|\b)(?:ICP|Target Audiences?|Audience|Target)\s*:\s*([^|\n]+)/i);
-  return m ? m[1] : '';
+  if (!strategy) return '';
+  // Normalize curly quotes/dashes
+  const norm = strategy
+    .replace(/[’‘]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-');
+
+  // Try to grab the phrase starting at one of the audience labels
+  const labels = [
+    /target\s+audiences?/i,
+    /audiences?/i,
+    /ideal\s+customer\s+profile|icp/i,
+    /target\s+roles?/i,
+    /target\b/i,
+  ];
+  for (const re of labels) {
+    const idx = norm.search(re);
+    if (idx !== -1) {
+      const after = norm.slice(idx);
+      // Stop at separators or next labeled section
+      const stops = [
+        after.indexOf('|'), after.indexOf('\n'), after.toLowerCase().indexOf('goals:'),
+        after.toLowerCase().indexOf('cta:'), after.toLowerCase().indexOf('topics:'),
+      ].filter(n => n > 0) as number[];
+      const end = stops.length ? Math.min(...stops) : Math.min(after.length, 240);
+      const chunk = after.slice(0, end);
+      return chunk;
+    }
+  }
+  return '';
 }
 
 function deriveAudienceTags(strategy: string): string[] {
-  const slice = extractAudienceSlice(strategy);
-  if (!slice) return [];
   const rules: { label: string; re: RegExp }[] = [
     { label: 'K-12', re: /(k\s*[-–]?\s*12|teachers?|educators?|schools?|districts?|superintendents?)/i },
     { label: 'Education', re: /(education|edtech|students?|parents?)/i },
     { label: 'Higher Ed', re: /(university|college|higher\s*ed|campus)/i },
-    { label: 'Healthcare', re: /(healthcare|hospital|provider|clinicians?|patients?)/i },
+    { label: 'Healthcare', re: /(healthcare|hospital|provider|clinicians?|patients?|health\s*it)/i },
     { label: 'Security', re: /(security|ciso|cso|infosec|cyber)/i },
     { label: 'Developers', re: /(developers?|engineers?|devops)/i },
-    { label: 'IT', re: /(it\b|sysadmin|cto)/i },
+    { label: 'IT', re: /(\bit\b|sysadmins?|cto)/i },
     { label: 'Marketing', re: /(marketing|marketers?|cmo|demand|growth|brand)/i },
-    { label: 'Sales', re: /(sales|sdr|ae|revops)/i },
+    { label: 'Sales', re: /(\bsales\b|sdr|account\s*executives?|ae|revops)/i },
     { label: 'Finance', re: /(finance|accounting|cfo)/i },
     { label: 'Fintech', re: /(fintech|payments|banking)/i },
     { label: 'Public Sector', re: /(public\s*sector|government|gov\b|policy|regulation)/i },
@@ -68,14 +94,22 @@ function deriveAudienceTags(strategy: string): string[] {
     { label: 'Startups', re: /(startup|scaleup|founders?)/i },
     { label: 'E‑commerce', re: /(e[-\s]?commerce|shopify)/i },
     { label: 'AI/ML', re: /(\bai\b|machine\s*learning|ml\b)/i },
-    { label: 'Data', re: /(data\b|analytics)/i },
+    { label: 'Data', re: /(\bdata\b|analytics)/i },
     { label: 'Legal/Compliance', re: /(legal|compliance|general\s*counsel|gc\b)/i },
     { label: 'Product/Design', re: /(product\b|pm\b|design|ux)/i },
-    { label: 'HR/People', re: /(hr\b|people\s*ops|recruit|talent)/i },
+    { label: 'HR/People', re: /(\bhr\b|people\s*ops|recruit|talent)/i },
   ];
-  const tags: string[] = [];
-  for (const r of rules) if (r.re.test(slice)) tags.push(r.label);
-  return tags.slice(0, 8);
+
+  const slice = extractAudienceSlice(strategy);
+  const tryMatch = (text: string) => {
+    const tags: string[] = [];
+    for (const r of rules) if (r.re.test(text)) tags.push(r.label);
+    return Array.from(new Set(tags)).slice(0, 8);
+  };
+
+  let tags = slice ? tryMatch(slice) : [];
+  if (!tags.length) tags = tryMatch(strategy); // fallback to whole strategy if needed
+  return tags;
 }
 
 const Clients = () => {
