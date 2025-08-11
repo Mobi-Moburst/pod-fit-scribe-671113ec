@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { TagInput } from '@/components/TagInput';
 import type { MinimalClient } from '@/types/clients';
-import { getClients, saveClients } from '@/data/clientStore';
+import { getClients, saveClients, toList } from '@/data/clientStore';
 import { useToast } from '@/components/ui/use-toast';
+import { parseCampaignStrategy } from '@/lib/campaignStrategy';
 
 const empty: MinimalClient = {
   id: '',
@@ -48,9 +48,6 @@ const save = () => {
   };
   const remove = (id: string) => saveAll(list.filter(l => l.id !== id));
 
-  const allAudienceSuggestions = useMemo(() => Array.from(new Set(list.flatMap(c => c.target_audiences || []))), [list]);
-  const allTalkingSuggestions = useMemo(() => Array.from(new Set(list.flatMap(c => c.talking_points || []))), [list]);
-  const allAvoidSuggestions = useMemo(() => Array.from(new Set(list.flatMap(c => c.avoid || []))), [list]);
 
   return (
     <div>
@@ -60,7 +57,7 @@ const save = () => {
         <Card className="p-4 card-surface flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">Clients</h1>
-            <p className="text-sm text-muted-foreground">Only Name is required. Use tags for fast entry; the evaluator will infer the rest.</p>
+            <p className="text-sm text-muted-foreground">Only Name is required. Paste your Campaign strategy below; the evaluator will infer the rest.</p>
           </div>
           <Button variant="hero" onClick={startNew}>New Client</Button>
         </Card>
@@ -110,30 +107,30 @@ const save = () => {
                 <Input placeholder="https://..." value={editing.media_kit_url} onChange={(e) => setEditing({ ...editing, media_kit_url: e.target.value })} />
               </div>
               <div className="md:col-span-2">
-                <Label>Target Audiences</Label>
-                <TagInput
-                  value={editing.target_audiences || []}
-                  onChange={(v) => setEditing({ ...editing, target_audiences: v })}
-                  placeholder="CISOs at mid-enterprise • founders • RevOps"
-                  suggestions={allAudienceSuggestions}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label>Talking Points</Label>
-                <TagInput
-                  value={editing.talking_points || []}
-                  onChange={(v) => setEditing({ ...editing, talking_points: v })}
-                  placeholder="zero trust • FIDO2/WebAuthn • helpdesk identity"
-                  suggestions={allTalkingSuggestions}
+                <Label>Campaign strategy</Label>
+                <Textarea
+                  rows={10}
+                  placeholder={`Target Audiences:\n- Founders & Startup Leaders – Entrepreneurs looking to ...\n- Sales & Customer Success Leaders – Professionals focused on ...\n\nTalking Points That Will Land:\n- The Future of Meeting Productivity – How AI-powered tools ...\n- Turning Conversations into Action – How recording, transcribing ...`}
+                  value={editing.campaign_strategy || ''}
+                  onChange={(e) => {
+                    const campaign_strategy = e.target.value;
+                    const { audiences, talking } = parseCampaignStrategy(campaign_strategy);
+                    setEditing({
+                      ...editing,
+                      campaign_strategy,
+                      target_audiences: audiences,
+                      talking_points: talking,
+                    });
+                  }}
                 />
               </div>
               <div className="md:col-span-2">
                 <Label>Things to Avoid</Label>
-                <TagInput
-                  value={editing.avoid || []}
-                  onChange={(v) => setEditing({ ...editing, avoid: v })}
-                  placeholder="crypto • MLM • NFT • Competitor: Duo"
-                  suggestions={allAvoidSuggestions}
+                <Textarea
+                  rows={4}
+                  placeholder="crypto, MLM, NFT, Competitor: Duo"
+                  value={(editing.avoid || []).join('\n')}
+                  onChange={(e) => setEditing({ ...editing, avoid: toList(e.target.value) })}
                 />
               </div>
               <div className="md:col-span-2">

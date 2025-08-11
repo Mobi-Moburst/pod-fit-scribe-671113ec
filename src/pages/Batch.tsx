@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import Papa from 'papaparse';
 import { callAnalyze, callScrape, AnalyzeResult } from '@/utils/api';
 import { getClients } from '@/data/clientStore';
+import { parseCampaignStrategy } from '@/lib/campaignStrategy';
 
 interface Row {
   client_id?: string;
   client_name?: string;
   company?: string;
   media_kit_url?: string;
+  campaign_strategy?: string;
   target_audiences?: string; // comma/pipe/• separated
   talking_points?: string;
   avoid?: string;
@@ -21,7 +23,7 @@ interface Row {
 }
 
 const parseList = (s?: string) => (s || '')
-  .split(/[;,|•]/)
+  .split(/[\n\r,;|•]/)
   .map((x) => x.trim())
   .filter(Boolean);
 
@@ -41,23 +43,32 @@ const Batch = () => {
 
   const savedClients = useMemo(() => getClients(), []);
 
-  const resolveClient = (r: Row) => {
-    const byId = r.client_id && savedClients.find(c => c.id === r.client_id);
-    if (byId) return byId;
-    const byName = r.client_name && savedClients.find(c => c.name.toLowerCase() === r.client_name!.toLowerCase());
-    if (byName) return byName;
-    // Compose a minimal client from CSV row
-    return {
-      id: r.client_id || crypto.randomUUID(),
-      name: r.client_name || 'Unnamed',
-      company: r.company,
-      media_kit_url: r.media_kit_url || '',
-      target_audiences: parseList(r.target_audiences),
-      talking_points: parseList(r.talking_points),
-      avoid: parseList(r.avoid),
-      notes: r.notes || '',
-    };
+const resolveClient = (r: Row) => {
+  const byId = r.client_id && savedClients.find(c => c.id === r.client_id);
+  if (byId) return byId;
+  const byName = r.client_name && savedClients.find(c => c.name.toLowerCase() === r.client_name!.toLowerCase());
+  if (byName) return byName;
+  // Compose a minimal client from CSV row
+  const campaign_strategy = String(r.campaign_strategy || '').trim();
+  let target_audiences = parseList(r.target_audiences);
+  let talking_points = parseList(r.talking_points);
+  if (campaign_strategy) {
+    const { audiences, talking } = parseCampaignStrategy(campaign_strategy);
+    target_audiences = audiences;
+    talking_points = talking;
+  }
+  return {
+    id: r.client_id || crypto.randomUUID(),
+    name: r.client_name || 'Unnamed',
+    company: r.company,
+    media_kit_url: r.media_kit_url || '',
+    campaign_strategy,
+    target_audiences,
+    talking_points,
+    avoid: parseList(r.avoid),
+    notes: r.notes || '',
   };
+};
 
   const start = async () => {
     setProcessing(true); setResults([]);
@@ -106,7 +117,7 @@ const Batch = () => {
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-xl font-semibold">Batch Evaluation</h1>
-              <p className="text-sm text-muted-foreground">Upload CSV with columns: client_id, client_name, company, media_kit_url, target_audiences, talking_points, avoid, notes, podcast_url</p>
+              <p className="text-sm text-muted-foreground">Upload CSV with columns: client_id, client_name, company, media_kit_url, campaign_strategy (or target_audiences, talking_points), avoid, notes, podcast_url</p>
             </div>
             <div className="flex items-center gap-2">
               <input type="file" accept=".csv" onChange={(e) => e.target.files && handleCSV(e.target.files[0])} />

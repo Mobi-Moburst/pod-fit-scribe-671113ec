@@ -1,22 +1,16 @@
 
 import { mockClients } from "@/data/mockClients";
 import type { MinimalClient } from "@/types/clients";
+import { parseCampaignStrategy, buildCampaignStrategyFromArrays } from "@/lib/campaignStrategy";
 
 const KEY = "pfr_clients";
 
 function seedFromMock(): MinimalClient[] {
-  // Derive a simple campaign strategy from legacy mock data to avoid empty fields
-  // Also map legacy fields into new minimal profile arrays when present
+  // Derive a campaign strategy and arrays from legacy mock data
   return mockClients.map((c: any) => {
-    const parts = [
-      c.content_goals ? `Goals: ${c.content_goals}` : "",
-      c.ICP ? `ICP: ${c.ICP}` : "",
-      c.CTA ? `CTA: ${c.CTA}` : "",
-    ].filter(Boolean);
-
     const splitList = (v?: string) =>
       (v || "")
-        .split(/[;,•|]/)
+        .split(/[\n\r,;•|]/)
         .map((x) => x.trim())
         .filter(Boolean);
 
@@ -41,7 +35,7 @@ function seedFromMock(): MinimalClient[] {
       talking_points,
       avoid,
       notes: c.notes || undefined,
-      campaign_strategy: parts.join(" | ") || "",
+      campaign_strategy: buildCampaignStrategyFromArrays(target_audiences, talking_points),
     } as MinimalClient;
   });
 }
@@ -54,7 +48,7 @@ export function toList(v: any): string[] {
     return Array.from(
       new Set(
         v
-          .split(/[;,•|]/)
+          .split(/[\n\r,;•|]/)
           .map((x) => x.trim())
           .filter(Boolean)
       )
@@ -64,16 +58,29 @@ export function toList(v: any): string[] {
 }
 
 function normalizeClient(c: any): MinimalClient {
+  let strategy = c.campaign_strategy ? String(c.campaign_strategy) : "";
+  let audiences = toList(c.target_audiences);
+  let talking = toList(c.talking_points);
+
+  if (strategy.trim()) {
+    const { audiences: a, talking: t } = parseCampaignStrategy(strategy);
+    audiences = a;
+    talking = t;
+  } else if ((audiences.length || talking.length) && !strategy.trim()) {
+    // backfill strategy so the textarea is prefilled for older clients
+    strategy = buildCampaignStrategyFromArrays(audiences, talking);
+  }
+
   return {
     id: c.id ?? crypto.randomUUID(),
     name: String(c.name ?? "").trim(),
     company: c.company ? String(c.company).trim() : undefined,
     media_kit_url: String(c.media_kit_url || ""),
-    target_audiences: toList(c.target_audiences),
-    talking_points: toList(c.talking_points),
+    target_audiences: audiences,
+    talking_points: talking,
     avoid: toList(c.avoid),
     notes: c.notes ? String(c.notes) : undefined,
-    campaign_strategy: c.campaign_strategy ? String(c.campaign_strategy) : undefined,
+    campaign_strategy: strategy,
   };
 }
 
