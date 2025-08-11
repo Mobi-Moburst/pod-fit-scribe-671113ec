@@ -44,72 +44,72 @@ function deriveGoals(strategy: string, mediaKitUrl: string): string[] {
 
 function extractAudienceSlice(strategy: string): string {
   if (!strategy) return '';
+  // Normalize curly quotes/dashes
   const norm = strategy
     .replace(/[’‘]/g, "'")
     .replace(/[“”]/g, '"')
-    .replace(/[–—]/g, '-')
-    .trim();
+    .replace(/[–—]/g, '-');
 
+  // Try to grab the phrase starting at one of the audience labels
   const labels = [
     /target\s+audiences?/i,
     /audiences?/i,
-    /ideal\s+customer\s+profile|\bICP\b/i,
+    /ideal\s+customer\s+profile|icp/i,
     /target\s+roles?/i,
     /target\b/i,
   ];
-
   for (const re of labels) {
     const idx = norm.search(re);
     if (idx !== -1) {
       const after = norm.slice(idx);
-      // Prefer stopping at the next section header like "Talking Points", "Goals:", "CTA:", or "Topics:"
-      const endMarkers = [
-        /\bTalking\s+Points[^\n]*/i,
-        /\bGoals\s*:/i,
-        /\bCTA\s*:/i,
-        /\bTopics?\s*:/i,
-      ];
-      let end = after.length;
-      for (const m of endMarkers) {
-        const mm = after.search(m);
-        if (mm !== -1) end = Math.min(end, mm);
-      }
-      // Fallback: up to 800 chars (covers multi-line bullets)
-      end = Math.min(end, 800);
-      return after.slice(0, end);
+      // Stop at separators or next labeled section
+      const stops = [
+        after.indexOf('|'), after.indexOf('\n'), after.toLowerCase().indexOf('goals:'),
+        after.toLowerCase().indexOf('cta:'), after.toLowerCase().indexOf('topics:'),
+      ].filter(n => n > 0) as number[];
+      const end = stops.length ? Math.min(...stops) : Math.min(after.length, 240);
+      const chunk = after.slice(0, end);
+      return chunk;
     }
   }
   return '';
 }
 
 function deriveAudienceTags(strategy: string): string[] {
-  const slice = extractAudienceSlice(strategy) || strategy;
-  const text = slice.toLowerCase();
-  const tags = new Set<string>();
+  const rules: { label: string; re: RegExp }[] = [
+    { label: 'K-12', re: /(k\s*[-–]?\s*12|teachers?|educators?|schools?|districts?|superintendents?)/i },
+    { label: 'Education', re: /(education|edtech|students?|parents?)/i },
+    { label: 'Higher Ed', re: /(university|college|higher\s*ed|campus)/i },
+    { label: 'Healthcare', re: /(healthcare|hospital|provider|clinicians?|patients?|health\s*it)/i },
+    { label: 'Security', re: /(security|ciso|cso|infosec|cyber)/i },
+    { label: 'Developers', re: /(developers?|engineers?|devops)/i },
+    { label: 'IT', re: /(\bit\b|sysadmins?|cto)/i },
+    { label: 'Marketing', re: /(marketing|marketers?|cmo|demand|growth|brand)/i },
+    { label: 'Sales', re: /(\bsales\b|sdr|account\s*executives?|ae|revops)/i },
+    { label: 'Finance', re: /(finance|accounting|cfo)/i },
+    { label: 'Fintech', re: /(fintech|payments|banking)/i },
+    { label: 'Public Sector', re: /(public\s*sector|government|gov\b|policy|regulation)/i },
+    { label: 'SMB', re: /(smb|small\s*business)/i },
+    { label: 'Enterprise', re: /(enterprise|fortune\s*\d+)/i },
+    { label: 'Startups', re: /(startup|scaleup|founders?)/i },
+    { label: 'E‑commerce', re: /(e[-\s]?commerce|shopify)/i },
+    { label: 'AI/ML', re: /(\bai\b|machine\s*learning|ml\b)/i },
+    { label: 'Data', re: /(\bdata\b|analytics)/i },
+    { label: 'Legal/Compliance', re: /(legal|compliance|general\s*counsel|gc\b)/i },
+    { label: 'Product/Design', re: /(product\b|pm\b|design|ux)/i },
+    { label: 'HR/People', re: /(\bhr\b|people\s*ops|recruit|talent)/i },
+  ];
 
-  const addIf = (re: RegExp, label: string) => { if (re.test(text)) tags.add(label); };
+  const slice = extractAudienceSlice(strategy);
+  const tryMatch = (text: string) => {
+    const tags: string[] = [];
+    for (const r of rules) if (r.re.test(text)) tags.push(r.label);
+    return Array.from(new Set(tags)).slice(0, 8);
+  };
 
-  // Real estate audiences
-  addIf(/real\s*estate\s*syndicators?/i, 'Real Estate Syndicators');
-  addIf(/\bsyndicators?\b/i, 'Real Estate Syndicators');
-  addIf(/real\s*estate\b/i, 'Real Estate');
-
-  // Investor types
-  addIf(/limited\s*partners?|\bLPs?\b/i, 'LP Investors');
-  addIf(/institutional\s+investors?|institutions?\b/i, 'Institutional Investors');
-  addIf(/high[-\s]?net[-\s]?worth|\bHNW\b|accredited\b/i, 'HNW/Accredited');
-  addIf(/retail\s+investors?/i, 'Retail Investors');
-
-  // VC / execs
-  addIf(/vc\s*firms?|venture\s*capital/i, 'VC Firms');
-  addIf(/\bCIOs?\b|chief\s*information\s*officers?/i, 'CIOs');
-  addIf(/\bCFOs?\b|chief\s*financial\s*officers?/i, 'CFOs');
-
-  // Vertical hints if present
-  addIf(/blockchain|tokeniz|rwa\b/i, 'Blockchain/RWAs');
-
-  const out = Array.from(tags);
-  return out.slice(0, 8);
+  let tags = slice ? tryMatch(slice) : [];
+  if (!tags.length) tags = tryMatch(strategy); // fallback to whole strategy if needed
+  return tags;
 }
 
 const Clients = () => {
