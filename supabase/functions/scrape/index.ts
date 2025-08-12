@@ -34,7 +34,11 @@ function extractJSONLD(content: string): any[] {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' } });
+    return new Response(null, { headers: { 
+      'Access-Control-Allow-Origin': '*', 
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    } });
   }
   try {
     const { url } = await req.json();
@@ -73,9 +77,9 @@ serve(async (req) => {
     const text = stripTags([ldDesc, ogDesc].filter(Boolean).join(' \n ')) || stripTags(html).slice(0, 20000);
 
     return new Response(JSON.stringify({ success: true, title, show_notes: text, length: text.length }), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ success: false, error: 'Failed to fetch' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, status: 500 });
+    return new Response(JSON.stringify({ success: false, error: 'Failed to fetch' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' }, status: 500 });
   }
 });
