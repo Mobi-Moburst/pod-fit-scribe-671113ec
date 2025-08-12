@@ -213,14 +213,33 @@ function scoreGoalCentric(client: any, show_notes: string) {
   let cap_evidence = '';
   let cap_reason: string | undefined;
 
-  const tryApplyCap = (type: typeof cap_type, evidence: string) => {
+  const tryApplyCap = (type: typeof cap_type, evidence: string, capMax = 5.0) => {
     if (cap_applied) return;
-    cap_applied = true; cap_type = type; cap_evidence = evidence || ''; overall = Math.min(overall, 5.0);
-    applied_adjustments.push({ type: 'cap', label: `${type.replace(/_/g,' ')}`, amount: 5.0 });
+    cap_applied = true; cap_type = type; cap_evidence = evidence || ''; overall = Math.min(overall, capMax);
+    applied_adjustments.push({ type: 'cap', label: `${type.replace(/_/g,' ')}`, amount: capMax });
     cap_reason = `${type.replace(/_/g,' ')} — "${evidence || 'evidence required'}"`;
   };
 
-  if (strongAvoidCentral) {
+  // Domain clash: crypto content vs education-focused client → hard cap 1.0
+  const cryptoCue = /(crypto|bitcoin|blockchain|defi|web3|ethereum|nft|solana|token\b|altcoin)/i.test(notes);
+  const clientText = norm([
+    client?.name,
+    client?.company,
+    ...(client?.target_audiences || []),
+    ...(client?.talking_points || []),
+    client?.notes,
+    client?.campaign_strategy,
+  ].filter(Boolean).join(' '));
+  const isEducationClient = /(k-?12|education|edtech|teacher|classroom|school|students|district|principal|superintendent|curriculum|pedagogy|literacy|numeracy)/i.test(clientText);
+
+  if (cryptoCue && isEducationClient) {
+    if (!cap_applied) {
+      cap_applied = true; cap_type = 'avoid'; cap_evidence = 'crypto domain content conflicts with education ICP';
+      overall = Math.min(overall, 1.0);
+      applied_adjustments.push({ type: 'cap', label: 'avoid', amount: 1.0 });
+      cap_reason = 'avoid — "crypto domain conflict with education ICP"';
+    }
+  } else if (strongAvoidCentral) {
     tryApplyCap('avoid', avoidCounts[0].a);
   } else if (payToPlayMatch) {
     tryApplyCap('pay_to_play', payToPlayMatch[0]);
@@ -229,7 +248,7 @@ function scoreGoalCentric(client: any, show_notes: string) {
   } else if (b2cMismatch) {
     tryApplyCap('b2c_mismatch', 'consumer-only cues without enterprise signals');
   } else if (conceptHitsCount === 0 && topicRelevance <= 5.0) {
-    tryApplyCap('zero_overlap', 'No relevant terms detected');
+    tryApplyCap('zero_overlap', 'No relevant terms detected', 2.0);
   }
 
   // Calibration invariants
@@ -264,7 +283,10 @@ function scoreGoalCentric(client: any, show_notes: string) {
 
   const why_not_fit_structured: { severity: 'Critical' | 'Major' | 'Minor'; claim: string; evidence: string; interpretation: string }[] = [];
   if (cap_type === 'avoid') {
-    why_not_fit_structured.push({ severity: 'Critical', claim: `Contains avoid term: "${avoidCounts[0].a}"`, evidence: cap_evidence || avoidCounts[0].a, interpretation: 'Central to episode; brand/scope conflict' });
+    const avoidA = avoidCounts[0]?.a;
+    const claim = avoidA ? `Contains avoid term: "${avoidA}"` : 'Critical conflict with avoid criteria';
+    const evidence = cap_evidence || avoidA || 'domain conflict';
+    why_not_fit_structured.push({ severity: 'Critical', claim, evidence, interpretation: 'Central to episode; brand/scope conflict' });
   }
   if (cap_type === 'pay_to_play') {
     why_not_fit_structured.push({ severity: 'Critical', claim: 'Pay-to-play indications', evidence: cap_evidence || 'sponsored by', interpretation: 'Editorial independence risk' });
@@ -417,7 +439,7 @@ serve(async (req) => {
     }
 
     // Build goal-centric prompt
-    const prompt = `Upgrade the evaluator to be goal-centric and non-literal. Follow these rules strictly and return JSON matching the schema only.\n\nINTENT: Judge overall campaign fit for the client, not token matches. Accept strong adjacencies.\n\nREASONING RULES:\n1) Concept sets & near matches: Expand each talking_point and target_audience into concept sets (synonyms/adjacent terms). Score best match, not count of exact tokens.\n2) Coverage logic: ANY primary audience or strong adjacent yields positive ICP credit; diminishing returns for extras. Only mark missing if none present.\n3) Evidence extraction: Prefer quotes that reference audience/use cases/industries/risks/compliance/identity/OT-IT; reject generic slogans.\n4) Scoring (weights unchanged): topic 0.35, icp 0.25, recency 0.15, cta 0.15, brand 0.10.\n5) Caps & floors: strong avoid central ⇒ cap 5.0; zero concept overlap ⇒ cap 6.5; ≥3 concept hits AND strong audience evidence ⇒ floor 7.5. Round to 0.5.\n6) Verdict policy: Recommend ≥7.5 & no critical blockers; Consider 6.0–7.0 or ≥7.5 with minor gap; Not recommended <6.0 or any critical blocker.\n7) Output sections: structured triads and tags.\n\nCLIENT:\n- Name: ${client?.name ?? ''}\n- Company: ${client?.company ?? ''}\n- Media Kit: ${client?.media_kit_url ?? ''}\n- Target Audiences: ${(client?.target_audiences || []).join(', ')}\n- Talking Points: ${(client?.talking_points || []).join(', ')}\n- Avoid: ${(client?.avoid || []).join(', ')}\n- Notes: ${client?.notes ?? ''}\n\nSHOW NOTES (plain text):\n${String(show_notes)}\n\nReturn JSON only with this schema:\n{\n  "overall_score": number,\n  "rubric_breakdown": [\n    {"dimension":"Topic relevance","weight":0.35,"raw_score":0-10,"notes":"short; may include 1 quote"},\n    {"dimension":"ICP alignment","weight":0.25,"raw_score":0-10,"notes":"short; may include 1 quote"},\n    {"dimension":"Recency/consistency","weight":0.15,"raw_score":0-10,"notes":"short"},\n    {"dimension":"CTA synergy","weight":0.15,"raw_score":0-10,"notes":"short"},\n    {"dimension":"Brand suitability","weight":0.10,"raw_score":0-10,"notes":"short"}\n  ],\n  "why_fit_structured": [{"claim":"","evidence":"short quote","interpretation":""}],\n  "why_not_fit_structured": [{"severity":"Critical|Major|Minor","claim":"","evidence":"short quote","interpretation":""}],\n  "risk_flags_structured": [{"severity":"Critical|Major|Minor","flag":"","mitigation":""}],\n  "recommended_talking_points": ["3–5 bullets"],\n  "citations": ["2–6 short quotes"],\n  "verdict": "recommend|consider|not_recommended",\n  "verdict_reason": "one sentence",\n  "confidence": 0-1,\n  "confidence_label": "High|Med|Low",\n  "confidence_note": "data quality note",\n  "what_would_change": ["1–2 concrete checks"],\n  "summary_text": "140–200 words"
+    const prompt = `Upgrade the evaluator to be goal-centric and non-literal. Follow these rules strictly and return JSON matching the schema only.\n\nINTENT: Judge overall campaign fit for the client, not token matches. Accept strong adjacencies.\n\nREASONING RULES:\n1) Concept sets & near matches: Expand each talking_point and target_audience into concept sets (synonyms/adjacent terms). Score best match, not count of exact tokens.\n2) Coverage logic: ANY primary audience or strong adjacent yields positive ICP credit; diminishing returns for extras. Only mark missing if none present.\n3) Evidence extraction: Prefer quotes that reference audience/use cases/industries/risks/compliance/identity/OT-IT; reject generic slogans.\n4) Scoring (weights unchanged): topic 0.35, icp 0.25, recency 0.15, cta 0.15, brand 0.10.\n5) Caps & floors: domain clash (e.g., crypto content vs education client) ⇒ cap 1.0; strong avoid central ⇒ cap 5.0; zero concept overlap ⇒ cap 2.0; ≥3 concept hits AND strong audience evidence ⇒ floor 7.5. Round to 0.5.\n6) Verdict policy: Recommend ≥7.5 & no critical blockers; Consider 6.0–7.0 or ≥7.5 with minor gap; Not recommended <6.0 or any critical blocker.\n7) Output sections: structured triads and tags.\n\nCLIENT:\n- Name: ${client?.name ?? ''}\n- Company: ${client?.company ?? ''}\n- Media Kit: ${client?.media_kit_url ?? ''}\n- Target Audiences: ${(client?.target_audiences || []).join(', ')}\n- Talking Points: ${(client?.talking_points || []).join(', ')}\n- Avoid: ${(client?.avoid || []).join(', ')}\n- Notes: ${client?.notes ?? ''}\n\nSHOW NOTES (plain text):\n${String(show_notes)}\n\nReturn JSON only with this schema:\n{\n  "overall_score": number,\n  "rubric_breakdown": [\n    {"dimension":"Topic relevance","weight":0.35,"raw_score":0-10,"notes":"short; may include 1 quote"},\n    {"dimension":"ICP alignment","weight":0.25,"raw_score":0-10,"notes":"short; may include 1 quote"},\n    {"dimension":"Recency/consistency","weight":0.15,"raw_score":0-10,"notes":"short"},\n    {"dimension":"CTA synergy","weight":0.15,"raw_score":0-10,"notes":"short"},\n    {"dimension":"Brand suitability","weight":0.10,"raw_score":0-10,"notes":"short"}\n  ],\n  "why_fit_structured": [{"claim":"","evidence":"short quote","interpretation":""}],\n  "why_not_fit_structured": [{"severity":"Critical|Major|Minor","claim":"","evidence":"short quote","interpretation":""}],\n  "risk_flags_structured": [{"severity":"Critical|Major|Minor","flag":"","mitigation":""}],\n  "recommended_talking_points": ["3–5 bullets"],\n  "citations": ["2–6 short quotes"],\n  "verdict": "recommend|consider|not_recommended",\n  "verdict_reason": "one sentence",\n  "confidence": 0-1,\n  "confidence_label": "High|Med|Low",\n  "confidence_note": "data quality note",\n  "what_would_change": ["1–2 concrete checks"],\n  "summary_text": "140–200 words"
 }`;
 
     const body = {
@@ -491,11 +513,11 @@ serve(async (req) => {
       let cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none' = 'none';
       let cap_evidence = '';
       let cap_reason: string | undefined;
-      const tryCap = (type: typeof cap_type, evidence: string) => {
+      const tryCap = (type: typeof cap_type, evidence: string, capMax = 5.0) => {
         if (cap_applied) return;
         cap_applied = true; cap_type = type; cap_evidence = evidence || '';
-        adjusted = Math.min(adjusted, 5.0);
-        applied_adjustments.push({ type: 'cap', label: `${type.replace(/_/g,' ')}`, amount: 5.0 });
+        adjusted = Math.min(adjusted, capMax);
+        applied_adjustments.push({ type: 'cap', label: `${type.replace(/_/g,' ')}`, amount: capMax });
         cap_reason = `${type.replace(/_/g,' ')} — "${evidence || 'evidence required'}"`;
       };
 
@@ -504,8 +526,25 @@ serve(async (req) => {
       const enterpriseVibe = /(enterprise|b2b|ciso|cio|governance|compliance|risk|security)/i.test(notesText);
       const consumerCue = /(giveaway|coupon|subscribe and save|lifestyle|beauty|fashion|fitness|cooking|parenting|celebrity|gossip)/i.test(notesText);
       const b2cMismatch = consumerCue && !enterpriseVibe;
+      const cryptoCue = /(crypto|bitcoin|blockchain|defi|web3|ethereum|nft|solana|token\b|altcoin)/i.test(notesText);
+      const clientText = norm([
+        client?.name,
+        client?.company,
+        ...(client?.target_audiences || []),
+        ...(client?.talking_points || []),
+        client?.notes,
+        client?.campaign_strategy,
+      ].filter(Boolean).join(' '));
+      const isEducationClient = /(k-?12|education|edtech|teacher|classroom|school|students|district|principal|superintendent|curriculum|pedagogy|literacy|numeracy)/i.test(clientText);
 
-      if (strongAvoidCentral) {
+      if (cryptoCue && isEducationClient) {
+        if (!cap_applied) {
+          cap_applied = true; cap_type = 'avoid'; cap_evidence = 'crypto domain content conflicts with education ICP';
+          adjusted = Math.min(adjusted, 1.0);
+          applied_adjustments.push({ type: 'cap', label: 'avoid', amount: 1.0 });
+          cap_reason = 'avoid — "crypto domain conflict with education ICP"';
+        }
+      } else if (strongAvoidCentral) {
         tryCap('avoid', avoidCounts[0].a);
       } else if (payToPlayMatch) {
         tryCap('pay_to_play', payToPlayMatch[0]);
@@ -514,23 +553,10 @@ serve(async (req) => {
       } else if (b2cMismatch) {
         tryCap('b2c_mismatch', 'consumer-only cues without enterprise signals');
       } else if (!conceptOverlap && topicRaw <= 5.0) {
-        tryCap('zero_overlap', 'No relevant terms detected');
+        tryCap('zero_overlap', 'No relevant terms detected', 2.0);
       }
 
-      // Minor floor if strong evidence: keep existing heuristic (concept seeds + audience evidence)
-      const aud: string[] = (client?.target_audiences || []) as string[];
-      const audStrong = findPositions(notesText, aud.map(norm)).length;
-      const nearHitsCount = findPositions(notesText, expanded.near).length;
-      const eduAdjacency = /(k-?12|education|teacher|classroom|curriculum|students|district|school|edtech|stem)/i.test(notesText);
-      if (!conceptOverlap) {
-        if (audStrong >= 1 || nearHitsCount >= 2 || eduAdjacency) {
-          adjusted = Math.min(adjusted, 6.5);
-          applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap (adjacency present)', amount: 6.5 });
-        } else if (!cap_applied) {
-          adjusted = Math.min(adjusted, 4.0);
-          applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap', amount: 4.0 });
-        }
-      }
+      // Zero-overlap cap handled above (strict cap 2.0); no additional floors applied.
 
       // Calibration invariants
       const criticalCap = cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play' || cap_type === 'link_ban' || cap_type === 'b2c_mismatch' || cap_type === 'zero_overlap');
