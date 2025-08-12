@@ -63,42 +63,6 @@ const save = () => {
           <Button variant="hero" onClick={startNew}>New Client</Button>
         </Card>
 
-        <Card className="p-4 card-surface">
-          <div className="grid gap-2">
-            {list.map(c => (
-              <div key={c.id} className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
-                <div className="col-span-3 font-medium truncate">
-                  {c.media_kit_url ? (
-                    <a className="underline-offset-2 hover:underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.name}</a>
-                  ) : c.name}
-                  {c.company && <span className="ml-2 text-sm text-muted-foreground">— {c.company}</span>}
-                </div>
-                <div className="col-span-7 text-sm text-muted-foreground">
-                  <div className="flex flex-wrap gap-2">
-                    {(() => {
-                      const top = pickTopAudienceTags({
-                        strategyText: c.campaign_strategy || '',
-                        audiences: c.target_audiences || [],
-                        max: 3,
-                      });
-                      return top.length
-                        ? top.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="shrink-0">{tag}</Badge>
-                          ))
-                        : <span className="opacity-70">—</span>;
-                    })()}
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 col-span-2">
-                  <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
-                  <Button size="sm" variant="destructive" onClick={() => remove(c.id)}>Delete</Button>
-                </div>
-              </div>
-            ))}
-            {!list.length && <div className="text-sm text-muted-foreground">No clients yet.</div>}
-          </div>
-        </Card>
-
         {editing && (
           <Card className="p-4 card-surface grid gap-4">
             <h2 className="text-lg font-semibold">{editing.id ? 'Edit Client' : 'New Client'}</h2>
@@ -158,6 +122,42 @@ const save = () => {
             </div>
           </Card>
         )}
+
+        <Card className="p-4 card-surface">
+          <div className="grid gap-2">
+            {list.map(c => (
+              <div key={c.id} className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
+                <div className="col-span-3 font-medium truncate">
+                  {c.media_kit_url ? (
+                    <a className="underline-offset-2 hover:underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.name}</a>
+                  ) : c.name}
+                  {c.company && <span className="ml-2 text-sm text-muted-foreground">— {c.company}</span>}
+                </div>
+                <div className="col-span-7 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap gap-2">
+                    {(() => {
+                      const top = pickTopAudienceTags({
+                        strategyText: c.campaign_strategy || '',
+                        audiences: c.target_audiences || [],
+                        max: 3,
+                      });
+                      return top.length
+                        ? top.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="shrink-0">{tag}</Badge>
+                          ))
+                        : <span className="opacity-70">—</span>;
+                    })()}
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 col-span-2">
+                  <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
+                  <Button size="sm" variant="destructive" onClick={() => remove(c.id)}>Delete</Button>
+                </div>
+              </div>
+            ))}
+            {!list.length && <div className="text-sm text-muted-foreground">No clients yet.</div>}
+          </div>
+        </Card>
       </main>
     </div>
   );

@@ -176,9 +176,9 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const toneNegInNotes = /(explicit|nsfw|politics|gambling|hype|clickbait)/i.test(notes) ? 1 : 0;
   const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
 
-  // Weighted mean
-  const weights = { topic: 0.35, icp: 0.25, recency: 0.15, cta: 0.15, brand: 0.10 } as const;
-  const weighted_mean = topicRelevance * weights.topic + icpAlignment * weights.icp + recencyConsistency * weights.recency + ctaSynergy * weights.cta + brandSuitability * weights.brand;
+  // Weighted mean (recency removed). New weights normalized to 1.0
+  const weights = { topic: 0.41, icp: 0.29, cta: 0.18, brand: 0.12 } as const;
+  const weighted_mean = topicRelevance * weights.topic + icpAlignment * weights.icp + ctaSynergy * weights.cta + brandSuitability * weights.brand;
 
   // Adjustments
   const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
@@ -194,13 +194,10 @@ function scoreGoalCentric(client: any, show_notes: string) {
   else if (distinctConcepts >= 3) adj_multi_concept = +0.3;
   if (adj_multi_concept) applied_adjustments.push({ type: 'bonus', label: 'Multi-concept', amount: adj_multi_concept });
 
-  let cadenceIndicators = cadenceEpisode + cadenceSeason + cadenceWeekly;
-  let adj_cadence = 0;
-  if (cadenceIndicators >= 2) adj_cadence = +0.3;
-  else if (cadenceIndicators === 1) adj_cadence = +0.2;
-  if (adj_cadence) applied_adjustments.push({ type: 'bonus', label: 'Cadence', amount: adj_cadence });
+  // Cadence bonus removed per new policy
+  const adj_cadence = 0;
 
-  let overall = clamp(weighted_mean + adj_genericness + adj_multi_concept + adj_cadence, 0, 10);
+  let overall = clamp(weighted_mean + adj_genericness + adj_multi_concept, 0, 10);
 
   // Caps (evidence-gated, apply at most one)
   const avoidCounts = avoids.map(a => ({ a, c: count(notes, [a]) })).sort((x,y)=>y.c - x.c);
@@ -325,11 +322,10 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const summary_text = buildSummary({ overall: overall, verdict, why_fit_structured, why_not_fit_structured, risk_flags_structured, clientName: client?.name || client?.company || 'the client' });
 
   const rubric_breakdown = [
-    { dimension: 'Topic relevance', weight: 0.35, raw_score: topicRelevance, notes: strongHits[0]?.term ? `Concept hits include: ${[...new Set(strongHits.slice(0,3).map(h=>h.term))].join(', ')}` : 'Limited explicit overlap; used near-matches' },
-    { dimension: 'ICP alignment', weight: 0.25, raw_score: icpAlignment, notes: (audStrong >= 1 || audAdj >= 2) ? 'ICP cues detected' : 'ICP weak/implicit' },
-    { dimension: 'Recency/consistency', weight: 0.15, raw_score: recencyConsistency, notes: (/(202[3-6])/i.test(notes) ? 'Recent' : 'No recency cues') },
-    { dimension: 'CTA synergy', weight: 0.15, raw_score: ctaSynergy, notes: enterpriseVibe ? 'Enterprise CTA likely' : 'Generic CTA vibe' },
-    { dimension: 'Brand suitability', weight: 0.10, raw_score: brandSuitability, notes: toneNegInNotes ? 'Tone risks present' : 'Tone neutral/ok' },
+    { dimension: 'Topic relevance', weight: 0.41, raw_score: topicRelevance, notes: strongHits[0]?.term ? `Concept hits include: ${[...new Set(strongHits.slice(0,3).map(h=>h.term))].join(', ')}` : 'Limited explicit overlap; used near-matches' },
+    { dimension: 'ICP alignment', weight: 0.29, raw_score: icpAlignment, notes: (audStrong >= 1 || audAdj >= 2) ? 'ICP cues detected' : 'ICP weak/implicit' },
+    { dimension: 'CTA synergy', weight: 0.18, raw_score: ctaSynergy, notes: enterpriseVibe ? 'Enterprise CTA likely' : 'Generic CTA vibe' },
+    { dimension: 'Brand suitability', weight: 0.12, raw_score: brandSuitability, notes: toneNegInNotes ? 'Tone risks present' : 'Tone neutral/ok' },
   ];
 
   return {
@@ -381,25 +377,22 @@ function buildSummary(args: {
   risk_flags_structured: { severity: 'Critical' | 'Major' | 'Minor'; flag: string; mitigation: string }[];
   clientName: string;
 }) {
-  const parts: string[] = [];
-  const verdictText = args.verdict === 'recommend' ? 'Recommend' : args.verdict === 'consider' ? 'Consider' : 'Not recommended';
-  parts.push(`${verdictText} (${args.overall.toFixed(1)}/10).`);
-  const fit = args.why_fit_structured.slice(0, 3).map(i => `${i.claim} — "${i.evidence}" ${i.interpretation ? `(${i.interpretation})` : ''}`).join(' ');
-  if (fit) parts.push(fit);
-  const risks = args.why_not_fit_structured.slice(0, 2).map(r => `${r.claim} [${r.severity}] — "${r.evidence}"`).join(' ');
-  if (risks) parts.push(risks);
-  const flags = args.risk_flags_structured.slice(0, 2).map(f => `${f.flag} [${f.severity}]`).join('; ');
-  if (flags) parts.push(`Risks: ${flags}.`);
-  const nextStep = args.verdict === 'recommend'
-    ? `Next step: pitch ${args.clientName} with a tailored angle tied to the strongest detected theme.`
+  const verdictWord = args.verdict === 'recommend' ? 'Fit' : args.verdict === 'consider' ? 'Consider' : 'Not a fit';
+  const audienceClaim = args.why_fit_structured.find(i => /audience|ICP/i.test(i.claim))?.claim
+    || 'the target audience';
+  const themes = args.why_fit_structured.slice(0, 2).map(i => i.claim).join('; ') || 'recurring themes relevant to the campaign';
+  const align = 'The format and tone support goals around education and authority without feeling sales-forward.';
+  const gap = args.why_not_fit_structured[0];
+  const gapsText = gap ? `${gap.severity === 'Critical' ? 'critical' : 'minor'} gap: ${gap.claim.toLowerCase()}` : 'no material gaps noted';
+  const risk = args.risk_flags_structured[0]?.flag || '';
+  const risksText = risk ? `Risks/constraints: ${risk.toLowerCase()}.` : '';
+  const next = args.verdict === 'recommend'
+    ? 'Next step: pitch a specific topic angle tailored to the show.'
     : args.verdict === 'consider'
-      ? `Next step: proceed only if a condition is met (e.g., confirm ICP or recurring theme).`
-      : `Next step: skip, or target a different episode/show with clearer ICP and theme alignment.`;
-  parts.push(nextStep);
-  // Ensure ~140–200 words by trimming if needed
-  let text = parts.join(' ');
-  if (text.length > 1200) text = text.slice(0, 1200);
-  return text;
+      ? 'Next step: proceed if ICP and topic are confirmed by the host.'
+      : 'Next step: suggest an adjacent show type with stronger audience alignment.';
+
+  return `Verdict: ${verdictWord} for ${args.clientName}. Audience: ${audienceClaim} and why that matters to the campaign. Content focus: ${themes} mapped to the client’s talking points. Why it aligns: ${align} Gaps to note: ${gapsText}. ${risksText} Next step: ${next}`;
 }
 
 // ---------------- HTTP handler ----------------
@@ -483,10 +476,11 @@ serve(async (req) => {
 
       // Compute weighted mean from LLM rubric
       const rb: any[] = Array.isArray(data?.rubric_breakdown) ? data.rubric_breakdown : [];
-      const weighted_mean = rb.reduce((acc, r) => acc + (Number(r?.raw_score) || 0) * (Number(r?.weight) || 0), 0);
       const topicRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('topic'))?.raw_score) || 0);
       const icpRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('icp'))?.raw_score) || 0);
+      const ctaRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('cta'))?.raw_score) || 0);
       const brandRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('brand'))?.raw_score) || 0);
+      const weighted_mean = topicRaw*0.41 + icpRaw*0.29 + ctaRaw*0.18 + brandRaw*0.12;
 
       let adjusted = Number(data?.overall_score) || 0;
       const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];

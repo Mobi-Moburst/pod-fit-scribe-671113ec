@@ -79,9 +79,6 @@ export const ResultsPanel = ({
             {verdict_reason && (
               <p className="text-sm mt-1">{verdict_reason}</p>
             )}
-            {result.cap_reason && (
-              <p className="text-sm mt-1"><span className="font-medium">Cap Reason</span>: {result.cap_reason}</p>
-            )}
             {Array.isArray(result.applied_adjustments) && result.applied_adjustments.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {result.applied_adjustments.map((adj: any, i: number) => (
@@ -102,13 +99,15 @@ export const ResultsPanel = ({
 
       {/* Rubric */}
       <div className="grid md:grid-cols-5 gap-4">
-        {rubric_breakdown.map((r) => (
-          <Card key={r.dimension} className="p-4 card-surface">
-            <div className="text-sm text-muted-foreground">{r.dimension}</div>
-            <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
-            <p className="text-sm mt-2">{r.notes}</p>
-          </Card>
-        ))}
+        {rubric_breakdown
+          .filter((r) => !/recency|consistency/i.test(r.dimension))
+          .map((r) => (
+            <Card key={r.dimension} className="p-4 card-surface">
+              <div className="text-sm text-muted-foreground">{r.dimension}</div>
+              <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
+              <p className="text-sm mt-2">{r.notes}</p>
+            </Card>
+          ))}
       </div>
 
       {/* Fit vs Gaps */}

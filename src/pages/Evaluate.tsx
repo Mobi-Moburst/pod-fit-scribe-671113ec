@@ -107,15 +107,22 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
   const handleCopySummary = async () => {
     if (!result) return;
     const text = result.summary_text || (() => {
-      const verdict = result.verdict === 'recommend' ? 'Recommend' : result.verdict === 'consider' ? 'Consider' : 'Not recommended';
-      const fits = (result.why_fit_structured || []).slice(0, 2).map(i => `${i.claim} — "${i.evidence}"${i.interpretation ? ` (${i.interpretation})` : ''}`).join(' ');
-      const gaps = (result.why_not_fit_structured || []).slice(0, 1).map(i => `${i.claim} [${i.severity}] — "${i.evidence}"`).join(' ');
+      const verdictWord = result.verdict === 'recommend' ? 'Fit' : result.verdict === 'consider' ? 'Consider' : 'Not a fit';
+      const clientName = (client?.name || 'the client').trim();
+      const showName = (result.show_title || 'this show').trim();
+      const audiences = (client?.target_audiences || []).slice(0, 2).join(' and ') || 'the target audience';
+      const themes = (result.why_fit_structured || []).slice(0, 2).map(i => i.claim).join('; ') || 'recurring themes relevant to the campaign';
+      const align = 'The format and tone support goals around education and authority without feeling sales-forward.';
+      const gap = (result.why_not_fit_structured || [])[0];
+      const gapsText = gap ? `${gap.severity === 'Critical' ? 'critical' : 'minor'} gap: ${gap.claim.toLowerCase()}` : 'no material gaps noted';
+      const risk = (result.risk_flags_structured || [])[0]?.flag || '';
+      const risksText = risk ? `Risks/constraints: ${risk.toLowerCase()}.` : '';
       const next = result.verdict === 'recommend'
-        ? 'Next step: pitch a tailored angle tied to the strongest theme.'
+        ? 'Next step: pitch a specific topic angle tailored to the show.'
         : result.verdict === 'consider'
-          ? 'Next step: proceed if ICP/theme is confirmed.'
-          : 'Next step: skip or pick a better-aligned episode.';
-      return `${verdict} (${result.overall_score.toFixed(1)}/10). ${fits}${gaps ? ' ' + gaps : ''} ${next}`;
+          ? 'Next step: proceed if ICP and topic are confirmed by the host.'
+          : 'Next step: suggest an adjacent show type with stronger audience alignment.';
+      return `Verdict: ${verdictWord} for ${clientName} on ${showName}. Audience: ${audiences} and why that matters to the campaign. Content focus: ${themes} mapped to the client’s talking points. Why it aligns: ${align} Gaps to note: ${gapsText}. ${risksText} Next step: ${next}`;
     })();
     await navigator.clipboard.writeText(text);
     toast({ title: 'Copied', description: 'Summary copied to clipboard.' });
