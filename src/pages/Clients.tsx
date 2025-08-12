@@ -28,6 +28,21 @@ const empty: MinimalClient = {
   campaign_manager: '',
 };
 
+// Deterministic color classes for CM badge using design tokens
+const cmColor = (name?: string) => {
+  if (!name) return "bg-muted/50 text-muted-foreground border-muted";
+  const palette = [
+    "bg-primary/10 text-primary border-primary/20",
+    "bg-secondary/10 text-secondary border-secondary/20",
+    "bg-accent/10 text-accent border-accent/20",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return palette[hash % palette.length];
+};
+
 const Clients = () => {
   useEffect(() => { document.title = 'Clients — Podcast Fit Rater'; }, []);
   const [list, setList] = useState<MinimalClient[]>([]);
@@ -250,7 +265,7 @@ const Clients = () => {
                     <a className="underline-offset-2 hover:underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.name}</a>
                   ) : c.name}
                   {c.company && <span className="ml-2 text-sm text-muted-foreground">— {c.company}</span>}
-                  <Badge variant="outline" className="ml-2 shrink-0">{c.campaign_manager ? `CM: ${c.campaign_manager}` : 'Unassigned'}</Badge>
+                  <Badge variant="outline" className={`ml-2 shrink-0 ${cmColor(c.campaign_manager)}`}>{c.campaign_manager ? `CM: ${c.campaign_manager}` : 'Unassigned'}</Badge>
                 </div>
                 <div className="col-span-7 text-sm text-muted-foreground">
                   <div className="flex flex-wrap gap-2">

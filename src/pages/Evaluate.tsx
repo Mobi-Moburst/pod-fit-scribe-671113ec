@@ -15,7 +15,7 @@ import { sampleUrls } from '@/data/sampleUrls';
 import { ResultsPanel } from '@/components/evaluate/ResultsPanel';
 import type { MinimalClient } from '@/types/clients';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-
+import { ClientCombobox } from '@/components/ClientCombobox';
 const Evaluate = () => {
   useEffect(() => { document.title = 'Evaluate — Podcast Fit Rater'; }, []);
   const { toast } = useToast();
@@ -44,7 +44,6 @@ const Evaluate = () => {
           campaign_manager: c.campaign_manager || '',
         }));
         setClients(mapped);
-        setClientId((prev) => prev || mapped[0]?.id || '');
       }
     })();
   }, []);
@@ -242,16 +241,21 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
           <Card className="p-4 card-surface">
             <div className="grid gap-3">
               <Label htmlFor="client">Client</Label>
-              <select id="client" className="h-10 rounded-md border bg-background px-3" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-                {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
-              </select>
+              <ClientCombobox clients={clients} value={clientId} onChange={setClientId} />
               <div className="text-xs text-muted-foreground">Seeded from saved Clients. Manage in Clients tab.</div>
               <div className="flex gap-2 mt-2">
-                <Button variant="hero" className="flex-1" onClick={handleAnalyze}>Analyze</Button>
-                <Button variant="outline" type="button" onClick={() => {
-                  const list = (sampleUrls as Record<string, string[]>)[clientId] || [];
-                  setUrl(list[Math.floor(Math.random()*list.length)] || '');
-                }}>Try Sample</Button>
+                <Button variant="hero" className="flex-1" onClick={handleAnalyze} disabled={!clientId}>Analyze</Button>
+                <Button
+                  variant="outline"
+                  type="button"
+                  disabled={!clientId}
+                  onClick={() => {
+                    const list = (sampleUrls as Record<string, string[]>)[clientId] || [];
+                    setUrl(list[Math.floor(Math.random()*list.length)] || '');
+                  }}
+                >
+                  Try Sample
+                </Button>
               </div>
               <div className="text-xs text-muted-foreground">Cmd/Ctrl+Enter to Analyze</div>
             </div>
