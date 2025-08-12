@@ -132,15 +132,26 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const mediaKitUrl: string = String(client?.media_kit_url || "");
 
   // Concept hits
-  const strongHits = findPositions(notes, strong).slice(0, 10);
-  const nearHits = findPositions(notes, near).slice(0, 10);
+  const strongHits = findPositions(notes, strong).slice(0, 20);
+  const nearHits = findPositions(notes, near).slice(0, 20);
+  const conceptHitsCount = strongHits.length + nearHits.length;
   const distinctConcepts = new Set([...strongHits.map(h => h.term), ...nearHits.map(h => h.term)]).size;
-  const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
+
+  // Evidence quotes (prefer non-generic)
+  const evidenceTerms = [
+    ...strongHits.slice(0, 8).map(h => h.term),
+    ...nearHits.slice(0, 8).map(h => h.term),
+  ];
+  const positions = findPositions(notes, evidenceTerms, 16);
+  const rawQuotes = positions.map((p) => quoteAround(notes, p.index));
+  const nonGenericQuotes = rawQuotes.filter((q) => q && !isGenericSlogan(q)).slice(0, 8);
+  const citations = nonGenericQuotes.length ? nonGenericQuotes.slice(0, 6) : keywords(notes).slice(0, 6);
 
   // Topic relevance (0.35)
+  const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
   const topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
 
-  // ICP alignment (0.25): ANY primary or adjacent audience is enough; diminishing returns
+  // ICP alignment (0.25)
   const audStrong = findPositions(notes, audiences.map(norm)).length;
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
   const icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
@@ -148,8 +159,10 @@ function scoreGoalCentric(client: any, show_notes: string) {
   // Recency/consistency (0.15)
   const recentYear = /(202[3-6])/.test(notes) ? 1 : 0;
   const monthMention = /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i.test(notes) ? 1 : 0;
-  const cadence = /(episode\s*#?\s*\d{1,4}|season\s*\d{1,2}|weekly|biweekly|monthly)/i.test(notes) ? 1 : 0;
-  const recencyConsistency = roundToHalf(clamp(2 + (recentYear + monthMention + cadence) * 2 + Math.min(2, Math.floor(tokens.length / 800))));
+  const cadenceEpisode = /(episode\s*#?\s*\d{1,4})/i.test(notes) ? 1 : 0;
+  const cadenceSeason = /(season\s*\d{1,2})/i.test(notes) ? 1 : 0;
+  const cadenceWeekly = /(weekly|biweekly|monthly)/i.test(notes) ? 1 : 0;
+  const recencyConsistency = roundToHalf(clamp(2 + (recentYear + monthMention + (cadenceEpisode+cadenceSeason+cadenceWeekly>0?1:0)) * 2 + Math.min(2, Math.floor(tokens.length / 800))));
 
   // CTA synergy (0.15)
   const ctaTerms = ["book","demo","consult","download","guide","report","contact","learn more","talk to","sales","trial","start"];
@@ -163,109 +176,120 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const toneNegInNotes = /(explicit|nsfw|politics|gambling|hype|clickbait)/i.test(notes) ? 1 : 0;
   const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
 
-  // Combine
+  // Weighted mean
   const weights = { topic: 0.35, icp: 0.25, recency: 0.15, cta: 0.15, brand: 0.10 } as const;
-  let overall = topicRelevance * weights.topic + icpAlignment * weights.icp + recencyConsistency * weights.recency + ctaSynergy * weights.cta + brandSuitability * weights.brand;
+  const weighted_mean = topicRelevance * weights.topic + icpAlignment * weights.icp + recencyConsistency * weights.recency + ctaSynergy * weights.cta + brandSuitability * weights.brand;
 
-  // Adjustments audit
+  // Adjustments
   const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
+  let adj_genericness = 0;
+  const nonGenericCount = nonGenericQuotes.length;
+  if (nonGenericCount <= 0) { adj_genericness = -1.5; }
+  else if (nonGenericCount === 1) { adj_genericness = -1.0; }
+  else if (nonGenericCount === 2) { adj_genericness = -0.5; }
+  if (adj_genericness) applied_adjustments.push({ type: 'penalty', label: 'Genericness', amount: adj_genericness });
 
-  // Genericness penalty: if we cannot surface at least 2 specific evidence snippets, reduce slightly
-  const penaltyTerms = [...new Set([...strongHits.map(h => h.term), ...nearHits.map(h => h.term)])];
-  const penaltyPositions = findPositions(notes, penaltyTerms, 6);
-  if (penaltyPositions.length <= 1) {
-    overall -= 0.5; // push weak cases down toward the 1–4 range
-    applied_adjustments.push({ type: 'penalty', label: 'Low specific evidence', amount: -0.5 });
-  }
+  let adj_multi_concept = 0;
+  if (distinctConcepts >= 5) adj_multi_concept = +0.5;
+  else if (distinctConcepts >= 3) adj_multi_concept = +0.3;
+  if (adj_multi_concept) applied_adjustments.push({ type: 'bonus', label: 'Multi-concept', amount: adj_multi_concept });
 
-  // Caps & floors (recalibrated)
+  let cadenceIndicators = cadenceEpisode + cadenceSeason + cadenceWeekly;
+  let adj_cadence = 0;
+  if (cadenceIndicators >= 2) adj_cadence = +0.3;
+  else if (cadenceIndicators === 1) adj_cadence = +0.2;
+  if (adj_cadence) applied_adjustments.push({ type: 'bonus', label: 'Cadence', amount: adj_cadence });
+
+  let overall = clamp(weighted_mean + adj_genericness + adj_multi_concept + adj_cadence, 0, 10);
+
+  // Caps (evidence-gated, apply at most one)
   const avoidCounts = avoids.map(a => ({ a, c: count(notes, [a]) })).sort((x,y)=>y.c - x.c);
-  const strongAvoidCentral = avoidCounts[0]?.c >= 2; // heuristic: central if repeated
-  const zeroConceptOverlap = (strongHits.length + nearHits.length) === 0;
-  const strongAudienceEvidence = audStrong >= 1 || audAdj >= 2;
-  const threeDistinctConcepts = distinctConcepts >= 3;
-  const eduAdjacency = /(k-?12|education|teacher|classroom|curriculum|students|district|school|edtech|stem)/i.test(notes);
+  const strongAvoidCentral = (avoidCounts[0]?.c || 0) >= 2;
+  const payToPlayMatch = notes.match(/(sponsored by|paid placement|advertorial|pay\s*to\s*play)/i);
+  const linkBanMatch = notes.match(/(no\s+links|do\s+not\s+include\s+links|don['’]t\s+include\s+urls|no\s+urls)/i);
+  const consumerCue = /(giveaway|coupon|subscribe and save|lifestyle|beauty|fashion|fitness|cooking|parenting|celebrity|gossip)/i.test(notes);
+  const b2cMismatch = consumerCue && !enterpriseVibe;
 
-  if (strongAvoidCentral) { overall = Math.min(overall, 5.0); applied_adjustments.push({ type: 'cap', label: `Avoid term prominent: ${avoidCounts[0].a}`, amount: 5.0 }); }
-  if (zeroConceptOverlap) {
-    if (strongAudienceEvidence || eduAdjacency) {
-      overall = Math.min(overall, 6.5);
-      applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap (adjacency present)', amount: 6.5 });
-    } else {
-      overall = Math.min(overall, 4.0);
-      applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap', amount: 4.0 });
-    }
+  let cap_applied = false;
+  let cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none' = 'none';
+  let cap_evidence = '';
+  let cap_reason: string | undefined;
+
+  const tryApplyCap = (type: typeof cap_type, evidence: string) => {
+    if (cap_applied) return;
+    cap_applied = true; cap_type = type; cap_evidence = evidence || ''; overall = Math.min(overall, 5.0);
+    applied_adjustments.push({ type: 'cap', label: `${type.replace(/_/g,' ')}`, amount: 5.0 });
+    cap_reason = `${type.replace(/_/g,' ')} — "${evidence || 'evidence required'}"`;
+  };
+
+  if (strongAvoidCentral) {
+    tryApplyCap('avoid', avoidCounts[0].a);
+  } else if (payToPlayMatch) {
+    tryApplyCap('pay_to_play', payToPlayMatch[0]);
+  } else if (linkBanMatch) {
+    tryApplyCap('link_ban', linkBanMatch[0]);
+  } else if (b2cMismatch) {
+    tryApplyCap('b2c_mismatch', 'consumer-only cues without enterprise signals');
+  } else if (conceptHitsCount === 0 && topicRelevance <= 5.0) {
+    tryApplyCap('zero_overlap', 'No relevant terms detected');
   }
-  if (threeDistinctConcepts && strongAudienceEvidence) { overall = Math.max(overall, 8.0); applied_adjustments.push({ type: 'floor', label: 'Multiple concepts + strong audience', amount: 8.0 }); }
+
+  // Calibration invariants
+  const criticalCap = cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play' || cap_type === 'link_ban' || cap_type === 'b2c_mismatch' || cap_type === 'zero_overlap');
+  if (!criticalCap && topicRelevance >= 8 && icpAlignment >= 7 && brandSuitability >= 7) {
+    overall = Math.max(overall, 7.0);
+  }
+  if (!criticalCap && overall < (weighted_mean - 2.0)) {
+    overall = weighted_mean - 2.0;
+  }
+
   overall = roundToHalf(clamp(overall, 0, 10));
 
-  // Evidence extraction (prefer non-generic)
-  const evidenceTerms = [
-    ...strongHits.slice(0, 6).map(h => h.term),
-    ...nearHits.slice(0, 6).map(h => h.term),
-  ];
-  const positions = findPositions(notes, evidenceTerms, 12);
-  const quotes = positions
-    .map((p) => quoteAround(notes, p.index))
-    .filter((q) => q && !isGenericSlogan(q))
-    .slice(0, 6);
-  const citations = quotes.length ? quotes : keywords(notes).slice(0, 6);
-
-  // Why fit (CLAIM → EVIDENCE → INTERPRETATION)
+  // Evidence blocks
   const why_fit_structured = [] as { claim: string; evidence: string; interpretation: string }[];
   if (strongHits.length) why_fit_structured.push({
     claim: "Strong topic overlap",
-    evidence: quotes[0] || strongHits[0]?.term || "",
+    evidence: nonGenericQuotes[0] || strongHits[0]?.term || "",
     interpretation: "Maps directly to priority themes and enterprise use cases",
   });
+  const strongAudienceEvidence = audStrong >= 1 || audAdj >= 2;
   if (strongAudienceEvidence) why_fit_structured.push({
     claim: "Audience alignment present",
-    evidence: quotes[1] || audiences[0] || "",
+    evidence: nonGenericQuotes[1] || audiences[0] || "",
     interpretation: "Signals enterprise/regulated decision-makers consistent with target ICP",
   });
   if (enterpriseVibe) why_fit_structured.push({
     claim: "CTA-friendly enterprise tone",
-    evidence: quotes[2] || "enterprise/compliance cues",
+    evidence: nonGenericQuotes[2] || "enterprise/compliance cues",
     interpretation: "Supports demo/consult/guide-style CTA for B2B motion",
   });
 
-  // Why not fit (severity + triad)
   const why_not_fit_structured: { severity: 'Critical' | 'Major' | 'Minor'; claim: string; evidence: string; interpretation: string }[] = [];
-  if (strongAvoidCentral) {
-    why_not_fit_structured.push({
-      severity: 'Critical',
-      claim: `Contains avoid term: "${avoidCounts[0].a}"`,
-      evidence: quotes[3] || avoidCounts[0].a,
-      interpretation: "Central to episode; brand/scope conflict",
-    });
+  if (cap_type === 'avoid') {
+    why_not_fit_structured.push({ severity: 'Critical', claim: `Contains avoid term: "${avoidCounts[0].a}"`, evidence: cap_evidence || avoidCounts[0].a, interpretation: 'Central to episode; brand/scope conflict' });
   }
-  if (zeroConceptOverlap) {
-    why_not_fit_structured.push({
-      severity: 'Major',
-      claim: 'No overlap with concept sets',
-      evidence: 'No relevant terms detected',
-      interpretation: 'Topic/theme mismatch; low relevance',
-    });
+  if (cap_type === 'pay_to_play') {
+    why_not_fit_structured.push({ severity: 'Critical', claim: 'Pay-to-play indications', evidence: cap_evidence || 'sponsored by', interpretation: 'Editorial independence risk' });
+  }
+  if (cap_type === 'link_ban') {
+    why_not_fit_structured.push({ severity: 'Major', claim: 'Link ban present', evidence: cap_evidence, interpretation: 'Limits CTA effectiveness' });
+  }
+  if (cap_type === 'b2c_mismatch') {
+    why_not_fit_structured.push({ severity: 'Major', claim: 'B2C mismatch', evidence: cap_evidence, interpretation: 'Consumer-focused content misaligned with enterprise ICP' });
+  }
+  if (cap_type === 'zero_overlap') {
+    why_not_fit_structured.push({ severity: 'Major', claim: 'No overlap with concept sets', evidence: 'No relevant terms detected', interpretation: 'Topic/theme mismatch; low relevance' });
   }
   if (!strongAudienceEvidence) {
-    why_not_fit_structured.push({
-      severity: 'Minor',
-      claim: 'Audience specificity is weak',
-      evidence: 'Lacks clear role/industry cues',
-      interpretation: 'Proceed only if host confirms ICP details',
-    });
+    why_not_fit_structured.push({ severity: 'Minor', claim: 'Audience specificity is weak', evidence: 'Lacks clear role/industry cues', interpretation: 'Proceed only if host confirms ICP details' });
   }
 
-  // Risk flags (tag + mitigation)
+  // Risk flags
   const risk_flags_structured: { severity: 'Critical' | 'Major' | 'Minor'; flag: string; mitigation: string }[] = [];
-  if (/(sponsored by|paid placement|advertorial|pay to play)/i.test(notes)) {
-    risk_flags_structured.push({ severity: 'Major', flag: 'Pay-to-play indications', mitigation: 'Confirm editorial policy or negotiate earned placement' });
-  }
-  if (strongAvoidCentral) {
-    risk_flags_structured.push({ severity: 'Critical', flag: `Avoid term prominent: ${avoidCounts[0].a}`, mitigation: 'Pick a different episode or angle; avoid brand conflict' });
-  }
+  if (payToPlayMatch) risk_flags_structured.push({ severity: 'Major', flag: 'Pay-to-play indications', mitigation: 'Confirm editorial policy or negotiate earned placement' });
+  if (strongAvoidCentral) risk_flags_structured.push({ severity: 'Critical', flag: `Avoid term prominent: ${avoidCounts[0].a}`, mitigation: 'Pick a different episode or angle; avoid brand conflict' });
 
-  // Simple talking points to pitch (tie to themes)
+  // Talking points
   const recommended_talking_points = [
     strongHits[0]?.term ? `Lead with ${strongHits[0].term} and enterprise risk` : 'Lead with concrete enterprise risk/use case',
     enterpriseVibe ? 'Offer a short demo tied to the episode theme' : 'Offer a pragmatic guide/checklist as CTA',
@@ -273,14 +297,14 @@ function scoreGoalCentric(client: any, show_notes: string) {
   ];
 
   // Confidence
-  let confidence = 0.5 + Math.min(0.2, tokens.length / 6000) + (quotes.length ? 0.1 : 0) - (!mediaKitUrl ? 0.1 : 0);
+  let confidence = 0.5 + Math.min(0.2, tokens.length / 6000) + (nonGenericQuotes.length ? 0.1 : 0) - (!mediaKitUrl ? 0.1 : 0);
   confidence = Math.max(0.25, Math.min(0.95, confidence));
   const confidence_label = confidence >= 0.75 ? 'High' : confidence >= 0.5 ? 'Med' : 'Low';
-  const confidence_note = `${quotes.length} usable quotes; notes ${tokens.length} tokens; media kit ${mediaKitUrl ? 'present' : 'missing'}`;
+  const confidence_note = `${nonGenericQuotes.length} usable quotes; notes ${tokens.length} tokens; media kit ${mediaKitUrl ? 'present' : 'missing'}`;
 
-  // Verdict policy
-  const hasCritical = why_not_fit_structured.some(w => w.severity === 'Critical') || risk_flags_structured.some(r => r.severity === 'Critical');
-  const verdict = hasCritical ? 'not_recommended' : overall >= 7.5 ? 'recommend' : overall < 6.0 ? 'not_recommended' : 'consider';
+  // Verdict policy (aligned)
+  const hasCritical = why_not_fit_structured.some(w => w.severity === 'Critical') || risk_flags_structured.some(r => r.severity === 'Critical') || (cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play'));
+  const verdict: 'recommend' | 'consider' | 'not_recommended' = hasCritical ? 'not_recommended' : overall >= 7.5 ? 'recommend' : overall < 6.0 ? 'not_recommended' : 'consider';
   const verdict_reason = verdict === 'recommend'
     ? 'Strong thematic and audience alignment with low risk'
     : verdict === 'consider'
@@ -290,20 +314,19 @@ function scoreGoalCentric(client: any, show_notes: string) {
   // What would change the verdict
   const what_would_change = [] as string[];
   if (!strongAudienceEvidence) what_would_change.push('If host confirms ICP (role/industry) relevance');
-  if (zeroConceptOverlap) what_would_change.push('If recent episodes show recurring relevant themes');
+  if (cap_type === 'zero_overlap') what_would_change.push('If recent episodes show recurring relevant themes');
 
-  // Legacy fallbacks
+  // Legacy arrays
   const why_fit = why_fit_structured.map(w => `${w.claim} — "${w.evidence}" (${w.interpretation})`).slice(0, 5);
   const why_not_fit = why_not_fit_structured.map(w => `${w.claim} [${w.severity}] — "${w.evidence}" (${w.interpretation})`).slice(0, 4);
   const risk_flags = risk_flags_structured.map(r => `${r.flag} [${r.severity}]`);
 
-  // Build summary (140–200 words)
+  // Summary
   const summary_text = buildSummary({ overall: overall, verdict, why_fit_structured, why_not_fit_structured, risk_flags_structured, clientName: client?.name || client?.company || 'the client' });
 
-  // Rubric breakdown to explain scores
   const rubric_breakdown = [
     { dimension: 'Topic relevance', weight: 0.35, raw_score: topicRelevance, notes: strongHits[0]?.term ? `Concept hits include: ${[...new Set(strongHits.slice(0,3).map(h=>h.term))].join(', ')}` : 'Limited explicit overlap; used near-matches' },
-    { dimension: 'ICP alignment', weight: 0.25, raw_score: icpAlignment, notes: strongAudienceEvidence ? 'ICP cues detected' : 'ICP weak/implicit' },
+    { dimension: 'ICP alignment', weight: 0.25, raw_score: icpAlignment, notes: (audStrong >= 1 || audAdj >= 2) ? 'ICP cues detected' : 'ICP weak/implicit' },
     { dimension: 'Recency/consistency', weight: 0.15, raw_score: recencyConsistency, notes: (/(202[3-6])/i.test(notes) ? 'Recent' : 'No recency cues') },
     { dimension: 'CTA synergy', weight: 0.15, raw_score: ctaSynergy, notes: enterpriseVibe ? 'Enterprise CTA likely' : 'Generic CTA vibe' },
     { dimension: 'Brand suitability', weight: 0.10, raw_score: brandSuitability, notes: toneNegInNotes ? 'Tone risks present' : 'Tone neutral/ok' },
@@ -338,6 +361,15 @@ function scoreGoalCentric(client: any, show_notes: string) {
       `audStrong=${audStrong}`,
       `audAdj=${audAdj}`,
     ],
+    cap_reason: cap_reason,
+    cap_type,
+    audit: {
+      weighted_mean,
+      adjustments: { genericness: adj_genericness, multi_concept: adj_multi_concept, cadence: adj_cadence },
+      cap_applied,
+      cap_type,
+      cap_evidence,
+    },
   };
 }
 
@@ -443,32 +475,76 @@ serve(async (req) => {
       // Post-process AI result: enforce caps/floors, attach adjustments, ensure summary consistency
       const notesText = String(show_notes || "");
       const expanded = expandConcepts(client);
-      const conceptOverlapCount = (findPositions(notesText, expanded.strong).length + findPositions(notesText, expanded.near).length);
-      const conceptOverlap = conceptOverlapCount > 0;
+      const conceptHitsCount = findPositions(notesText, expanded.strong).length + findPositions(notesText, expanded.near).length;
+      const conceptOverlap = conceptHitsCount > 0;
       const avoids: string[] = (client?.avoid || []) as string[];
       const avoidCounts = avoids.map(a => ({ a, c: count(notesText, [a]) })).sort((x,y)=>y.c - x.c);
       const strongAvoidCentral = avoidCounts[0]?.c >= 2;
 
+      // Compute weighted mean from LLM rubric
+      const rb: any[] = Array.isArray(data?.rubric_breakdown) ? data.rubric_breakdown : [];
+      const weighted_mean = rb.reduce((acc, r) => acc + (Number(r?.raw_score) || 0) * (Number(r?.weight) || 0), 0);
+      const topicRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('topic'))?.raw_score) || 0);
+      const icpRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('icp'))?.raw_score) || 0);
+      const brandRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('brand'))?.raw_score) || 0);
+
       let adjusted = Number(data?.overall_score) || 0;
       const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
 
-      if (strongAvoidCentral) { adjusted = Math.min(adjusted, 5.0); applied_adjustments.push({ type: 'cap', label: `Avoid term prominent: ${avoidCounts[0].a}`, amount: 5.0 }); }
-      // Floor if strong evidence present
+      // Cap tracking (apply at most one)
+      let cap_applied = false;
+      let cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none' = 'none';
+      let cap_evidence = '';
+      let cap_reason: string | undefined;
+      const tryCap = (type: typeof cap_type, evidence: string) => {
+        if (cap_applied) return;
+        cap_applied = true; cap_type = type; cap_evidence = evidence || '';
+        adjusted = Math.min(adjusted, 5.0);
+        applied_adjustments.push({ type: 'cap', label: `${type.replace(/_/g,' ')}`, amount: 5.0 });
+        cap_reason = `${type.replace(/_/g,' ')} — "${evidence || 'evidence required'}"`;
+      };
+
+      const payToPlayMatch = notesText.match(/(sponsored by|paid placement|advertorial|pay\s*to\s*play)/i);
+      const linkBanMatch = notesText.match(/(no\s+links|do\s+not\s+include\s+links|don['’]t\s+include\s+urls|no\s+urls)/i);
+      const enterpriseVibe = /(enterprise|b2b|ciso|cio|governance|compliance|risk|security)/i.test(notesText);
+      const consumerCue = /(giveaway|coupon|subscribe and save|lifestyle|beauty|fashion|fitness|cooking|parenting|celebrity|gossip)/i.test(notesText);
+      const b2cMismatch = consumerCue && !enterpriseVibe;
+
+      if (strongAvoidCentral) {
+        tryCap('avoid', avoidCounts[0].a);
+      } else if (payToPlayMatch) {
+        tryCap('pay_to_play', payToPlayMatch[0]);
+      } else if (linkBanMatch) {
+        tryCap('link_ban', linkBanMatch[0]);
+      } else if (b2cMismatch) {
+        tryCap('b2c_mismatch', 'consumer-only cues without enterprise signals');
+      } else if (!conceptOverlap && topicRaw <= 5.0) {
+        tryCap('zero_overlap', 'No relevant terms detected');
+      }
+
+      // Minor floor if strong evidence: keep existing heuristic (concept seeds + audience evidence)
       const aud: string[] = (client?.target_audiences || []) as string[];
       const audStrong = findPositions(notesText, aud.map(norm)).length;
       const nearHitsCount = findPositions(notesText, expanded.near).length;
       const eduAdjacency = /(k-?12|education|teacher|classroom|curriculum|students|district|school|edtech|stem)/i.test(notesText);
-
       if (!conceptOverlap) {
         if (audStrong >= 1 || nearHitsCount >= 2 || eduAdjacency) {
           adjusted = Math.min(adjusted, 6.5);
           applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap (adjacency present)', amount: 6.5 });
-        } else {
+        } else if (!cap_applied) {
           adjusted = Math.min(adjusted, 4.0);
           applied_adjustments.push({ type: 'cap', label: 'Zero concept overlap', amount: 4.0 });
         }
       }
-      if (expanded.strong.length >= 3 && (audStrong >= 1 || nearHitsCount >= 2)) { adjusted = Math.max(adjusted, 8.0); applied_adjustments.push({ type: 'floor', label: 'Multiple concepts + strong audience', amount: 8.0 }); }
+
+      // Calibration invariants
+      const criticalCap = cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play' || cap_type === 'link_ban' || cap_type === 'b2c_mismatch' || cap_type === 'zero_overlap');
+      if (!criticalCap && topicRaw >= 8 && icpRaw >= 7 && brandRaw >= 7) {
+        adjusted = Math.max(adjusted, 7.0);
+      }
+      if (!criticalCap && adjusted < (weighted_mean - 2.0)) {
+        adjusted = weighted_mean - 2.0;
+      }
       adjusted = roundToHalf(clamp(adjusted, 0, 10));
 
       const ensureArray = (v: any) => Array.isArray(v) ? v : [];
@@ -482,14 +558,14 @@ serve(async (req) => {
       const risk_flags = risk_flags_structured.map((r: any) => `${r.flag} [${r.severity}]`);
 
       // Verdict from adjusted
-      const hasCritical = why_not_fit_structured.some((w: any) => w.severity === 'Critical') || risk_flags_structured.some((r: any) => r.severity === 'Critical');
+      const hasCritical = why_not_fit_structured.some((w: any) => w.severity === 'Critical') || risk_flags_structured.some((r: any) => r.severity === 'Critical') || criticalCap;
       const verdict: 'recommend' | 'consider' | 'not_recommended' = hasCritical ? 'not_recommended' : adjusted >= 7.5 ? 'recommend' : adjusted < 6.0 ? 'not_recommended' : 'consider';
       const confidence_label = data?.confidence_label || ((Number(data?.confidence) || 0.5) >= 0.75 ? 'High' : (Number(data?.confidence) || 0.5) >= 0.5 ? 'Med' : 'Low');
       const confidence_note = data?.confidence_note || `${(data?.citations || []).length} usable quotes`;
 
       const merged = {
         overall_score: adjusted,
-        rubric_breakdown: data?.rubric_breakdown || [],
+        rubric_breakdown: rb,
         why_fit,
         why_not_fit,
         recommended_talking_points: ensureArray(data?.recommended_talking_points),
@@ -508,6 +584,15 @@ serve(async (req) => {
         what_would_change: ensureArray(data?.what_would_change).slice(0,2),
         applied_adjustments,
         summary_text: '',
+        cap_reason: cap_reason,
+        cap_type,
+        audit: {
+          weighted_mean,
+          adjustments: { genericness: 0, multi_concept: 0, cadence: 0 },
+          cap_applied,
+          cap_type,
+          cap_evidence,
+        },
       } as any;
 
       // Always build summary from the final verdict and score for consistency

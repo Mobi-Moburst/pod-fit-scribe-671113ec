@@ -79,6 +79,9 @@ export const ResultsPanel = ({
             {verdict_reason && (
               <p className="text-sm mt-1">{verdict_reason}</p>
             )}
+            {result.cap_reason && (
+              <p className="text-sm mt-1"><span className="font-medium">Cap Reason</span>: {result.cap_reason}</p>
+            )}
             {Array.isArray(result.applied_adjustments) && result.applied_adjustments.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {result.applied_adjustments.map((adj: any, i: number) => (

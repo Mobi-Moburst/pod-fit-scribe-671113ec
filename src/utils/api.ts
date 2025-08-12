@@ -29,6 +29,17 @@ export interface AnalyzeResult {
   // Score auditing (new)
   applied_adjustments?: { type: 'cap' | 'floor' | 'penalty' | 'bonus'; label: string; amount?: number }[];
   audit_notes?: string[];
+
+  // Caps and calibration (new)
+  cap_reason?: string;
+  cap_type?: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none';
+  audit?: {
+    weighted_mean: number;
+    adjustments: { genericness: number; multi_concept: number; cadence: number };
+    cap_applied: boolean;
+    cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none';
+    cap_evidence: string;
+  };
 }
 
 export async function callScrape(url: string) {
