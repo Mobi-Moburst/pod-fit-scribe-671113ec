@@ -166,14 +166,22 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
     } else if (words.length > 160) {
       paragraph = words.slice(0, 160).join(' ').replace(/[,;:]?$/, '.');
     }
-
+    
+    // Tidy punctuation and spacing to avoid stray commas/periods
+    paragraph = paragraph
+      .replace(/([,;:])\./g, '$1')
+      .replace(/([.,;:!?])\s*([.,;:!?])/g, '$1 ')
+      .replace(/\s+([.,;:!?])/g, '$1')
+      .replace(/([.,;:!?])([^\s])/g, '$1 $2')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
     // Bullets: 3 concise lines (<= 12 words each)
     const limitWords = (s: string) => s.split(/\s+/).slice(0, 12).join(' ').trim();
     const bullet1 = limitWords(`Audience: ${audiencePhrase}`);
     const bullet2 = limitWords(pitchAngle ? `Pitch: ${pitchAngle}` : 'Pitch: practical education topic');
     const bullet3 = limitWords(criticalRisk ? `Risk: ${criticalRisk}` : (result.verdict === 'consider' ? 'Next: confirm audience composition' : 'Next: book scheduling and link policy'));
 
-    const text = `${paragraph}\n- ${bullet1}\n- ${bullet2}\n- ${bullet3}`;
+    const text = `${paragraph}\n\nKey points:\n- ${bullet1}\n- ${bullet2}\n- ${bullet3}`;
 
     await navigator.clipboard.writeText(text);
     toast({ title: 'Copied', description: 'Summary copied to clipboard.' });
