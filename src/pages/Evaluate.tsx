@@ -106,28 +106,70 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
 
   const handleCopySummary = async () => {
     if (!result) return;
-    const text = result.summary_text || (() => {
-      const verdictWord = result.verdict === 'recommend' ? 'Fit' : result.verdict === 'consider' ? 'Consider' : 'Not a fit';
-      const clientName = (client?.name || 'the client').trim();
-      const showName = (result.show_title || 'this show').trim();
-      const audiences = (client?.target_audiences || []).slice(0, 2).join(' and ') || 'the target audience';
-      const themes = (result.why_fit_structured || []).slice(0, 2).map(i => i.claim).join('; ') || 'recurring themes relevant to the campaign';
-      const align = 'The format and tone support goals around education and authority without feeling sales-forward.';
-      const gap = (result.why_not_fit_structured || [])[0];
-      const gapsText = gap ? `${gap.severity === 'Critical' ? 'critical' : 'minor'} gap: ${gap.claim.toLowerCase()}` : 'no material gaps noted';
-      const risk = (result.risk_flags_structured || [])[0]?.flag || '';
-      const risksText = risk ? `Risks/constraints: ${risk.toLowerCase()}.` : '';
-      const next = result.verdict === 'recommend'
-        ? 'Next step: pitch a specific topic angle tailored to the show.'
-        : result.verdict === 'consider'
-          ? 'Next step: proceed if ICP and topic are confirmed by the host.'
-          : 'Next step: suggest an adjacent show type with stronger audience alignment.';
-      return `Verdict: ${verdictWord} for ${clientName} on ${showName}. Audience: ${audiences} and why that matters to the campaign. Content focus: ${themes} mapped to the client’s talking points. Why it aligns: ${align} Gaps to note: ${gapsText}. ${risksText} Next step: ${next}`;
-    })();
+
+    const verdictWord = result.verdict === 'recommend' ? 'Fit' : result.verdict === 'consider' ? 'Consider' : 'Not a fit';
+    const clientName = (client?.name || 'the client').trim();
+    const showName = (result.show_title || 'this show').trim();
+
+    // Audience-first: prefer model-derived segments, fallback to client targets
+    const inferredSegments = (result as any).audience_segments as string[] | undefined;
+    const targetSegs = client?.target_audiences || [];
+    const segments = (inferredSegments && inferredSegments.length ? inferredSegments : targetSegs).slice(0, 2);
+    const audiencePhrase = segments.length ? segments.join(' and ') : 'relevant decision makers';
+
+    // Campaign themes / topics
+    const pitchTopics = (result.recommended_talking_points || (result as any).talking_points_to_pitch || []).filter(Boolean);
+    const themeClaims = (result.why_fit_structured || []).map(i => i.claim).filter(Boolean);
+    const themes = (themeClaims.length ? themeClaims : pitchTopics).slice(0, 2).join(', ') || 'practical themes that support the campaign';
+
+    // Risks: include only material (Critical) if present
+    const criticalRisk = (result.risk_flags_structured || []).find(r => r.severity === 'Critical')?.flag || '';
+
+    // Next step depends on verdict
+    const pitchAngle = (pitchTopics[0] || themes.split(',')[0] || '').trim();
+    let nextStep = '';
+    if (result.verdict === 'recommend') {
+      nextStep = pitchAngle ? `Pitch ${pitchAngle.toLowerCase()} tailored to the audience.` : 'Pitch a focused, actionable education angle.';
+    } else if (result.verdict === 'consider') {
+      nextStep = 'Confirm audience composition with the host, then proceed.';
+    } else {
+      nextStep = 'Suggest an adjacent show with stronger role alignment.';
+    }
+
+    // Compose paragraph (aim 110–160 words)
+    const sentences: string[] = [];
+    sentences.push(`${verdictWord} for ${clientName} on ${showName}.`);
+    sentences.push(`This show reaches ${audiencePhrase}, and that matters because it directly serves the campaign goals by getting in front of likely buyers and influencers.`);
+    sentences.push(`Conversations lean into ${themes}, giving room for education, authority building, and gentle pipeline warm up aligned to a practical call to action.`);
+    sentences.push(`Format and tone are supportive rather than decisive; the audience fit is the reason to move forward.`);
+    if (criticalRisk) {
+      sentences.push(`Watch out for a material constraint: ${criticalRisk.toLowerCase()}.`);
+    } else {
+      sentences.push('No material blockers surfaced in the review.');
+    }
+    sentences.push(`${nextStep}`);
+
+    const paragraphRaw = sentences.join(' ');
+    const words = paragraphRaw.split(/\s+/).filter(Boolean);
+    let paragraph = paragraphRaw;
+    if (words.length < 110) {
+      const extender = ' Expect strong resonance with the target segments and a clean path to value without forcing product talk.';
+      paragraph = (paragraphRaw + extender).trim();
+    } else if (words.length > 160) {
+      paragraph = words.slice(0, 160).join(' ').replace(/[,;:]?$/, '.')
+    }
+
+    // Bullets: 3 concise lines (<= 12 words each)
+    const limitWords = (s: string) => s.split(/\s+/).slice(0, 12).join(' ').trim();
+    const bullet1 = limitWords(`${audiencePhrase} audience is the primary reason to proceed`);
+    const bullet2 = limitWords(pitchAngle ? `Pitch: ${pitchAngle}` : 'Pitch: practical education topic tied to buyer pains');
+    const bullet3 = limitWords(criticalRisk ? `Risk: ${criticalRisk}` : (result.verdict === 'consider' ? 'Next: confirm audience composition with host' : 'Next: book scheduling and share resource link policy'));
+
+    const text = `${paragraph}\n- ${bullet1}\n- ${bullet2}\n- ${bullet3}`;
+
     await navigator.clipboard.writeText(text);
     toast({ title: 'Copied', description: 'Summary copied to clipboard.' });
   };
-
   return (
     <div>
       <BackgroundFX />
