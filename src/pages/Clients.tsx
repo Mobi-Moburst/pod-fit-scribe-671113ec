@@ -13,6 +13,8 @@ import { getClients, toList } from '@/data/clientStore';
 import { useToast } from '@/components/ui/use-toast';
 import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
+import { Trash } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const empty: MinimalClient = {
   id: '',
@@ -32,9 +34,9 @@ const empty: MinimalClient = {
 const cmColor = (name?: string) => {
   if (!name) return "bg-muted/50 text-muted-foreground border-muted";
   const palette = [
-    "bg-primary/10 text-primary border-primary/20",
-    "bg-secondary/10 text-secondary border-secondary/20",
-    "bg-accent/10 text-accent border-accent/20",
+    "bg-primary text-primary-foreground border-transparent",
+    "bg-secondary text-secondary-foreground border-transparent",
+    "bg-accent text-accent-foreground border-transparent",
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -265,7 +267,7 @@ const Clients = () => {
                     <a className="underline-offset-2 hover:underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.name}</a>
                   ) : c.name}
                   {c.company && <span className="ml-2 text-sm text-muted-foreground">— {c.company}</span>}
-                  <Badge variant="outline" className={`ml-2 shrink-0 ${cmColor(c.campaign_manager)}`}>{c.campaign_manager ? `CM: ${c.campaign_manager}` : 'Unassigned'}</Badge>
+                  <Badge variant="default" className={`ml-2 shrink-0 ${cmColor(c.campaign_manager)}`}>{c.campaign_manager ? `CM: ${c.campaign_manager}` : 'Unassigned'}</Badge>
                 </div>
                 <div className="col-span-7 text-sm text-muted-foreground">
                   <div className="flex flex-wrap gap-2">
@@ -285,7 +287,25 @@ const Clients = () => {
                 </div>
                 <div className="flex justify-end gap-2 col-span-2">
                   <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
-                  <Button size="sm" variant="destructive" onClick={() => remove(c.id)}>Delete</Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="icon" variant="ghost" aria-label={`Delete ${c.name}`}>
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete client?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently remove {c.name}. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => remove(c.id)}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             ))}
