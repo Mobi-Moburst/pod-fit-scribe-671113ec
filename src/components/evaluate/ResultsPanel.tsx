@@ -79,10 +79,10 @@ export const ResultsPanel = ({
             {verdict_reason && (
               <p className="text-sm mt-1">{verdict_reason}</p>
             )}
-            {Array.isArray(result.applied_adjustments) && result.applied_adjustments.length > 0 && (
+            {Array.isArray(result.applied_adjustments) && result.applied_adjustments.filter((a: any) => a.type !== 'cap').length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {result.applied_adjustments.map((adj: any, i: number) => (
-                  <Badge key={i} variant={adj.type === 'cap' ? 'outline' : adj.type === 'floor' ? 'secondary' : 'outline'}>
+                {result.applied_adjustments.filter((adj: any) => adj.type !== 'cap').map((adj: any, i: number) => (
+                  <Badge key={i} variant={adj.type === 'floor' ? 'secondary' : 'outline'}>
                     {adj.type?.toUpperCase?.() || 'ADJ'}: {adj.label}{typeof adj.amount === 'number' ? ` (${adj.amount > 0 ? '+' : ''}${adj.amount.toFixed(1)})` : ''}
                   </Badge>
                 ))}
