@@ -9,6 +9,7 @@ export interface MinimalClient {
   avoid?: string[];
   avoid_text?: string;
   notes?: string;
+  campaign_manager?: string; // Campaign Manager assignment
   // Kept for backward compatibility with older seeds/forms
   campaign_strategy?: string;
 }

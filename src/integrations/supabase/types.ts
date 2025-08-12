@@ -17,6 +17,7 @@ export type Database = {
       clients: {
         Row: {
           avoid: string[] | null
+          campaign_manager: string | null
           campaign_strategy: string
           company: string | null
           content_goals: string | null
@@ -42,6 +43,7 @@ export type Database = {
         }
         Insert: {
           avoid?: string[] | null
+          campaign_manager?: string | null
           campaign_strategy: string
           company?: string | null
           content_goals?: string | null
@@ -67,6 +69,7 @@ export type Database = {
         }
         Update: {
           avoid?: string[] | null
+          campaign_manager?: string | null
           campaign_strategy?: string
           company?: string | null
           content_goals?: string | null
