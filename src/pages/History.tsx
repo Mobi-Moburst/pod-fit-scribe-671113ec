@@ -5,26 +5,34 @@ import { BackgroundFX } from '@/components/BackgroundFX';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getClients } from '@/data/clientStore';
+import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const History = () => {
   useEffect(() => { document.title = 'History — Podcast Fit Rater'; }, []);
   const [clientFilter, setClientFilter] = useState('');
   const [minScore, setMinScore] = useState<number | ''>('');
-  const [list, setList] = useState<any[]>(() => JSON.parse(localStorage.getItem('pfr_history') || '[]'));
-  const clients = useMemo(() => getClients(), []);
-  const clientNameById = useMemo(() => Object.fromEntries(clients.map(c => [c.id, c.name])), [clients]);
+  const [list, setList] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const clientNameById = useMemo(() => Object.fromEntries(clients.map((c: any) => [c.id, c.name])), [clients]);
 
   useEffect(() => {
-    const reload = () => setList(JSON.parse(localStorage.getItem('pfr_history') || '[]'));
-    const onStorage = (e: StorageEvent) => { if (e.key === 'pfr_history') reload(); };
-    window.addEventListener('pfr_history_updated', reload);
-    window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener('pfr_history_updated', reload);
-      window.removeEventListener('storage', onStorage);
+    const load = async () => {
+      const { data: evals } = await supabase.from('evaluations').select('*').order('created_at', { ascending: false });
+      const { data: cls } = await supabase.from('clients').select('id,name').order('name', { ascending: true });
+      if (Array.isArray(evals)) {
+        setList(evals.map((r: any) => ({
+          ...(r.rubric_json || {}),
+          url: r.url,
+          show_title: r.show_title,
+          overall_score: r.overall_score,
+          clientId: r.client_id,
+          date: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
+        })));
+      }
+      if (Array.isArray(cls)) setClients(cls);
     };
+    load();
   }, []);
 
   const filtered = useMemo(() => list.filter(r => (!clientFilter || r.clientId === clientFilter) && (minScore === '' || (r.overall_score ?? 0) >= (minScore as number))), [list, clientFilter, minScore]);
@@ -61,7 +69,7 @@ const History = () => {
             <Input type="number" step="0.5" value={minScore} onChange={(e)=> setMinScore(e.target.value ? Number(e.target.value) : '')} />
           </div>
           <div className="md:col-span-2 flex justify-end gap-2">
-            <Button variant="outline" onClick={()=>{ localStorage.removeItem('pfr_history'); setList([]); }}>Clear History</Button>
+            <Button variant="outline" onClick={async ()=>{ await supabase.from('evaluations').delete().not('id','is',null); setList([]); }}>Clear History</Button>
           </div>
         </Card>
 

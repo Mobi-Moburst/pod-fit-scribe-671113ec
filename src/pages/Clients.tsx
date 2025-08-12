@@ -106,19 +106,21 @@ const Clients = () => {
     const exists = list.find((l) => l.id === editing.id);
 
     if (!exists) {
-      const { error } = await supabase.from('clients').insert({
-        id: editing.id,
-        org_id: TEAM_ORG_ID,
-        name: editing.name,
-        company: editing.company || null,
-        media_kit_url: editing.media_kit_url || '',
-        target_audiences: editing.target_audiences || [],
-        talking_points: editing.talking_points || [],
-        avoid: editing.avoid || [],
-        notes: editing.notes || null,
-        campaign_strategy: editing.campaign_strategy || '',
-        campaign_manager: (editing as any).campaign_manager || null,
-      });
+      const { error } = await supabase.from('clients').insert([
+        {
+          id: editing.id,
+          org_id: TEAM_ORG_ID,
+          name: editing.name,
+          company: editing.company || null,
+          media_kit_url: editing.media_kit_url || '',
+          target_audiences: editing.target_audiences || [],
+          talking_points: editing.talking_points || [],
+          avoid: editing.avoid || [],
+          notes: editing.notes || null,
+          campaign_strategy: editing.campaign_strategy || '',
+          campaign_manager: (editing as any).campaign_manager || null,
+        } as any,
+      ]);
       if (error) {
         toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
         return;

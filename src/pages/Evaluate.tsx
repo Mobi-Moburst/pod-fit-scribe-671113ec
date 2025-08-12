@@ -14,7 +14,7 @@ import { callAnalyze, callScrape, AnalyzeResult } from '@/utils/api';
 import { sampleUrls } from '@/data/sampleUrls';
 import { ResultsPanel } from '@/components/evaluate/ResultsPanel';
 import type { MinimalClient } from '@/types/clients';
-import { getClients } from '@/data/clientStore';
+import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 
 const Evaluate = () => {
   useEffect(() => { document.title = 'Evaluate — Podcast Fit Rater'; }, []);
@@ -22,14 +22,31 @@ const Evaluate = () => {
 
   const [url, setUrl] = useState('');
   const [paste, setPaste] = useState('');
-  const [clients, setClients] = useState<MinimalClient[]>(() => getClients());
-  const [clientId, setClientId] = useState(() => (getClients()[0]?.id ?? ''));
+  const [clients, setClients] = useState<MinimalClient[]>([]);
+  const [clientId, setClientId] = useState('');
   const client = useMemo(() => clients.find(c => c.id === clientId)!, [clients, clientId]);
 
   useEffect(() => {
-    const reload = () => setClients(getClients());
-    window.addEventListener('pfr_clients_updated', reload);
-    return () => window.removeEventListener('pfr_clients_updated', reload);
+    (async () => {
+      const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
+      if (!error) {
+        const mapped = (data || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          company: c.company || '',
+          media_kit_url: c.media_kit_url || '',
+          target_audiences: c.target_audiences || [],
+          talking_points: c.talking_points || [],
+          avoid: c.avoid || [],
+          avoid_text: Array.isArray(c.avoid) ? c.avoid.join(', ') : '',
+          notes: c.notes || '',
+          campaign_strategy: c.campaign_strategy || '',
+          campaign_manager: c.campaign_manager || '',
+        }));
+        setClients(mapped);
+        setClientId((prev) => prev || mapped[0]?.id || '');
+      }
+    })();
   }, []);
 
   const [loading, setLoading] = useState(false);
@@ -86,13 +103,26 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!result) return;
-    const key = 'pfr_history';
-    const prev = JSON.parse(localStorage.getItem(key) || '[]');
-    localStorage.setItem(key, JSON.stringify([{ date: Date.now(), clientId, url, ...result }, ...prev].slice(0, 200)));
-    window.dispatchEvent(new Event('pfr_history_updated'));
-    toast({ title: 'Saved', description: 'Added to History.' });
+    const { error } = await supabase.from('evaluations').insert([
+      {
+        org_id: TEAM_ORG_ID,
+        client_id: clientId,
+        url: url || 'manual',
+        show_title: result.show_title || null,
+        overall_score: (result as any).overall_score ?? null,
+        confidence: (result as any).confidence ?? null,
+        rubric_json: result as any,
+        citations: (result as any).citations ?? null,
+        show_notes_excerpt: paste ? paste.slice(0, 500) : null,
+      } as any,
+    ]);
+    if (error) {
+      toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Saved', description: 'Added to shared History.' });
   };
 
   const handleExportJson = () => {
