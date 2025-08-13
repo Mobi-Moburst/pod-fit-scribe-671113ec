@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface AnalyzeResult {
@@ -51,9 +52,6 @@ export interface AnalyzeResult {
   };
   eligibility_override?: boolean;
   baseline_verdict?: string;
-  
-  // Publishing insight
-  last_published_date?: string;
 }
 
 export async function callScrape(url: string) {

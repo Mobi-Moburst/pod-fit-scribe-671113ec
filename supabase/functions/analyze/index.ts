@@ -58,38 +58,6 @@ function isGenericSlogan(q: string) {
   return /thought leader|leaders in|trailblazing|cutting-edge|unlock potential|empower|innovation hub|join us/i.test(l);
 }
 
-function extractPublishedDate(notes: string): string {
-  // Try to extract publication date from show notes
-  const text = notes || '';
-  
-  // Look for common date patterns
-  const datePatterns = [
-    // Published on January 15, 2024
-    /published\s+on\s+([a-z]+\s+\d{1,2},?\s+\d{4})/i,
-    // Released January 15, 2024
-    /released\s+([a-z]+\s+\d{1,2},?\s+\d{4})/i,
-    // Episode aired on 01/15/2024
-    /aired\s+on\s+(\d{1,2}\/\d{1,2}\/\d{4})/i,
-    // Jan 15, 2024
-    /\b([a-z]{3}\s+\d{1,2},?\s+\d{4})\b/i,
-    // January 15, 2024
-    /\b([a-z]+\s+\d{1,2},?\s+\d{4})\b/i,
-    // 2024-01-15
-    /\b(\d{4}-\d{1,2}-\d{1,2})\b/,
-    // Recent year mention
-    /\b(202[3-6])\b/
-  ];
-  
-  for (const pattern of datePatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return match[1] || match[0];
-    }
-  }
-  
-  return 'Not specified';
-}
-
 // ---------------- Concept Set Expansion ----------------
 function expandConcepts(client: any) {
   const talking: string[] = (client?.talking_points || client?.keywords_positive || []) as string[];
@@ -163,9 +131,6 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const avoids: string[] = (client?.avoid || client?.keywords_negative || []) as string[];
   const notesPref: string = String(client?.notes || client?.campaign_strategy || "");
   const mediaKitUrl: string = String(client?.media_kit_url || "");
-
-  // Extract last published date
-  const lastPublishedDate = extractPublishedDate(notes);
 
   // Concept hits
   const strongHits = findPositions(notes, strong).slice(0, 20);
@@ -424,7 +389,6 @@ function scoreGoalCentric(client: any, show_notes: string) {
       cap_type,
       cap_evidence,
     },
-    last_published_date: lastPublishedDate,
   };
 }
 
