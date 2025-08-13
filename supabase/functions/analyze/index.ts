@@ -418,6 +418,218 @@ function buildSummary(args: {
   return `Verdict: ${verdictWord} for ${args.clientName}. Audience: ${audienceClaim} and why that matters to the campaign. Content focus: ${themes} mapped to the client’s talking points. Why it aligns: ${align} Gaps to note: ${gapsText}. ${risksText} Next step: ${next}`;
 }
 
+// ---------------- Eligibility Filter ----------------
+function applyEligibilityFilter(result: any, client: any, showNotes: string) {
+  const notes = norm(showNotes);
+  
+  // 1. Detect show eligibility requirements
+  const { class: eligibilityClass, evidence } = detectEligibilityClass(notes);
+  
+  // 2. Infer spokesperson identity (lightweight)
+  const spokespersonName = client?.spokesperson || client?.name || '';
+  const { gender, confidence: genderConfidence } = inferGenderFromName(spokespersonName);
+  const spokespersonInference = checkSpokespersonInNotes(client, gender);
+  
+  // 3. Apply decision rules
+  const { action, note, overrideVerdict, baselineVerdict } = applyEligibilityRules(
+    eligibilityClass,
+    evidence,
+    spokespersonInference.gender,
+    spokespersonInference.confidence,
+    result.verdict
+  );
+  
+  // 4. Build eligibility block
+  const eligibility = {
+    class: eligibilityClass,
+    evidence: evidence,
+    spokesperson_inference: spokespersonInference.gender,
+    spokesperson_inference_confidence: spokespersonInference.confidence,
+    action: action,
+    note: note
+  };
+  
+  // 5. Apply override if needed
+  const finalResult = { ...result, eligibility };
+  if (overrideVerdict) {
+    finalResult.eligibility_override = true;
+    finalResult.baseline_verdict = baselineVerdict;
+    finalResult.verdict = overrideVerdict;
+    
+    // Update summary if eligibility changed verdict and it's EXCLUSIVE
+    if (eligibilityClass === 'exclusive') {
+      const eligibilityNote = action === 'block' 
+        ? `Eligibility requirement not met (${evidence.toLowerCase()}).`
+        : `Conditional on eligibility confirmation (${evidence.toLowerCase()}).`;
+      finalResult.summary_text = finalResult.summary_text.replace(
+        /Next step: [^.]+\./,
+        `Eligibility: ${eligibilityNote} Next step: ${action === 'block' ? 'suggest an eligible alternative' : 'confirm spokesperson eligibility before proceeding'}.`
+      );
+    }
+  }
+  
+  return finalResult;
+}
+
+function detectEligibilityClass(notes: string): { class: 'exclusive' | 'preferential' | 'thematic' | 'none', evidence: string } {
+  // EXCLUSIVE patterns - unambiguous requirements
+  const exclusivePatterns = [
+    { pattern: /(women[- ]only|female[- ]only|ladies[- ]only)/i, evidence: 'women-only' },
+    { pattern: /(men[- ]only|male[- ]only|guys[- ]only)/i, evidence: 'men-only' },
+    { pattern: /(black[- ]only|african american[- ]only)/i, evidence: 'Black-only' },
+    { pattern: /(christian[- ]only|faith[- ]based only)/i, evidence: 'Christian-only' },
+    { pattern: /(lgbtq\+?[- ]only|queer[- ]only)/i, evidence: 'LGBTQ+-only' },
+    { pattern: /(veteran[- ]only|military[- ]only)/i, evidence: 'veteran-only' },
+    { pattern: /(for women entrepreneurs only|exclusively for)/i, evidence: 'exclusive audience' },
+  ];
+  
+  // PREFERENTIAL patterns - strong preference but not exclusive
+  const preferentialPatterns = [
+    { pattern: /(primarily spotlighting|focused on women|celebrating women)/i, evidence: 'women-focused' },
+    { pattern: /(primarily featuring|showcasing black|focused on black)/i, evidence: 'Black-focused' },
+    { pattern: /(christian entrepreneurs|faith-based business)/i, evidence: 'faith-focused' },
+    { pattern: /(lgbtq\+? voices|queer entrepreneurs)/i, evidence: 'LGBTQ+-focused' },
+    { pattern: /(veteran entrepreneurs|military background)/i, evidence: 'veteran-focused' },
+  ];
+  
+  // THEMATIC patterns - recurring lens but not guest requirement
+  const thematicPatterns = [
+    { pattern: /(diversity and inclusion|workplace equity)/i, evidence: 'diversity themes' },
+    { pattern: /(social impact|purpose-driven)/i, evidence: 'social impact themes' },
+    { pattern: /(underrepresented|marginalized communities)/i, evidence: 'representation themes' },
+  ];
+  
+  // Check in order of specificity
+  for (const { pattern, evidence } of exclusivePatterns) {
+    if (pattern.test(notes)) return { class: 'exclusive', evidence };
+  }
+  
+  for (const { pattern, evidence } of preferentialPatterns) {
+    if (pattern.test(notes)) return { class: 'preferential', evidence };
+  }
+  
+  for (const { pattern, evidence } of thematicPatterns) {
+    if (pattern.test(notes)) return { class: 'thematic', evidence };
+  }
+  
+  return { class: 'none', evidence: '' };
+}
+
+function inferGenderFromName(name: string): { gender: 'female' | 'male' | 'unknown', confidence: 'high' | 'low' | 'unknown' } {
+  if (!name) return { gender: 'unknown', confidence: 'unknown' };
+  
+  const firstName = name.trim().split(/\s+/)[0]?.toLowerCase() || '';
+  
+  // High-confidence female names (>90% likelihood)
+  const femaleHighConf = [
+    'jennifer', 'jessica', 'ashley', 'amanda', 'sarah', 'stephanie', 'melissa', 'nicole', 'elizabeth', 'heather',
+    'tiffany', 'michelle', 'amber', 'megan', 'rachel', 'amy', 'crystal', 'angela', 'helen', 'anna', 'maria',
+    'linda', 'patricia', 'barbara', 'susan', 'karen', 'nancy', 'betty', 'sandra', 'margaret', 'carol',
+    'ruth', 'sharon', 'laura', 'lisa', 'kimberly', 'donna', 'brenda', 'emily', 'emma', 'olivia', 'sophia'
+  ];
+  
+  // High-confidence male names (>90% likelihood)
+  const maleHighConf = [
+    'michael', 'christopher', 'matthew', 'joshua', 'david', 'james', 'daniel', 'robert', 'john', 'joseph',
+    'andrew', 'ryan', 'brandon', 'jason', 'justin', 'william', 'jonathan', 'richard', 'brian', 'anthony',
+    'kevin', 'steven', 'thomas', 'timothy', 'paul', 'mark', 'donald', 'george', 'kenneth', 'charles',
+    'edward', 'ronald', 'stephen', 'patrick', 'sean', 'douglas', 'benjamin', 'jack', 'henry', 'alexander'
+  ];
+  
+  if (femaleHighConf.includes(firstName)) {
+    return { gender: 'female', confidence: 'high' };
+  }
+  
+  if (maleHighConf.includes(firstName)) {
+    return { gender: 'male', confidence: 'high' };
+  }
+  
+  // If name is not in high-confidence lists, treat as unknown
+  return { gender: 'unknown', confidence: 'unknown' };
+}
+
+function checkSpokespersonInNotes(client: any, inferredGender: 'female' | 'male' | 'unknown'): { gender: 'female' | 'male' | 'unknown', confidence: 'high' | 'low' | 'unknown' } {
+  // Check if pronouns or identity are explicitly stated in notes/media kit
+  const notes = norm([client?.notes, client?.media_kit_url].filter(Boolean).join(' '));
+  
+  // Explicit pronoun indicators
+  if (/(she\/her|her pronouns)/i.test(notes)) {
+    return { gender: 'female', confidence: 'high' };
+  }
+  if (/(he\/him|his pronouns)/i.test(notes)) {
+    return { gender: 'male', confidence: 'high' };
+  }
+  if (/(they\/them|non-binary|gender non-conforming)/i.test(notes)) {
+    return { gender: 'unknown', confidence: 'high' }; // Treat as unknown for binary eligibility checks
+  }
+  
+  // If no explicit pronouns found, use name inference
+  return { gender: inferredGender, confidence: inferredGender === 'unknown' ? 'unknown' : 'low' };
+}
+
+function applyEligibilityRules(
+  eligibilityClass: 'exclusive' | 'preferential' | 'thematic' | 'none',
+  evidence: string,
+  spokespersonGender: 'female' | 'male' | 'unknown',
+  confidence: 'high' | 'low' | 'unknown',
+  currentVerdict: string
+): { action: 'block' | 'condition' | 'none', note: string, overrideVerdict?: string, baselineVerdict?: string } {
+  
+  if (eligibilityClass === 'exclusive') {
+    // Determine if there's a known mismatch
+    const isWomenOnly = /women/i.test(evidence);
+    const isMenOnly = /men/i.test(evidence);
+    
+    if (isWomenOnly && spokespersonGender === 'male' && confidence === 'high') {
+      return {
+        action: 'block',
+        note: 'Not eligible for women-only show based on spokesperson identity.',
+        overrideVerdict: 'not_recommended',
+        baselineVerdict: currentVerdict
+      };
+    }
+    
+    if (isMenOnly && spokespersonGender === 'female' && confidence === 'high') {
+      return {
+        action: 'block', 
+        note: 'Not eligible for men-only show based on spokesperson identity.',
+        overrideVerdict: 'not_recommended',
+        baselineVerdict: currentVerdict
+      };
+    }
+    
+    // For exclusive shows with unknown eligibility
+    if (spokespersonGender === 'unknown' || confidence !== 'high') {
+      return {
+        action: 'condition',
+        note: 'Conditional eligibility - confirm spokesperson meets show requirements before proceeding.',
+        overrideVerdict: 'consider',
+        baselineVerdict: currentVerdict
+      };
+    }
+    
+    // Confirmed eligible for exclusive show
+    return {
+      action: 'none',
+      note: `Eligible for ${evidence} show format.`,
+    };
+  }
+  
+  if (eligibilityClass === 'preferential') {
+    // Don't override verdict for preferential, just add minor caution
+    return {
+      action: 'none',
+      note: `Show has ${evidence} - consider if spokesperson aligns with preferred audience.`,
+    };
+  }
+  
+  // For thematic or none, no eligibility concerns
+  return {
+    action: 'none',
+    note: '',
+  };
+}
+
 // ---------------- HTTP handler ----------------
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -626,7 +838,10 @@ serve(async (req) => {
         clientName: client?.name || client?.company || 'the client',
       });
 
-      return new Response(JSON.stringify({ success: true, data: merged }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Apply Eligibility Filter (post-processing)
+      const finalResult = applyEligibilityFilter(merged, client, String(show_notes || ""));
+      
+      return new Response(JSON.stringify({ success: true, data: finalResult }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (e) {
       clearTimeout(t);
       const data = { ...scoreGoalCentric(client, String(show_notes || "")), fallback_reason: (e as any)?.message || 'LLM call failed' };

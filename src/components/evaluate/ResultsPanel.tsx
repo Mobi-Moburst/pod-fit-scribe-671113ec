@@ -186,6 +186,27 @@ export const ResultsPanel = ({
             </div>
           )}
         </Card>
+        {result.eligibility && result.eligibility.class !== 'none' && (
+          <Card className="p-4 card-surface">
+            <h3 className="text-lg font-semibold mb-2">Eligibility</h3>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant={result.eligibility.action === 'block' ? 'destructive' : result.eligibility.action === 'condition' ? 'default' : 'secondary'}>
+                {result.eligibility.class}
+              </Badge>
+              {result.eligibility.evidence && (
+                <span className="text-sm text-muted-foreground">"{result.eligibility.evidence}"</span>
+              )}
+            </div>
+            {result.eligibility.note && (
+              <p className="text-sm mb-2">{result.eligibility.note}</p>
+            )}
+            {result.eligibility_override && (
+              <div className="text-xs text-muted-foreground border-t pt-2">
+                Baseline verdict: {result.baseline_verdict} → Override applied
+              </div>
+            )}
+          </Card>
+        )}
       </div>
     </section>
   );
