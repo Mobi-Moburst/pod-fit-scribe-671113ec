@@ -207,6 +207,15 @@ export const ResultsPanel = ({
             )}
           </Card>
         )}
+
+        {result.last_published_date && (
+          <Card className="p-4">
+            <h3 className="font-semibold mb-2">Publishing Information</h3>
+            <p className="text-sm text-muted-foreground">
+              <strong>Last Published:</strong> {result.last_published_date}
+            </p>
+          </Card>
+        )}
       </div>
     </section>
   );
