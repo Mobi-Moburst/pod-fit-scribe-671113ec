@@ -485,7 +485,7 @@ function detectEligibilityClass(notes: string): { class: 'exclusive' | 'preferen
   
   // PREFERENTIAL patterns - strong preference but not exclusive
   const preferentialPatterns = [
-    { pattern: /(primarily spotlighting|focused on women|celebrating women)/i, evidence: 'women-focused' },
+    { pattern: /(primarily spotlighting|focused on women|celebrating women|women in business|successful women|female entrepreneurs|businesswomen)/i, evidence: 'women-focused' },
     { pattern: /(primarily featuring|showcasing black|focused on black)/i, evidence: 'Black-focused' },
     { pattern: /(christian entrepreneurs|faith-based business)/i, evidence: 'faith-focused' },
     { pattern: /(lgbtq\+? voices|queer entrepreneurs)/i, evidence: 'LGBTQ+-focused' },
@@ -533,7 +533,8 @@ function inferGenderFromName(name: string): { gender: 'female' | 'male' | 'unkno
     'michael', 'christopher', 'matthew', 'joshua', 'david', 'james', 'daniel', 'robert', 'john', 'joseph',
     'andrew', 'ryan', 'brandon', 'jason', 'justin', 'william', 'jonathan', 'richard', 'brian', 'anthony',
     'kevin', 'steven', 'thomas', 'timothy', 'paul', 'mark', 'donald', 'george', 'kenneth', 'charles',
-    'edward', 'ronald', 'stephen', 'patrick', 'sean', 'douglas', 'benjamin', 'jack', 'henry', 'alexander'
+    'edward', 'ronald', 'stephen', 'patrick', 'sean', 'douglas', 'benjamin', 'jack', 'henry', 'alexander',
+    'rich', 'rick', 'dick', 'bob', 'bill', 'mike', 'dave', 'steve', 'tom', 'jim', 'joe', 'dan', 'matt'
   ];
   
   if (femaleHighConf.includes(firstName)) {
