@@ -40,18 +40,6 @@ export interface AnalyzeResult {
     cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none';
     cap_evidence: string;
   };
-
-  // Eligibility Filter (new)
-  eligibility?: {
-    class: 'exclusive' | 'preferential' | 'thematic' | 'none';
-    evidence: string;
-    spokesperson_inference: 'female' | 'male' | 'unknown';
-    spokesperson_inference_confidence: 'high' | 'low' | 'unknown';
-    action: 'block' | 'condition' | 'none';
-    note: string;
-  };
-  eligibility_override?: boolean;
-  baseline_verdict?: string;
 }
 
 export async function callScrape(url: string) {
