@@ -122,8 +122,321 @@ function expandConcepts(client: any) {
   return { strong: [...strong], near: [...near] };
 }
 
+// ---------------- Client Data Enrichment ----------------
+async function enrichClientData(mediaKitUrl: string) {
+  if (!mediaKitUrl) return null;
+  
+  try {
+    const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/scrape`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+      },
+      body: JSON.stringify({ url: mediaKitUrl }),
+    });
+    
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data.success) return null;
+    
+    const content = data.show_notes || "";
+    
+    return {
+      title: extractTitle(content),
+      bio: content,
+      pronouns: extractPronouns(content),
+      genderInference: inferGender(content),
+      achievements: extractAchievements(content),
+      identityMarkers: extractIdentityMarkers(content),
+    };
+  } catch (error) {
+    console.log("Failed to enrich client data:", error);
+    return null;
+  }
+}
+
+function extractTitle(content: string): string | null {
+  const titlePatterns = [
+    /(?:ceo|chief executive officer|founder|co-founder|president|cto|cfo|ciso|chief|vp|vice president|director|manager|executive|head of|author|dr\.|doctor|professor|prof\.|consultant)/i
+  ];
+  
+  for (const pattern of titlePatterns) {
+    const match = content.match(pattern);
+    if (match) return match[0].toLowerCase();
+  }
+  return null;
+}
+
+function extractPronouns(content: string): string | null {
+  const pronounMatches = content.match(/\b(she\/her|he\/him|they\/them|he\/they|she\/they)\b/i);
+  return pronounMatches ? pronounMatches[1].toLowerCase() : null;
+}
+
+function inferGender(content: string): { value: 'male' | 'female' | 'non_binary' | 'unknown'; confidence: 'high' | 'medium' | 'low'; source: string } {
+  // Check explicit pronouns first
+  const pronouns = extractPronouns(content);
+  if (pronouns) {
+    if (pronouns.includes('she')) return { value: 'female', confidence: 'high', source: 'explicit_pronouns' };
+    if (pronouns.includes('he')) return { value: 'male', confidence: 'high', source: 'explicit_pronouns' };
+    if (pronouns.includes('they')) return { value: 'non_binary', confidence: 'high', source: 'explicit_pronouns' };
+  }
+  
+  // Check bio context
+  const femaleContexts = /\b(woman|female|lady|girl|mother|mom|wife|daughter|sister|ms\.|mrs\.|miss)\b/i;
+  const maleContexts = /\b(man|male|gentleman|boy|father|dad|husband|son|brother|mr\.)\b/i;
+  
+  const femaleMatches = (content.match(femaleContexts) || []).length;
+  const maleMatches = (content.match(maleContexts) || []).length;
+  
+  if (femaleMatches > maleMatches && femaleMatches >= 2) {
+    return { value: 'female', confidence: 'medium', source: 'bio_context' };
+  }
+  if (maleMatches > femaleMatches && maleMatches >= 2) {
+    return { value: 'male', confidence: 'medium', source: 'bio_context' };
+  }
+  
+  return { value: 'unknown', confidence: 'low', source: 'insufficient_data' };
+}
+
+function extractAchievements(content: string): string[] {
+  const achievements = [];
+  
+  if (/\b(author|published|book|bestselling|wrote|writing)\b/i.test(content)) {
+    achievements.push('author');
+  }
+  if (/\b(founder|founded|co-founder|startup|entrepreneur)\b/i.test(content)) {
+    achievements.push('founder');
+  }
+  if (/\b(veteran|military|served|army|navy|air force|marines|service member)\b/i.test(content)) {
+    achievements.push('veteran');
+  }
+  if (/\b(ceo|chief executive|president)\b/i.test(content)) {
+    achievements.push('ceo');
+  }
+  
+  return achievements;
+}
+
+function extractIdentityMarkers(content: string): string[] {
+  const markers = [];
+  
+  if (/\b(lgbtq|lgbt|queer|gay|lesbian|bisexual|transgender|non-binary)\b/i.test(content)) {
+    markers.push('lgbtq+');
+  }
+  if (/\b(black|african american|african-american)\b/i.test(content)) {
+    markers.push('black');
+  }
+  if (/\b(hispanic|latino|latina|latinx)\b/i.test(content)) {
+    markers.push('hispanic');
+  }
+  if (/\b(asian|asian american|asian-american)\b/i.test(content)) {
+    markers.push('asian');
+  }
+  if (/\b(christian|faith|ministry|church)\b/i.test(content)) {
+    markers.push('christian');
+  }
+  
+  return markers;
+}
+
+// ---------------- Guest Requirements Detection ----------------
+function detectGuestRequirements(show_notes: string) {
+  const notes = norm(show_notes);
+  
+  const requirements = {
+    class: 'none' as 'exclusive' | 'preferential' | 'thematic' | 'none',
+    type: 'none' as 'gender' | 'role' | 'identity' | 'professional' | 'mixed' | 'none',
+    evidence: '',
+    patterns: [] as string[],
+  };
+  
+  // Exclusive patterns (hard requirements)
+  const exclusivePatterns = [
+    { pattern: /\b(women only|female only|exclusively women|exclusively female)\b/i, type: 'gender', evidence: 'women only' },
+    { pattern: /\b(men only|male only|exclusively men|exclusively male)\b/i, type: 'gender', evidence: 'men only' },
+    { pattern: /\b(founders only|exclusively founders)\b/i, type: 'role', evidence: 'founders only' },
+    { pattern: /\b(ceos only|exclusively ceos|chief executives only)\b/i, type: 'role', evidence: 'ceos only' },
+    { pattern: /\b(authors only|exclusively authors|published authors only)\b/i, type: 'professional', evidence: 'authors only' },
+    { pattern: /\b(veterans only|exclusively veterans|military veterans only)\b/i, type: 'identity', evidence: 'veterans only' },
+    { pattern: /\b(lgbtq\+ only|exclusively lgbtq|queer only)\b/i, type: 'identity', evidence: 'lgbtq+ only' },
+  ];
+  
+  // Preferential patterns (strong preference)
+  const preferentialPatterns = [
+    { pattern: /\b(women entrepreneurs|female founders|women in tech|women leaders)\b/i, type: 'gender', evidence: 'women focus' },
+    { pattern: /\b(veteran entrepreneurs|military founders|veteran-owned)\b/i, type: 'identity', evidence: 'veteran focus' },
+    { pattern: /\b(black founders|african american entrepreneurs)\b/i, type: 'identity', evidence: 'black founders focus' },
+    { pattern: /\b(hispanic entrepreneurs|latino founders|latina leaders)\b/i, type: 'identity', evidence: 'hispanic focus' },
+    { pattern: /\b(lgbtq entrepreneurs|queer founders|lgbtq\+ leaders)\b/i, type: 'identity', evidence: 'lgbtq+ focus' },
+    { pattern: /\b(christian entrepreneurs|faith-based business|ministry leaders)\b/i, type: 'identity', evidence: 'christian focus' },
+    { pattern: /\b(primarily women|mostly female|focus on women)\b/i, type: 'gender', evidence: 'women preference' },
+    { pattern: /\b(startup founders|entrepreneur guests|founder interviews)\b/i, type: 'role', evidence: 'founder preference' },
+    { pattern: /\b(published authors|bestselling authors|book writers)\b/i, type: 'professional', evidence: 'author preference' },
+  ];
+  
+  // Check exclusive patterns first
+  for (const { pattern, type, evidence } of exclusivePatterns) {
+    if (pattern.test(notes)) {
+      requirements.class = 'exclusive';
+      requirements.type = type;
+      requirements.evidence = evidence;
+      requirements.patterns.push(evidence);
+      return requirements;
+    }
+  }
+  
+  // Check preferential patterns
+  for (const { pattern, type, evidence } of preferentialPatterns) {
+    if (pattern.test(notes)) {
+      requirements.class = 'preferential';
+      requirements.type = type;
+      requirements.evidence = evidence;
+      requirements.patterns.push(evidence);
+      // Continue checking for multiple preferences
+    }
+  }
+  
+  // Check for thematic patterns (general focus without guest restriction)
+  const thematicPatterns = [
+    /\b(diversity|inclusion|representation|underrepresented)\b/i,
+    /\b(entrepreneurship|startup ecosystem|business leaders)\b/i,
+  ];
+  
+  if (requirements.class === 'none') {
+    for (const pattern of thematicPatterns) {
+      if (pattern.test(notes)) {
+        requirements.class = 'thematic';
+        requirements.type = 'mixed';
+        requirements.evidence = 'diversity/entrepreneurship theme';
+        break;
+      }
+    }
+  }
+  
+  return requirements;
+}
+
+// ---------------- Guest Eligibility Scoring ----------------
+function scoreGuestEligibility(clientData: any, guestRequirements: any) {
+  const requirements = guestRequirements;
+  
+  if (requirements.class === 'none') {
+    return {
+      score: 7.0, // Neutral - no requirements
+      reasoning: "No specific guest requirements detected",
+      confidence: 'high' as const,
+      eligible: true,
+    };
+  }
+  
+  // Extract client info
+  const clientTitle = clientData?.title?.toLowerCase() || '';
+  const clientAchievements = clientData?.achievements || [];
+  const clientIdentity = clientData?.identityMarkers || [];
+  const clientGender = clientData?.genderInference?.value || 'unknown';
+  
+  let eligible = false;
+  let confidence: 'high' | 'medium' | 'low' = 'low';
+  let reasoning = '';
+  
+  // Check eligibility based on requirement type
+  switch (requirements.type) {
+    case 'gender':
+      if (clientGender !== 'unknown') {
+        confidence = clientData.genderInference.confidence;
+        if (requirements.evidence.includes('women') || requirements.evidence.includes('female')) {
+          eligible = clientGender === 'female';
+          reasoning = eligible ? 'Client identified as female' : 'Client not identified as female';
+        } else if (requirements.evidence.includes('men') || requirements.evidence.includes('male')) {
+          eligible = clientGender === 'male';
+          reasoning = eligible ? 'Client identified as male' : 'Client not identified as male';
+        }
+      } else {
+        reasoning = 'Client gender could not be determined';
+      }
+      break;
+      
+    case 'role':
+      if (requirements.evidence.includes('founder')) {
+        eligible = clientAchievements.includes('founder') || clientTitle.includes('founder');
+        reasoning = eligible ? 'Client identified as founder' : 'Client not identified as founder';
+        confidence = clientTitle ? 'high' : 'medium';
+      } else if (requirements.evidence.includes('ceo')) {
+        eligible = clientAchievements.includes('ceo') || clientTitle.includes('ceo');
+        reasoning = eligible ? 'Client identified as CEO' : 'Client not identified as CEO';
+        confidence = clientTitle ? 'high' : 'medium';
+      }
+      break;
+      
+    case 'professional':
+      if (requirements.evidence.includes('author')) {
+        eligible = clientAchievements.includes('author');
+        reasoning = eligible ? 'Client identified as published author' : 'Client not identified as published author';
+        confidence = 'medium';
+      }
+      break;
+      
+    case 'identity':
+      if (requirements.evidence.includes('veteran')) {
+        eligible = clientAchievements.includes('veteran');
+        reasoning = eligible ? 'Client identified as veteran' : 'Client not identified as veteran';
+        confidence = 'medium';
+      } else if (requirements.evidence.includes('lgbtq')) {
+        eligible = clientIdentity.includes('lgbtq+');
+        reasoning = eligible ? 'Client identified as LGBTQ+' : 'Client not identified as LGBTQ+';
+        confidence = 'low'; // Identity is harder to determine from media kits
+      } else if (requirements.evidence.includes('black')) {
+        eligible = clientIdentity.includes('black');
+        reasoning = eligible ? 'Client identified as Black' : 'Client not identified as Black';
+        confidence = 'low';
+      } else if (requirements.evidence.includes('christian')) {
+        eligible = clientIdentity.includes('christian');
+        reasoning = eligible ? 'Client has Christian background' : 'Client Christian background unclear';
+        confidence = 'low';
+      }
+      break;
+  }
+  
+  // Calculate score based on requirement class and eligibility
+  let score = 7.0; // Default neutral
+  
+  if (requirements.class === 'exclusive') {
+    if (eligible && confidence === 'high') {
+      score = 10.0; // Perfect match for exclusive requirement
+    } else if (eligible && confidence === 'medium') {
+      score = 8.5; // Good match but some uncertainty
+    } else if (!eligible && confidence === 'high') {
+      score = 0.5; // Clear mismatch for exclusive requirement
+    } else {
+      score = 3.0; // Unknown eligibility for exclusive requirement
+      reasoning = `Eligibility unclear: ${reasoning}`;
+    }
+  } else if (requirements.class === 'preferential') {
+    if (eligible && confidence === 'high') {
+      score = 9.0; // Strong match for preference
+    } else if (eligible && confidence === 'medium') {
+      score = 8.0; // Good match for preference
+    } else if (!eligible && confidence === 'high') {
+      score = 4.0; // Misaligned with preference but not exclusive
+    } else {
+      score = 6.0; // Unknown but less critical for preferences
+    }
+  } else if (requirements.class === 'thematic') {
+    score = 7.0; // Neutral - thematic doesn't require specific guests
+    reasoning = 'Thematic focus but no specific guest requirements';
+  }
+  
+  return {
+    score: roundToHalf(clamp(score, 0, 10)),
+    reasoning,
+    confidence,
+    eligible: eligible || requirements.class !== 'exclusive',
+  };
+}
+
 // ---------------- Heuristic Scorer (Goal-centric) ----------------
-function scoreGoalCentric(client: any, show_notes: string) {
+async function scoreGoalCentric(client: any, show_notes: string) {
   const notes: string = String(show_notes || "");
   const tokens = tokenize(notes);
   const { strong, near } = expandConcepts(client);
@@ -131,6 +444,15 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const avoids: string[] = (client?.avoid || client?.keywords_negative || []) as string[];
   const notesPref: string = String(client?.notes || client?.campaign_strategy || "");
   const mediaKitUrl: string = String(client?.media_kit_url || "");
+  
+  // Enrich client data from media kit
+  const clientEnrichment = await enrichClientData(mediaKitUrl);
+  
+  // Detect guest requirements from show notes
+  const guestRequirements = detectGuestRequirements(notes);
+  
+  // Score guest eligibility
+  const eligibilityResult = scoreGuestEligibility(clientEnrichment, guestRequirements);
 
   // Concept hits
   const strongHits = findPositions(notes, strong).slice(0, 20);
@@ -148,7 +470,7 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const nonGenericQuotes = rawQuotes.filter((q) => q && !isGenericSlogan(q)).slice(0, 8);
   const citations = nonGenericQuotes.length ? nonGenericQuotes.slice(0, 6) : keywords(notes).slice(0, 6);
 
-  // Topic relevance (0.35)
+  // Topic relevance (0.30)
   const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
   const topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
 
@@ -157,13 +479,8 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
   const icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
 
-  // Recency/consistency (0.15)
-  const recentYear = /(202[3-6])/.test(notes) ? 1 : 0;
-  const monthMention = /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i.test(notes) ? 1 : 0;
-  const cadenceEpisode = /(episode\s*#?\s*\d{1,4})/i.test(notes) ? 1 : 0;
-  const cadenceSeason = /(season\s*\d{1,2})/i.test(notes) ? 1 : 0;
-  const cadenceWeekly = /(weekly|biweekly|monthly)/i.test(notes) ? 1 : 0;
-  const recencyConsistency = roundToHalf(clamp(2 + (recentYear + monthMention + (cadenceEpisode+cadenceSeason+cadenceWeekly>0?1:0)) * 2 + Math.min(2, Math.floor(tokens.length / 800))));
+  // Guest eligibility (0.20)
+  const guestEligibility = eligibilityResult.score;
 
   // CTA synergy (0.15)
   const ctaTerms = ["book","demo","consult","download","guide","report","contact","learn more","talk to","sales","trial","start"];
@@ -177,9 +494,9 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const toneNegInNotes = /(explicit|nsfw|politics|gambling|hype|clickbait)/i.test(notes) ? 1 : 0;
   const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
 
-  // Weighted mean (recency removed). New weights normalized to 1.0
-  const weights = { topic: 0.41, icp: 0.29, cta: 0.18, brand: 0.12 } as const;
-  const weighted_mean = topicRelevance * weights.topic + icpAlignment * weights.icp + ctaSynergy * weights.cta + brandSuitability * weights.brand;
+  // Weighted mean with new 5-dimension structure
+  const weights = { topic: 0.30, icp: 0.25, eligibility: 0.20, cta: 0.15, brand: 0.10 } as const;
+  const weighted_mean = topicRelevance * weights.topic + icpAlignment * weights.icp + guestEligibility * weights.eligibility + ctaSynergy * weights.cta + brandSuitability * weights.brand;
 
   // Adjustments
   const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
@@ -204,7 +521,7 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const avoidCounts = avoids.map(a => ({ a, c: count(notes, [a]) })).sort((x,y)=>y.c - x.c);
   const strongAvoidCentral = (avoidCounts[0]?.c || 0) >= 2;
   const payToPlayMatch = notes.match(/(sponsored by|paid placement|advertorial|pay\s*to\s*play)/i);
-  const linkBanMatch = notes.match(/(no\s+links|do\s+not\s+include\s+links|don['’]t\s+include\s+urls|no\s+urls)/i);
+  const linkBanMatch = notes.match(/(no\s+links|do\s+not\s+include\s+links|don['']t\s+include\s+urls|no\s+urls)/i);
   const consumerCue = /(giveaway|coupon|subscribe and save|lifestyle|beauty|fashion|fitness|cooking|parenting|celebrity|gossip)/i.test(notes);
   const b2cMismatch = consumerCue && !enterpriseVibe;
 
@@ -304,10 +621,29 @@ function scoreGoalCentric(client: any, show_notes: string) {
     why_not_fit_structured.push({ severity: 'Minor', claim: 'Audience specificity is weak', evidence: 'Lacks clear role/industry cues', interpretation: 'Proceed only if host confirms ICP details' });
   }
 
+  // Add eligibility-specific feedback
+  if (guestRequirements.class === 'exclusive' && !eligibilityResult.eligible) {
+    why_not_fit_structured.push({ 
+      severity: 'Critical', 
+      claim: `Guest eligibility mismatch: ${guestRequirements.evidence}`, 
+      evidence: eligibilityResult.reasoning, 
+      interpretation: 'Client does not meet show\'s guest requirements' 
+    });
+  }
+
   // Risk flags
   const risk_flags_structured: { severity: 'Critical' | 'Major' | 'Minor'; flag: string; mitigation: string }[] = [];
   if (payToPlayMatch) risk_flags_structured.push({ severity: 'Major', flag: 'Pay-to-play indications', mitigation: 'Confirm editorial policy or negotiate earned placement' });
   if (strongAvoidCentral) risk_flags_structured.push({ severity: 'Critical', flag: `Avoid term prominent: ${avoidCounts[0].a}`, mitigation: 'Pick a different episode or angle; avoid brand conflict' });
+  
+  // Add eligibility risks
+  if (guestRequirements.class === 'exclusive' && eligibilityResult.confidence === 'low') {
+    risk_flags_structured.push({ 
+      severity: 'Major', 
+      flag: 'Guest eligibility unclear', 
+      mitigation: 'Verify client meets guest requirements before pitching' 
+    });
+  }
 
   // Talking points
   const recommended_talking_points = [
@@ -345,11 +681,12 @@ function scoreGoalCentric(client: any, show_notes: string) {
   const summary_text = buildSummary({ overall: overall, verdict, why_fit_structured, why_not_fit_structured, risk_flags_structured, clientName: client?.name || client?.company || 'the client' });
 
   const rubric_breakdown = [
-    { dimension: 'Topic relevance', weight: 0.41, raw_score: topicRelevance, notes: strongHits[0]?.term ? `Concept hits include: ${[...new Set(strongHits.slice(0,3).map(h=>h.term))].join(', ')}` : 'Limited explicit overlap; used near-matches' },
-    { dimension: 'ICP alignment', weight: 0.29, raw_score: icpAlignment, notes: (audStrong >= 1 || audAdj >= 2) ? 'ICP cues detected' : 'ICP weak/implicit' },
-    { dimension: 'CTA synergy', weight: 0.18, raw_score: ctaSynergy, notes: enterpriseVibe ? 'Enterprise CTA likely' : 'Generic CTA vibe' },
-    { dimension: 'Brand suitability', weight: 0.12, raw_score: brandSuitability, notes: toneNegInNotes ? 'Tone risks present' : 'Tone neutral/ok' },
-  ];
+    { dimension: "Topic relevance", weight: weights.topic, raw_score: topicRelevance, notes: citations.slice(0, 3).join("; ") || "No specific matches" },
+    { dimension: "ICP alignment", weight: weights.icp, raw_score: icpAlignment, notes: audStrong ? `${audStrong} audience hits` : "Weak audience signals" },
+    { dimension: "Guest eligibility", weight: weights.eligibility, raw_score: guestEligibility, notes: `${guestRequirements.class === 'none' ? 'No requirements' : guestRequirements.evidence} - ${eligibilityResult.reasoning}` },
+    { dimension: "CTA synergy", weight: weights.cta, raw_score: ctaSynergy, notes: enterpriseVibe ? "Enterprise tone supports B2B CTA" : `${ctaOverlap} CTA terms` },
+    { dimension: "Brand suitability", weight: weights.brand, raw_score: brandSuitability, notes: toneNegInNotes ? "Tone concerns detected" : "Appropriate brand fit" },
+  ] as const;
 
   return {
     overall_score: overall,
@@ -373,14 +710,7 @@ function scoreGoalCentric(client: any, show_notes: string) {
     what_would_change,
     summary_text,
     applied_adjustments,
-    audit_notes: [
-      `strongHits=${strongHits.length}`,
-      `nearHits=${nearHits.length}`,
-      `distinctConcepts=${distinctConcepts}`,
-      `audStrong=${audStrong}`,
-      `audAdj=${audAdj}`,
-    ],
-    cap_reason: cap_reason,
+    cap_reason,
     cap_type,
     audit: {
       weighted_mean,
@@ -389,6 +719,10 @@ function scoreGoalCentric(client: any, show_notes: string) {
       cap_type,
       cap_evidence,
     },
+    // Guest eligibility details
+    guest_requirements: guestRequirements,
+    client_enrichment: clientEnrichment,
+    eligibility_result: eligibilityResult,
   };
 }
 
@@ -415,7 +749,7 @@ function buildSummary(args: {
       ? 'Next step: proceed if ICP and topic are confirmed by the host.'
       : 'Next step: suggest an adjacent show type with stronger audience alignment.';
 
-  return `Verdict: ${verdictWord} for ${args.clientName}. Audience: ${audienceClaim} and why that matters to the campaign. Content focus: ${themes} mapped to the client’s talking points. Why it aligns: ${align} Gaps to note: ${gapsText}. ${risksText} Next step: ${next}`;
+  return `Verdict: ${verdictWord} for ${args.clientName}. Audience: ${audienceClaim} and why that matters to the campaign. Content focus: ${themes} mapped to the client's talking points. Why it aligns: ${align} Gaps to note: ${gapsText}. ${risksText} Next step: ${next}`;
 }
 
 // ---------------- HTTP handler ----------------
@@ -434,13 +768,70 @@ serve(async (req) => {
     }
 
     if (!OPENAI_API_KEY || !OPENAI_API_KEY.trim()) {
-      const data = { ...scoreGoalCentric(client, String(show_notes || "")), fallback_reason: "Missing OPENAI_API_KEY" };
+      const data = await scoreGoalCentric(client, String(show_notes || ""));
+      data.fallback_reason = "Missing OPENAI_API_KEY";
       return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Build goal-centric prompt
-    const prompt = `Upgrade the evaluator to be goal-centric and non-literal. Follow these rules strictly and return JSON matching the schema only.\n\nINTENT: Judge overall campaign fit for the client, not token matches. Accept strong adjacencies.\n\nREASONING RULES:\n1) Concept sets & near matches: Expand each talking_point and target_audience into concept sets (synonyms/adjacent terms). Score best match, not count of exact tokens.\n2) Coverage logic: ANY primary audience or strong adjacent yields positive ICP credit; diminishing returns for extras. Only mark missing if none present.\n3) Evidence extraction: Prefer quotes that reference audience/use cases/industries/risks/compliance/identity/OT-IT; reject generic slogans.\n4) Scoring (weights unchanged): topic 0.35, icp 0.25, recency 0.15, cta 0.15, brand 0.10.\n5) Caps & floors: domain clash (e.g., crypto content vs education client) ⇒ cap 1.0; strong avoid central ⇒ cap 5.0; zero concept overlap ⇒ cap 2.0; ≥3 concept hits AND strong audience evidence ⇒ floor 7.5. Round to 0.5.\n6) Verdict policy: Recommend ≥7.5 & no critical blockers; Consider 6.0–7.0 or ≥7.5 with minor gap; Not recommended <6.0 or any critical blocker.\n7) Output sections: structured triads and tags.\n\nCLIENT:\n- Name: ${client?.name ?? ''}\n- Company: ${client?.company ?? ''}\n- Media Kit: ${client?.media_kit_url ?? ''}\n- Target Audiences: ${(client?.target_audiences || []).join(', ')}\n- Talking Points: ${(client?.talking_points || []).join(', ')}\n- Avoid: ${(client?.avoid || []).join(', ')}\n- Notes: ${client?.notes ?? ''}\n\nSHOW NOTES (plain text):\n${String(show_notes)}\n\nReturn JSON only with this schema:\n{\n  "overall_score": number,\n  "rubric_breakdown": [\n    {"dimension":"Topic relevance","weight":0.35,"raw_score":0-10,"notes":"short; may include 1 quote"},\n    {"dimension":"ICP alignment","weight":0.25,"raw_score":0-10,"notes":"short; may include 1 quote"},\n    {"dimension":"Recency/consistency","weight":0.15,"raw_score":0-10,"notes":"short"},\n    {"dimension":"CTA synergy","weight":0.15,"raw_score":0-10,"notes":"short"},\n    {"dimension":"Brand suitability","weight":0.10,"raw_score":0-10,"notes":"short"}\n  ],\n  "why_fit_structured": [{"claim":"","evidence":"short quote","interpretation":""}],\n  "why_not_fit_structured": [{"severity":"Critical|Major|Minor","claim":"","evidence":"short quote","interpretation":""}],\n  "risk_flags_structured": [{"severity":"Critical|Major|Minor","flag":"","mitigation":""}],\n  "recommended_talking_points": ["3–5 bullets"],\n  "citations": ["2–6 short quotes"],\n  "verdict": "recommend|consider|not_recommended",\n  "verdict_reason": "one sentence",\n  "confidence": 0-1,\n  "confidence_label": "High|Med|Low",\n  "confidence_note": "data quality note",\n  "what_would_change": ["1–2 concrete checks"],\n  "summary_text": "140–200 words"
-}`;
+    // Build goal-centric prompt with updated weights
+    const prompt = `You will analyze podcast episode content against client campaign fit using this 5-dimension scoring rubric:
+
+      1. **Topic relevance** (Weight: 0.30): How well the episode content aligns with the client's talking points, business focus, and target themes. Score 0-10.
+
+      2. **ICP alignment** (Weight: 0.25): How well the podcast audience matches the client's target customer profile and decision-makers. Score 0-10.
+
+      3. **Guest eligibility** (Weight: 0.20): How well the client matches any specific guest requirements detected in the show (gender, role, identity, professional background). Score 0-10.
+
+      4. **CTA synergy** (Weight: 0.15): How compatible the episode format and tone are with the client's preferred call-to-action (demo, guide, consultation). Score 0-10.
+
+      5. **Brand suitability** (Weight: 0.10): How appropriate the podcast's editorial standards, tone, and content are for the client's brand positioning. Score 0-10.
+
+        **Client context:**
+        - Name: ${client.name || 'Unknown'}
+        - Company: ${client.company || 'Not specified'}  
+        - Target audiences: ${(client.target_audiences || []).join(', ') || 'None specified'}
+        - Talking points: ${(client.talking_points || []).join(', ') || 'None specified'}
+        - Avoid topics: ${(client.avoid || []).join(', ') || 'None specified'}
+        - Campaign notes: ${client.notes || 'None'}
+        - Media kit URL: ${client.media_kit_url || 'Not provided'}
+        
+        **Episode content to analyze:**
+        ${show_notes}
+        
+        **Guest eligibility analysis instructions:**
+        - Look for specific guest requirements in the show notes (e.g., "women entrepreneurs only", "founders only", "veterans", "published authors")
+        - Classify requirements as EXCLUSIVE (hard requirement), PREFERENTIAL (strong preference), or THEMATIC (general focus)
+        - For guest eligibility scoring:
+          * If no requirements detected: Score 7.0 (neutral)
+          * If client matches exclusive requirement: Score 9-10
+          * If client doesn't match exclusive requirement: Score 0-2
+          * If client matches preferential requirement: Score 8-9
+          * If client doesn't match preferential requirement: Score 4-5
+          * If insufficient data to determine eligibility: Score 3-4 for exclusive, 6-7 for preferential
+
+        Your response must be valid JSON with this exact structure:
+        {
+          "overall_score": <number 0-10>,
+          "rubric_breakdown": [
+            {"dimension": "Topic relevance", "weight": 0.30, "raw_score": <0-10>, "notes": "<brief explanation>"},
+            {"dimension": "ICP alignment", "weight": 0.25, "raw_score": <0-10>, "notes": "<brief explanation>"},
+            {"dimension": "Guest eligibility", "weight": 0.20, "raw_score": <0-10>, "notes": "<brief explanation>"},
+            {"dimension": "CTA synergy", "weight": 0.15, "raw_score": <0-10>, "notes": "<brief explanation>"},
+            {"dimension": "Brand suitability", "weight": 0.10, "raw_score": <0-10>, "notes": "<brief explanation>"}
+          ],
+          "verdict": "recommend|consider|not_recommended",
+          "verdict_reason": "<one sentence>",
+          "why_fit_structured": [{"claim": "<claim>", "evidence": "<quote>", "interpretation": "<explanation>"}],
+          "why_not_fit_structured": [{"severity": "Critical|Major|Minor", "claim": "<claim>", "evidence": "<quote>", "interpretation": "<explanation>"}],
+          "risk_flags_structured": [{"severity": "Critical|Major|Minor", "flag": "<flag>", "mitigation": "<action>"}],
+          "recommended_talking_points": ["<point1>", "<point2>", "<point3>"],
+          "citations": ["<quote1>", "<quote2>"],
+          "confidence": <0-1>,
+          "confidence_label": "High|Med|Low",
+          "confidence_note": "<explanation>",
+          "what_would_change": ["<condition1>", "<condition2>"],
+          "summary_text": "<140-200 words>"
+        }`;
 
     const body = {
       model: "gpt-4.1-2025-04-14",
@@ -468,7 +859,8 @@ serve(async (req) => {
       try { json = await resp.json(); } catch {}
       if (!resp.ok) {
         const errMsg = json?.error?.message || resp.statusText || `status ${resp.status}`;
-        const data = { ...scoreGoalCentric(client, String(show_notes || "")), fallback_reason: `OpenAI API error: ${errMsg}` };
+        const data = await scoreGoalCentric(client, String(show_notes || ""));
+        data.fallback_reason = `OpenAI API error: ${errMsg}`;
         return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -484,7 +876,8 @@ serve(async (req) => {
         }
       }
       if (!data) {
-        const fb = { ...scoreGoalCentric(client, String(show_notes || "")), fallback_reason: "LLM returned invalid JSON" };
+        const fb = await scoreGoalCentric(client, String(show_notes || ""));
+        fb.fallback_reason = "LLM returned invalid JSON";
         return new Response(JSON.stringify({ success: true, data: fb }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -497,13 +890,14 @@ serve(async (req) => {
       const avoidCounts = avoids.map(a => ({ a, c: count(notesText, [a]) })).sort((x,y)=>y.c - x.c);
       const strongAvoidCentral = avoidCounts[0]?.c >= 2;
 
-      // Compute weighted mean from LLM rubric
+      // Compute weighted mean from LLM rubric with updated weights
       const rb: any[] = Array.isArray(data?.rubric_breakdown) ? data.rubric_breakdown : [];
       const topicRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('topic'))?.raw_score) || 0);
       const icpRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('icp'))?.raw_score) || 0);
+      const eligibilityRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('eligibility'))?.raw_score) || 0);
       const ctaRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('cta'))?.raw_score) || 0);
       const brandRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('brand'))?.raw_score) || 0);
-      const weighted_mean = topicRaw*0.41 + icpRaw*0.29 + ctaRaw*0.18 + brandRaw*0.12;
+      const weighted_mean = topicRaw*0.30 + icpRaw*0.25 + eligibilityRaw*0.20 + ctaRaw*0.15 + brandRaw*0.10;
 
       let adjusted = Number(data?.overall_score) || 0;
       const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
@@ -522,7 +916,7 @@ serve(async (req) => {
       };
 
       const payToPlayMatch = notesText.match(/(sponsored by|paid placement|advertorial|pay\s*to\s*play)/i);
-      const linkBanMatch = notesText.match(/(no\s+links|do\s+not\s+include\s+links|don['’]t\s+include\s+urls|no\s+urls)/i);
+      const linkBanMatch = notesText.match(/(no\s+links|do\s+not\s+include\s+links|don['']t\s+include\s+urls|no\s+urls)/i);
       const enterpriseVibe = /(enterprise|b2b|ciso|cio|governance|compliance|risk|security)/i.test(notesText);
       const consumerCue = /(giveaway|coupon|subscribe and save|lifestyle|beauty|fashion|fitness|cooking|parenting|celebrity|gossip)/i.test(notesText);
       const b2cMismatch = consumerCue && !enterpriseVibe;
@@ -555,8 +949,6 @@ serve(async (req) => {
       } else if (!conceptOverlap && topicRaw <= 5.0) {
         tryCap('zero_overlap', 'No relevant terms detected', 2.0);
       }
-
-      // Zero-overlap cap handled above (strict cap 2.0); no additional floors applied.
 
       // Calibration invariants
       const criticalCap = cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play' || cap_type === 'link_ban' || cap_type === 'b2c_mismatch' || cap_type === 'zero_overlap');
@@ -629,7 +1021,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, data: merged }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (e) {
       clearTimeout(t);
-      const data = { ...scoreGoalCentric(client, String(show_notes || "")), fallback_reason: (e as any)?.message || 'LLM call failed' };
+      const data = await scoreGoalCentric(client, String(show_notes || ""));
+      data.fallback_reason = (e as any)?.message || 'LLM call failed';
       return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   } catch (_e) {
