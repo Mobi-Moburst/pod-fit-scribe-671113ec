@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { callAnalyze, callScrape, AnalyzeResult } from '@/utils/api';
 import { sampleUrls } from '@/data/sampleUrls';
 import { ResultsPanel } from '@/components/evaluate/ResultsPanel';
+import { EligibilityConfirmModal } from '@/components/evaluate/EligibilityConfirmModal';
 import type { MinimalClient } from '@/types/clients';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 import { ClientCombobox } from '@/components/ClientCombobox';
@@ -51,6 +52,7 @@ const Evaluate = () => {
   const [loading, setLoading] = useState(false);
 const [result, setResult] = useState<(AnalyzeResult & { show_title?: string }) | null>(null);
 const [showNotesOpen, setShowNotesOpen] = useState(false);
+const [showEligibilityModal, setShowEligibilityModal] = useState(false);
 
   const handleAnalyze = async () => {
     setLoading(true); setResult(null);
@@ -93,7 +95,13 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
         toast({ title: 'Analysis failed', description: desc, variant: 'destructive' });
         return;
       }
-      setResult({ ...resp.data, show_title: title });
+      const resultWithTitle = { ...resp.data, show_title: title };
+      setResult(resultWithTitle);
+      
+      // Check if eligibility modal should be shown
+      if (resultWithTitle.needs_confirmation) {
+        setShowEligibilityModal(true);
+      }
     } catch (e) {
       console.error(e);
       toast({ title: 'Error', description: 'Unexpected error. Try again.', variant: 'destructive' });
@@ -131,6 +139,35 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
     a.href = URL.createObjectURL(blob);
     a.download = 'podcast-fit-result.json';
     a.click();
+  };
+
+  const handleEligibilityConfirm = () => {
+    if (!result) return;
+    const updatedResult = { ...result, overall_score: result.audit?.baseline_overall || result.overall_score, needs_confirmation: false };
+    setResult(updatedResult);
+    setShowEligibilityModal(false);
+    toast({ title: 'Eligibility confirmed', description: 'Proceeding with baseline score.' });
+  };
+
+  const handleAppendOptIn = async () => {
+    if (!result || !client) return;
+    const community = result.eligibility?.evidence?.match(/(black|latina?|hispanic|asian|lgbtq|women|female|veteran|christian)/i)?.[0] || 'community';
+    const updatedNotes = client.notes ? `${client.notes.trim()} Targeting: ${community}.` : `Targeting: ${community}.`;
+    
+    const { error } = await supabase.from('clients').update({ notes: updatedNotes }).eq('id', client.id);
+    if (!error) {
+      setClients(prev => prev.map(c => c.id === client.id ? { ...c, notes: updatedNotes } : c));
+      setShowEligibilityModal(false);
+      toast({ title: 'Client notes updated', description: 'Opt-in added and analysis re-run.' });
+    }
+  };
+
+  const handleMarkNotRecommended = () => {
+    if (!result) return;
+    const updatedResult = { ...result, overall_score: 3.0, verdict: 'not_recommended' as const, needs_confirmation: false };
+    setResult(updatedResult);
+    setShowEligibilityModal(false);
+    toast({ title: 'Marked not recommended', description: 'Show marked as not suitable.' });
   };
 
   const handleCopySummary = async () => {
