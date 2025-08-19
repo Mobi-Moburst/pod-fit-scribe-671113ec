@@ -425,8 +425,8 @@ function scoreGoalCentric(client: any, tokens: string[], guestRequirements: any,
   const targetKeywords = expandConcepts(client?.talking_points || []);
   const avoidKeywords = expandConcepts(client?.avoid || []);
   
-  const targetCounts = keywords(targetKeywords.strong, tokens).sort((a, b) => b.length - a.length);
-  const avoidCounts = keywords(avoidKeywords.strong, tokens).sort((a, b) => b.length - a.length);
+  const targetCounts = keywords(targetKeywords.strong.join(' ')).sort((a, b) => b.length - a.length);
+  const avoidCounts = keywords(avoidKeywords.strong.join(' ')).sort((a, b) => b.length - a.length);
   
   // Evidence and quotes
   const strongHits = findPositions(notes, targetKeywords.strong);
@@ -685,38 +685,90 @@ serve(async (req) => {
   }
 
   try {
-    const { client, show_notes } = await req.json();
+    console.log('=== ANALYZE FUNCTION START ===');
+    
+    let body;
+    try {
+      body = await req.json();
+      console.log('Request body parsed successfully');
+    } catch (e) {
+      console.error('Failed to parse request body:', e.message);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { client, show_notes } = body;
+    console.log('Client:', client ? 'present' : 'missing');
+    console.log('Show notes length:', show_notes ? show_notes.length : 0);
     
     if (!client || !show_notes) {
+      console.error('Missing required fields - client:', !!client, 'show_notes:', !!show_notes);
       return new Response(
         JSON.stringify({ success: false, error: 'Missing client or show_notes' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Tokenize show notes
-    const tokens = tokenize(show_notes);
+    console.log('=== STEP 1: Tokenizing show notes ===');
+    let tokens;
+    try {
+      tokens = tokenize(show_notes);
+      console.log('Tokenization complete - token count:', tokens.length);
+    } catch (e) {
+      console.error('Tokenization failed:', e.message);
+      throw new Error(`Tokenization failed: ${e.message}`);
+    }
     
-    // Enrich client data from media kit
-    const enrichedData = await enrichClientData(client.media_kit_url || '');
+    console.log('=== STEP 2: Enriching client data ===');
+    let enrichedData;
+    try {
+      enrichedData = await enrichClientData(client.media_kit_url || '');
+      console.log('Client data enrichment complete');
+    } catch (e) {
+      console.error('Client enrichment failed:', e.message);
+      // Continue with empty enriched data
+      enrichedData = {};
+    }
     
-    // Detect guest requirements from show notes
-    const guestRequirements = detectGuestRequirements(show_notes);
+    console.log('=== STEP 3: Detecting guest requirements ===');
+    let guestRequirements;
+    try {
+      guestRequirements = detectGuestRequirements(show_notes);
+      console.log('Guest requirements detected:', guestRequirements.class, guestRequirements.type);
+    } catch (e) {
+      console.error('Guest requirements detection failed:', e.message);
+      throw new Error(`Guest requirements detection failed: ${e.message}`);
+    }
     
-    // Score using goal-centric approach
-    const result = scoreGoalCentric(client, tokens, guestRequirements, enrichedData);
+    console.log('=== STEP 4: Goal-centric scoring ===');
+    let result;
+    try {
+      result = scoreGoalCentric(client, tokens, guestRequirements, enrichedData);
+      console.log('Scoring complete - overall score:', result.overall_score);
+    } catch (e) {
+      console.error('Scoring failed:', e.message, e.stack);
+      throw new Error(`Scoring failed: ${e.message}`);
+    }
     
+    console.log('=== ANALYSIS COMPLETE ===');
     return new Response(
       JSON.stringify({ success: true, data: result }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Analysis error:', error);
+    console.error('=== CRITICAL ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error name:', error.name);
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: 'Analysis failed', 
-        raw: error.message 
+        message: error.message,
+        stack: error.stack
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
