@@ -32,29 +32,14 @@ export interface AnalyzeResult {
 
   // Caps and calibration (new)
   cap_reason?: string;
-  cap_type?: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'eligibility' | 'none';
-  
-  // Eligibility gate (new)
-  eligibility?: {
-    class: 'exclusive' | 'effective' | 'preferential' | 'none';
-    evidence: string;
-    action: 'manual_confirm' | 'note_appended' | 'blocked' | 'proceeded' | 'conditional';
-    cap_to?: number;
-    needs_confirmation?: boolean;
-  };
-  
+  cap_type?: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none';
   audit?: {
-    baseline_overall: number;
-    final_overall: number;
     weighted_mean: number;
     adjustments: { genericness: number; multi_concept: number; cadence: number };
     cap_applied: boolean;
-    cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'eligibility' | 'none';
+    cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none';
     cap_evidence: string;
   };
-  
-  // Modal control
-  needs_confirmation?: boolean;
 }
 
 export async function callScrape(url: string) {
