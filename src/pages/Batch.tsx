@@ -101,7 +101,7 @@ const Batch = () => {
     try {
       setCsvFile(file);
       const data = await parseCSV(file);
-      const preflight = validateAndDedupeUrls(data);
+      const preflight = await validateAndDedupeUrls(data);
       setPreflightResult(preflight);
       
       // Convert to batch rows
