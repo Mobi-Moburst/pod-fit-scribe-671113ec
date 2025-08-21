@@ -12,7 +12,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ClientCombobox } from '@/components/ClientCombobox';
 import { ResultsTable } from '@/components/batch/ResultsTable';
 import { EvaluationPanel } from '@/components/batch/EvaluationPanel';
-import { getClients } from '@/data/clientStore';
+import { supabase } from '@/integrations/supabase/client';
+import { MinimalClient } from '@/types/clients';
 import { BatchRow, BatchState, PreflightResult } from '@/types/batch';
 import { 
   parseCSV, 
@@ -20,7 +21,7 @@ import {
   processSingleUrl, 
   exportToCSV 
 } from '@/utils/batchProcessor';
-import { Upload, AlertTriangle, CheckCircle, Download, Filter } from 'lucide-react';
+import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const CONCURRENT_LIMIT = 8;
@@ -29,11 +30,52 @@ const ROWS_PER_PAGE = 25;
 const Batch = () => {
   useEffect(() => { document.title = 'Batch — Podcast Fit Rater'; }, []);
   
-  const [clients] = useState(getClients());
+  const [clients, setClients] = useState<MinimalClient[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
   const [selectedRow, setSelectedRow] = useState<BatchRow | null>(null);
   const { toast } = useToast();
+
+  // Load clients from Supabase
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        setClientsLoading(true);
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        const mappedClients: MinimalClient[] = (data || []).map(client => ({
+          id: client.id,
+          name: client.name,
+          company: client.company || undefined,
+          media_kit_url: client.media_kit_url,
+          target_audiences: client.target_audiences || [],
+          talking_points: client.talking_points || [],
+          avoid: client.avoid || [],
+          notes: client.notes || undefined,
+          campaign_manager: client.campaign_manager || undefined,
+          campaign_strategy: client.campaign_strategy
+        }));
+        
+        setClients(mappedClients);
+      } catch (error) {
+        console.error('Failed to load clients:', error);
+        toast({
+          description: 'Failed to load clients. Please refresh the page.',
+          variant: 'destructive'
+        });
+      } finally {
+        setClientsLoading(false);
+      }
+    };
+
+    loadClients();
+  }, [toast]);
   
   const [state, setState] = useState<BatchState>({
     client_id: null,
@@ -264,12 +306,19 @@ const Batch = () => {
                 {/* Client Selection */}
                 <div className="space-y-2">
                   <Label>Select Client</Label>
-                  <ClientCombobox
-                    clients={clients}
-                    value={state.client_id || ''}
-                    onChange={(clientId) => setState(prev => ({ ...prev, client_id: clientId }))}
-                    placeholder="Choose a client for evaluation..."
-                  />
+                  {clientsLoading ? (
+                    <div className="flex items-center gap-2 p-2 border rounded">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-muted-foreground">Loading clients...</span>
+                    </div>
+                  ) : (
+                    <ClientCombobox
+                      clients={clients}
+                      value={state.client_id || ''}
+                      onChange={(clientId) => setState(prev => ({ ...prev, client_id: clientId }))}
+                      placeholder="Choose a client for evaluation..."
+                    />
+                  )}
                 </div>
                 
                 {/* CSV Upload */}
@@ -280,11 +329,11 @@ const Batch = () => {
                       type="file"
                       accept=".csv"
                       onChange={handleFileUpload}
-                      disabled={!state.client_id}
+                      disabled={!state.client_id || clientsLoading}
                     />
                     <Button
                       onClick={startProcessing}
-                      disabled={!state.client_id || state.rows.length === 0 || state.processing}
+                      disabled={!state.client_id || state.rows.length === 0 || state.processing || clientsLoading}
                       className="shrink-0"
                     >
                       {state.processing ? 'Processing...' : 'Start'}
