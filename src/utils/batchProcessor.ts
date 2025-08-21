@@ -1,47 +1,10 @@
 import { BatchRow, PreflightResult } from '@/types/batch';
 import { callScrape, callAnalyze, AnalyzeResult } from '@/utils/api';
 import { MinimalClient } from '@/types/clients';
-import { supabase } from '@/integrations/supabase/client';
 import Papa from 'papaparse';
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 const CACHE_KEY_PREFIX = 'pfr_batch_cache_';
-
-// ===== URL CONVERSION =====
-
-export async function convertListenNotesToApple(url: string): Promise<string> {
-  try {
-    // If it's already an Apple Podcast URL, return as-is
-    if (url.includes('podcasts.apple.com')) {
-      return url;
-    }
-    
-    // If it's not a ListenNotes URL, return as-is
-    if (!url.includes('listennotes.com')) {
-      return url;
-    }
-
-    const { data, error } = await supabase.functions.invoke('convert-podcast-url', {
-      body: { url }
-    });
-
-    if (error) {
-      console.warn('URL conversion failed:', error);
-      return url; // Return original URL if conversion fails
-    }
-
-    if (data.success && data.apple_podcast_url) {
-      console.log(`Converted: ${url} -> ${data.apple_podcast_url}`);
-      return data.apple_podcast_url;
-    } else {
-      console.warn('URL conversion unsuccessful:', data.error);
-      return url; // Return original URL if conversion fails
-    }
-  } catch (error) {
-    console.warn('URL conversion error:', error);
-    return url; // Return original URL if conversion fails
-  }
-}
 
 // URL validation and normalization
 export function normalizeUrl(url: string): string {
@@ -74,28 +37,21 @@ export function createUrlHash(url: string): string {
   return Math.abs(hash).toString(36).substring(0, 16);
 }
 
-// Pre-flight validation with URL conversion
-export async function validateAndDedupeUrls(csvData: any[]): Promise<PreflightResult> {
+// Pre-flight validation
+export function validateAndDedupeUrls(csvData: any[]): PreflightResult {
   const urlCounts = new Map<string, number>();
   const validUrls: string[] = [];
   const invalidUrls: { url: string; reason: string }[] = [];
-  const conversions: { original: string; converted: string }[] = [];
   
-  for (const row of csvData) {
+  csvData.forEach(row => {
     const url = row.podcast_url || row.url || '';
-    if (!url) continue;
+    if (!url) return;
     
-    // Convert ListenNotes URLs to Apple Podcast URLs
-    const convertedUrl = await convertListenNotesToApple(url);
-    if (convertedUrl !== url) {
-      conversions.push({ original: url, converted: convertedUrl });
-    }
-    
-    const normalized = normalizeUrl(convertedUrl);
+    const normalized = normalizeUrl(url);
     
     if (!isValidUrl(normalized)) {
       invalidUrls.push({ url, reason: 'Invalid URL format' });
-      continue;
+      return;
     }
     
     const count = urlCounts.get(normalized) || 0;
@@ -104,15 +60,11 @@ export async function validateAndDedupeUrls(csvData: any[]): Promise<PreflightRe
     if (count === 0) {
       validUrls.push(normalized);
     }
-  }
+  });
   
   const duplicates = Array.from(urlCounts.entries())
     .filter(([_, count]) => count > 1)
     .map(([url, count]) => ({ url, count }));
-  
-  if (conversions.length > 0) {
-    console.log(`Converted ${conversions.length} ListenNotes URLs to Apple Podcast URLs`);
-  }
   
   return {
     valid_urls: validUrls,
@@ -161,20 +113,14 @@ export async function processSingleUrl(
   forceRefresh = false
 ): Promise<BatchRow> {
   try {
-    // Convert URL if needed
-    const convertedUrl = await convertListenNotesToApple(row.podcast_url);
-    const normalizedUrl = normalizeUrl(convertedUrl);
-    const urlHash = createUrlHash(normalizedUrl);
-    
-    // Update row with converted URL
-    const updatedRow = { ...row, podcast_url: normalizedUrl };
+    const urlHash = createUrlHash(row.podcast_url);
     
     // Check cache first
     if (!forceRefresh) {
       const cached = getCachedResult(urlHash);
       if (cached) {
         return {
-          ...updatedRow,
+          ...row,
           status: 'success',
           url_hash: urlHash,
           cache_timestamp: Date.now(),
@@ -184,12 +130,12 @@ export async function processSingleUrl(
     }
     
     // Scrape content
-    const scrapeResult = await callScrape(normalizedUrl);
+    const scrapeResult = await callScrape(row.podcast_url);
     if (!scrapeResult || scrapeResult.error) {
       throw new Error(scrapeResult?.error || 'Failed to scrape content');
     }
     
-    const showNotes = scrapeResult.show_notes || updatedRow.show_notes_fallback || '';
+    const showNotes = scrapeResult.show_notes || row.show_notes_fallback || '';
     if (!showNotes) {
       throw new Error('No content found');
     }
@@ -204,7 +150,7 @@ export async function processSingleUrl(
     
     // Map to batch row format
     const result = {
-      ...updatedRow,
+      ...row,
       status: 'success' as const,
       url_hash: urlHash,
       cache_timestamp: Date.now(),
@@ -234,10 +180,8 @@ export async function processSingleUrl(
     
     return result;
   } catch (error) {
-    const convertedUrl = await convertListenNotesToApple(row.podcast_url);
     return {
       ...row,
-      podcast_url: normalizeUrl(convertedUrl),
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error'
     };
