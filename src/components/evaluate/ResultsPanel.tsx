@@ -70,6 +70,22 @@ export const ResultsPanel = ({
                 <Badge variant="secondary">{result.confidence_label}</Badge>
               )}
             </div>
+            {(result as any).last_publish_date && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-muted-foreground">
+                  Published: {new Date((result as any).last_publish_date).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </span>
+                {(() => {
+                  const publishDate = new Date((result as any).last_publish_date);
+                  const daysSince = (Date.now() - publishDate.getTime()) / (1000 * 60 * 60 * 24);
+                  return daysSince > 90 ? <Badge variant="outline">Stale (&gt;90d)</Badge> : null;
+                })()}
+              </div>
+            )}
             <p className="text-sm text-muted-foreground">Goal-centric fit using concept sets and near matches.</p>
             {result.scored_by !== 'ai' && result.fallback_reason && (
               <div className="mt-1">

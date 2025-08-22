@@ -32,6 +32,59 @@ function extractJSONLD(content: string): any[] {
   return out.flat();
 }
 
+function extractPublishDate(content: string, jsonld: any[]): string | undefined {
+  // Try JSON-LD first (highest priority)
+  for (const j of jsonld) {
+    const checkDate = (obj: any): string | undefined => {
+      if (obj?.datePublished) return obj.datePublished;
+      if (obj?.publishDate) return obj.publishDate;
+      if (obj?.pubDate) return obj.pubDate;
+      return undefined;
+    };
+    
+    const date = checkDate(j);
+    if (date) return date;
+    
+    // Check if it's an array
+    if (Array.isArray(j)) {
+      for (const item of j) {
+        const date = checkDate(item);
+        if (date) return date;
+      }
+    }
+    
+    // Check for podcast-specific types
+    const jType = j?.['@type'];
+    if (jType && (jType === 'PodcastEpisode' || jType === 'PodcastSeries')) {
+      const date = checkDate(j);
+      if (date) return date;
+    }
+  }
+  
+  // Try meta tags (medium priority)
+  const metaPatterns = [
+    'article:published_time',
+    'pubdate',
+    'DC.date',
+    'date'
+  ];
+  
+  for (const pattern of metaPatterns) {
+    const date = extractMeta(content, pattern, 'property') || extractMeta(content, pattern, 'name');
+    if (date) return date;
+  }
+  
+  // Try RSS pubDate in content (lower priority)
+  const rssMatch = content.match(/<pubDate[^>]*>([^<]+)<\/pubDate>/i);
+  if (rssMatch) return rssMatch[1];
+  
+  // Try lastBuildDate
+  const buildMatch = content.match(/<lastBuildDate[^>]*>([^<]+)<\/lastBuildDate>/i);
+  if (buildMatch) return buildMatch[1];
+  
+  return undefined;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: { 
@@ -73,10 +126,13 @@ serve(async (req) => {
       }
     }
 
+    // Extract publish date
+    const publishDate = extractPublishDate(html, jsonld);
+
     // Combine candidates
     const text = stripTags([ldDesc, ogDesc].filter(Boolean).join(' \n ')) || stripTags(html).slice(0, 20000);
 
-    return new Response(JSON.stringify({ success: true, title, show_notes: text, length: text.length }), {
+    return new Response(JSON.stringify({ success: true, title, show_notes: text, publish_date: publishDate, length: text.length }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' },
     });
   } catch (e) {

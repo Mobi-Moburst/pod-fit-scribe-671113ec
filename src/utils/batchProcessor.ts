@@ -206,9 +206,18 @@ function mapVerdict(verdict?: string): 'Fit' | 'Consider' | 'Not' {
 }
 
 function extractPublishDate(scrapeResult: any): string | undefined {
-  // Try to extract publish date from scraped content
-  // This is a placeholder - would need more sophisticated extraction
-  return undefined;
+  if (!scrapeResult?.publish_date) return undefined;
+  
+  try {
+    // Parse and validate the date
+    const date = new Date(scrapeResult.publish_date);
+    if (isNaN(date.getTime())) return undefined;
+    
+    // Return ISO format for consistency
+    return date.toISOString();
+  } catch {
+    return undefined;
+  }
 }
 
 function createShortRationale(data: AnalyzeResult): string {
