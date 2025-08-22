@@ -86,10 +86,35 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
       }
 
       const resp = await callAnalyze({ client, show_notes: notes });
-      if (!resp.success || !resp.data) {
+      if (!resp.success) {
+        // Handle specific timeout and API errors with retry options
+        if (resp.error === 'timeout') {
+          toast({
+            title: 'Analysis timed out',
+            description: 'AI analysis took too long. Click Analyze again to retry.',
+            variant: 'destructive'
+          });
+          return;
+        } else if (resp.error === 'rate_limit') {
+          toast({
+            title: 'Rate limit reached',
+            description: 'API limit reached. Try again in a few minutes.',
+            variant: 'destructive'
+          });
+          return;
+        } else if (resp.error === 'missing_api_key') {
+          toast({
+            title: 'Missing API key',
+            description: 'Add your OpenAI API key in Supabase Edge Function secrets.',
+            variant: 'destructive'
+          });
+          return;
+        }
+        
+        // Generic error handling
         const rawStr = resp.raw ? String(resp.raw) : '';
         const snippet = rawStr ? rawStr.slice(0, 200) + (rawStr.length > 200 ? '…' : '') : '';
-        const desc = resp.error ? `${resp.error}${snippet ? ' — ' + snippet : ''}` : 'Add your OpenAI key in Supabase Edge Function secrets.';
+        const desc = resp.error ? `${resp.error}${snippet ? ' — ' + snippet : ''}` : 'Analysis failed. Please try again.';
         toast({ title: 'Analysis failed', description: desc, variant: 'destructive' });
         return;
       }

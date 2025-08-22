@@ -142,8 +142,15 @@ export async function processSingleUrl(
     
     // Analyze content
     const analyzeResult = await callAnalyze({ client, show_notes: showNotes });
-    if (!analyzeResult.success || !analyzeResult.data) {
+    if (!analyzeResult.success) {
+      // Mark timeout errors as retryable
+      if (analyzeResult.error === 'timeout') {
+        throw new Error('Analysis timed out - retry available');
+      }
       throw new Error(analyzeResult.error || 'Analysis failed');
+    }
+    if (!analyzeResult.data) {
+      throw new Error('No analysis data returned');
     }
     
     const data = analyzeResult.data as AnalyzeResult;

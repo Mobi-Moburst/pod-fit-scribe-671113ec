@@ -770,7 +770,7 @@ serve(async (req) => {
     if (!OPENAI_API_KEY || !OPENAI_API_KEY.trim()) {
       const data = await scoreGoalCentric(client, String(show_notes || ""));
       data.fallback_reason = "Missing OPENAI_API_KEY";
-      return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "missing_api_key", fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Build goal-centric prompt with updated weights
@@ -861,7 +861,8 @@ serve(async (req) => {
         const errMsg = json?.error?.message || resp.statusText || `status ${resp.status}`;
         const data = await scoreGoalCentric(client, String(show_notes || ""));
         data.fallback_reason = `OpenAI API error: ${errMsg}`;
-        return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const errorType = resp.status === 429 ? "rate_limit" : "api_error";
+        return new Response(JSON.stringify({ success: false, error: errorType, fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const text = json?.choices?.[0]?.message?.content || "";
@@ -878,7 +879,7 @@ serve(async (req) => {
       if (!data) {
         const fb = await scoreGoalCentric(client, String(show_notes || ""));
         fb.fallback_reason = "LLM returned invalid JSON";
-        return new Response(JSON.stringify({ success: true, data: fb }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: false, error: "invalid_json", fallback_data: fb }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // Post-process AI result: enforce caps/floors, attach adjustments, ensure summary consistency
@@ -1022,8 +1023,10 @@ serve(async (req) => {
     } catch (e) {
       clearTimeout(t);
       const data = await scoreGoalCentric(client, String(show_notes || ""));
-      data.fallback_reason = (e as any)?.message || 'LLM call failed';
-      return new Response(JSON.stringify({ success: true, data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const errorMsg = (e as any)?.message || 'LLM call failed';
+      data.fallback_reason = errorMsg;
+      const errorType = errorMsg.includes('aborted') || errorMsg.includes('timeout') ? "timeout" : "network_error";
+      return new Response(JSON.stringify({ success: false, error: errorType, fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   } catch (_e) {
     return new Response(
