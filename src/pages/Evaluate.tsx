@@ -49,14 +49,15 @@ const Evaluate = () => {
   }, []);
 
   const [loading, setLoading] = useState(false);
-const [result, setResult] = useState<(AnalyzeResult & { show_title?: string }) | null>(null);
+const [result, setResult] = useState<(AnalyzeResult & { show_title?: string; last_publish_date?: string }) | null>(null);
 const [showNotesOpen, setShowNotesOpen] = useState(false);
 
-  const handleAnalyze = async () => {
+   const handleAnalyze = async () => {
     setLoading(true); setResult(null);
     try {
       let notes = paste.trim();
       let title: string | undefined;
+      let publishDate: string | undefined;
       const isAllowedPodcastUrl = (u: string) => /^(https?:\/\/)?(podcasts\.apple\.com|open\.spotify\.com)\//i.test(u);
       if (!notes) {
         if (!url) {
@@ -74,6 +75,7 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
         }
         notes = s.show_notes as string;
         title = s.title;
+        publishDate = s.publish_date;
         // Warn if the scraped content looks like bot-protection or a captcha page
         if (/(captcha|are you a robot|verify you(?:'|’)re a human|access denied|cloudflare|just a moment|attention required)/i.test(notes)) {
           toast({ title: 'Site blocked scraping', description: 'Try pasting notes manually or use Apple/Spotify/ListenNotes.', variant: 'default' });
@@ -118,7 +120,7 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
         toast({ title: 'Analysis failed', description: desc, variant: 'destructive' });
         return;
       }
-      setResult({ ...resp.data, show_title: title });
+      setResult({ ...resp.data, show_title: title, last_publish_date: publishDate });
     } catch (e) {
       console.error(e);
       toast({ title: 'Error', description: 'Unexpected error. Try again.', variant: 'destructive' });
