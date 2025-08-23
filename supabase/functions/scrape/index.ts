@@ -33,31 +33,101 @@ function extractJSONLD(content: string): any[] {
 }
 
 function extractPublishDate(content: string, jsonld: any[]): string | undefined {
-  // Try JSON-LD first (highest priority)
+  // Helper to extract date from object
+  const checkDate = (obj: any): string | undefined => {
+    if (obj?.datePublished) return obj.datePublished;
+    if (obj?.publishDate) return obj.publishDate;
+    if (obj?.pubDate) return obj.pubDate;
+    return undefined;
+  };
+
+  // Helper to find most recent date from array
+  const findLatestDate = (dates: string[]): string | undefined => {
+    if (dates.length === 0) return undefined;
+    return dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+  };
+
+  // Try JSON-LD first - Enhanced for show pages
+  const foundDates: string[] = [];
+  
   for (const j of jsonld) {
-    const checkDate = (obj: any): string | undefined => {
-      if (obj?.datePublished) return obj.datePublished;
-      if (obj?.publishDate) return obj.publishDate;
-      if (obj?.pubDate) return obj.pubDate;
-      return undefined;
-    };
+    const jType = j?.['@type'];
     
-    const date = checkDate(j);
-    if (date) return date;
-    
-    // Check if it's an array
-    if (Array.isArray(j)) {
-      for (const item of j) {
-        const date = checkDate(item);
-        if (date) return date;
+    // Handle PodcastSeries with episode collections
+    if (jType === 'PodcastSeries' && j?.episode) {
+      const episodes = Array.isArray(j.episode) ? j.episode : [j.episode];
+      for (const ep of episodes) {
+        const date = checkDate(ep);
+        if (date) foundDates.push(date);
       }
     }
     
-    // Check for podcast-specific types
-    const jType = j?.['@type'];
-    if (jType && (jType === 'PodcastEpisode' || jType === 'PodcastSeries')) {
-      const date = checkDate(j);
-      if (date) return date;
+    // Handle individual episodes or direct dates
+    const date = checkDate(j);
+    if (date) foundDates.push(date);
+    
+    // Check if it's an array of episodes
+    if (Array.isArray(j)) {
+      for (const item of j) {
+        const itemDate = checkDate(item);
+        if (itemDate) foundDates.push(itemDate);
+        
+        // Check nested episode arrays
+        if (item?.episode) {
+          const episodes = Array.isArray(item.episode) ? item.episode : [item.episode];
+          for (const ep of episodes) {
+            const epDate = checkDate(ep);
+            if (epDate) foundDates.push(epDate);
+          }
+        }
+      }
+    }
+    
+    // Handle nested episode data structures
+    if (j?.hasEpisode || j?.episodes) {
+      const episodes = j.hasEpisode || j.episodes;
+      const episodeArray = Array.isArray(episodes) ? episodes : [episodes];
+      for (const ep of episodeArray) {
+        const date = checkDate(ep);
+        if (date) foundDates.push(date);
+      }
+    }
+  }
+  
+  // Return most recent date from JSON-LD if found
+  if (foundDates.length > 0) {
+    return findLatestDate(foundDates);
+  }
+  
+  // Try Apple Podcasts specific patterns
+  const applePodcastsPatterns = [
+    /<time[^>]+datetime="([^"]+)"/gi,
+    /"datePublished":"([^"]+)"/gi,
+    /"releaseDate":"([^"]+)"/gi
+  ];
+  
+  for (const pattern of applePodcastsPatterns) {
+    const matches = [...content.matchAll(pattern)];
+    if (matches.length > 0) {
+      const dates = matches.map(m => m[1]).filter(Boolean);
+      const latest = findLatestDate(dates);
+      if (latest) return latest;
+    }
+  }
+  
+  // Try Spotify specific patterns
+  const spotifyPatterns = [
+    /"publishedAt":"([^"]+)"/gi,
+    /"releaseDate":\s*"([^"]+)"/gi,
+    /"date":"([^"]+)"/gi
+  ];
+  
+  for (const pattern of spotifyPatterns) {
+    const matches = [...content.matchAll(pattern)];
+    if (matches.length > 0) {
+      const dates = matches.map(m => m[1]).filter(Boolean);
+      const latest = findLatestDate(dates);
+      if (latest) return latest;
     }
   }
   
@@ -71,18 +141,34 @@ function extractPublishDate(content: string, jsonld: any[]): string | undefined 
   
   for (const pattern of metaPatterns) {
     const date = extractMeta(content, pattern, 'property') || extractMeta(content, pattern, 'name');
-    if (date) return date;
+    if (date) foundDates.push(date);
   }
   
-  // Try RSS pubDate in content (lower priority)
+  // Try RSS pubDate in content
   const rssMatch = content.match(/<pubDate[^>]*>([^<]+)<\/pubDate>/i);
-  if (rssMatch) return rssMatch[1];
+  if (rssMatch) foundDates.push(rssMatch[1]);
   
   // Try lastBuildDate
   const buildMatch = content.match(/<lastBuildDate[^>]*>([^<]+)<\/lastBuildDate>/i);
-  if (buildMatch) return buildMatch[1];
+  if (buildMatch) foundDates.push(buildMatch[1]);
   
-  return undefined;
+  // Fallback: Look for recent date patterns in content
+  const datePatterns = [
+    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+202[3-9]\b/gi,
+    /\b202[3-9]-\d{2}-\d{2}\b/g,
+    /\b\d{1,2}\/\d{1,2}\/202[3-9]\b/g
+  ];
+  
+  for (const pattern of datePatterns) {
+    const matches = [...content.matchAll(pattern)];
+    if (matches.length > 0) {
+      const dates = matches.map(m => m[0]).filter(Boolean);
+      const latest = findLatestDate(dates);
+      if (latest) foundDates.push(latest);
+    }
+  }
+  
+  return foundDates.length > 0 ? findLatestDate(foundDates) : undefined;
 }
 
 serve(async (req) => {
