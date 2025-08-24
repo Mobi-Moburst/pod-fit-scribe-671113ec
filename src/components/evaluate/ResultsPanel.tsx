@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScoreBadge } from "./ScoreBadge";
+import { DateCard } from "./DateCard";
 
 export const ResultsPanel = ({
   result,
@@ -55,10 +56,13 @@ export const ResultsPanel = ({
 
   return (
     <section className="mt-6 grid gap-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
           <ScoreBadge score={overall_score} />
-          <div>
+          {(result as any).last_publish_date && (
+            <DateCard publishDate={(result as any).last_publish_date} />
+          )}
+          <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-semibold">{show_title || 'Analysis Result'}</h2>
               {verdictLabel && <Badge variant={verdictVariant}>{`Verdict: ${verdictLabel}`}</Badge>}
@@ -70,23 +74,7 @@ export const ResultsPanel = ({
                 <Badge variant="secondary">{result.confidence_label}</Badge>
               )}
             </div>
-            {(result as any).last_publish_date && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-muted-foreground">
-                  Published: {new Date((result as any).last_publish_date).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}
-                </span>
-                {(() => {
-                  const publishDate = new Date((result as any).last_publish_date);
-                  const daysSince = (Date.now() - publishDate.getTime()) / (1000 * 60 * 60 * 24);
-                  return daysSince > 90 ? <Badge variant="outline">Stale (&gt;90d)</Badge> : null;
-                })()}
-              </div>
-            )}
-            <p className="text-sm text-muted-foreground">Goal-centric fit using concept sets and near matches.</p>
+            <p className="text-sm text-muted-foreground mt-2">Goal-centric fit using concept sets and near matches.</p>
             {result.scored_by !== 'ai' && result.fallback_reason && (
               <div className="mt-1">
                 <Badge variant="outline">LLM unavailable: {result.fallback_reason}</Badge>
