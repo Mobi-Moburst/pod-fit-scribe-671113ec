@@ -59,9 +59,6 @@ export const ResultsPanel = ({
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <ScoreBadge score={overall_score} />
-          {(result as any).last_publish_date && (
-            <DateCard publishDate={(result as any).last_publish_date} />
-          )}
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-semibold">{show_title || 'Analysis Result'}</h2>
@@ -102,7 +99,7 @@ export const ResultsPanel = ({
       </div>
 
       {/* Rubric */}
-      <div className="grid md:grid-cols-5 gap-4">
+      <div className="grid md:grid-cols-6 gap-4">
         {rubric_breakdown
           .filter((r) => !/recency|consistency/i.test(r.dimension))
           .map((r) => (
@@ -112,6 +109,9 @@ export const ResultsPanel = ({
               <p className="text-sm mt-2">{r.notes}</p>
             </Card>
           ))}
+        {(result as any).last_publish_date && (
+          <DateCard publishDate={(result as any).last_publish_date} />
+        )}
       </div>
 
       {/* Fit vs Gaps */}
