@@ -70,34 +70,34 @@ export const ResultsPanel = ({
               {result.confidence_label && (
                 <Badge variant="secondary">{result.confidence_label}</Badge>
               )}
+              {(result as any).last_publish_date && (() => {
+                const date = new Date((result as any).last_publish_date);
+                const daysSince = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
+                const isStale = daysSince > 90;
+                const formatRelativeTime = (days: number) => {
+                  if (days < 1) return "Today";
+                  if (days < 2) return "Yesterday";
+                  if (days < 7) return `${Math.floor(days)} days ago`;
+                  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+                  if (days < 365) return `${Math.floor(days / 30)} months ago`;
+                  return `${Math.floor(days / 365)} years ago`;
+                };
+                return (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    {isStale ? (
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    ) : (
+                      <Calendar className="w-4 h-4" />
+                    )}
+                    <span>
+                      Published {date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} 
+                      ({formatRelativeTime(daysSince)})
+                      {isStale && <span className="text-amber-600 ml-1">- Stale content ({Math.floor(daysSince)}d)</span>}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
-            {(result as any).last_publish_date && (() => {
-              const date = new Date((result as any).last_publish_date);
-              const daysSince = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
-              const isStale = daysSince > 90;
-              const formatRelativeTime = (days: number) => {
-                if (days < 1) return "Today";
-                if (days < 2) return "Yesterday";
-                if (days < 7) return `${Math.floor(days)} days ago`;
-                if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-                if (days < 365) return `${Math.floor(days / 30)} months ago`;
-                return `${Math.floor(days / 365)} years ago`;
-              };
-              return (
-                <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                  {isStale ? (
-                    <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  ) : (
-                    <Calendar className="w-4 h-4" />
-                  )}
-                  <span>
-                    Published {date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} 
-                    ({formatRelativeTime(daysSince)})
-                    {isStale && <span className="text-amber-600 ml-1">- Stale content ({Math.floor(daysSince)}d)</span>}
-                  </span>
-                </div>
-              );
-            })()}
             <p className="text-sm text-muted-foreground mt-2">Goal-centric fit using concept sets and near matches.</p>
             {result.scored_by !== 'ai' && result.fallback_reason && (
               <div className="mt-1">
