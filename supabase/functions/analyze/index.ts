@@ -828,9 +828,9 @@ serve(async (req) => {
           "citations": ["<quote1>", "<quote2>"],
           "confidence": <0-1>,
           "confidence_label": "High|Med|Low",
-           "confidence_note": "<explanation>",
-           "what_would_change": ["<condition1>", "<condition2>"],
-           "summary_text": "<Create a 140-200 word insightful analysis paragraph that specifically explains THIS podcast's unique value proposition for THIS client's campaign. Focus on concrete audience insights, specific content alignment opportunities, and tangible business impact. Avoid generic templates. Highlight what makes this particular show valuable (or not) for their specific goals, audience, and messaging strategy. Include specific evidence from the episode content and explain how it maps to their campaign objectives.>"
+          "confidence_note": "<explanation>",
+          "what_would_change": ["<condition1>", "<condition2>"],
+          "summary_text": "<140-200 words>"
         }`;
 
     const body = {
