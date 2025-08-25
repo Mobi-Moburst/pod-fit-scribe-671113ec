@@ -169,78 +169,73 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
       .trim()
       .replace(/[\s]*[.,;:!?]+$/, '');
 
-    const verdictWord = result.verdict === 'recommend' ? 'Fit' : result.verdict === 'consider' ? 'Consider' : 'Not a fit';
     const clientName = (client?.name || 'the client').trim();
     const showName = (result.show_title || 'this show').trim();
 
-    // Audience-first: prefer model-derived segments, fallback to client targets
-    const inferredSegments = (result as any).audience_segments as string[] | undefined;
-    const targetSegs = client?.target_audiences || [];
-    const segs = (inferredSegments && inferredSegments.length ? inferredSegments : targetSegs).map(clean).filter(Boolean).slice(0, 2);
-    const audiencePhrase = segs.length ? segs.join(' and ') : 'relevant decision makers';
+    // Use AI-generated summary as the main content when available
+    let mainSummary = result.summary_text || '';
 
-    // Campaign themes / topics
-    const pitchTopics = (result.recommended_talking_points || (result as any).talking_points_to_pitch || []).map(clean).filter(Boolean);
-    const themeClaims = (result.why_fit_structured || []).map(i => clean(i.claim)).filter(Boolean);
-    const topicItems = (themeClaims.length ? themeClaims : pitchTopics).slice(0, 2);
-    const themes = topicItems.length === 2 ? `${topicItems[0]} and ${topicItems[1]}` : (topicItems[0] || 'practical themes that support the campaign');
-
-    // Risks: include only material (Critical) if present
-    const criticalRiskRaw = (result.risk_flags_structured || []).find(r => r.severity === 'Critical')?.flag || '';
-    const criticalRisk = clean(criticalRiskRaw).toLowerCase();
-
-    // Next step depends on verdict
-    const pitchAngle = clean(pitchTopics[0] || topicItems[0] || '');
-    let nextStep = '';
-    if (result.verdict === 'recommend') {
-      nextStep = pitchAngle ? `Pitch ${pitchAngle.toLowerCase()} tailored to the audience.` : 'Pitch a focused, actionable education angle.';
-    } else if (result.verdict === 'consider') {
-      nextStep = 'Confirm audience composition with the host, then proceed.';
-    } else {
-      nextStep = 'Suggest an adjacent show with stronger role alignment.';
+    // If no AI summary or it's too generic/short, create a fallback
+    if (!mainSummary || mainSummary.length < 80) {
+      const verdictWord = result.verdict === 'recommend' ? 'Recommend' : result.verdict === 'consider' ? 'Consider' : 'Not recommended';
+      
+      const topicItems = (result.why_fit_structured || []).map((w: any) => clean(w.claim || '')).filter(Boolean);
+      const legacyTopics = (result.why_fit || []).map(clean).filter(Boolean);
+      const allTopics = topicItems.length ? topicItems : legacyTopics;
+      
+      const inferredSegments = (result as any).audience_segments as string[] | undefined;
+      const targetSegs = client?.target_audiences || [];
+      const segs = (inferredSegments && inferredSegments.length ? inferredSegments : targetSegs).map(clean).filter(Boolean).slice(0, 2);
+      const audiencePhrase = segs.length ? segs.join(' and ') : 'target audience';
+      const themes = allTopics.slice(0, 2).join(' and ') || 'relevant business topics';
+      
+      mainSummary = `${verdictWord} for ${clientName} on ${showName}. This show reaches ${audiencePhrase}, creating opportunities around ${themes}. The audience alignment and content focus support the campaign goals effectively.`;
     }
 
-    // Compose paragraph (aim 110–160 words)
-    const sentences: string[] = [];
-    sentences.push(`${verdictWord} for ${clientName} on ${showName}.`);
-    sentences.push(`This show reaches ${audiencePhrase}, and that matters because it directly serves the campaign goals by getting in front of likely buyers and influencers.`);
-    sentences.push(`Conversations focus on ${themes}, creating room for education, authority building, and gentle pipeline warm-up aligned to a practical call to action.`);
-    sentences.push(`Format and tone are supportive rather than decisive; the audience fit is the reason to move forward.`);
-    if (criticalRisk) {
-      sentences.push(`Watch for a material constraint: ${criticalRisk}.`);
-    } else {
-      sentences.push('No material blockers surfaced in the review.');
-    }
-    sentences.push(`${nextStep}`);
+    // Create dynamic bullet points from actual analysis data
+    const bullets: string[] = [];
 
-    const paragraphRaw = sentences.join(' ');
-    const words = paragraphRaw.split(/\s+/).filter(Boolean);
-    let paragraph = paragraphRaw;
-    if (words.length < 110) {
-      const extender = ' Expect strong resonance with the target segments and a clean path to value without forcing product talk.';
-      paragraph = (paragraphRaw + extender).trim();
-    } else if (words.length > 160) {
-      paragraph = words.slice(0, 160).join(' ').replace(/[,;:]?$/, '.');
-    }
+    // Audience insight - use inferred or client target
+    const bulletInferredSegments = (result as any).audience_segments as string[] | undefined;
+    const bulletTargetSegs = client?.target_audiences || [];
+    const bulletSegs = (bulletInferredSegments && bulletInferredSegments.length ? bulletInferredSegments : bulletTargetSegs).map(clean).filter(Boolean).slice(0, 2);
+    const audienceText = bulletSegs.length ? bulletSegs.join(' and ') : 'target audience';
+    bullets.push(`Audience: ${audienceText}`);
+
+    // Best opportunity from talking points or fit reasons
+    const bulletPitchTopics = (result.recommended_talking_points || []).map(clean).filter(Boolean);
+    const bulletTopicItems = (result.why_fit_structured || []).map((w: any) => clean(w.claim || '')).filter(Boolean);
+    const bulletLegacyTopics = (result.why_fit || []).map(clean).filter(Boolean);
+    const bulletAllTopics = bulletTopicItems.length ? bulletTopicItems : bulletLegacyTopics;
     
-    // Tidy punctuation and spacing to avoid stray commas/periods
-    paragraph = paragraph
-      .replace(/([,;:])\./g, '$1')
-      .replace(/([.,;:!?])\s*([.,;:!?])/g, '$1 ')
-      .replace(/\s+([.,;:!?])/g, '$1')
-      .replace(/([.,;:!?])([^\s])/g, '$1 $2')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
-    // Bullets: 3 concise lines (<= 12 words each)
-    const limitWords = (s: string) => s.split(/\s+/).slice(0, 12).join(' ').trim();
-    const bullet1 = limitWords(`Audience: ${audiencePhrase}`);
-    const bullet2 = limitWords(pitchAngle ? `Pitch: ${pitchAngle}` : 'Pitch: practical education topic');
-    const bullet3 = limitWords(criticalRisk ? `Risk: ${criticalRisk}` : (result.verdict === 'consider' ? 'Next: confirm audience composition' : 'Next: book scheduling and link policy'));
+    const bestOpportunity = bulletPitchTopics[0] || bulletAllTopics[0];
+    if (bestOpportunity) {
+      const truncated = bestOpportunity.length > 60 ? bestOpportunity.slice(0, 60) + '...' : bestOpportunity;
+      bullets.push(`Opportunity: ${truncated}`);
+    }
 
-    const text = `${paragraph}\n\nKey points:\n- ${bullet1}\n- ${bullet2}\n- ${bullet3}`;
+    // Key risk or next step based on verdict
+    const riskItems = (result.risk_flags_structured || []).map((r: any) => clean(r.flag || '')).filter(Boolean);
+    const legacyRisks = (result.risk_flags || []).map(clean).filter(Boolean);
+    const allRisks = riskItems.length ? riskItems : legacyRisks;
+    
+    const criticalRisk = allRisks.find(r => r.toLowerCase().includes('critical')) || allRisks[0];
+    
+    if (criticalRisk) {
+      const truncated = criticalRisk.length > 60 ? criticalRisk.slice(0, 60) + '...' : criticalRisk;
+      bullets.push(`Risk: ${truncated}`);
+    } else if (result.verdict === 'consider') {
+      bullets.push('Next: Confirm audience composition with host');
+    } else if (result.verdict === 'recommend') {
+      bullets.push('Next: Prepare targeted pitch and book');
+    } else {
+      bullets.push('Next: Find shows with better audience alignment');
+    }
+
+    const text = `${mainSummary}\n\nKey insights:\n${bullets.map(b => `• ${b}`).join('\n')}`;
 
     await navigator.clipboard.writeText(text);
-    toast({ title: 'Copied', description: 'Summary copied to clipboard.' });
+    toast({ title: 'Copied', description: 'AI-powered summary copied to clipboard.' });
   };
   return (
     <div>
