@@ -58,7 +58,7 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
       let notes = paste.trim();
       let title: string | undefined;
       let publishDate: string | undefined;
-      const isAllowedPodcastUrl = (u: string) => /^(https?:\/\/)?(podcasts\.apple\.com|open\.spotify\.com|listennotes\.com)\//i.test(u);
+      const isAllowedPodcastUrl = (u: string) => /^(https?:\/\/)?(podcasts\.apple\.com|open\.spotify\.com|(www\.)?listennotes\.com)\//i.test(u);
       if (!notes) {
         if (!url) {
           toast({ title: 'Need notes', description: 'Enter a URL or paste show notes.', variant: 'destructive' });
