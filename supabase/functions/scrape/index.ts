@@ -38,8 +38,6 @@ function extractPublishDate(content: string, jsonld: any[]): string | undefined 
     if (obj?.datePublished) return obj.datePublished;
     if (obj?.publishDate) return obj.publishDate;
     if (obj?.pubDate) return obj.pubDate;
-    if (obj?.published_at) return obj.published_at; // Listen Notes specific
-    if (obj?.release_date) return obj.release_date; // Listen Notes specific
     return undefined;
   };
 
@@ -99,33 +97,6 @@ function extractPublishDate(content: string, jsonld: any[]): string | undefined 
   // Return most recent date from JSON-LD if found
   if (foundDates.length > 0) {
     return findLatestDate(foundDates);
-  }
-  
-  // Try Listen Notes specific patterns
-  const listenNotesPatterns = [
-    /"published_at_ms":(\d+)/gi,
-    /"published_at":"([^"]+)"/gi,
-    /"release_date":"([^"]+)"/gi,
-    /"pub_date_ms":(\d+)/gi,
-    /"pub_date":"([^"]+)"/gi,
-    /"latest_episode_pub_date_ms":(\d+)/gi,
-    /"earliest_pub_date_ms":(\d+)/gi
-  ];
-  
-  for (const pattern of listenNotesPatterns) {
-    const matches = [...content.matchAll(pattern)];
-    if (matches.length > 0) {
-      const dates = matches.map(m => {
-        const value = m[1];
-        // If it's a timestamp in milliseconds, convert to ISO string
-        if (/^\d+$/.test(value)) {
-          return new Date(parseInt(value)).toISOString();
-        }
-        return value;
-      }).filter(Boolean);
-      const latest = findLatestDate(dates);
-      if (latest) return latest;
-    }
   }
   
   // Try Apple Podcasts specific patterns
@@ -200,34 +171,6 @@ function extractPublishDate(content: string, jsonld: any[]): string | undefined 
   return foundDates.length > 0 ? findLatestDate(foundDates) : undefined;
 }
 
-async function fetchWithRetry(url: string, maxRetries = 2): Promise<string> {
-  const headers = [
-    { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-    { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-    { 'User-Agent': 'Mozilla/5.0 PodcastFitRaterBot' }
-  ];
-
-  for (let i = 0; i <= maxRetries; i++) {
-    try {
-      const response = await fetch(url, { 
-        headers: headers[i] || headers[0],
-        timeout: 15000
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.text();
-    } catch (error) {
-      console.log(`Attempt ${i + 1} failed for ${url}:`, error);
-      if (i === maxRetries) throw error;
-      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Progressive delay
-    }
-  }
-  throw new Error('All retry attempts failed');
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: { 
@@ -240,13 +183,13 @@ serve(async (req) => {
     const { url } = await req.json();
     if (!url) return new Response(JSON.stringify({ success: false, error: 'Missing url' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, status: 400 });
 
-    console.log(`Scraping URL: ${url}`);
-    const html = await fetchWithRetry(url);
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 PodcastFitRaterBot' } });
+    const html = await r.text();
 
     const title = extractMeta(html, 'og:title', 'property') || extractMeta(html, 'twitter:title', 'name') || (html.match(/<title>(.*?)<\/title>/i)?.[1] ?? '');
     const ogDesc = extractMeta(html, 'og:description', 'property') || extractMeta(html, 'twitter:description', 'name') || extractMeta(html, 'description', 'name');
 
-    // JSON-LD descriptions with Listen Notes support
+    // JSON-LD descriptions
     const jsonld = extractJSONLD(html);
     let ldDesc = '';
     for (const j of jsonld) {
@@ -269,38 +212,16 @@ serve(async (req) => {
       }
     }
 
-    // Enhanced Listen Notes specific extraction
-    if (url.includes('listennotes.com') && !ldDesc) {
-      // Try Listen Notes specific JSON patterns
-      const listenNotesDescPatterns = [
-        /"description":"([^"]+)"/gi,
-        /"summary":"([^"]+)"/gi,
-        /"notes":"([^"]+)"/gi
-      ];
-      
-      for (const pattern of listenNotesDescPatterns) {
-        const match = html.match(pattern);
-        if (match && match[1]) {
-          ldDesc = match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
-          break;
-        }
-      }
-    }
-
     // Extract publish date
     const publishDate = extractPublishDate(html, jsonld);
 
     // Combine candidates
     const text = stripTags([ldDesc, ogDesc].filter(Boolean).join(' \n ')) || stripTags(html).slice(0, 20000);
 
-    console.log(`Scraped ${url}: title="${title}", text_length=${text.length}, publish_date="${publishDate}"`);
-
     return new Response(JSON.stringify({ success: true, title, show_notes: text, publish_date: publishDate, length: text.length }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' },
     });
   } catch (e) {
-    console.error(`Failed to scrape ${req.url}:`, e);
-    const errorMessage = e instanceof Error ? e.message : 'Failed to fetch';
-    return new Response(JSON.stringify({ success: false, error: errorMessage }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' }, status: 500 });
+    return new Response(JSON.stringify({ success: false, error: 'Failed to fetch' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' }, status: 500 });
   }
 });
