@@ -8,6 +8,7 @@ const tabs = [
   { to: "/batch", label: "Batch" },
   { to: "/clients", label: "Clients" },
   { to: "/history", label: "History" },
+  { to: "/prep-sheet", label: "Prep Sheet" },
 ];
 
 export const Navbar = () => {
