@@ -10,6 +10,7 @@ const corsHeaders = {
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const googleApiKey = Deno.env.get('GOOGLE_SEARCH_API_KEY');
 const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
+const customSearchEngineId = Deno.env.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID');
 
 interface SocialMetrics {
   youtube?: { subscribers: number; url: string };
@@ -18,20 +19,31 @@ interface SocialMetrics {
 }
 
 async function searchHostLinkedIn(hostName: string): Promise<string | null> {
-  if (!googleApiKey) return null;
+  if (!googleApiKey || !customSearchEngineId) {
+    console.log('Google API key or Custom Search Engine ID not configured');
+    return null;
+  }
   
   try {
+    console.log('Searching LinkedIn for host:', hostName);
     const searchQuery = `"${hostName}" site:linkedin.com/in`;
     const response = await fetch(
-      `https://www.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=017576662512468239146:omuauf_lfve&q=${encodeURIComponent(searchQuery)}&num=3`
+      `https://www.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${customSearchEngineId}&q=${encodeURIComponent(searchQuery)}&num=3`
     );
     
+    if (!response.ok) {
+      console.error('Google Search API error:', response.status, await response.text());
+      return null;
+    }
+    
     const data = await response.json();
+    console.log('Google Search API response:', data);
     
     if (data.items && data.items.length > 0) {
       // Return the first LinkedIn profile found
       for (const item of data.items) {
         if (item.link.includes('linkedin.com/in/')) {
+          console.log('Found LinkedIn profile:', item.link);
           return item.link;
         }
       }
@@ -47,65 +59,93 @@ async function searchSocialMetrics(hostName: string, showTitle: string): Promise
   const metrics: SocialMetrics = {};
   
   try {
+    console.log('Searching social metrics for host:', hostName, 'show:', showTitle);
+    
     // Search for YouTube channel
     if (youtubeApiKey) {
+      console.log('Searching YouTube...');
       const youtubeResponse = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(hostName + ' ' + showTitle)}&type=channel&key=${youtubeApiKey}&maxResults=5`
       );
       
-      const youtubeData = await youtubeResponse.json();
-      
-      if (youtubeData.items && youtubeData.items.length > 0) {
-        const channelId = youtubeData.items[0].snippet.channelId;
+      if (youtubeResponse.ok) {
+        const youtubeData = await youtubeResponse.json();
         
-        // Get channel statistics
-        const statsResponse = await fetch(
-          `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelId}&key=${youtubeApiKey}`
-        );
-        
-        const statsData = await statsResponse.json();
-        
-        if (statsData.items && statsData.items.length > 0) {
-          const subscriberCount = parseInt(statsData.items[0].statistics.subscriberCount);
-          if (subscriberCount > 1000) {
-            metrics.youtube = {
-              subscribers: subscriberCount,
-              url: `https://youtube.com/channel/${channelId}`
-            };
+        if (youtubeData.items && youtubeData.items.length > 0) {
+          const channelId = youtubeData.items[0].snippet.channelId;
+          
+          // Get channel statistics
+          const statsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelId}&key=${youtubeApiKey}`
+          );
+          
+          if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            
+            if (statsData.items && statsData.items.length > 0) {
+              const subscriberCount = parseInt(statsData.items[0].statistics.subscriberCount);
+              if (subscriberCount > 1000) {
+                metrics.youtube = {
+                  subscribers: subscriberCount,
+                  url: `https://youtube.com/channel/${channelId}`
+                };
+                console.log('Found YouTube channel:', metrics.youtube);
+              }
+            }
+          } else {
+            console.error('YouTube stats API error:', statsResponse.status, await statsResponse.text());
           }
         }
+      } else {
+        console.error('YouTube search API error:', youtubeResponse.status, await youtubeResponse.text());
       }
+    } else {
+      console.log('YouTube API key not configured');
     }
     
     // Search for Instagram and Twitter using Google Custom Search
-    if (googleApiKey) {
+    if (googleApiKey && customSearchEngineId) {
+      console.log('Searching Instagram and Twitter...');
+      
       // Instagram search
       const instagramResponse = await fetch(
-        `https://www.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=017576662512468239146:omuauf_lfve&q=${encodeURIComponent(`"${hostName}" site:instagram.com`)}&num=3`
+        `https://www.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${customSearchEngineId}&q=${encodeURIComponent(`"${hostName}" site:instagram.com`)}&num=3`
       );
       
-      const instagramData = await instagramResponse.json();
-      
-      if (instagramData.items && instagramData.items.length > 0) {
-        metrics.instagram = {
-          followers: 0, // Would need Instagram Basic Display API for actual follower counts
-          url: instagramData.items[0].link
-        };
+      if (instagramResponse.ok) {
+        const instagramData = await instagramResponse.json();
+        
+        if (instagramData.items && instagramData.items.length > 0) {
+          metrics.instagram = {
+            followers: 0, // Would need Instagram Basic Display API for actual follower counts
+            url: instagramData.items[0].link
+          };
+          console.log('Found Instagram:', metrics.instagram.url);
+        }
+      } else {
+        console.error('Instagram search API error:', instagramResponse.status, await instagramResponse.text());
       }
       
       // Twitter search
       const twitterResponse = await fetch(
-        `https://www.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=017576662512468239146:omuauf_lfve&q=${encodeURIComponent(`"${hostName}" site:twitter.com OR site:x.com`)}&num=3`
+        `https://www.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${customSearchEngineId}&q=${encodeURIComponent(`"${hostName}" site:twitter.com OR site:x.com`)}&num=3`
       );
       
-      const twitterData = await twitterResponse.json();
-      
-      if (twitterData.items && twitterData.items.length > 0) {
-        metrics.twitter = {
-          followers: 0, // Would need Twitter API for actual follower counts
-          url: twitterData.items[0].link
-        };
+      if (twitterResponse.ok) {
+        const twitterData = await twitterResponse.json();
+        
+        if (twitterData.items && twitterData.items.length > 0) {
+          metrics.twitter = {
+            followers: 0, // Would need Twitter API for actual follower counts
+            url: twitterData.items[0].link
+          };
+          console.log('Found Twitter/X:', metrics.twitter.url);
+        }
+      } else {
+        console.error('Twitter search API error:', twitterResponse.status, await twitterResponse.text());
       }
+    } else {
+      console.log('Google API key or Custom Search Engine ID not configured for social media search');
     }
   } catch (error) {
     console.error('Error searching for social metrics:', error);
@@ -217,24 +257,61 @@ serve(async (req) => {
   }
 
   try {
+    // Log API key availability for debugging
+    console.log('API Keys status:');
+    console.log('- OpenAI API Key:', openAIApiKey ? 'Configured ✓' : 'Not configured ✗');
+    console.log('- Google Search API Key:', googleApiKey ? 'Configured ✓' : 'Not configured ✗');
+    console.log('- YouTube API Key:', youtubeApiKey ? 'Configured ✓' : 'Not configured ✗');
+    console.log('- Custom Search Engine ID:', customSearchEngineId ? 'Configured ✓' : 'Not configured ✗');
+
     const { url, client, recordingDateTime, manualLinkedIn } = await req.json();
 
-    console.log('Processing prep sheet request for:', url);
+    if (!url) {
+      throw new Error('URL is required');
+    }
+
+    if (!client) {
+      throw new Error('Client information is required');
+    }
+
+    console.log('Processing prep sheet request for URL:', url);
+    console.log('Client:', client.name, 'from', client.company);
+
+    // Check if OpenAI API key is available (critical for analysis)
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key is not configured. Please add it to Supabase Edge Function secrets.');
+    }
 
     // First, scrape the podcast URL
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase configuration is missing');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('Calling scrape function...');
 
     const { data: scrapedData, error: scrapeError } = await supabase.functions.invoke('scrape', {
       body: { url }
     });
 
     if (scrapeError) {
+      console.error('Scrape error:', scrapeError);
       throw new Error(`Failed to scrape URL: ${scrapeError.message}`);
     }
 
-    console.log('Scraped data:', scrapedData);
+    if (!scrapedData || !scrapedData.success) {
+      console.error('Scrape failed or returned no data:', scrapedData);
+      throw new Error('Failed to extract content from the provided URL');
+    }
+
+    console.log('Scraped data received:', {
+      title: scrapedData.title,
+      hasShowNotes: !!scrapedData.show_notes,
+      publishDate: scrapedData.publish_date
+    });
 
     // Extract host name from scraped content for LinkedIn search
     let hostLinkedIn = manualLinkedIn;
@@ -263,6 +340,7 @@ serve(async (req) => {
 
     // If we still don't have LinkedIn and this is the first attempt, return early with flag
     if (!hostLinkedIn && !manualLinkedIn && needsManualLinkedIn) {
+      console.log('Returning needsManualLinkedIn flag');
       return new Response(JSON.stringify({
         needsManualLinkedIn: true,
         showTitle: scrapedData.title,
@@ -273,9 +351,15 @@ serve(async (req) => {
     }
 
     // Analyze with OpenAI
+    console.log('Starting OpenAI analysis...');
     const analysis = await analyzeWithOpenAI(scrapedData, client, hostLinkedIn);
+    console.log('OpenAI analysis complete:', {
+      hostName: analysis.hostName,
+      talkingPointsCount: analysis.talkingPoints?.length || 0
+    });
 
     // Search for social media metrics
+    console.log('Starting social media metrics search...');
     const socialMetrics = await searchSocialMetrics(analysis.hostName, scrapedData.title);
 
     // Compile notable metrics
@@ -307,7 +391,7 @@ serve(async (req) => {
       needsManualLinkedIn: false
     };
 
-    console.log('Prep sheet analysis complete');
+    console.log('Prep sheet analysis complete, returning result');
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -315,8 +399,11 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in prep sheet analysis:', error);
+    console.error('Error stack:', error.stack);
+    
     return new Response(JSON.stringify({ 
-      error: error.message || 'An unexpected error occurred' 
+      error: error.message || 'An unexpected error occurred',
+      details: error.stack || 'No stack trace available'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
