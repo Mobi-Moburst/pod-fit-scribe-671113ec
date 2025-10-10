@@ -948,7 +948,7 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   });
 
   // Detect consumer cues early (used in multiple places below)
-  const consumerCues = detectConsumerCues(notesText);
+  const consumerCues = detectConsumerCues(notes);
 
   const why_not_fit_structured: { severity: 'Red' | 'Amber' | 'Green'; claim: string; evidence: string; interpretation: string }[] = [];
   if (cap_type === 'avoid') {
