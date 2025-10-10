@@ -269,10 +269,13 @@ function detectGuestRequirements(show_notes: string) {
     { pattern: /\b(black founders|african american entrepreneurs)\b/i, type: 'identity', evidence: 'black founders focus' },
     { pattern: /\b(hispanic entrepreneurs|latino founders|latina leaders)\b/i, type: 'identity', evidence: 'hispanic focus' },
     { pattern: /\b(lgbtq entrepreneurs|queer founders|lgbtq\+ leaders)\b/i, type: 'identity', evidence: 'lgbtq+ focus' },
-    { pattern: /\b(christian entrepreneurs|faith-based business|ministry leaders)\b/i, type: 'identity', evidence: 'christian focus' },
+    { pattern: /\b(christian entrepreneurs|faith-based business|ministry leaders|believers only|faith-based)\b/i, type: 'identity', evidence: 'christian focus' },
+    { pattern: /\b(conservative|right-?wing|republican|libertarian)\b/i, type: 'ideology', evidence: 'conservative leaning' },
+    { pattern: /\b(progressive|liberal|left-?wing|democrat)\b/i, type: 'ideology', evidence: 'progressive leaning' },
     { pattern: /\b(primarily women|mostly female|focus on women)\b/i, type: 'gender', evidence: 'women preference' },
     { pattern: /\b(startup founders|entrepreneur guests|founder interviews)\b/i, type: 'role', evidence: 'founder preference' },
     { pattern: /\b(published authors|bestselling authors|book writers)\b/i, type: 'professional', evidence: 'author preference' },
+    { pattern: /\b(thought leaders|industry veterans|c-suite|executives only)\b/i, type: 'professional', evidence: 'executive requirement' },
   ];
   
   // Check exclusive patterns first
@@ -318,23 +321,35 @@ function detectGuestRequirements(show_notes: string) {
 }
 
 // ---------------- Guest Eligibility Scoring ----------------
-function scoreGuestEligibility(clientData: any, guestRequirements: any) {
+function scoreGuestEligibility(client: any, clientEnrichment: any, guestRequirements: any) {
   const requirements = guestRequirements;
   
+  // CRITICAL CHANGE: Only score eligibility when requirements exist
   if (requirements.class === 'none') {
     return {
-      score: 7.0, // Neutral - no requirements
+      score: null, // Don't include in weighted calculation
       reasoning: "No specific guest requirements detected",
       confidence: 'high' as const,
       eligible: true,
+      shouldFlag: false,
+      flagSeverity: null as 'critical' | 'high' | 'medium' | 'low' | null,
     };
   }
   
-  // Extract client info
-  const clientTitle = clientData?.title?.toLowerCase() || '';
-  const clientAchievements = clientData?.achievements || [];
-  const clientIdentity = clientData?.identityMarkers || [];
-  const clientGender = clientData?.genderInference?.value || 'unknown';
+  // Use explicit client data first (from campaign manager input)
+  const explicitGender = client?.gender;
+  const identityTags = client?.guest_identity_tags || [];
+  const credentials = client?.professional_credentials || [];
+  
+  // Fallback to enriched data from media kit if explicit data not available
+  const clientTitle = clientEnrichment?.title?.toLowerCase() || '';
+  const clientAchievements = clientEnrichment?.achievements || [];
+  const clientIdentity = clientEnrichment?.identityMarkers || [];
+  const inferredGender = clientEnrichment?.genderInference?.value || 'unknown';
+  
+  // Use explicit gender if available, otherwise fall back to inference
+  const clientGender = explicitGender || inferredGender;
+  const genderConfidence = explicitGender ? 'high' : (clientEnrichment?.genderInference?.confidence || 'low');
   
   let eligible = false;
   let confidence: 'high' | 'medium' | 'low' = 'low';
@@ -343,8 +358,8 @@ function scoreGuestEligibility(clientData: any, guestRequirements: any) {
   // Check eligibility based on requirement type
   switch (requirements.type) {
     case 'gender':
-      if (clientGender !== 'unknown') {
-        confidence = clientData.genderInference.confidence;
+      if (clientGender && clientGender !== 'unknown' && clientGender !== 'unspecified') {
+        confidence = genderConfidence;
         if (requirements.evidence.includes('women') || requirements.evidence.includes('female')) {
           eligible = clientGender === 'female';
           reasoning = eligible ? 'Client identified as female' : 'Client not identified as female';
@@ -353,78 +368,120 @@ function scoreGuestEligibility(clientData: any, guestRequirements: any) {
           reasoning = eligible ? 'Client identified as male' : 'Client not identified as male';
         }
       } else {
-        reasoning = 'Client gender could not be determined';
+        reasoning = 'Client gender not specified or could not be determined';
       }
       break;
       
     case 'role':
       if (requirements.evidence.includes('founder')) {
-        eligible = clientAchievements.includes('founder') || clientTitle.includes('founder');
+        eligible = credentials.includes('founder') || clientAchievements.includes('founder') || clientTitle.includes('founder');
         reasoning = eligible ? 'Client identified as founder' : 'Client not identified as founder';
-        confidence = clientTitle ? 'high' : 'medium';
+        confidence = credentials.includes('founder') ? 'high' : (clientTitle ? 'medium' : 'low');
       } else if (requirements.evidence.includes('ceo')) {
-        eligible = clientAchievements.includes('ceo') || clientTitle.includes('ceo');
+        eligible = credentials.includes('ceo') || clientAchievements.includes('ceo') || clientTitle.includes('ceo');
         reasoning = eligible ? 'Client identified as CEO' : 'Client not identified as CEO';
-        confidence = clientTitle ? 'high' : 'medium';
+        confidence = credentials.includes('ceo') ? 'high' : (clientTitle ? 'medium' : 'low');
       }
       break;
       
     case 'professional':
       if (requirements.evidence.includes('author')) {
-        eligible = clientAchievements.includes('author');
+        eligible = credentials.includes('published_author') || credentials.includes('author') || clientAchievements.includes('author');
         reasoning = eligible ? 'Client identified as published author' : 'Client not identified as published author';
-        confidence = 'medium';
+        confidence = credentials.includes('published_author') || credentials.includes('author') ? 'high' : 'medium';
+      } else if (requirements.evidence.includes('executive')) {
+        eligible = credentials.includes('ceo') || credentials.includes('industry_veteran') || clientAchievements.includes('ceo');
+        reasoning = eligible ? 'Client identified as executive/industry veteran' : 'Client not identified as executive';
+        confidence = credentials.length > 0 ? 'high' : 'medium';
       }
       break;
       
     case 'identity':
       if (requirements.evidence.includes('veteran')) {
-        eligible = clientAchievements.includes('veteran');
+        eligible = identityTags.includes('veteran') || clientAchievements.includes('veteran');
         reasoning = eligible ? 'Client identified as veteran' : 'Client not identified as veteran';
-        confidence = 'medium';
+        confidence = identityTags.includes('veteran') ? 'high' : 'medium';
       } else if (requirements.evidence.includes('lgbtq')) {
-        eligible = clientIdentity.includes('lgbtq+');
+        eligible = identityTags.includes('lgbtq+') || clientIdentity.includes('lgbtq+');
         reasoning = eligible ? 'Client identified as LGBTQ+' : 'Client not identified as LGBTQ+';
-        confidence = 'low'; // Identity is harder to determine from media kits
+        confidence = identityTags.includes('lgbtq+') ? 'high' : 'low';
       } else if (requirements.evidence.includes('black')) {
-        eligible = clientIdentity.includes('black');
+        eligible = identityTags.includes('black_founder') || identityTags.includes('black') || clientIdentity.includes('black');
         reasoning = eligible ? 'Client identified as Black' : 'Client not identified as Black';
-        confidence = 'low';
+        confidence = identityTags.some(t => t.includes('black')) ? 'high' : 'low';
+      } else if (requirements.evidence.includes('hispanic')) {
+        eligible = identityTags.some(t => t.includes('hispanic') || t.includes('latino') || t.includes('latina'));
+        reasoning = eligible ? 'Client identified as Hispanic/Latino' : 'Client not identified as Hispanic/Latino';
+        confidence = eligible ? 'high' : 'low';
       } else if (requirements.evidence.includes('christian')) {
-        eligible = clientIdentity.includes('christian');
+        eligible = identityTags.includes('christian') || clientIdentity.includes('christian');
         reasoning = eligible ? 'Client has Christian background' : 'Client Christian background unclear';
-        confidence = 'low';
+        confidence = identityTags.includes('christian') ? 'high' : 'low';
+      }
+      break;
+      
+    case 'ideology':
+      if (requirements.evidence.includes('conservative')) {
+        eligible = identityTags.includes('conservative') || identityTags.includes('right_wing');
+        reasoning = eligible ? 'Client aligns with conservative values' : 'Client political alignment unclear';
+        confidence = eligible ? 'high' : 'low';
+      } else if (requirements.evidence.includes('progressive')) {
+        eligible = identityTags.includes('progressive') || identityTags.includes('liberal');
+        reasoning = eligible ? 'Client aligns with progressive values' : 'Client political alignment unclear';
+        confidence = eligible ? 'high' : 'low';
       }
       break;
   }
   
-  // Calculate score based on requirement class and eligibility
+  // Calculate score and flags based on requirement class and eligibility
   let score = 7.0; // Default neutral
+  let shouldFlag = false;
+  let flagSeverity: 'critical' | 'high' | 'medium' | 'low' | null = null;
   
   if (requirements.class === 'exclusive') {
     if (eligible && confidence === 'high') {
       score = 10.0; // Perfect match for exclusive requirement
+      shouldFlag = false;
     } else if (eligible && confidence === 'medium') {
       score = 8.5; // Good match but some uncertainty
+      shouldFlag = true;
+      flagSeverity = 'medium';
+      reasoning = `${reasoning} (medium confidence - verify before pitching)`;
     } else if (!eligible && confidence === 'high') {
-      score = 0.5; // Clear mismatch for exclusive requirement
+      score = 0.5; // Clear mismatch for exclusive requirement - HARD BLOCKER
+      shouldFlag = true;
+      flagSeverity = 'critical';
+      reasoning = `${reasoning} - Does not meet exclusive guest requirement`;
     } else {
-      score = 3.0; // Unknown eligibility for exclusive requirement
-      reasoning = `Eligibility unclear: ${reasoning}`;
+      score = 5.0; // Unknown eligibility for exclusive requirement - MANUAL REVIEW
+      shouldFlag = true;
+      flagSeverity = 'high';
+      reasoning = `${reasoning} - Cannot verify eligibility, manual review required`;
     }
   } else if (requirements.class === 'preferential') {
     if (eligible && confidence === 'high') {
       score = 9.0; // Strong match for preference
+      shouldFlag = false;
     } else if (eligible && confidence === 'medium') {
       score = 8.0; // Good match for preference
+      shouldFlag = true;
+      flagSeverity = 'low';
+      reasoning = `${reasoning} (verify for best results)`;
     } else if (!eligible && confidence === 'high') {
-      score = 4.0; // Misaligned with preference but not exclusive
+      score = 5.0; // Misaligned with preference but not exclusive
+      shouldFlag = true;
+      flagSeverity = 'medium';
+      reasoning = `${reasoning} - Doesn't match show's preference`;
     } else {
       score = 6.0; // Unknown but less critical for preferences
+      shouldFlag = true;
+      flagSeverity = 'low';
+      reasoning = `${reasoning} - Preference unclear`;
     }
   } else if (requirements.class === 'thematic') {
     score = 7.0; // Neutral - thematic doesn't require specific guests
     reasoning = 'Thematic focus but no specific guest requirements';
+    shouldFlag = false;
   }
   
   return {
@@ -432,6 +489,8 @@ function scoreGuestEligibility(clientData: any, guestRequirements: any) {
     reasoning,
     confidence,
     eligible: eligible || requirements.class !== 'exclusive',
+    shouldFlag,
+    flagSeverity,
   };
 }
 
@@ -451,8 +510,8 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   // Detect guest requirements from show notes
   const guestRequirements = detectGuestRequirements(notes);
   
-  // Score guest eligibility
-  const eligibilityResult = scoreGuestEligibility(clientEnrichment, guestRequirements);
+  // Score guest eligibility (pass both explicit client data and enriched data)
+  const eligibilityResult = scoreGuestEligibility(client, clientEnrichment, guestRequirements);
 
   // Concept hits
   const strongHits = findPositions(notes, strong).slice(0, 20);
@@ -479,8 +538,9 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
   const icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
 
-  // Guest eligibility (0.20)
+  // Guest eligibility (0.20) - may be null if no requirements
   const guestEligibility = eligibilityResult.score;
+  const hasEligibilityRequirements = guestEligibility !== null;
 
   // CTA synergy (0.15)
   const ctaTerms = ["book","demo","consult","download","guide","report","contact","learn more","talk to","sales","trial","start"];
@@ -494,9 +554,14 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const toneNegInNotes = /(explicit|nsfw|politics|gambling|hype|clickbait)/i.test(notes) ? 1 : 0;
   const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
 
-  // Weighted mean with new 5-dimension structure
-  const weights = { topic: 0.30, icp: 0.25, eligibility: 0.20, cta: 0.15, brand: 0.10 } as const;
-  const weighted_mean = topicRelevance * weights.topic + icpAlignment * weights.icp + guestEligibility * weights.eligibility + ctaSynergy * weights.cta + brandSuitability * weights.brand;
+  // CRITICAL CHANGE: Dynamic weight redistribution when eligibility doesn't apply
+  const weights = hasEligibilityRequirements 
+    ? { topic: 0.30, icp: 0.25, eligibility: 0.20, cta: 0.15, brand: 0.10 } as const
+    : { topic: 0.35, icp: 0.30, eligibility: 0.00, cta: 0.20, brand: 0.15 } as const;
+  
+  const weighted_mean = hasEligibilityRequirements
+    ? topicRelevance * weights.topic + icpAlignment * weights.icp + guestEligibility! * weights.eligibility + ctaSynergy * weights.cta + brandSuitability * weights.brand
+    : topicRelevance * weights.topic + icpAlignment * weights.icp + ctaSynergy * weights.cta + brandSuitability * weights.brand;
 
   // Adjustments
   const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
@@ -622,12 +687,17 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   }
 
   // Add eligibility-specific feedback
-  if (guestRequirements.class === 'exclusive' && !eligibilityResult.eligible) {
+  if (eligibilityResult.shouldFlag) {
+    const severityMap = { critical: 'Critical', high: 'Critical', medium: 'Major', low: 'Minor' } as const;
+    const severity = severityMap[eligibilityResult.flagSeverity!] || 'Major';
+    
     why_not_fit_structured.push({ 
-      severity: 'Critical', 
-      claim: `Guest eligibility mismatch: ${guestRequirements.evidence}`, 
+      severity, 
+      claim: `Guest eligibility concern: ${guestRequirements.evidence}`, 
       evidence: eligibilityResult.reasoning, 
-      interpretation: 'Client does not meet show\'s guest requirements' 
+      interpretation: eligibilityResult.flagSeverity === 'critical' 
+        ? 'Client does not meet show\'s exclusive guest requirements - DO NOT PITCH' 
+        : 'Verify client meets guest requirements before pitching'
     });
   }
 
@@ -636,12 +706,17 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   if (payToPlayMatch) risk_flags_structured.push({ severity: 'Major', flag: 'Pay-to-play indications', mitigation: 'Confirm editorial policy or negotiate earned placement' });
   if (strongAvoidCentral) risk_flags_structured.push({ severity: 'Critical', flag: `Avoid term prominent: ${avoidCounts[0].a}`, mitigation: 'Pick a different episode or angle; avoid brand conflict' });
   
-  // Add eligibility risks
-  if (guestRequirements.class === 'exclusive' && eligibilityResult.confidence === 'low') {
+  // Add eligibility risk flags
+  if (eligibilityResult.shouldFlag && eligibilityResult.flagSeverity) {
+    const severityMap = { critical: 'Critical', high: 'Critical', medium: 'Major', low: 'Minor' } as const;
+    const severity = severityMap[eligibilityResult.flagSeverity] || 'Major';
+    
     risk_flags_structured.push({ 
-      severity: 'Major', 
-      flag: 'Guest eligibility unclear', 
-      mitigation: 'Verify client meets guest requirements before pitching' 
+      severity, 
+      flag: `Guest eligibility: ${guestRequirements.evidence}`, 
+      mitigation: eligibilityResult.flagSeverity === 'critical' 
+        ? 'DO NOT PITCH - Client does not meet exclusive requirements' 
+        : 'Verify eligibility with campaign manager before pitching'
     });
   }
 
