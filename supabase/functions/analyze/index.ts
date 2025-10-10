@@ -1344,6 +1344,12 @@ function buildSummary(args: {
 
 // ---------------- HTTP handler ----------------
 serve(async (req) => {
+  // Log API key status immediately on function invocation
+  console.log('[ANALYZE v2.0] Edge function invoked');
+  console.log('[ANALYZE v2.0] OPENAI_API_KEY present:', !!OPENAI_API_KEY);
+  console.log('[ANALYZE v2.0] OPENAI_API_KEY length:', OPENAI_API_KEY?.length || 0);
+  console.log('[ANALYZE v2.0] OPENAI_API_KEY first 10 chars:', OPENAI_API_KEY?.substring(0, 10) || 'undefined');
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -1358,10 +1364,19 @@ serve(async (req) => {
     }
 
     if (!OPENAI_API_KEY || !OPENAI_API_KEY.trim()) {
+      console.error('[ANALYZE v2.0] ❌ Missing or empty OPENAI_API_KEY - falling back to heuristic scorer');
+      console.error('[ANALYZE v2.0] Environment variable status:', {
+        isDefined: OPENAI_API_KEY !== undefined,
+        isNull: OPENAI_API_KEY === null,
+        isEmpty: OPENAI_API_KEY === '',
+        type: typeof OPENAI_API_KEY
+      });
       const data = await scoreGoalCentric(client, String(show_notes || ""));
-      data.fallback_reason = "Missing OPENAI_API_KEY";
+      data.fallback_reason = "Missing OPENAI_API_KEY environment variable";
       return new Response(JSON.stringify({ success: false, error: "missing_api_key", fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    
+    console.log('[ANALYZE v2.0] ✅ OPENAI_API_KEY validated - proceeding with OpenAI API call');
 
     // Build audience-first prompt with NEW weights
     const prompt = `You will analyze podcast episode content against client campaign fit using this audience-first scoring rubric:
