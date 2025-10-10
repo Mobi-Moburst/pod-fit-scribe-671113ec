@@ -99,19 +99,6 @@ export const ResultsPanel = ({
         <div className="flex items-start gap-4">
           <div className="flex flex-col items-center gap-2">
             <ScoreBadge score={overall_score} />
-            {result.audit && result.audit.baseline_overall !== result.audit.final_overall && (
-              <div className="text-xs text-muted-foreground text-center">
-                <div className="flex items-center gap-1">
-                  <span className="font-mono">Baseline: {result.audit.baseline_overall.toFixed(1)}</span>
-                  <span>→</span>
-                  <span className="font-mono font-semibold">Final: {result.audit.final_overall.toFixed(1)}</span>
-                </div>
-                <p className="mt-1">
-                  {result.audit?.eligibility?.action === 'fail' && 'Capped due to eligibility mismatch'}
-                  {result.audit?.eligibility?.action === 'conditional' && 'Provisional cap until eligibility confirmed'}
-                </p>
-              </div>
-            )}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -201,42 +188,6 @@ export const ResultsPanel = ({
             ))}
         </div>
 
-        {/* Format/CTA Notes (info-only, not scored) */}
-        {(() => {
-          const ctaCard = rubric_breakdown.find((r) => /cta|format/i.test(r.dimension));
-          if (!ctaCard) return null;
-          
-          return (
-            <Card className="p-4 border-muted bg-muted/30">
-              <div className="flex items-start gap-3">
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-muted-foreground mb-1">
-                    📋 Format/CTA Notes (Info Only)
-                  </div>
-                  <p className="text-sm">{ctaCard.notes}</p>
-                  {riskItems.some((r: any) => 
-                    /pay.*play|guest.*fee|link.*ban|sales.*pitch/i.test(r.flag)
-                  ) && (
-                    <div className="mt-2 pt-2 border-t">
-                      <div className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">
-                        ⚠️ Format Constraints:
-                      </div>
-                      <ul className="text-xs space-y-1">
-                        {riskItems
-                          .filter((r: any) => /pay.*play|guest.*fee|link.*ban|sales.*pitch/i.test(r.flag))
-                          .map((r: any, i: number) => (
-                            <li key={i} className="text-amber-800 dark:text-amber-300">
-                              • {r.flag}
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-          );
-        })()}
         
         {/* Show eligibility warning only when there's a concern */}
         {(result.audit?.eligibility?.action === 'fail' || result.audit?.eligibility?.action === 'conditional') && (
