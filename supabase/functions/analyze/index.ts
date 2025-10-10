@@ -251,6 +251,14 @@ function detectGuestRequirements(show_notes: string) {
     patterns: [] as string[],
   };
   
+  // Combined patterns (highest priority - check FIRST)
+  const combinedPatterns = [
+    { pattern: /\b(black women|african american women)\s+(entrepreneurs?|founders?|leaders?|ceos?)\b/i, type: 'mixed', evidence: 'black women entrepreneurs', requiresBoth: ['gender:female', 'identity:black'] },
+    { pattern: /\b(latina|hispanic women)\s+(entrepreneurs?|founders?|leaders?)\b/i, type: 'mixed', evidence: 'latina entrepreneurs', requiresBoth: ['gender:female', 'identity:hispanic'] },
+    { pattern: /\b(women veterans?|female veterans?)\b/i, type: 'mixed', evidence: 'women veterans', requiresBoth: ['gender:female', 'identity:veteran'] },
+    { pattern: /\b(lgbtq\+? women|queer women)\s+(entrepreneurs?|founders?)\b/i, type: 'mixed', evidence: 'lgbtq+ women entrepreneurs', requiresBoth: ['gender:female', 'identity:lgbtq+'] },
+  ];
+
   // Exclusive patterns (hard requirements)
   const exclusivePatterns = [
     { pattern: /\b(women only|female only|exclusively women|exclusively female)\b/i, type: 'gender', evidence: 'women only' },
@@ -278,7 +286,19 @@ function detectGuestRequirements(show_notes: string) {
     { pattern: /\b(thought leaders|industry veterans|c-suite|executives only)\b/i, type: 'professional', evidence: 'executive requirement' },
   ];
   
-  // Check exclusive patterns first
+  // Check combined patterns FIRST (before exclusive)
+  for (const { pattern, type, evidence, requiresBoth } of combinedPatterns) {
+    if (pattern.test(notes)) {
+      requirements.class = 'effective'; // Treat as strong requirement
+      requirements.type = type;
+      requirements.evidence = evidence;
+      requirements.patterns.push(evidence);
+      requirements.requiresBoth = requiresBoth; // Store for validation
+      return requirements;
+    }
+  }
+  
+  // Check exclusive patterns
   for (const { pattern, type, evidence } of exclusivePatterns) {
     if (pattern.test(notes)) {
       requirements.class = 'exclusive';
@@ -353,13 +373,28 @@ function applyEligibilityGate(
     action = 'none';
     reasoning = 'No guest requirements detected';
     
-  } else if (final_class === 'preferential' || final_class === 'thematic') {
-    // Soft preferences or thematic focus - acknowledge but don't enforce
-    action = 'pass'; // Show card with info but no score penalty
-    reasoning = final_class === 'preferential'
-      ? `Show has a preference for ${guestRequirements.evidence}. ${eligibilityResult.reasoning || 'Consider if client aligns with this preference.'}`
-      : `Show has ${guestRequirements.evidence} theme. ${eligibilityResult.reasoning || 'Consider if client aligns with this focus.'}`;
-    // No cap applied, no banner shown
+  } else if (final_class === 'preferential') {
+    // Preferential requirements - check if client is CONFIRMED mismatch
+    if (!eligible && confidence === 'high') {
+      // Client confirmed NOT a match for preference
+      action = 'fail';
+      cap_to = 4.0; // Not as harsh as exclusive, but still penalize
+      reasoning = `Client does not match show's preference: ${eligibilityResult.reasoning}`;
+    } else if (eligible && confidence === 'high') {
+      // Client confirmed match
+      action = 'pass';
+      reasoning = `Client aligns with show preference: ${eligibilityResult.reasoning}`;
+    } else {
+      // Unknown eligibility
+      action = 'conditional';
+      cap_to = 6.0;
+      reasoning = `Unable to confirm if client matches show's preference for ${guestRequirements.evidence}. Please verify.`;
+    }
+    
+  } else if (final_class === 'thematic') {
+    // Thematic - soft recommendation only
+    action = 'pass';
+    reasoning = `Show has ${guestRequirements.evidence} theme. Consider if client aligns with this focus.`;
     
   } else if (final_class === 'exclusive' || final_class === 'effective') {
     // High-stakes requirements
@@ -520,6 +555,43 @@ function scoreGuestEligibility(client: any, clientEnrichment: any, guestRequirem
         confidence = eligible ? 'high' : 'low';
       }
       break;
+      
+    case 'mixed':
+      // Combined requirements - ALL must be met
+      if (requirements.requiresBoth) {
+        let allMet = true;
+        let missingReqs: string[] = [];
+        
+        for (const req of requirements.requiresBoth) {
+          const [category, value] = req.split(':');
+          
+          if (category === 'gender') {
+            if (clientGender !== value && clientGender !== 'unspecified') {
+              allMet = false;
+              missingReqs.push(`not ${value}`);
+            } else if (clientGender === 'unspecified' || clientGender === 'unknown') {
+              confidence = 'low';
+              missingReqs.push('gender unknown');
+            }
+          } else if (category === 'identity') {
+            const hasIdentity = identityTags.some(tag => 
+              tag.includes(value) || tag === value
+            ) || clientIdentity.some(id => id.includes(value));
+            
+            if (!hasIdentity) {
+              allMet = false;
+              missingReqs.push(`not identified as ${value}`);
+            }
+          }
+        }
+        
+        eligible = allMet;
+        confidence = (clientGender && clientGender !== 'unknown' && identityTags.length > 0) ? 'high' : 'medium';
+        reasoning = eligible 
+          ? `Client meets combined requirement: ${requirements.evidence}` 
+          : `Client does not meet requirement: ${missingReqs.join(', ')}`;
+      }
+      break;
   }
   
   // Calculate score and flags based on requirement class and eligibility
@@ -557,14 +629,14 @@ function scoreGuestEligibility(client: any, clientEnrichment: any, guestRequirem
       flagSeverity = 'low';
       reasoning = `${reasoning} (verify for best results)`;
     } else if (!eligible && confidence === 'high') {
-      score = 5.0; // Misaligned with preference but not exclusive
+      score = 4.0; // Lower score for confirmed mismatch
       shouldFlag = true;
-      flagSeverity = 'medium';
-      reasoning = `${reasoning} - Doesn't match show's preference`;
+      flagSeverity = 'high'; // Flag as high severity
+      reasoning = `${reasoning} - Client does not match show's strong preference`;
     } else {
       score = 6.0; // Unknown but less critical for preferences
       shouldFlag = true;
-      flagSeverity = 'low';
+      flagSeverity = 'medium';
       reasoning = `${reasoning} - Preference unclear`;
     }
   } else if (requirements.class === 'thematic') {
