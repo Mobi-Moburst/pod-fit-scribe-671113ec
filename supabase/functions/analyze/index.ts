@@ -348,12 +348,18 @@ function applyEligibilityGate(
   let banner_message = '';
   
   // Gate logic
-  if (final_class === 'none' || final_class === 'preferential') {
+  if (final_class === 'none') {
     // No impact on score or UI
     action = 'none';
-    reasoning = final_class === 'none' 
-      ? 'No guest requirements detected'
-      : 'Preferential requirements present but not enforced';
+    reasoning = 'No guest requirements detected';
+    
+  } else if (final_class === 'preferential' || final_class === 'thematic') {
+    // Soft preferences or thematic focus - acknowledge but don't enforce
+    action = 'pass'; // Show card with info but no score penalty
+    reasoning = final_class === 'preferential'
+      ? `Show has a preference for ${guestRequirements.evidence}. ${eligibilityResult.reasoning || 'Consider if client aligns with this preference.'}`
+      : `Show has ${guestRequirements.evidence} theme. ${eligibilityResult.reasoning || 'Consider if client aligns with this focus.'}`;
+    // No cap applied, no banner shown
     
   } else if (final_class === 'exclusive' || final_class === 'effective') {
     // High-stakes requirements
