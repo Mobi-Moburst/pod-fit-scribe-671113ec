@@ -1052,11 +1052,11 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
     overall = weighted_mean - 2.0;
   }
 
-  const baseline_overall = roundToHalf(clamp(overall, 0, 10));
+  const final_overall = roundToHalf(clamp(overall, 0, 10));
 
   // Apply eligibility gate AFTER baseline score
   const gateResult = applyEligibilityGate(
-    baseline_overall,
+    final_overall,
     guestRequirements,
     eligibilityResult,
     client
@@ -1444,7 +1444,8 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
       influence_multiplier: influence_m,
       influence_signals: influenceSignals,
       post_influence_score,
-      final_overall: overall,
+      final_overall,
+      gated_overall: overall,
       weighted_mean,
       adjustments: { genericness: adj_genericness, multi_concept: adj_multi_concept, cadence: adj_cadence },
       cap_applied,
