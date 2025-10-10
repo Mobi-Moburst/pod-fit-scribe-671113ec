@@ -21,17 +21,13 @@ const empty: MinimalClient = {
   name: '',
   media_kit_url: '',
   company: '',
-  company_url: '',
   target_audiences: [],
   talking_points: [],
   avoid: [],
   avoid_text: '',
   notes: '',
-  campaign_strategy: '',
+  campaign_strategy: '', // keep for backward compatibility
   campaign_manager: '',
-  gender: undefined,
-  guest_identity_tags: [],
-  professional_credentials: [],
 };
 
 // Deterministic color classes for CM badge using design tokens
@@ -73,7 +69,6 @@ const Clients = () => {
       id: c.id,
       name: c.name,
       company: c.company || '',
-      company_url: c.company_url || '',
       media_kit_url: c.media_kit_url || '',
       target_audiences: c.target_audiences || [],
       talking_points: c.talking_points || [],
@@ -82,9 +77,6 @@ const Clients = () => {
       notes: c.notes || '',
       campaign_strategy: c.campaign_strategy || '',
       campaign_manager: c.campaign_manager || '',
-      gender: c.gender,
-      guest_identity_tags: c.guest_identity_tags || [],
-      professional_credentials: c.professional_credentials || [],
     })));
   };
 
@@ -124,74 +116,44 @@ const Clients = () => {
   const startEdit = (c: MinimalClient) => setEditing({ ...empty, ...c, target_audiences: c.target_audiences || [], talking_points: c.talking_points || [], avoid: c.avoid || [], notes: c.notes || '' });
   const cancel = () => setEditing(null);
 
-  const canSave = useMemo(() => {
-    if (!editing) return false;
-    
-    // Required fields validation
-    const hasName = editing.name.trim().length > 0;
-    const hasCampaignManager = (editing.campaign_manager || '').trim().length > 0;
-    const hasMediaKitUrl = editing.media_kit_url.trim().length > 0;
-    const hasCampaignStrategy = (editing.campaign_strategy || '').trim().length > 0;
-    
-    // URL format validation for media_kit_url
-    const isValidMediaKitUrl = /^https?:\/\/.+/.test(editing.media_kit_url.trim());
-    
-    // Company URL validation (if provided, must be valid)
-    const companyUrlValid = !editing.company_url || 
-      editing.company_url.trim() === '' || 
-      /^https?:\/\/.+/.test(editing.company_url.trim());
-    
-    return hasName && 
-           hasCampaignManager && 
-           hasMediaKitUrl && 
-           isValidMediaKitUrl &&
-           hasCampaignStrategy &&
-           companyUrlValid;
-  }, [editing]);
-
-  const handleCompanyChange = (value: string) => {
-    // Prevent URLs from being entered in Company field
-    if (/^https?:\/\//.test(value)) {
-      toast({
-        title: 'Invalid entry',
-        description: 'Please enter company name only (not a URL). Use "Company URL" field for website links.',
-        variant: 'destructive'
-      });
-      return;
-    }
-    setEditing({ ...editing!, company: value });
-  };
+  const canSave = useMemo(() => !!editing && editing.name.trim().length > 0, [editing]);
 
   const save = async () => {
     if (!editing || !canSave) return;
     const exists = list.find((l) => l.id === editing.id);
 
-    const payload = {
-      name: editing.name.trim(),
-      company: editing.company?.trim() || null,
-      company_url: editing.company_url?.trim() || null,
-      media_kit_url: editing.media_kit_url.trim(),
-      target_audiences: editing.target_audiences || [],
-      talking_points: editing.talking_points || [],
-      avoid: editing.avoid || [],
-      notes: editing.notes?.trim() || null,
-      campaign_strategy: editing.campaign_strategy?.trim() || '',
-      campaign_manager: (editing as any).campaign_manager?.trim() || null,
-      gender: editing.gender || null,
-      guest_identity_tags: editing.guest_identity_tags || [],
-      professional_credentials: editing.professional_credentials || [],
-    };
-
     if (!exists) {
       const { error } = await supabase.from('clients').insert([
-        { id: editing.id, org_id: TEAM_ORG_ID, ...payload } as any
+        {
+          id: editing.id,
+          org_id: TEAM_ORG_ID,
+          name: editing.name,
+          company: editing.company || null,
+          media_kit_url: editing.media_kit_url || '',
+          target_audiences: editing.target_audiences || [],
+          talking_points: editing.talking_points || [],
+          avoid: editing.avoid || [],
+          notes: editing.notes || null,
+          campaign_strategy: editing.campaign_strategy || '',
+          campaign_manager: (editing as any).campaign_manager || null,
+        } as any,
       ]);
       if (error) {
         toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
         return;
       }
     } else {
-      const { error } = await supabase.from('clients').update(payload).eq('id', editing.id);
+      const { error } = await supabase.from('clients').update({
+        name: editing.name,
+        company: editing.company || null,
+        media_kit_url: editing.media_kit_url || '',
+        target_audiences: editing.target_audiences || [],
+        talking_points: editing.talking_points || [],
+        avoid: editing.avoid || [],
+        notes: editing.notes || null,
+        campaign_strategy: editing.campaign_strategy || '',
+        campaign_manager: (editing as any).campaign_manager || null,
+      }).eq('id', editing.id);
       if (error) {
         toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
         return;
@@ -230,91 +192,23 @@ const Clients = () => {
             <h2 className="text-lg font-semibold">{editing.id ? 'Edit Client' : 'New Client'}</h2>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <Label className="flex items-center gap-1">
-                  Name <span className="text-red-500">*</span>
-                </Label>
-                <Input 
-                  placeholder="John Doe"
-                  value={editing.name} 
-                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                  className={editing.name.trim() ? 'border-green-500/50' : ''}
-                />
-                {!editing.name.trim() && (
-                  <p className="text-xs text-red-500 mt-1">Guest name is required</p>
-                )}
-              </div>
-              <div>
-                <Label className="flex items-center gap-1">
-                  Campaign Manager <span className="text-red-500">*</span>
-                </Label>
-                <Input 
-                  placeholder="e.g., Troy"
-                  value={(editing as any).campaign_manager || ''} 
-                  onChange={(e) => setEditing({ ...editing, campaign_manager: e.target.value })}
-                  className={(editing as any).campaign_manager?.trim() ? 'border-green-500/50' : ''}
-                />
-                {!(editing as any).campaign_manager?.trim() && (
-                  <p className="text-xs text-red-500 mt-1">Campaign manager is required</p>
-                )}
+                <Label>Name</Label>
+                <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
               </div>
               <div>
                 <Label>Company</Label>
-                <Input 
-                  placeholder="Acme Inc. (name only, not URL)"
-                  value={editing.company || ''} 
-                  onChange={(e) => handleCompanyChange(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Company name only - use "Company URL" field below for website
-                </p>
+                <Input placeholder="Acme Inc." value={editing.company || ''} onChange={(e) => setEditing({ ...editing, company: e.target.value })} />
               </div>
               <div>
-                <Label>Company URL</Label>
-                <Input 
-                  placeholder="https://acme.com"
-                  value={editing.company_url || ''} 
-                  onChange={(e) => setEditing({ ...editing, company_url: e.target.value })}
-                  className={editing.company_url && /^https?:\/\/.+/.test(editing.company_url.trim()) ? 'border-green-500/50' : ''}
-                />
-                {editing.company_url && !/^https?:\/\/.+/.test(editing.company_url.trim()) && (
-                  <p className="text-xs text-red-500 mt-1">Must be a valid URL (e.g., https://example.com)</p>
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <Label className="flex items-center gap-1">
-                  Media Kit URL <span className="text-red-500">*</span>
-                </Label>
-                <Input 
-                  placeholder="https://..."
-                  value={editing.media_kit_url} 
-                  onChange={(e) => setEditing({ ...editing, media_kit_url: e.target.value })}
-                  className={editing.media_kit_url && /^https?:\/\/.+/.test(editing.media_kit_url.trim()) ? 'border-green-500/50' : ''}
-                />
-                {editing.media_kit_url && !/^https?:\/\/.+/.test(editing.media_kit_url.trim()) && (
-                  <p className="text-xs text-red-500 mt-1">Must be a valid URL (e.g., https://example.com)</p>
-                )}
-                {!editing.media_kit_url.trim() && (
-                  <p className="text-xs text-red-500 mt-1">Media kit URL is required</p>
-                )}
+                <Label>Media Kit URL</Label>
+                <Input placeholder="https://..." value={editing.media_kit_url} onChange={(e) => setEditing({ ...editing, media_kit_url: e.target.value })} />
               </div>
               <div>
-                <Label>Gender</Label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={editing.gender || ''}
-                  onChange={(e) => setEditing({ ...editing, gender: e.target.value as any })}
-                >
-                  <option value="">Prefer not to specify</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="non_binary">Non-binary</option>
-                  <option value="unspecified">Unspecified</option>
-                </select>
+                <Label>Campaign Manager</Label>
+                <Input placeholder="e.g., Troy" value={(editing as any).campaign_manager || ''} onChange={(e) => setEditing({ ...editing, campaign_manager: e.target.value })} />
               </div>
               <div className="md:col-span-2">
-                <Label className="flex items-center gap-1">
-                  Campaign Strategy <span className="text-red-500">*</span>
-                </Label>
+                <Label>Campaign strategy</Label>
                 <Textarea
                   rows={10}
                   placeholder={`Target Audiences:\n- Founders & Startup Leaders – Entrepreneurs looking to ...\n- Sales & Customer Success Leaders – Professionals focused on ...\n\nTalking Points That Will Land:\n- The Future of Meeting Productivity – How AI-powered tools ...\n- Turning Conversations into Action – How recording, transcribing ...`}
@@ -329,11 +223,7 @@ const Clients = () => {
                       talking_points: talking,
                     });
                   }}
-                  className={(editing.campaign_strategy || '').trim() ? 'border-green-500/50' : ''}
                 />
-                {!(editing.campaign_strategy || '').trim() && (
-                  <p className="text-xs text-red-500 mt-1">Campaign strategy is required</p>
-                )}
               </div>
               <div className="md:col-span-2">
                 <Label>Things to Avoid</Label>
@@ -351,16 +241,6 @@ const Clients = () => {
                   placeholder="Authoritative, technical; no pay-to-play; prefers interview format."
                   value={editing.notes || ''}
                   onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label>Guest Identity Tags (for shows with specific requirements)</Label>
-                <p className="text-xs text-muted-foreground mb-2">Professional credentials like CEO, Founder, etc. are auto-detected from media kits</p>
-                <Textarea
-                  rows={2}
-                  placeholder="e.g., woman_entrepreneur, black_founder, veteran, lgbtq+, christian, conservative, progressive"
-                  value={(editing.guest_identity_tags || []).join(', ')}
-                  onChange={(e) => setEditing({ ...editing, guest_identity_tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
                 />
               </div>
             </div>
@@ -386,22 +266,7 @@ const Clients = () => {
                   {c.media_kit_url ? (
                     <a className="underline-offset-2 hover:underline" href={c.media_kit_url} target="_blank" rel="noreferrer">{c.name}</a>
                   ) : c.name}
-                  {c.company && (
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      — 
-                      {c.company_url ? (
-                        <a 
-                          href={c.company_url} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="hover:underline hover:text-foreground transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {c.company}
-                        </a>
-                      ) : c.company}
-                    </span>
-                  )}
+                  {c.company && <span className="ml-2 text-sm text-muted-foreground">— {c.company}</span>}
                   <Badge variant="default" className={`ml-2 shrink-0 ${cmColor(c.campaign_manager)}`}>{c.campaign_manager ? `CM: ${c.campaign_manager}` : 'Unassigned'}</Badge>
                 </div>
                 <div className="col-span-7 text-sm text-muted-foreground">

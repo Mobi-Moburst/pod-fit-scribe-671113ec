@@ -253,29 +253,18 @@ export function parseCSV(file: File): Promise<any[]> {
 
 // Export functionality
 export function exportToCSV(rows: BatchRow[], filename = 'batch-results.csv'): void {
-  const exportData = rows.map(row => {
-    const evalData = row.evaluation_data;
-    const risks = evalData?.risk_flags_structured || [];
-    const maxSeverity = risks.length === 0 ? 'None' : 
-      risks.some((r: any) => r.severity === 'Red') ? 'Red' :
-      risks.some((r: any) => r.severity === 'Amber') ? 'Amber' : 'Green';
-    
-    return {
-      podcast_url: row.podcast_url,
-      show_title: row.show_title || '',
-      verdict: row.verdict || '',
-      overall_score: row.overall_score || '',
-      confidence: row.confidence || '',
-      eligibility_class: row.eligibility_class || '',
-      eligibility_action: row.eligibility_action || '',
-      last_publish_date: row.last_publish_date || '',
-      rationale_short: row.rationale_short || '',
-      risks_summary: risks.map((r: any) => r.flag).join(' | '),
-      risks_max_severity: maxSeverity,
-      enterprise_cues_count: evalData?.audit?.enterprise_cues_count || 0,
-      error: row.error || ''
-    };
-  });
+  const exportData = rows.map(row => ({
+    podcast_url: row.podcast_url,
+    show_title: row.show_title || '',
+    verdict: row.verdict || '',
+    overall_score: row.overall_score || '',
+    confidence: row.confidence || '',
+    eligibility_class: row.eligibility_class || '',
+    eligibility_action: row.eligibility_action || '',
+    last_publish_date: row.last_publish_date || '',
+    rationale_short: row.rationale_short || '',
+    error: row.error || ''
+  }));
   
   const csv = Papa.unparse(exportData);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

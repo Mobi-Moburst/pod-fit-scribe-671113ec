@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
+  // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -20,12 +20,9 @@ export type Database = {
           campaign_manager: string | null
           campaign_strategy: string
           company: string | null
-          company_url: string | null
           content_goals: string | null
           created_at: string | null
           cta: string | null
-          gender: string | null
-          guest_identity_tags: string[] | null
           icp: string | null
           id: string
           industry: string | null
@@ -35,7 +32,6 @@ export type Database = {
           name: string
           notes: string | null
           org_id: string
-          professional_credentials: string[] | null
           talking_points: string[] | null
           target_audiences: string[] | null
           target_company_sizes: string[] | null
@@ -50,12 +46,9 @@ export type Database = {
           campaign_manager?: string | null
           campaign_strategy: string
           company?: string | null
-          company_url?: string | null
           content_goals?: string | null
           created_at?: string | null
           cta?: string | null
-          gender?: string | null
-          guest_identity_tags?: string[] | null
           icp?: string | null
           id?: string
           industry?: string | null
@@ -65,7 +58,6 @@ export type Database = {
           name: string
           notes?: string | null
           org_id: string
-          professional_credentials?: string[] | null
           talking_points?: string[] | null
           target_audiences?: string[] | null
           target_company_sizes?: string[] | null
@@ -80,12 +72,9 @@ export type Database = {
           campaign_manager?: string | null
           campaign_strategy?: string
           company?: string | null
-          company_url?: string | null
           content_goals?: string | null
           created_at?: string | null
           cta?: string | null
-          gender?: string | null
-          guest_identity_tags?: string[] | null
           icp?: string | null
           id?: string
           industry?: string | null
@@ -95,7 +84,6 @@ export type Database = {
           name?: string
           notes?: string | null
           org_id?: string
-          professional_credentials?: string[] | null
           talking_points?: string[] | null
           target_audiences?: string[] | null
           target_company_sizes?: string[] | null

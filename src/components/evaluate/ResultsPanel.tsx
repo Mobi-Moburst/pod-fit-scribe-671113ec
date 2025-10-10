@@ -3,9 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScoreBadge } from "./ScoreBadge";
-import { Calendar, AlertTriangle, AlertCircle, CheckCircle, XCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
+import { Calendar, AlertTriangle } from "lucide-react";
 
 export const ResultsPanel = ({
   result,
@@ -18,8 +16,6 @@ export const ResultsPanel = ({
   onCopySummary: () => void;
   onExportJson: () => void;
 }) => {
-  const { toast } = useToast();
-  
   const {
     overall_score,
     rubric_breakdown,
@@ -60,46 +56,9 @@ export const ResultsPanel = ({
 
   return (
     <section className="mt-6 grid gap-6">
-      {/* Eligibility Banner */}
-      {result.audit?.eligibility?.show_banner && (
-        <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-          <AlertCircle className="h-5 w-5 text-amber-600" />
-          <AlertDescription className="ml-2">
-            <div className="font-semibold text-amber-900 dark:text-amber-100 mb-2">
-              Eligibility Check Required
-            </div>
-            <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
-              {result.audit?.eligibility?.banner_message}
-            </p>
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => {
-                  toast({ title: 'Eligibility confirmed', description: 'Update client profile to reflect confirmed eligibility.' });
-                }}
-              >
-                Confirm Eligibility
-              </Button>
-              <Button 
-                size="sm" 
-                variant="ghost"
-                onClick={() => {
-                  toast({ title: 'Reminder added', description: 'Add eligibility check to client notes or campaign strategy.' });
-                }}
-              >
-                Add to Client Notes
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-      
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="flex flex-col items-center gap-2">
-            <ScoreBadge score={overall_score} />
-          </div>
+          <ScoreBadge score={overall_score} />
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-semibold">{show_title || 'Analysis Result'}</h2>
@@ -115,7 +74,6 @@ export const ResultsPanel = ({
                 const date = new Date((result as any).last_publish_date);
                 const daysSince = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
                 const isStale = daysSince > 90;
-                const isInactive = daysSince > 730; // 2 years = likely inactive
                 const formatRelativeTime = (days: number) => {
                   if (days < 1) return "Today";
                   if (days < 2) return "Yesterday";
@@ -134,11 +92,7 @@ export const ResultsPanel = ({
                     <span>
                       Published {date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} 
                       ({formatRelativeTime(daysSince)})
-                      {isInactive ? (
-                        <span className="text-red-600 ml-1 font-medium">- No longer publishing</span>
-                      ) : isStale ? (
-                        <span className="text-amber-600 ml-1">- Stale content ({Math.floor(daysSince)}d)</span>
-                      ) : null}
+                      {isStale && <span className="text-amber-600 ml-1">- Stale content ({Math.floor(daysSince)}d)</span>}
                     </span>
                   </div>
                 );
@@ -153,6 +107,15 @@ export const ResultsPanel = ({
             {verdict_reason && (
               <p className="text-sm mt-1">{verdict_reason}</p>
             )}
+            {Array.isArray(result.applied_adjustments) && result.applied_adjustments.filter((a: any) => a.type !== 'cap').length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {result.applied_adjustments.filter((adj: any) => adj.type !== 'cap').map((adj: any, i: number) => (
+                  <Badge key={i} variant={adj.type === 'floor' ? 'secondary' : 'outline'}>
+                    {adj.type?.toUpperCase?.() || 'ADJ'}: {adj.label}{typeof adj.amount === 'number' ? ` (${adj.amount > 0 ? '+' : ''}${adj.amount.toFixed(1)})` : ''}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -162,47 +125,17 @@ export const ResultsPanel = ({
         </div>
       </div>
 
-      {/* Rubric - Now 3 scored dimensions + Format/CTA info-only */}
-      <div className="grid gap-4">
-        <div className="grid md:grid-cols-3 gap-4">
-          {rubric_breakdown
-            .filter((r) => !/recency|consistency|eligibility|cta|format/i.test(r.dimension))
-            .map((r) => (
-              <Card key={r.dimension} className="p-4 card-surface">
-                <div className="text-sm text-muted-foreground">{r.dimension}</div>
-                <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
-                {r.weight > 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">Weight: {(r.weight * 100).toFixed(0)}%</div>
-                )}
-                <p className="text-sm mt-2">{r.notes}</p>
-              </Card>
-            ))}
-        </div>
-
-        
-        {/* Show eligibility warning only when there's a concern */}
-        {(result.audit?.eligibility?.action === 'fail' || result.audit?.eligibility?.action === 'conditional') && (
-          <Card className="p-4 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
-                  ⚠️ Guest Eligibility Review Required
-                </div>
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  {result.audit.eligibility.action === 'fail' 
-                    ? 'Client may not be eligible for this show\'s guest requirements. Please review before pitching.'
-                    : 'Unable to confirm guest eligibility from available client data. Please verify before pitching.'}
-                </p>
-                {result.audit?.eligibility?.evidence && (
-                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 italic">
-                    Show requirement: "{result.audit.eligibility.evidence}"
-                  </p>
-                )}
-              </div>
-            </div>
-          </Card>
-        )}
+      {/* Rubric */}
+      <div className="grid md:grid-cols-5 gap-4">
+        {rubric_breakdown
+          .filter((r) => !/recency|consistency/i.test(r.dimension))
+          .map((r) => (
+            <Card key={r.dimension} className="p-4 card-surface">
+              <div className="text-sm text-muted-foreground">{r.dimension}</div>
+              <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
+              <p className="text-sm mt-2">{r.notes}</p>
+            </Card>
+          ))}
       </div>
 
       {/* Fit vs Gaps */}
@@ -220,25 +153,19 @@ export const ResultsPanel = ({
           </ul>
         </Card>
         <Card className="p-4 card-surface">
-          <h3 className="text-lg font-semibold mb-2">Why it doesn't</h3>
-          {notFitItems.length === 0 ? (
-            <div className="text-sm text-muted-foreground italic py-2 px-3 border-l-2 border-green-500 bg-green-50/50 dark:bg-green-950/10 rounded-r">
-              No material gaps identified
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {notFitItems.map((w: any, i: number) => (
-                <li key={i}>
-                  <div className="flex items-center gap-2">
-                    <div className="font-medium">{w.claim}</div>
-                    {w.severity && <Badge variant="outline">{w.severity}</Badge>}
-                  </div>
-                  {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">"{w.evidence}"</blockquote>}
-                  {w.interpretation && <div className="text-sm mt-1">{w.interpretation}</div>}
-                </li>
-              ))}
-            </ul>
-          )}
+          <h3 className="text-lg font-semibold mb-2">Why it doesn’t</h3>
+          <ul className="space-y-2">
+            {notFitItems.map((w: any, i: number) => (
+              <li key={i}>
+                <div className="flex items-center gap-2">
+                  <div className="font-medium">{w.claim}</div>
+                  {w.severity && <Badge variant="outline">{w.severity}</Badge>}
+                </div>
+                {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">“{w.evidence}”</blockquote>}
+                {w.interpretation && <div className="text-sm mt-1">{w.interpretation}</div>}
+              </li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Recommendation</h3>
@@ -259,67 +186,17 @@ export const ResultsPanel = ({
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Risk Flags</h3>
-          {riskItems.length === 0 ? (
-            <div className="flex items-center gap-2 p-3 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
-              <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
-              <span className="text-sm font-medium text-green-900 dark:text-green-100">
-                No material risks detected
-              </span>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Group risks by severity */}
-              {['Red', 'Amber'].map(severity => {
-                const items = riskItems.filter((r: any) => r.severity === severity);
-                if (items.length === 0) return null;
-                
-                const bgClass = severity === 'Red' 
-                  ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' 
-                  : severity === 'Amber'
-                  ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
-                  : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800';
-                
-                const textClass = severity === 'Red'
-                  ? 'text-red-900 dark:text-red-100'
-                  : severity === 'Amber'
-                  ? 'text-amber-900 dark:text-amber-100'
-                  : 'text-green-900 dark:text-green-100';
-                
-                return (
-                  <div key={severity} className="space-y-2">
-                    {items.map((r: any, i: number) => (
-                      <div key={i} className={`p-3 rounded-lg border ${bgClass}`}>
-                        <div className="flex items-start gap-2">
-                          <Badge 
-                            variant={severity === 'Red' ? 'destructive' : severity === 'Amber' ? 'secondary' : 'default'}
-                            className="shrink-0 mt-0.5"
-                          >
-                            {severity === 'Red' ? '⛔ Dealbreaker' : '⚠️ Concern'}
-                          </Badge>
-                          <div className="flex-1 space-y-1.5">
-                            <div className={`font-semibold text-sm ${textClass}`}>
-                              {r.flag || r}
-                            </div>
-                            {r.evidence && (
-                              <div className="text-xs italic opacity-80">
-                                "{r.evidence}"
-                              </div>
-                            )}
-                            {r.mitigation && (
-                              <div className="text-sm font-medium mt-1.5 pt-1.5 border-t border-current/10">
-                                <span className="opacity-60">→ </span>
-                                {r.mitigation}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <ul className="space-y-2">
+            {riskItems.map((r: any, i: number) => (
+              <li key={i} className="flex items-start gap-2">
+                {r.severity && <Badge variant="outline" className="shrink-0">{r.severity}</Badge>}
+                <div className="text-sm">
+                  <div className="font-medium">{r.flag || r}</div>
+                  {r.mitigation && <div className="text-muted-foreground">Mitigation: {r.mitigation}</div>}
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Confidence & Next Checks</h3>

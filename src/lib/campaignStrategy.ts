@@ -23,24 +23,8 @@ export function parseCampaignStrategy(text: string): { audiences: string[]; talk
   const add = (arr: string[], raw: string) => {
     const s = String(raw || "").trim().replace(/^[-*•]\s*/, "");
     if (!s) return;
-    
-    let part = s;
-    
-    // First try colon separator (most common in new format)
-    const colonMatch = s.split(/\s*:\s*/, 2)[0]?.trim();
-    if (colonMatch && colonMatch.length < s.length) {
-      part = colonMatch;
-    } else {
-      // Then try dash separator (existing logic)
-      const dashMatch = s.split(/\s[–—–-]\s/, 2)[0]?.trim();
-      if (dashMatch && dashMatch.length < s.length) {
-        part = dashMatch;
-      }
-    }
-    
-    // Additional cleanup: remove trailing parentheticals if they remain
-    part = part.replace(/\s*\([^)]*\)\s*$/, '').trim();
-    
+    // If formatted as "X – Y", keep the concise left side as the tag
+    const part = s.split(/\s[–—–-]\s/, 2)[0]?.trim() || s;
     if (!part) return;
     if (!arr.some((x) => x.toLowerCase() === part.toLowerCase())) arr.push(part);
   };
@@ -101,9 +85,7 @@ export function pickTopAudienceTags(opts: {
     String(s || '')
       .trim()
       .replace(/^[-*•]\s*/, '') // bullets
-      .replace(/\s*:\s*.*/, '') // keep left side of colon
-      .replace(/\s[–—-]\s.*/, '') // keep left side of dash
-      .replace(/\s*\([^)]*\)\s*$/, '') // remove trailing parentheticals
+      .replace(/\s[–—-]\s.*/, '') // keep left side of dash separated
       .replace(/\s+/g, ' ')
       .replace(/^\s*:\s*$/, '')
       .trim();
