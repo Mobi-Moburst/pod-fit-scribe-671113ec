@@ -934,6 +934,20 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
     });
   }
   
+  // NEW: Clean Fit Bonus
+  // Apply +0.5 if strong fundamentals (Topic ≥8, ICP ≥8, Brand ≥7) with no identified gaps/risks
+  const hasNoGaps = why_not_fit.length === 0;
+  const hasNoRisks = risk_flags_structured.filter(r => r.severity === 'Red' || r.severity === 'Amber').length === 0;
+
+  if (topicRelevance >= 8 && icpAlignment >= 8 && brandSuitability >= 7 && hasNoGaps && hasNoRisks) {
+    overall = Math.min(10, overall + 0.5);
+    applied_adjustments.push({ 
+      type: 'bonus', 
+      label: 'Clean fit (no gaps/risks)', 
+      amount: 0.5 
+    });
+  }
+  
   // Store baseline before influence multiplier
   const baseline_overall = overall;
   
