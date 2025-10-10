@@ -3,10 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScoreBadge } from "./ScoreBadge";
-import { Calendar, AlertTriangle, AlertCircle, CheckCircle } from "lucide-react";
+import { Calendar, AlertTriangle, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { STRATEGY_PRESETS } from "@/lib/strategyPresets";
 
 export const ResultsPanel = ({
   result,
@@ -66,11 +65,31 @@ export const ResultsPanel = ({
         <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
           <AlertCircle className="h-5 w-5 text-amber-600" />
           <AlertDescription className="ml-2">
-            <div className="font-semibold text-amber-900 dark:text-amber-100 mb-2">Eligibility Check Required</div>
-            <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">{result.audit?.eligibility?.banner_message}</p>
+            <div className="font-semibold text-amber-900 dark:text-amber-100 mb-2">
+              Eligibility Check Required
+            </div>
+            <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
+              {result.audit?.eligibility?.banner_message}
+            </p>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => toast({ title: 'Eligibility confirmed' })}>Confirm Eligibility</Button>
-              <Button size="sm" variant="ghost" onClick={() => toast({ title: 'Reminder added' })}>Add to Client Notes</Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => {
+                  toast({ title: 'Eligibility confirmed', description: 'Update client profile to reflect confirmed eligibility.' });
+                }}
+              >
+                Confirm Eligibility
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => {
+                  toast({ title: 'Reminder added', description: 'Add eligibility check to client notes or campaign strategy.' });
+                }}
+              >
+                Add to Client Notes
+              </Button>
             </div>
           </AlertDescription>
         </Alert>
@@ -78,36 +97,71 @@ export const ResultsPanel = ({
       
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <ScoreBadge score={overall_score} />
+          <div className="flex flex-col items-center gap-2">
+            <ScoreBadge score={overall_score} />
+          </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-semibold">{show_title || 'Analysis Result'}</h2>
               {verdictLabel && <Badge variant={verdictVariant}>{`Verdict: ${verdictLabel}`}</Badge>}
-              {(result as any).strategy_preset && (
-                <Badge variant="outline" className="border-blue-500 text-blue-700 dark:text-blue-300">
-                  Strategy: {STRATEGY_PRESETS[(result as any).strategy_preset]?.label || 'Audience-First'}
-                </Badge>
-              )}
               <Badge variant="outline">{scored_by === 'ai' ? 'AI model' : 'Local heuristic'}</Badge>
-              {typeof confidence === 'number' && <Badge variant="secondary">{Math.round(confidence * 100)}% conf</Badge>}
+              {typeof confidence === 'number' && (
+                <Badge variant="secondary">{Math.round(confidence * 100)}% conf</Badge>
+              )}
+              {result.confidence_label && (
+                <Badge variant="secondary">{result.confidence_label}</Badge>
+              )}
               {(result as any).last_publish_date && (() => {
                 const date = new Date((result as any).last_publish_date);
                 const daysSince = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
-                const isInactive = daysSince > 730;
                 const isStale = daysSince > 90;
+                const isInactive = daysSince > 730; // 2 years = likely inactive
+                const formatRelativeTime = (days: number) => {
+                  if (days < 1) return "Today";
+                  if (days < 2) return "Yesterday";
+                  if (days < 7) return `${Math.floor(days)} days ago`;
+                  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+                  if (days < 365) return `${Math.floor(days / 30)} months ago`;
+                  return `${Math.floor(days / 365)} years ago`;
+                };
                 return (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {isStale ? <AlertTriangle className="w-4 h-4 text-amber-600" /> : <Calendar className="w-4 h-4" />}
+                    {isStale ? (
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    ) : (
+                      <Calendar className="w-4 h-4" />
+                    )}
                     <span>
-                      Published {date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                      {isInactive ? <span className="text-red-600 ml-1 font-medium"> - No longer publishing</span> : isStale ? <span className="text-amber-600 ml-1"> - Stale ({Math.floor(daysSince)}d)</span> : null}
+                      Published {date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} 
+                      ({formatRelativeTime(daysSince)})
+                      {isInactive ? (
+                        <span className="text-red-600 ml-1 font-medium">- No longer publishing</span>
+                      ) : isStale ? (
+                        <span className="text-amber-600 ml-1">- Stale content ({Math.floor(daysSince)}d)</span>
+                      ) : null}
                     </span>
                   </div>
                 );
               })()}
             </div>
             <p className="text-sm text-muted-foreground mt-2">Goal-centric fit using concept sets and near matches.</p>
-            {verdict_reason && <p className="text-sm mt-1">{verdict_reason}</p>}
+            {result.scored_by !== 'ai' && result.fallback_reason && (
+              <div className="mt-1">
+                <Badge variant="outline">LLM unavailable: {result.fallback_reason}</Badge>
+              </div>
+            )}
+            {verdict_reason && (
+              <p className="text-sm mt-1">{verdict_reason}</p>
+            )}
+            {Array.isArray(result.applied_adjustments) && result.applied_adjustments.filter((a: any) => a.type !== 'cap').length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {result.applied_adjustments.filter((adj: any) => adj.type !== 'cap').map((adj: any, i: number) => (
+                  <Badge key={i} variant={adj.type === 'floor' ? 'secondary' : 'outline'}>
+                    {adj.type?.toUpperCase?.() || 'ADJ'}: {adj.label}{typeof adj.amount === 'number' ? ` (${adj.amount > 0 ? '+' : ''}${adj.amount.toFixed(1)})` : ''}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -117,62 +171,83 @@ export const ResultsPanel = ({
         </div>
       </div>
 
-      {/* Positive Signals */}
-      {Array.isArray((result as any).positive_signals) && (result as any).positive_signals.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {(result as any).positive_signals.map((signal: string, i: number) => (
-            <Badge key={i} variant="outline" className="border-green-500 text-green-700 dark:text-green-300">
-              <CheckCircle className="w-3 h-3 mr-1" />{signal}
-            </Badge>
-          ))}
+      {/* Rubric - Now 3 scored dimensions + Format/CTA info-only */}
+      <div className="grid gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
+          {rubric_breakdown
+            .filter((r) => !/recency|consistency|eligibility|cta|format/i.test(r.dimension))
+            .map((r) => (
+              <Card key={r.dimension} className="p-4 card-surface">
+                <div className="text-sm text-muted-foreground">{r.dimension}</div>
+                <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
+                {r.weight > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">Weight: {(r.weight * 100).toFixed(0)}%</div>
+                )}
+                <p className="text-sm mt-2">{r.notes}</p>
+              </Card>
+            ))}
         </div>
-      )}
 
-      {/* Rubric */}
-      <div className="grid gap-4"><div className="grid md:grid-cols-3 gap-4">
-          {rubric_breakdown.filter((r) => !/recency|consistency|eligibility|cta|format/i.test(r.dimension)).map((r) => (
-            <Card key={r.dimension} className="p-4 card-surface">
-              <div className="text-sm text-muted-foreground">{r.dimension}</div>
-              <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
-              {r.weight > 0 && <div className="text-xs text-muted-foreground mt-1">Weight: {(r.weight * 100).toFixed(0)}%</div>}
-              <p className="text-sm mt-2">{r.notes}</p>
-            </Card>
-          ))}
-        </div>
+        
+        {/* Show eligibility warning only when there's a concern */}
+        {(result.audit?.eligibility?.action === 'fail' || result.audit?.eligibility?.action === 'conditional') && (
+          <Card className="p-4 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                  ⚠️ Guest Eligibility Review Required
+                </div>
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  {result.audit.eligibility.action === 'fail' 
+                    ? 'Client may not be eligible for this show\'s guest requirements. Please review before pitching.'
+                    : 'Unable to confirm guest eligibility from available client data. Please verify before pitching.'}
+                </p>
+                {result.audit?.eligibility?.evidence && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 italic">
+                    Show requirement: "{result.audit.eligibility.evidence}"
+                  </p>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Fit vs Gaps */}
       <div className="grid md:grid-cols-3 gap-4">
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Why it fits</h3>
-          <ul className="space-y-2">{fitItems.map((w: any, i: number) => (
-            <li key={i}><div className="font-medium">{w.claim}</div>
-              {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">"{w.evidence}"</blockquote>}
-            </li>
-          ))}</ul>
+          <ul className="space-y-2">
+            {fitItems.map((w: any, i: number) => (
+              <li key={i}>
+                <div className="font-medium">{w.claim}</div>
+                {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">“{w.evidence}”</blockquote>}
+                {w.interpretation && <div className="text-sm mt-1">{w.interpretation}</div>}
+              </li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-4 card-surface">
-          <h3 className="text-lg font-semibold mb-2">Why it doesn't</h3>
-          {notFitItems.length === 0 ? (
-            <div className="text-sm text-muted-foreground italic p-2 border-l-2 border-green-500">No material gaps identified</div>
-          ) : (<ul className="space-y-2">{notFitItems.map((w: any, i: number) => (<li key={i}><div className="flex items-center gap-2"><div className="font-medium">{w.claim}</div>{w.severity && <Badge variant="outline">{w.severity}</Badge>}</div></li>))}</ul>)}
+          <h3 className="text-lg font-semibold mb-2">Why it doesn’t</h3>
+          <ul className="space-y-2">
+            {notFitItems.map((w: any, i: number) => (
+              <li key={i}>
+                <div className="flex items-center gap-2">
+                  <div className="font-medium">{w.claim}</div>
+                  {w.severity && <Badge variant="outline">{w.severity}</Badge>}
+                </div>
+                {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">“{w.evidence}”</blockquote>}
+                {w.interpretation && <div className="text-sm mt-1">{w.interpretation}</div>}
+              </li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Recommendation</h3>
-          <div className="flex items-center gap-2 mb-3">
-            <Badge variant={verdictVariant || 'outline'}>{verdictLabel || 'Not recommended'}</Badge>
-            <span className="text-sm text-muted-foreground">{verdict_reason || 'Based on overall score.'}</span>
-          </div>
-          {Array.isArray((result as any).path_to_9_plus) && (result as any).path_to_9_plus.length > 0 && (
-            <div className="p-3 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-              <div className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">📈 Path to 9+</div>
-              <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">{(result as any).path_to_9_plus.map((lever: string, i: number) => (<li key={i}>• {lever}</li>))}</ul>
-            </div>
-          )}
-          <div className="mt-3 flex gap-2">
-            <Button size="sm" variant="default" onClick={() => { onSave(); toast({ title: 'Qualified' }); }}>✓ Qualify</Button>
-            <Button size="sm" variant="secondary" onClick={() => { onSave(); toast({ title: 'Parked' }); }}>⏸ Park</Button>
-            <Button size="sm" variant="outline" onClick={() => toast({ title: 'Excluded' })}>✕ Exclude</Button>
+          <div className="flex items-center gap-2">
+            <Badge variant={verdictVariant || 'outline'}>{verdictLabel || (overall_score >= 7.5 && (risk_flags?.length ?? 0) === 0 ? 'Recommend' : 'Not recommended')}</Badge>
+            <span className="text-sm text-muted-foreground">{verdict_reason || 'Based on overall score and risk flags.'}</span>
           </div>
         </Card>
       </div>
@@ -180,35 +255,39 @@ export const ResultsPanel = ({
       {/* Actions & Risks */}
       <div className="grid md:grid-cols-3 gap-4">
         <Card className="p-4 card-surface">
-          <h3 className="text-lg font-semibold mb-2">Talking Points</h3>
-          <ul className="list-disc pl-5 space-y-1">{(recommended_talking_points || []).slice(0,5).map((t, i) => (<li key={i}>{t}</li>))}</ul>
+          <h3 className="text-lg font-semibold mb-2">Talking Points to Pitch</h3>
+          <ul className="list-disc pl-5 space-y-1">
+            {(recommended_talking_points || []).slice(0,5).map((t, i) => (<li key={i}>{t}</li>))}
+          </ul>
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Risk Flags</h3>
-          {riskItems.length === 0 ? (
-            <div className="flex items-center gap-2 p-3 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
-              <CheckCircle className="h-4 w-4 text-green-600" /><span className="text-sm font-medium text-green-900 dark:text-green-100">No material risks detected</span>
-            </div>
-          ) : (<ul className="space-y-2">{riskItems.map((r: any, i: number) => (<li key={i} className="flex items-start gap-2">{r.severity && <Badge variant="outline">{r.severity}</Badge>}<div className="text-sm"><div className="font-medium">{r.flag || r}</div></div></li>))}</ul>)}
+          <ul className="space-y-2">
+            {riskItems.map((r: any, i: number) => (
+              <li key={i} className="flex items-start gap-2">
+                {r.severity && <Badge variant="outline" className="shrink-0">{r.severity}</Badge>}
+                <div className="text-sm">
+                  <div className="font-medium">{r.flag || r}</div>
+                  {r.mitigation && <div className="text-muted-foreground">Mitigation: {r.mitigation}</div>}
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-4 card-surface">
-          <h3 className="text-lg font-semibold mb-2">Confidence & Evidence</h3>
-          <div className="flex items-center gap-2 mb-3">
+          <h3 className="text-lg font-semibold mb-2">Confidence & Next Checks</h3>
+          <div className="flex items-center gap-2">
             {confidence_label && <Badge variant="secondary">{confidence_label}</Badge>}
-            {typeof confidence === 'number' && (<><div className="flex-1"><div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-amber-500 to-green-500" style={{ width: `${Math.round(confidence * 100)}%` }} /></div></div><span className="text-xs text-muted-foreground">{Math.round(confidence * 100)}%</span></>)}
+            {typeof confidence === 'number' && <span className="text-sm text-muted-foreground">{Math.round(confidence * 100)}% modeled</span>}
           </div>
-          {(result as any).confidence_breakdown && (() => {
-            const cb = (result as any).confidence_breakdown;
-            return (<div className="grid grid-cols-2 gap-2 text-xs mb-3">
-              <div className="flex items-center gap-1"><div className={`w-2 h-2 rounded-full ${cb.content_length_bucket === 'long' ? 'bg-green-500' : cb.content_length_bucket === 'medium' ? 'bg-amber-500' : 'bg-red-500'}`} /><span>Content: {cb.content_length_bucket}</span></div>
-              <div className="flex items-center gap-1"><div className={`w-2 h-2 rounded-full ${cb.citation_count > 2 ? 'bg-green-500' : cb.citation_count > 0 ? 'bg-amber-500' : 'bg-red-500'}`} /><span>{cb.citation_count} citations</span></div>
-            </div>);
-          })()}
-          {(result as any).confidence_breakdown?.evidence_thin && (
-            <Alert className="mb-3 py-2 px-3"><AlertCircle className="h-4 w-4 text-amber-600" /><AlertDescription className="text-xs ml-2">Low evidence — manual skim suggested</AlertDescription></Alert>
-          )}
+          {confidence_note && <p className="text-sm mt-2">{confidence_note}</p>}
           {Array.isArray(what_would_change) && what_would_change.length > 0 && (
-            <div className="mt-3"><div className="text-sm font-medium mb-1">What would change verdict</div><ul className="list-disc pl-5 space-y-1 text-sm">{what_would_change.slice(0,2).map((w, i) => (<li key={i}>{w}</li>))}</ul></div>
+            <div className="mt-3">
+              <div className="text-sm font-medium mb-1">What would change the verdict</div>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                {what_would_change.slice(0,2).map((w, i) => (<li key={i}>{w}</li>))}
+              </ul>
+            </div>
           )}
         </Card>
       </div>

@@ -12,7 +12,6 @@ export interface MinimalClient {
   notes?: string;
   campaign_manager?: string;
   campaign_strategy?: string;
-  strategy_preset?: 'audience-first' | 'brand-sensitive' | 'icp-strict-abm';
   // New eligibility fields
   gender?: 'male' | 'female' | 'non_binary' | 'unspecified';
   guest_identity_tags?: string[];

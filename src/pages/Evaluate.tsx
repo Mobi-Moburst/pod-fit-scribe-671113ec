@@ -16,7 +16,6 @@ import { ResultsPanel } from '@/components/evaluate/ResultsPanel';
 import type { MinimalClient } from '@/types/clients';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 import { ClientCombobox } from '@/components/ClientCombobox';
-import { STRATEGY_PRESETS, type StrategyPreset } from '@/lib/strategyPresets';
 const Evaluate = () => {
   useEffect(() => { document.title = 'Evaluate — Podcast Fit Rater'; }, []);
   const { toast } = useToast();
@@ -25,7 +24,6 @@ const Evaluate = () => {
   const [paste, setPaste] = useState('');
   const [clients, setClients] = useState<MinimalClient[]>([]);
   const [clientId, setClientId] = useState('');
-  const [strategyPreset, setStrategyPreset] = useState<StrategyPreset>('audience-first');
   const client = useMemo(() => clients.find(c => c.id === clientId)!, [clients, clientId]);
 
   useEffect(() => {
@@ -89,7 +87,7 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
         return;
       }
 
-      const resp = await callAnalyze({ client: { ...client, strategy_preset: strategyPreset }, show_notes: notes });
+      const resp = await callAnalyze({ client, show_notes: notes });
       if (!resp.success) {
         // Handle specific timeout and API errors with retry options
         if (resp.error === 'timeout') {
@@ -141,13 +139,7 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
         show_title: result.show_title || null,
         overall_score: (result as any).overall_score ?? null,
         confidence: (result as any).confidence ?? null,
-        rubric_json: {
-          ...result,
-          strategy_preset: strategyPreset,
-          confidence_breakdown: (result as any).confidence_breakdown,
-          positive_signals: (result as any).positive_signals,
-          path_to_9_plus: (result as any).path_to_9_plus,
-        } as any,
+        rubric_json: result as any,
         citations: (result as any).citations ?? null,
         show_notes_excerpt: paste ? paste.slice(0, 500) : null,
       } as any,
@@ -161,18 +153,10 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
 
   const handleExportJson = () => {
     if (!result) return;
-    const enriched = {
-      ...result,
-      strategy_preset: strategyPreset,
-      confidence_breakdown: (result as any).confidence_breakdown,
-      positive_signals: (result as any).positive_signals,
-      path_to_9_plus: (result as any).path_to_9_plus,
-      exported_at: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(enriched, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `podcast-fit-${result.show_title || 'result'}-${Date.now()}.json`;
+    a.download = 'podcast-fit-result.json';
     a.click();
   };
 
@@ -286,24 +270,6 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
               <Label htmlFor="client">Client</Label>
               <ClientCombobox clients={clients} value={clientId} onChange={setClientId} />
               <div className="text-xs text-muted-foreground">Seeded from saved Clients. Manage in Clients tab.</div>
-              
-              <div className="mt-3">
-                <Label htmlFor="strategy">Scoring Strategy</Label>
-                <select 
-                  id="strategy"
-                  className="h-10 rounded-md border bg-background px-3 w-full text-sm mt-1"
-                  value={strategyPreset}
-                  onChange={(e) => setStrategyPreset(e.target.value as StrategyPreset)}
-                >
-                  {Object.entries(STRATEGY_PRESETS).map(([key, preset]) => (
-                    <option key={key} value={key}>{preset.label}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {STRATEGY_PRESETS[strategyPreset].description}
-                </p>
-              </div>
-
               <div className="flex gap-2 mt-2">
                 <Button variant="hero" className="flex-1" onClick={handleAnalyze} disabled={!clientId}>Analyze</Button>
                 <Button
