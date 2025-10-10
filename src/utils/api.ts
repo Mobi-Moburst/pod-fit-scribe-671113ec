@@ -22,6 +22,13 @@ export interface AnalyzeResult {
   risk_flags_structured?: { severity: 'Critical' | 'Major' | 'Minor'; flag: string; mitigation: string }[];
   confidence_label?: 'High' | 'Med' | 'Low';
   confidence_note?: string;
+  confidence_breakdown?: {
+    content_length_bucket: 'short' | 'medium' | 'long';
+    citation_count: number;
+    scrape_success: 'success' | 'partial';
+    last_publish_recency_bucket: 'fresh' | 'stale' | 'unknown';
+    evidence_thin: boolean;
+  };
   what_would_change?: string[]; // 1–2 items
   summary_text?: string; // 140–200 words for Copy Summary
   show_title?: string; // UI convenience (set client-side)

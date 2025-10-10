@@ -962,6 +962,21 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const confidence_label = confidence >= 0.75 ? 'High' : confidence >= 0.5 ? 'Med' : 'Low';
   const confidence_note = `${nonGenericQuotes.length} usable quotes; notes ${tokens.length} tokens; media kit ${mediaKitUrl ? 'present' : 'missing'}`;
 
+  // === CONFIDENCE BREAKDOWN (Heuristic Path) ===
+  const content_chars = show_notes.length;
+  const content_bucket = content_chars < 400 ? 'short' : content_chars < 1200 ? 'medium' : 'long';
+  const citation_count = citations.length;
+  const scrape_quality = content_chars > 300 ? 'success' : 'partial';
+  const last_publish_bucket = 'unknown'; // Heuristic path doesn't have publish date
+  
+  const confidence_breakdown = {
+    content_length_bucket: content_bucket,
+    citation_count,
+    scrape_success: scrape_quality,
+    last_publish_recency_bucket: last_publish_bucket,
+    evidence_thin: content_chars < 400 || citation_count < 2,
+  };
+
   // Verdict policy (aligned)
   const hasCritical = why_not_fit_structured.some(w => w.severity === 'Critical') || risk_flags_structured.some(r => r.severity === 'Critical') || (cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play'));
   const verdict: 'recommend' | 'consider' | 'not_recommended' = hasCritical ? 'not_recommended' : overall >= 7.5 ? 'recommend' : overall < 6.0 ? 'not_recommended' : 'consider';
@@ -1011,6 +1026,7 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     risk_flags_structured,
     confidence_label,
     confidence_note,
+    confidence_breakdown,
     what_would_change,
     summary_text,
     applied_adjustments,
@@ -1374,6 +1390,27 @@ serve(async (req) => {
       const confidence_label = data?.confidence_label || ((Number(data?.confidence) || 0.5) >= 0.75 ? 'High' : (Number(data?.confidence) || 0.5) >= 0.5 ? 'Med' : 'Low');
       const confidence_note = data?.confidence_note || `${(data?.citations || []).length} usable quotes`;
 
+      // === CONFIDENCE BREAKDOWN ===
+      const content_chars = notesText.length;
+      const content_bucket = content_chars < 400 ? 'short' : content_chars < 1200 ? 'medium' : 'long';
+      const citation_count = (data?.citations || []).length;
+      const scrape_quality = content_chars > 300 ? 'success' : 'partial';
+
+      // Estimate recency bucket from content hints (since we may not have publish date in all paths)
+      let last_publish_bucket = 'unknown';
+      if ((result as any).last_publish_date) {
+        const daysSince = (Date.now() - new Date((result as any).last_publish_date).getTime()) / (1000 * 60 * 60 * 24);
+        last_publish_bucket = daysSince < 90 ? 'fresh' : 'stale';
+      }
+
+      const confidence_breakdown = {
+        content_length_bucket: content_bucket,
+        citation_count,
+        scrape_success: scrape_quality,
+        last_publish_recency_bucket: last_publish_bucket,
+        evidence_thin: content_chars < 400 || citation_count < 2,
+      };
+
       // Update rubric breakdown with correct weights
       rb.forEach((r: any) => {
         if (String(r?.dimension || '').toLowerCase().includes('topic')) r.weight = 0.45;
@@ -1400,6 +1437,7 @@ serve(async (req) => {
         risk_flags_structured,
         confidence_label,
         confidence_note,
+        confidence_breakdown,
         what_would_change: ensureArray(data?.what_would_change).slice(0,2),
         applied_adjustments,
         summary_text: '',
