@@ -942,30 +942,30 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     interpretation: "Supports demo/consult/guide-style CTA for B2B motion",
   });
 
-  const why_not_fit_structured: { severity: 'Critical' | 'Major' | 'Minor'; claim: string; evidence: string; interpretation: string }[] = [];
+  const why_not_fit_structured: { severity: 'Red' | 'Amber' | 'Green'; claim: string; evidence: string; interpretation: string }[] = [];
   if (cap_type === 'avoid') {
     const avoidA = avoidCounts[0]?.a;
     const claim = avoidA ? `Contains avoid term: "${avoidA}"` : 'Critical conflict with avoid criteria';
     const evidence = cap_evidence || avoidA || 'domain conflict';
-    why_not_fit_structured.push({ severity: 'Critical', claim, evidence, interpretation: 'Central to episode; brand/scope conflict' });
+    why_not_fit_structured.push({ severity: 'Red', claim, evidence, interpretation: 'Central to episode; brand/scope conflict' });
   }
   if (cap_type === 'pay_to_play') {
-    why_not_fit_structured.push({ severity: 'Critical', claim: 'Pay-to-play indications', evidence: cap_evidence || 'sponsored by', interpretation: 'Editorial independence risk' });
+    why_not_fit_structured.push({ severity: 'Red', claim: 'Pay-to-play indications', evidence: cap_evidence || 'sponsored by', interpretation: 'Editorial independence risk' });
   }
   if (cap_type === 'link_ban') {
-    why_not_fit_structured.push({ severity: 'Major', claim: 'Link ban present', evidence: cap_evidence, interpretation: 'Limits CTA effectiveness' });
+    why_not_fit_structured.push({ severity: 'Amber', claim: 'Link ban present', evidence: cap_evidence, interpretation: 'Limits CTA effectiveness' });
   }
   if (cap_type === 'b2c_mismatch') {
-    why_not_fit_structured.push({ severity: 'Critical', claim: 'B2C mismatch (hard cap)', evidence: cap_evidence, interpretation: 'Consumer-focused content with NO enterprise signals - misaligned with enterprise ICP' });
+    why_not_fit_structured.push({ severity: 'Red', claim: 'B2C mismatch (hard cap)', evidence: cap_evidence, interpretation: 'Consumer-focused content with NO enterprise signals - misaligned with enterprise ICP' });
   } else if (consumerCues.length >= 1 && enterpriseCueCount < 2) {
     // Surface as concern but don't cap if some enterprise cues present
-    why_not_fit_structured.push({ severity: 'Major', claim: 'Consumer content detected', evidence: `Consumer cues: ${consumerCues.slice(0,2).join(', ')}`, interpretation: 'Mixed audience may dilute enterprise messaging' });
+    why_not_fit_structured.push({ severity: 'Amber', claim: 'Consumer content detected', evidence: `Consumer cues: ${consumerCues.slice(0,2).join(', ')}`, interpretation: 'Mixed audience may dilute enterprise messaging' });
   }
   if (cap_type === 'zero_overlap') {
-    why_not_fit_structured.push({ severity: 'Major', claim: 'No overlap with concept sets', evidence: 'No relevant terms detected', interpretation: 'Topic/theme mismatch; low relevance' });
+    why_not_fit_structured.push({ severity: 'Amber', claim: 'No overlap with concept sets', evidence: 'No relevant terms detected', interpretation: 'Topic/theme mismatch; low relevance' });
   }
   if (!strongAudienceEvidence) {
-    why_not_fit_structured.push({ severity: 'Minor', claim: 'Audience specificity is weak', evidence: 'Lacks clear role/industry cues', interpretation: 'Proceed only if host confirms ICP details' });
+    why_not_fit_structured.push({ severity: 'Green', claim: 'Audience specificity is weak', evidence: 'Lacks clear role/industry cues', interpretation: 'Proceed only if host confirms ICP details' });
   }
 
   // NOTE: Eligibility is now ONLY in risks, NOT in why_not_fit (de-duplication)
@@ -1514,10 +1514,13 @@ serve(async (req) => {
       // Detect guest requirements from show notes
       const guestRequirements = detectGuestRequirements(notesText);
 
+      // Enrich client data for eligibility scoring
+      const clientEnrichment = await enrichClientData(client.media_kit_url);
+
       // Score eligibility if requirements exist
       let eligibilityResult = { eligible: true, confidence: 'none' as const, reasoning: 'No requirements detected' };
       if (guestRequirements.class !== 'none') {
-        eligibilityResult = scoreGuestEligibility(guestRequirements, client);
+        eligibilityResult = scoreGuestEligibility(client, clientEnrichment, guestRequirements);
       }
 
       // Apply eligibility gate
@@ -1612,8 +1615,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: errorType, fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   } catch (_e) {
+    console.error('Analyze function error:', _e);
+    const errorMessage = (_e as Error).message || 'Unknown error';
     return new Response(
-      JSON.stringify({ success: false, error: "Analyze error" }),
+      JSON.stringify({ success: false, error: `Analyze error: ${errorMessage}` }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
