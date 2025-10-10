@@ -320,6 +320,89 @@ function detectGuestRequirements(show_notes: string) {
   return requirements;
 }
 
+// ---------------- Eligibility Gate (Post-Scoring) ----------------
+function applyEligibilityGate(
+  baseline_overall: number,
+  guestRequirements: any,
+  eligibilityResult: any,
+  client: any
+) {
+  const req_class = guestRequirements.class; // 'exclusive' | 'preferential' | 'thematic' | 'none'
+  
+  // Distinguish "exclusive" (hard requirement, e.g., "women only") 
+  // from "effective" (strong preference that impacts success)
+  let final_class = req_class;
+  if (req_class === 'exclusive') {
+    const isHardExclusive = guestRequirements.evidence?.includes('only') || false;
+    final_class = isHardExclusive ? 'exclusive' : 'effective';
+  }
+  
+  const eligible = eligibilityResult.eligible;
+  const confidence = eligibilityResult.confidence;
+  
+  // Default: no gate applied
+  let action: 'pass' | 'conditional' | 'fail' | 'none' = 'none';
+  let cap_to: number | null = null;
+  let reasoning = '';
+  let show_banner = false;
+  let banner_message = '';
+  
+  // Gate logic
+  if (final_class === 'none' || final_class === 'preferential') {
+    // No impact on score or UI
+    action = 'none';
+    reasoning = final_class === 'none' 
+      ? 'No guest requirements detected'
+      : 'Preferential requirements present but not enforced';
+    
+  } else if (final_class === 'exclusive' || final_class === 'effective') {
+    // High-stakes requirements
+    
+    if (eligible && confidence === 'high') {
+      // ✅ Confirmed match
+      action = 'pass';
+      reasoning = `Client confirmed eligible: ${eligibilityResult.reasoning}`;
+      
+    } else if (!eligible && confidence === 'high') {
+      // ❌ Confirmed mismatch
+      action = 'fail';
+      cap_to = 3.0;
+      reasoning = `Client does not meet ${final_class} requirement: ${eligibilityResult.reasoning}`;
+      
+    } else {
+      // ⚠️ Unknown eligibility (low/medium confidence or missing data)
+      action = 'conditional';
+      cap_to = 6.0; // Provisional cap until resolved
+      show_banner = true;
+      banner_message = `This show has ${final_class} guest requirements (${guestRequirements.evidence}). ` +
+        `We ${confidence === 'low' ? 'cannot determine' : 'have limited confidence in'} ` +
+        `client eligibility from available data. Please confirm before pitching.`;
+      reasoning = `Eligibility unclear for ${final_class} requirement: ${eligibilityResult.reasoning}`;
+    }
+  }
+  
+  // Apply cap if needed
+  let final_overall = baseline_overall;
+  if (cap_to !== null) {
+    final_overall = Math.min(baseline_overall, cap_to);
+  }
+  
+  return {
+    final_overall: roundToHalf(clamp(final_overall, 0, 10)),
+    gate: {
+      class: final_class,
+      action,
+      evidence: guestRequirements.evidence || '',
+      reasoning,
+      cap_to,
+      show_banner,
+      banner_message,
+      eligible_status: eligible ? 'eligible' : (confidence === 'low' ? 'unknown' : 'ineligible'),
+      confidence,
+    }
+  };
+}
+
 // ---------------- Guest Eligibility Scoring ----------------
 function scoreGuestEligibility(client: any, clientEnrichment: any, guestRequirements: any) {
   const requirements = guestRequirements;
@@ -538,30 +621,26 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
   const icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
 
-  // Guest eligibility (0.20) - may be null if no requirements
-  const guestEligibility = eligibilityResult.score;
-  const hasEligibilityRequirements = guestEligibility !== null;
-
-  // CTA synergy (0.15)
+  // CTA synergy (0.20)
   const ctaTerms = ["book","demo","consult","download","guide","report","contact","learn more","talk to","sales","trial","start"];
   const ctaOverlap = count(notes, ctaTerms);
   const enterpriseVibe = /(enterprise|b2b|ciso|cio|governance|compliance|risk|security)/i.test(notes) ? 1 : 0;
   const ctaSynergy = roundToHalf(clamp(2 + Math.min(7, ctaOverlap * 1.5 + enterpriseVibe * 2)));
 
-  // Brand suitability (0.10)
+  // Brand suitability (0.15)
   const tonePref = norm(notesPref);
   const tonePos = ["authoritative","technical","tactical","educational","interview","case study","no pay-to-play"].filter(t => tonePref.includes(t)).length;
   const toneNegInNotes = /(explicit|nsfw|politics|gambling|hype|clickbait)/i.test(notes) ? 1 : 0;
   const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
 
-  // CRITICAL CHANGE: Dynamic weight redistribution when eligibility doesn't apply
-  const weights = hasEligibilityRequirements 
-    ? { topic: 0.30, icp: 0.25, eligibility: 0.20, cta: 0.15, brand: 0.10 } as const
-    : { topic: 0.35, icp: 0.30, eligibility: 0.00, cta: 0.20, brand: 0.15 } as const;
+  // NEW: Fixed weights (no eligibility in weighted calculation)
+  const weights = { topic: 0.35, icp: 0.30, cta: 0.20, brand: 0.15 } as const;
   
-  const weighted_mean = hasEligibilityRequirements
-    ? topicRelevance * weights.topic + icpAlignment * weights.icp + guestEligibility! * weights.eligibility + ctaSynergy * weights.cta + brandSuitability * weights.brand
-    : topicRelevance * weights.topic + icpAlignment * weights.icp + ctaSynergy * weights.cta + brandSuitability * weights.brand;
+  const weighted_mean = 
+    topicRelevance * weights.topic + 
+    icpAlignment * weights.icp + 
+    ctaSynergy * weights.cta + 
+    brandSuitability * weights.brand;
 
   // Adjustments
   const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
@@ -642,7 +721,17 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     overall = weighted_mean - 2.0;
   }
 
-  overall = roundToHalf(clamp(overall, 0, 10));
+  const baseline_overall = roundToHalf(clamp(overall, 0, 10));
+
+  // Apply eligibility gate AFTER baseline score
+  const gateResult = applyEligibilityGate(
+    baseline_overall,
+    guestRequirements,
+    eligibilityResult,
+    client
+  );
+
+  overall = gateResult.final_overall;
 
   // Evidence blocks
   const why_fit_structured = [] as { claim: string; evidence: string; interpretation: string }[];
@@ -686,18 +775,20 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     why_not_fit_structured.push({ severity: 'Minor', claim: 'Audience specificity is weak', evidence: 'Lacks clear role/industry cues', interpretation: 'Proceed only if host confirms ICP details' });
   }
 
-  // Add eligibility-specific feedback
-  if (eligibilityResult.shouldFlag) {
-    const severityMap = { critical: 'Critical', high: 'Critical', medium: 'Major', low: 'Minor' } as const;
-    const severity = severityMap[eligibilityResult.flagSeverity!] || 'Major';
-    
+  // Add eligibility-specific feedback based on gate action
+  if (gateResult.gate.action === 'fail') {
     why_not_fit_structured.push({ 
-      severity, 
-      claim: `Guest eligibility concern: ${guestRequirements.evidence}`, 
-      evidence: eligibilityResult.reasoning, 
-      interpretation: eligibilityResult.flagSeverity === 'critical' 
-        ? 'Client does not meet show\'s exclusive guest requirements - DO NOT PITCH' 
-        : 'Verify client meets guest requirements before pitching'
+      severity: 'Critical', 
+      claim: `Guest eligibility: ${guestRequirements.evidence}`, 
+      evidence: gateResult.gate.reasoning, 
+      interpretation: 'Client does not meet show\'s guest requirements - DO NOT PITCH'
+    });
+  } else if (gateResult.gate.action === 'conditional') {
+    why_not_fit_structured.push({ 
+      severity: 'Major', 
+      claim: `Guest eligibility check required: ${guestRequirements.evidence}`, 
+      evidence: gateResult.gate.reasoning, 
+      interpretation: 'Verify client meets guest requirements before pitching'
     });
   }
 
@@ -706,17 +797,18 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   if (payToPlayMatch) risk_flags_structured.push({ severity: 'Major', flag: 'Pay-to-play indications', mitigation: 'Confirm editorial policy or negotiate earned placement' });
   if (strongAvoidCentral) risk_flags_structured.push({ severity: 'Critical', flag: `Avoid term prominent: ${avoidCounts[0].a}`, mitigation: 'Pick a different episode or angle; avoid brand conflict' });
   
-  // Add eligibility risk flags
-  if (eligibilityResult.shouldFlag && eligibilityResult.flagSeverity) {
-    const severityMap = { critical: 'Critical', high: 'Critical', medium: 'Major', low: 'Minor' } as const;
-    const severity = severityMap[eligibilityResult.flagSeverity] || 'Major';
-    
+  // Add eligibility risk flags based on gate action
+  if (gateResult.gate.action === 'fail') {
     risk_flags_structured.push({ 
-      severity, 
+      severity: 'Critical', 
       flag: `Guest eligibility: ${guestRequirements.evidence}`, 
-      mitigation: eligibilityResult.flagSeverity === 'critical' 
-        ? 'DO NOT PITCH - Client does not meet exclusive requirements' 
-        : 'Verify eligibility with campaign manager before pitching'
+      mitigation: 'DO NOT PITCH - Client does not meet exclusive requirements'
+    });
+  } else if (gateResult.gate.action === 'conditional') {
+    risk_flags_structured.push({ 
+      severity: 'Major', 
+      flag: `Guest eligibility check: ${guestRequirements.evidence}`, 
+      mitigation: 'Verify eligibility with campaign manager before pitching'
     });
   }
 
@@ -755,10 +847,10 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   // Summary
   const summary_text = buildSummary({ overall: overall, verdict, why_fit_structured, why_not_fit_structured, risk_flags_structured, clientName: client?.name || client?.company || 'the client' });
 
+  // NEW: Rubric with only 4 content dimensions (no eligibility)
   const rubric_breakdown = [
     { dimension: "Topic relevance", weight: weights.topic, raw_score: topicRelevance, notes: citations.slice(0, 3).join("; ") || "No specific matches" },
     { dimension: "ICP alignment", weight: weights.icp, raw_score: icpAlignment, notes: audStrong ? `${audStrong} audience hits` : "Weak audience signals" },
-    { dimension: "Guest eligibility", weight: weights.eligibility, raw_score: guestEligibility, notes: `${guestRequirements.class === 'none' ? 'No requirements' : guestRequirements.evidence} - ${eligibilityResult.reasoning}` },
     { dimension: "CTA synergy", weight: weights.cta, raw_score: ctaSynergy, notes: enterpriseVibe ? "Enterprise tone supports B2B CTA" : `${ctaOverlap} CTA terms` },
     { dimension: "Brand suitability", weight: weights.brand, raw_score: brandSuitability, notes: toneNegInNotes ? "Tone concerns detected" : "Appropriate brand fit" },
   ] as const;
@@ -787,17 +879,17 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     applied_adjustments,
     cap_reason,
     cap_type,
+    // NEW: Audit object with baseline, final, and eligibility gate
     audit: {
+      baseline_overall,
+      final_overall: overall,
       weighted_mean,
       adjustments: { genericness: adj_genericness, multi_concept: adj_multi_concept, cadence: adj_cadence },
       cap_applied,
       cap_type,
       cap_evidence,
+      eligibility: gateResult.gate,
     },
-    // Guest eligibility details
-    guest_requirements: guestRequirements,
-    client_enrichment: clientEnrichment,
-    eligibility_result: eligibilityResult,
   };
 }
 
@@ -848,18 +940,24 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: "missing_api_key", fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Build goal-centric prompt with updated weights
-    const prompt = `You will analyze podcast episode content against client campaign fit using this 5-dimension scoring rubric:
+    // Build goal-centric prompt with NEW eligibility gate approach
+    const prompt = `You will analyze podcast episode content against client campaign fit using this 4-dimension scoring rubric:
 
-      1. **Topic relevance** (Weight: 0.30): How well the episode content aligns with the client's talking points, business focus, and target themes. Score 0-10.
+      1. **Topic relevance** (Weight: 0.35): How well the episode content aligns with the client's talking points, business focus, and target themes. Score 0-10.
 
-      2. **ICP alignment** (Weight: 0.25): How well the podcast audience matches the client's target customer profile and decision-makers. Score 0-10.
+      2. **ICP alignment** (Weight: 0.30): How well the podcast audience matches the client's target customer profile and decision-makers. Score 0-10.
 
-      3. **Guest eligibility** (Weight: 0.20): How well the client matches any specific guest requirements detected in the show (gender, role, identity, professional background). Score 0-10.
+      3. **CTA synergy** (Weight: 0.20): How compatible the episode format and tone are with the client's preferred call-to-action (demo, guide, consultation). Score 0-10.
 
-      4. **CTA synergy** (Weight: 0.15): How compatible the episode format and tone are with the client's preferred call-to-action (demo, guide, consultation). Score 0-10.
+      4. **Brand suitability** (Weight: 0.15): How appropriate the podcast's editorial standards, tone, and content are for the client's brand positioning. Score 0-10.
 
-      5. **Brand suitability** (Weight: 0.10): How appropriate the podcast's editorial standards, tone, and content are for the client's brand positioning. Score 0-10.
+      CRITICAL: Guest eligibility is NOT a scored dimension. Instead:
+      - Calculate baseline_overall from the 4 dimensions above only
+      - Analyze guest requirements separately (exclusive/effective/preferential/none)
+      - The system will apply an eligibility gate AFTER your baseline score:
+        * exclusive/effective + confirmed mismatch → cap final to 3.0
+        * exclusive/effective + unknown eligibility → cap final to 6.0
+        * preferential/none → no score impact
 
         **Client context:**
         - Name: ${client.name || 'Unknown'}
@@ -873,26 +971,17 @@ serve(async (req) => {
         **Episode content to analyze:**
         ${show_notes}
         
-        **Guest eligibility analysis instructions:**
-        - Look for specific guest requirements in the show notes (e.g., "women entrepreneurs only", "founders only", "veterans", "published authors")
-        - Classify requirements as EXCLUSIVE (hard requirement), PREFERENTIAL (strong preference), or THEMATIC (general focus)
-        - For guest eligibility scoring:
-          * If no requirements detected: Score 7.0 (neutral)
-          * If client matches exclusive requirement: Score 9-10
-          * If client doesn't match exclusive requirement: Score 0-2
-          * If client matches preferential requirement: Score 8-9
-          * If client doesn't match preferential requirement: Score 4-5
-          * If insufficient data to determine eligibility: Score 3-4 for exclusive, 6-7 for preferential
+        **Policy: Only infer gender from explicit client.gender or high-confidence pronoun/name analysis.**
+        **Do not infer ethnicity, religion, or political alignment unless explicitly stated in client identity tags.**
 
         Your response must be valid JSON with this exact structure:
         {
-          "overall_score": <number 0-10>,
+          "baseline_overall": <number 0-10 calculated from 4 dimensions only>,
           "rubric_breakdown": [
-            {"dimension": "Topic relevance", "weight": 0.30, "raw_score": <0-10>, "notes": "<brief explanation>"},
-            {"dimension": "ICP alignment", "weight": 0.25, "raw_score": <0-10>, "notes": "<brief explanation>"},
-            {"dimension": "Guest eligibility", "weight": 0.20, "raw_score": <0-10>, "notes": "<brief explanation>"},
-            {"dimension": "CTA synergy", "weight": 0.15, "raw_score": <0-10>, "notes": "<brief explanation>"},
-            {"dimension": "Brand suitability", "weight": 0.10, "raw_score": <0-10>, "notes": "<brief explanation>"}
+            {"dimension": "Topic relevance", "weight": 0.35, "raw_score": <0-10>, "notes": "<brief explanation>"},
+            {"dimension": "ICP alignment", "weight": 0.30, "raw_score": <0-10>, "notes": "<brief explanation>"},
+            {"dimension": "CTA synergy", "weight": 0.20, "raw_score": <0-10>, "notes": "<brief explanation>"},
+            {"dimension": "Brand suitability", "weight": 0.15, "raw_score": <0-10>, "notes": "<brief explanation>"}
           ],
           "verdict": "recommend|consider|not_recommended",
           "verdict_reason": "<one sentence>",
@@ -966,14 +1055,13 @@ serve(async (req) => {
       const avoidCounts = avoids.map(a => ({ a, c: count(notesText, [a]) })).sort((x,y)=>y.c - x.c);
       const strongAvoidCentral = avoidCounts[0]?.c >= 2;
 
-      // Compute weighted mean from LLM rubric with updated weights
+      // Compute weighted mean from LLM rubric with NEW weights (4 dimensions only)
       const rb: any[] = Array.isArray(data?.rubric_breakdown) ? data.rubric_breakdown : [];
       const topicRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('topic'))?.raw_score) || 0);
       const icpRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('icp'))?.raw_score) || 0);
-      const eligibilityRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('eligibility'))?.raw_score) || 0);
       const ctaRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('cta'))?.raw_score) || 0);
       const brandRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('brand'))?.raw_score) || 0);
-      const weighted_mean = topicRaw*0.30 + icpRaw*0.25 + eligibilityRaw*0.20 + ctaRaw*0.15 + brandRaw*0.10;
+      const weighted_mean = topicRaw*0.35 + icpRaw*0.30 + ctaRaw*0.20 + brandRaw*0.15;
 
       let adjusted = Number(data?.overall_score) || 0;
       const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];

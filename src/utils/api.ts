@@ -34,11 +34,24 @@ export interface AnalyzeResult {
   cap_reason?: string;
   cap_type?: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none';
   audit?: {
+    baseline_overall: number; // Score before eligibility gate
+    final_overall: number; // Score after gate (same as overall_score)
     weighted_mean: number;
     adjustments: { genericness: number; multi_concept: number; cadence: number };
     cap_applied: boolean;
     cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none';
     cap_evidence: string;
+    eligibility: {
+      class: 'exclusive' | 'effective' | 'preferential' | 'thematic' | 'none';
+      action: 'pass' | 'conditional' | 'fail' | 'none';
+      evidence: string;
+      reasoning: string;
+      cap_to: number | null;
+      show_banner: boolean;
+      banner_message: string;
+      eligible_status: 'eligible' | 'ineligible' | 'unknown';
+      confidence: 'high' | 'medium' | 'low';
+    };
   };
 }
 

@@ -3,7 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScoreBadge } from "./ScoreBadge";
-import { Calendar, AlertTriangle } from "lucide-react";
+import { Calendar, AlertTriangle, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
 
 export const ResultsPanel = ({
   result,
@@ -16,6 +18,8 @@ export const ResultsPanel = ({
   onCopySummary: () => void;
   onExportJson: () => void;
 }) => {
+  const { toast } = useToast();
+  
   const {
     overall_score,
     rubric_breakdown,
@@ -56,9 +60,59 @@ export const ResultsPanel = ({
 
   return (
     <section className="mt-6 grid gap-6">
+      {/* Eligibility Banner */}
+      {result.audit?.eligibility.show_banner && (
+        <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+          <AlertCircle className="h-5 w-5 text-amber-600" />
+          <AlertDescription className="ml-2">
+            <div className="font-semibold text-amber-900 dark:text-amber-100 mb-2">
+              Eligibility Check Required
+            </div>
+            <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
+              {result.audit.eligibility.banner_message}
+            </p>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => {
+                  toast({ title: 'Eligibility confirmed', description: 'Update client profile to reflect confirmed eligibility.' });
+                }}
+              >
+                Confirm Eligibility
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => {
+                  toast({ title: 'Reminder added', description: 'Add eligibility check to client notes or campaign strategy.' });
+                }}
+              >
+                Add to Client Notes
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <ScoreBadge score={overall_score} />
+          <div className="flex flex-col items-center gap-2">
+            <ScoreBadge score={overall_score} />
+            {result.audit && result.audit.baseline_overall !== result.audit.final_overall && (
+              <div className="text-xs text-muted-foreground text-center">
+                <div className="flex items-center gap-1">
+                  <span className="font-mono">Baseline: {result.audit.baseline_overall.toFixed(1)}</span>
+                  <span>→</span>
+                  <span className="font-mono font-semibold">Final: {result.audit.final_overall.toFixed(1)}</span>
+                </div>
+                <p className="mt-1">
+                  {result.audit.eligibility.action === 'fail' && 'Capped due to eligibility mismatch'}
+                  {result.audit.eligibility.action === 'conditional' && 'Provisional cap until eligibility confirmed'}
+                </p>
+              </div>
+            )}
+          </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-semibold">{show_title || 'Analysis Result'}</h2>
@@ -125,17 +179,51 @@ export const ResultsPanel = ({
         </div>
       </div>
 
-      {/* Rubric */}
-      <div className="grid md:grid-cols-5 gap-4">
-        {rubric_breakdown
-          .filter((r) => !/recency|consistency/i.test(r.dimension))
-          .map((r) => (
-            <Card key={r.dimension} className="p-4 card-surface">
-              <div className="text-sm text-muted-foreground">{r.dimension}</div>
-              <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
-              <p className="text-sm mt-2">{r.notes}</p>
-            </Card>
-          ))}
+      {/* Rubric - Now 4 dimensions + separate eligibility status */}
+      <div className="grid gap-4">
+        <div className="grid md:grid-cols-4 gap-4">
+          {rubric_breakdown
+            .filter((r) => !/recency|consistency|eligibility/i.test(r.dimension))
+            .map((r) => (
+              <Card key={r.dimension} className="p-4 card-surface">
+                <div className="text-sm text-muted-foreground">{r.dimension}</div>
+                <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
+                <p className="text-sm mt-2">{r.notes}</p>
+              </Card>
+            ))}
+        </div>
+        
+        {/* Show eligibility status separately (not in rubric) */}
+        {result.audit?.eligibility.class !== 'none' && result.audit?.eligibility.class !== 'preferential' && (
+          <Card className="p-4 card-surface">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium mb-1">Guest Eligibility Status</div>
+                <p className="text-xs text-muted-foreground">{result.audit.eligibility.reasoning}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {result.audit.eligibility.action === 'pass' && (
+                  <>
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="text-green-600 font-semibold">Eligible</span>
+                  </>
+                )}
+                {result.audit.eligibility.action === 'fail' && (
+                  <>
+                    <XCircle className="h-5 w-5 text-red-600" />
+                    <span className="text-red-600 font-semibold">Not Eligible</span>
+                  </>
+                )}
+                {result.audit.eligibility.action === 'conditional' && (
+                  <>
+                    <AlertCircle className="h-5 w-5 text-amber-600" />
+                    <span className="text-amber-600 font-semibold">Check Required</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Fit vs Gaps */}
