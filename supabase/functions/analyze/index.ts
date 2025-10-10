@@ -726,20 +726,13 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
   const topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
 
-  // ICP alignment (0.45) - with enterprise cue lift
+  // ICP alignment (0.45) - baseline calculation
   const audStrong = findPositions(notes, audiences.map(norm)).length;
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
   let icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
   
-  // Apply enterprise cue lift (cap at 9.0)
+  // Count enterprise cues (lift applied later after applied_adjustments is declared)
   const enterpriseCueCount = countEnterpriseCues(notes);
-  if (enterpriseCueCount >= 4) {
-    icpAlignment = Math.min(9.0, icpAlignment + 1.0);
-    applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (4+)', amount: 1.0 });
-  } else if (enterpriseCueCount >= 2) {
-    icpAlignment = Math.min(9.0, icpAlignment + 0.5);
-    applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (2+)', amount: 0.5 });
-  }
 
   // CTA synergy (0.20)
   const ctaTerms = ["book","demo","consult","download","guide","report","contact","learn more","talk to","sales","trial","start"];
@@ -769,6 +762,15 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   else if (nonGenericCount === 1) { adj_genericness = -1.0; }
   else if (nonGenericCount === 2) { adj_genericness = -0.5; }
   if (adj_genericness) applied_adjustments.push({ type: 'penalty', label: 'Genericness', amount: adj_genericness });
+
+  // Enterprise cue lift for ICP (cap at 9.0)
+  if (enterpriseCueCount >= 4) {
+    icpAlignment = Math.min(9.0, icpAlignment + 1.0);
+    applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (4+)', amount: 1.0 });
+  } else if (enterpriseCueCount >= 2) {
+    icpAlignment = Math.min(9.0, icpAlignment + 0.5);
+    applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (2+)', amount: 0.5 });
+  }
 
   let adj_multi_concept = 0;
   if (distinctConcepts >= 5) adj_multi_concept = +0.5;
@@ -1358,15 +1360,8 @@ serve(async (req) => {
       const ctaRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('cta'))?.raw_score) || 0);
       const brandRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('brand'))?.raw_score) || 0);
       
-      // Apply enterprise cue lift to ICP (cap at 9.0) - POST-PROCESSING
+      // Count enterprise cues for ICP lift (applied after applied_adjustments is declared)
       const enterpriseCueCount = countEnterpriseCues(notesText);
-      if (enterpriseCueCount >= 4) {
-        icpRaw = Math.min(9.0, icpRaw + 1.0);
-        applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (4+)', amount: 1.0 });
-      } else if (enterpriseCueCount >= 2) {
-        icpRaw = Math.min(9.0, icpRaw + 0.5);
-        applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (2+)', amount: 0.5 });
-      }
       
       // Update ICP score in rubric breakdown
       rb.forEach((r: any) => {
@@ -1379,6 +1374,15 @@ serve(async (req) => {
 
       let adjusted = Number(data?.overall_score) || 0;
       const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
+
+      // Apply enterprise cue lift to ICP (cap at 9.0)
+      if (enterpriseCueCount >= 4) {
+        icpRaw = Math.min(9.0, icpRaw + 1.0);
+        applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (4+)', amount: 1.0 });
+      } else if (enterpriseCueCount >= 2) {
+        icpRaw = Math.min(9.0, icpRaw + 0.5);
+        applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (2+)', amount: 0.5 });
+      }
 
       // Cap tracking (apply at most one)
       let cap_applied = false;
