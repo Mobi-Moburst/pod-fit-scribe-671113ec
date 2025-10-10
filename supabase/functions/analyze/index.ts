@@ -820,6 +820,9 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
 
   // Topic relevance (0.30)
   const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
+  console.log(`[CONCEPT DEBUG] Strong hits (${strongHits.length}):`, strongHits.map(h => h.term).join(', '));
+  console.log(`[CONCEPT DEBUG] Near hits (${nearHits.length}):`, nearHits.map(h => h.term).join(', '));
+  
   let topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
   
   // Concept density multiplier: reward shows with exceptional thematic depth
@@ -835,8 +838,15 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
   let icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
   
-  // Count enterprise cues (lift applied later after applied_adjustments is declared)
+  // Count enterprise cues and apply lift BEFORE weighted calculation
   const enterpriseCueCount = countEnterpriseCues(notes);
+  
+  // Apply enterprise cue lift to ICP early (before weighted mean)
+  if (enterpriseCueCount >= 4) {
+    icpAlignment = Math.min(10.0, icpAlignment + 1.0);
+  } else if (enterpriseCueCount >= 2) {
+    icpAlignment = Math.min(10.0, icpAlignment + 0.5);
+  }
   
   // NEW: Allow broad "security pros/practitioners" to score 7.5-8.5 if enterprise themes present
   const hasSecurityPractitionerAudience = /(security\s+(pros?|professionals?|practitioners?|experts?))/i.test(notes);
@@ -889,12 +899,10 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
   else if (nonGenericCount === 2) { adj_genericness = -0.5; }
   if (adj_genericness) applied_adjustments.push({ type: 'penalty', label: 'Genericness', amount: adj_genericness });
 
-  // Enterprise cue lift for ICP (cap at 10.0 - allow exceptional fits)
+  // Track enterprise cue lift in audit trail (already applied above)
   if (enterpriseCueCount >= 4) {
-    icpAlignment = Math.min(10.0, icpAlignment + 1.0);
     applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (4+)', amount: 1.0 });
   } else if (enterpriseCueCount >= 2) {
-    icpAlignment = Math.min(10.0, icpAlignment + 0.5);
     applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (2+)', amount: 0.5 });
   }
 
@@ -942,28 +950,37 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
     });
   }
   
-  // Exceptional Fit Bonus (+1.0-1.5): reward objectively outstanding episodes
-  // Apply when: Topic ≥ 8.5, ICP ≥ 8.5, Brand ≥ 7.5, no gaps, no risks
+  // Exceptional Fit Bonus (+0.5-1.5): reward objectively outstanding episodes
+  // Apply when: Topic ≥ 8.0, ICP ≥ 8.0, Brand ≥ 7.0, no gaps, no risks
   const hasNoGaps = why_not_fit.length === 0;
   const hasNoRisks = risk_flags_structured.filter(r => r.severity === 'Red' || r.severity === 'Amber').length === 0;
   
-  if (topicRelevance >= 8.5 && icpAlignment >= 8.5 && brandSuitability >= 7.5 && hasNoGaps && hasNoRisks) {
-    // Tier 1: Perfect fundamentals (9.0+/9.0+/8.0+) → +1.5
-    if (topicRelevance >= 9.0 && icpAlignment >= 9.0 && brandSuitability >= 8.0) {
+  if (topicRelevance >= 8.0 && icpAlignment >= 8.0 && brandSuitability >= 7.0 && hasNoGaps && hasNoRisks) {
+    // Tier 1: Perfect fundamentals (9.0+/9.0+/8.5+) → +1.5
+    if (topicRelevance >= 9.0 && icpAlignment >= 9.0 && brandSuitability >= 8.5) {
       overall = Math.min(10, overall + 1.5);
       applied_adjustments.push({ 
         type: 'bonus', 
-        label: 'Exceptional fit (9+/9+/8+, no issues)', 
+        label: 'Exceptional fit (9+/9+/8.5+, no issues)', 
         amount: 1.5 
       });
     } 
-    // Tier 2: Near-perfect (8.5+/8.5+/7.5+) → +1.0
-    else {
+    // Tier 2: Very strong (8.5+/8.5+/7.5+) → +1.0
+    else if (topicRelevance >= 8.5 && icpAlignment >= 8.5 && brandSuitability >= 7.5) {
       overall = Math.min(10, overall + 1.0);
       applied_adjustments.push({ 
         type: 'bonus', 
         label: 'Exceptional fit (8.5+/8.5+/7.5+, no issues)', 
         amount: 1.0 
+      });
+    }
+    // Tier 3: Strong clean fit (8.0+/8.0+/7.0+) → +0.5
+    else {
+      overall = Math.min(10, overall + 0.5);
+      applied_adjustments.push({ 
+        type: 'bonus', 
+        label: 'Clean fit (8+/8+/7+, no issues)', 
+        amount: 0.5 
       });
     }
   }
