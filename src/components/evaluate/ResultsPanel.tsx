@@ -61,7 +61,7 @@ export const ResultsPanel = ({
   return (
     <section className="mt-6 grid gap-6">
       {/* Eligibility Banner */}
-      {result.audit?.eligibility.show_banner && (
+      {result.audit?.eligibility?.show_banner && (
         <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
           <AlertCircle className="h-5 w-5 text-amber-600" />
           <AlertDescription className="ml-2">
@@ -69,7 +69,7 @@ export const ResultsPanel = ({
               Eligibility Check Required
             </div>
             <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
-              {result.audit.eligibility.banner_message}
+              {result.audit?.eligibility?.banner_message}
             </p>
             <div className="flex gap-2">
               <Button 
@@ -107,8 +107,8 @@ export const ResultsPanel = ({
                   <span className="font-mono font-semibold">Final: {result.audit.final_overall.toFixed(1)}</span>
                 </div>
                 <p className="mt-1">
-                  {result.audit.eligibility.action === 'fail' && 'Capped due to eligibility mismatch'}
-                  {result.audit.eligibility.action === 'conditional' && 'Provisional cap until eligibility confirmed'}
+                  {result.audit?.eligibility?.action === 'fail' && 'Capped due to eligibility mismatch'}
+                  {result.audit?.eligibility?.action === 'conditional' && 'Provisional cap until eligibility confirmed'}
                 </p>
               </div>
             )}
@@ -194,27 +194,27 @@ export const ResultsPanel = ({
         </div>
         
         {/* Show eligibility status separately (not in rubric) */}
-        {result.audit?.eligibility.class !== 'none' && result.audit?.eligibility.class !== 'preferential' && (
+        {result.audit?.eligibility?.class !== 'none' && result.audit?.eligibility?.class !== 'preferential' && (
           <Card className="p-4 card-surface">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium mb-1">Guest Eligibility Status</div>
-                <p className="text-xs text-muted-foreground">{result.audit.eligibility.reasoning}</p>
+                <p className="text-xs text-muted-foreground">{result.audit?.eligibility?.reasoning}</p>
               </div>
               <div className="flex items-center gap-2">
-                {result.audit.eligibility.action === 'pass' && (
+                {result.audit?.eligibility?.action === 'pass' && (
                   <>
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <span className="text-green-600 font-semibold">Eligible</span>
                   </>
                 )}
-                {result.audit.eligibility.action === 'fail' && (
+                {result.audit?.eligibility?.action === 'fail' && (
                   <>
                     <XCircle className="h-5 w-5 text-red-600" />
                     <span className="text-red-600 font-semibold">Not Eligible</span>
                   </>
                 )}
-                {result.audit.eligibility.action === 'conditional' && (
+                {result.audit?.eligibility?.action === 'conditional' && (
                   <>
                     <AlertCircle className="h-5 w-5 text-amber-600" />
                     <span className="text-amber-600 font-semibold">Check Required</span>
