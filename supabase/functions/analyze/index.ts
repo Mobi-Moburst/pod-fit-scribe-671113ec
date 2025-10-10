@@ -816,6 +816,12 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     });
   }
   
+  // Declare cap variables BEFORE they're used
+  let cap_applied = false;
+  let cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none' = 'none';
+  let cap_evidence = '';
+  let cap_reason: string | undefined;
+  
   // Rule 2c: Near-Strong Floor - if Topic ≥ 8.0 AND ICP ≥ 7.0 AND Brand ≥ 7.0 AND no hard caps
   const hasHardCap = cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play' || cap_type === 'link_ban' || cap_type === 'zero_overlap');
   if (topicRelevance >= 8.0 && icpAlignment >= 7.0 && brandSuitability >= 7.0 && !hasHardCap) {
@@ -861,10 +867,7 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const consumerCue = /(giveaway|coupon|subscribe and save|lifestyle|beauty|fashion|fitness|cooking|parenting|celebrity|gossip)/i.test(notes);
   const b2cMismatch = consumerCue && !enterpriseVibe;
 
-  let cap_applied = false;
-  let cap_type: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none' = 'none';
-  let cap_evidence = '';
-  let cap_reason: string | undefined;
+  // (cap variables now declared earlier at line ~819)
 
   const tryApplyCap = (type: typeof cap_type, evidence: string, capMax = 5.0) => {
     if (cap_applied) return;
