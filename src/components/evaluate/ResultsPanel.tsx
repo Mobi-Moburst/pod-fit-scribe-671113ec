@@ -95,6 +95,20 @@ export const ResultsPanel = ({
         </Alert>
       )}
       
+      {/* Score explanation hint */}
+      {result.audit && (overall_score < 8.5 || result.audit.adjustments.genericness < 0) && (
+        <Alert className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <span className="font-medium">Why it's not higher:</span>{' '}
+            {result.audit.adjustments.genericness < 0 && 'Audience wording is broad; '}
+            {result.audit.enterprise_cues_count >= 2 && 'lifted by enterprise cues; '}
+            {result.audit.adjustments.multi_concept > 0 && 'multiple concepts detected'}
+            {!result.audit.adjustments.multi_concept && result.audit.enterprise_cues_count < 2 && 'limited enterprise signals'}
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="flex flex-col items-center gap-2">
@@ -277,15 +291,19 @@ export const ResultsPanel = ({
             </div>
           ) : (
             <ul className="space-y-2">
-              {riskItems.map((r: any, i: number) => (
-                <li key={i} className="flex items-start gap-2">
-                  {r.severity && <Badge variant="outline" className="shrink-0">{r.severity}</Badge>}
-                  <div className="text-sm">
-                    <div className="font-medium">{r.flag || r}</div>
-                    {r.mitigation && <div className="text-muted-foreground">Mitigation: {r.mitigation}</div>}
-                  </div>
-                </li>
-              ))}
+              {riskItems.map((r: any, i: number) => {
+                const severityVariant = r.severity === 'Red' ? 'destructive' : r.severity === 'Amber' ? 'secondary' : 'default';
+                return (
+                  <li key={i} className="flex items-start gap-2">
+                    {r.severity && <Badge variant={severityVariant} className="shrink-0">{r.severity}</Badge>}
+                    <div className="text-sm">
+                      <div className="font-medium">{r.flag || r}</div>
+                      {r.evidence && <div className="text-xs text-muted-foreground mt-0.5">Evidence: {r.evidence}</div>}
+                      {r.mitigation && <div className="text-muted-foreground mt-1">→ {r.mitigation}</div>}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Card>

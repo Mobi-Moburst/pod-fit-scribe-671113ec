@@ -58,6 +58,38 @@ function isGenericSlogan(q: string) {
   return /thought leader|leaders in|trailblazing|cutting-edge|unlock potential|empower|innovation hub|join us/i.test(l);
 }
 
+// ---------------- Enterprise Cue Detection ----------------
+function countEnterpriseCues(text: string): number {
+  const lower = norm(text);
+  const enterpriseCues = {
+    titles: ['ciso', 'cio', 'cto', 'head of security', 'chief security', 'chief information', 'vp security', 'director security', 'head of it', 'it director'],
+    frameworks: ['soc 2', 'soc2', 'iso 27001', 'iso27001', 'nist', 'fedramp', 'hipaa', 'sox', 'gdpr', 'ccpa', 'pci dss', 'cmmc'],
+    phrases: ['b2b', 'governance', 'compliance', 'risk management', 'rollout', 'stakeholders', 'enterprise', 'regulated', 'audit', 'board level', 'enterprise-grade', 'saas platform'],
+    vendors: ['okta', 'crowdstrike', 'splunk', 'palo alto', 'microsoft', 'salesforce', 'workday', 'servicenow', 'azure', 'aws', 'google cloud', 'snowflake']
+  };
+  
+  let count = 0;
+  for (const cueList of Object.values(enterpriseCues)) {
+    for (const cue of cueList) {
+      const re = new RegExp(`\\b${esc(cue)}\\b`, 'g');
+      const matches = lower.match(re);
+      if (matches) count += matches.length;
+    }
+  }
+  return count;
+}
+
+function detectConsumerCues(text: string): string[] {
+  const lower = norm(text);
+  const cues = [
+    'giveaway', 'coupon', 'subscribe and save', 'lifestyle', 'beauty', 'fashion', 
+    'fitness', 'cooking', 'parenting', 'celebrity', 'gossip', 'personal finance', 
+    'budgeting', 'diy', 'home improvement', 'recipe', 'wellness', 'self-care',
+    'shopping', 'deals', 'discount', 'influencer', 'vlog', 'makeup', 'skincare'
+  ];
+  return cues.filter(cue => new RegExp(`\\b${esc(cue)}\\b`, 'g').test(lower));
+}
+
 // ---------------- Concept Set Expansion ----------------
 function expandConcepts(client: any) {
   const talking: string[] = (client?.talking_points || client?.keywords_positive || []) as string[];
@@ -694,10 +726,20 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
   const topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
 
-  // ICP alignment (0.25)
+  // ICP alignment (0.45) - with enterprise cue lift
   const audStrong = findPositions(notes, audiences.map(norm)).length;
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
-  const icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
+  let icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
+  
+  // Apply enterprise cue lift (cap at 9.0)
+  const enterpriseCueCount = countEnterpriseCues(notes);
+  if (enterpriseCueCount >= 4) {
+    icpAlignment = Math.min(9.0, icpAlignment + 1.0);
+    applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (4+)', amount: 1.0 });
+  } else if (enterpriseCueCount >= 2) {
+    icpAlignment = Math.min(9.0, icpAlignment + 0.5);
+    applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (2+)', amount: 0.5 });
+  }
 
   // CTA synergy (0.20)
   const ctaTerms = ["book","demo","consult","download","guide","report","contact","learn more","talk to","sales","trial","start"];
@@ -771,6 +813,17 @@ async function scoreGoalCentric(client: any, show_notes: string) {
       amount: 7.5 
     });
   }
+  
+  // Rule 2c: Near-Strong Floor - if Topic ≥ 8.0 AND ICP ≥ 7.0 AND Brand ≥ 7.0 AND no hard caps
+  const hasHardCap = cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play' || cap_type === 'link_ban' || cap_type === 'zero_overlap');
+  if (topicRelevance >= 8.0 && icpAlignment >= 7.0 && brandSuitability >= 7.0 && !hasHardCap) {
+    overall = Math.max(overall, 7.5);
+    applied_adjustments.push({ 
+      type: 'floor', 
+      label: 'Near-strong foundation (8/7/7)', 
+      amount: 7.5 
+    });
+  }
 
   // Rule 3: If Brand ≤ 4 → cap final ≤ 6.0
   if (brandSuitability <= 4) {
@@ -782,16 +835,16 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     });
   }
 
-  // Rule 4: If |Topic − ICP| ≥ 3 → apply -0.5 penalty
-  if (topicIcpGap >= 3) {
-    overall = Math.max(0, overall - 0.5);
+  // Rule 4: If |Topic − ICP| ≥ 3.5 → apply -0.25 penalty (softened)
+  if (topicIcpGap >= 3.5) {
+    overall = Math.max(0, overall - 0.25);
     const gapType = topicRelevance > icpAlignment 
       ? 'High concept / weaker audience match' 
       : 'Audience present / weak topical depth';
     applied_adjustments.push({ 
       type: 'penalty', 
       label: gapType, 
-      amount: -0.5 
+      amount: -0.25 
     });
   }
 
@@ -903,7 +956,10 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     why_not_fit_structured.push({ severity: 'Major', claim: 'Link ban present', evidence: cap_evidence, interpretation: 'Limits CTA effectiveness' });
   }
   if (cap_type === 'b2c_mismatch') {
-    why_not_fit_structured.push({ severity: 'Major', claim: 'B2C mismatch', evidence: cap_evidence, interpretation: 'Consumer-focused content misaligned with enterprise ICP' });
+    why_not_fit_structured.push({ severity: 'Critical', claim: 'B2C mismatch (hard cap)', evidence: cap_evidence, interpretation: 'Consumer-focused content with NO enterprise signals - misaligned with enterprise ICP' });
+  } else if (consumerCues.length >= 1 && enterpriseCueCount < 2) {
+    // Surface as concern but don't cap if some enterprise cues present
+    why_not_fit_structured.push({ severity: 'Major', claim: 'Consumer content detected', evidence: `Consumer cues: ${consumerCues.slice(0,2).join(', ')}`, interpretation: 'Mixed audience may dilute enterprise messaging' });
   }
   if (cap_type === 'zero_overlap') {
     why_not_fit_structured.push({ severity: 'Major', claim: 'No overlap with concept sets', evidence: 'No relevant terms detected', interpretation: 'Topic/theme mismatch; low relevance' });
@@ -912,40 +968,127 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     why_not_fit_structured.push({ severity: 'Minor', claim: 'Audience specificity is weak', evidence: 'Lacks clear role/industry cues', interpretation: 'Proceed only if host confirms ICP details' });
   }
 
-  // Add eligibility-specific feedback based on gate action
-  if (gateResult.gate.action === 'fail') {
-    why_not_fit_structured.push({ 
-      severity: 'Critical', 
-      claim: `Guest eligibility: ${guestRequirements.evidence}`, 
-      evidence: gateResult.gate.reasoning, 
-      interpretation: 'Client does not meet show\'s guest requirements - DO NOT PITCH'
-    });
-  } else if (gateResult.gate.action === 'conditional') {
-    why_not_fit_structured.push({ 
-      severity: 'Major', 
-      claim: `Guest eligibility check required: ${guestRequirements.evidence}`, 
-      evidence: gateResult.gate.reasoning, 
-      interpretation: 'Verify client meets guest requirements before pitching'
+  // NOTE: Eligibility is now ONLY in risks, NOT in why_not_fit (de-duplication)
+
+  // === NEW OPERATIONAL RISK TAXONOMY (Red/Amber/Green) ===
+  const risk_flags_structured: { severity: 'Red' | 'Amber' | 'Green'; flag: string; evidence: string; mitigation: string }[] = [];
+  
+  // RED (blocking)
+  if (payToPlayMatch) {
+    risk_flags_structured.push({ 
+      severity: 'Red', 
+      flag: 'Pay-to-play / guest fees detected', 
+      evidence: payToPlayMatch[0],
+      mitigation: 'DO NOT PITCH - Confirm editorial policy or negotiate earned placement'
     });
   }
-
-  // Risk flags
-  const risk_flags_structured: { severity: 'Critical' | 'Major' | 'Minor'; flag: string; mitigation: string }[] = [];
-  if (payToPlayMatch) risk_flags_structured.push({ severity: 'Major', flag: 'Pay-to-play indications', mitigation: 'Confirm editorial policy or negotiate earned placement' });
-  if (strongAvoidCentral) risk_flags_structured.push({ severity: 'Critical', flag: `Avoid term prominent: ${avoidCounts[0].a}`, mitigation: 'Pick a different episode or angle; avoid brand conflict' });
   
-  // Add eligibility risk flags based on gate action
+  if (linkBanMatch) {
+    risk_flags_structured.push({ 
+      severity: 'Red', 
+      flag: 'Link/UTM ban or strict no-external links', 
+      evidence: linkBanMatch[0],
+      mitigation: 'Ask for link in show notes or episode page; may limit CTA ROI'
+    });
+  }
+  
+  const noGuestsMatch = notes.match(/(no\s+guest\s+submissions|invite\s+only|co-hosts\s+only|not\s+accepting\s+guests|closed\s+to\s+guests)/i);
+  if (noGuestsMatch) {
+    risk_flags_structured.push({ 
+      severity: 'Red', 
+      flag: 'No guest submissions / invite-only', 
+      evidence: noGuestsMatch[0],
+      mitigation: 'DO NOT PITCH - Show does not accept guest pitches'
+    });
+  }
+  
   if (gateResult.gate.action === 'fail') {
     risk_flags_structured.push({ 
-      severity: 'Critical', 
-      flag: `Guest eligibility: ${guestRequirements.evidence}`, 
+      severity: 'Red', 
+      flag: `Eligibility mismatch: ${guestRequirements.evidence}`, 
+      evidence: gateResult.gate.reasoning,
       mitigation: 'DO NOT PITCH - Client does not meet exclusive requirements'
     });
-  } else if (gateResult.gate.action === 'conditional') {
+  }
+  
+  // AMBER (friction)
+  const formOnlyMatch = notes.match(/(contact\s+form|submission\s+form|google\s+form|typeform)/i);
+  const hasEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(notes);
+  if (formOnlyMatch && !hasEmail) {
     risk_flags_structured.push({ 
-      severity: 'Major', 
+      severity: 'Amber', 
+      flag: 'No direct contact - form only', 
+      evidence: formOnlyMatch[0],
+      mitigation: 'Use guest intake form; may slow response time'
+    });
+  }
+  
+  const staleMatch = notes.match(/(no\s+longer\s+publishing|on\s+hiatus|inactive|discontinued|final\s+episode)/i);
+  if (staleMatch) {
+    risk_flags_structured.push({ 
+      severity: 'Amber', 
+      flag: 'Show may be inactive or discontinued', 
+      evidence: staleMatch[0],
+      mitigation: 'Verify active status before pitching'
+    });
+  }
+  
+  const promoMatch = notes.match(/(promotional\s+content|sponsored\s+segments|product\s+placement|paid\s+endorsement|affiliate\s+links)/gi);
+  if (promoMatch && promoMatch.length >= 2) {
+    risk_flags_structured.push({ 
+      severity: 'Amber', 
+      flag: 'Heavy promotional/sales format detected', 
+      evidence: promoMatch.slice(0,2).join('; '),
+      mitigation: 'Ensure thought-leadership angle; avoid pure product pitch'
+    });
+  }
+  
+  // Audience dilution (consumer content mixed with enterprise cues)
+  if (consumerCues.length >= 1 && enterpriseCueCount >= 2) {
+    risk_flags_structured.push({ 
+      severity: 'Amber', 
+      flag: 'Audience dilution - mixed consumer/enterprise content', 
+      evidence: `Consumer: ${consumerCues.slice(0,2).join(', ')}; Enterprise present`,
+      mitigation: 'Focus pitch on enterprise angle; verify ICP fit with host'
+    });
+  }
+  
+  const irregularMatch = notes.match(/(irregular\s+schedule|sporadic|infrequent|monthly|quarterly)/i);
+  if (irregularMatch) {
+    risk_flags_structured.push({ 
+      severity: 'Amber', 
+      flag: 'Low or irregular episode frequency', 
+      evidence: irregularMatch[0],
+      mitigation: 'May have longer lead time; verify active production schedule'
+    });
+  }
+  
+  if (gateResult.gate.action === 'conditional') {
+    risk_flags_structured.push({ 
+      severity: 'Amber', 
       flag: `Guest eligibility check: ${guestRequirements.evidence}`, 
+      evidence: gateResult.gate.reasoning,
       mitigation: 'Verify eligibility with campaign manager before pitching'
+    });
+  }
+  
+  // GREEN (positive signals)
+  const bookingLinkMatch = notes.match(/(booking\s+link|guest\s+intake|apply\s+to\s+be\s+a\s+guest|pitch\s+form)/i);
+  if (bookingLinkMatch) {
+    risk_flags_structured.push({ 
+      severity: 'Green', 
+      flag: 'Accepts guests - booking link present', 
+      evidence: bookingLinkMatch[0],
+      mitigation: 'Use provided guest intake process'
+    });
+  }
+  
+  if (hasEmail && !formOnlyMatch) {
+    risk_flags_structured.push({ 
+      severity: 'Green', 
+      flag: 'Direct contact email available', 
+      evidence: 'Email found in show notes',
+      mitigation: 'Pitch directly via email'
     });
   }
 
@@ -1016,7 +1159,7 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     applied_adjustments,
     cap_reason,
     cap_type,
-    // NEW: Audit object with baseline, final, and eligibility gate
+    // NEW: Audit object with baseline, final, eligibility gate, and enterprise cues
     audit: {
       baseline_overall,
       final_overall: overall,
@@ -1025,6 +1168,7 @@ async function scoreGoalCentric(client: any, show_notes: string) {
       cap_applied,
       cap_type,
       cap_evidence,
+      enterprise_cues_count: enterpriseCueCount,
       eligibility: gateResult.gate,
     },
   };
@@ -1093,8 +1237,9 @@ serve(async (req) => {
   **Aggregation rules (apply AFTER calculating baseline from weighted dimensions):**
   - If min(Topic, ICP) ≤ 4 → cap overall_score ≤ 5.5 (verdict: Not recommended)
   - If Topic ≥ 8 AND ICP ≥ 8 → ensure overall_score ≥ 7.5 unless Brand ≤ 5 (then apply -0.5 to -1.0)
+  - If Topic ≥ 8.0 AND ICP ≥ 7.0 AND Brand ≥ 7.0 → ensure overall_score ≥ 7.5 (Near-strong floor)
   - If Brand ≤ 4 → cap overall_score ≤ 6.0 (maximum Consider)
-  - If |Topic − ICP| ≥ 3 → overall_score -= 0.5 and add insight tag: "High concept / weaker audience match" or "Audience present / weak topical depth"
+  - If |Topic − ICP| ≥ 3.5 → overall_score -= 0.25 and add insight tag: "High concept / weaker audience match" or "Audience present / weak topical depth"
 
   **Guest eligibility (NOT a scored dimension):**
   - Analyze guest requirements separately (exclusive/effective/preferential/none)
@@ -1208,10 +1353,28 @@ serve(async (req) => {
 
       // Compute weighted mean from LLM rubric with NEW weights (4 dimensions only)
       const rb: any[] = Array.isArray(data?.rubric_breakdown) ? data.rubric_breakdown : [];
-      const topicRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('topic'))?.raw_score) || 0);
-      const icpRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('icp'))?.raw_score) || 0);
+      let topicRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('topic'))?.raw_score) || 0);
+      let icpRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('icp'))?.raw_score) || 0);
       const ctaRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('cta'))?.raw_score) || 0);
       const brandRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('brand'))?.raw_score) || 0);
+      
+      // Apply enterprise cue lift to ICP (cap at 9.0) - POST-PROCESSING
+      const enterpriseCueCount = countEnterpriseCues(notesText);
+      if (enterpriseCueCount >= 4) {
+        icpRaw = Math.min(9.0, icpRaw + 1.0);
+        applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (4+)', amount: 1.0 });
+      } else if (enterpriseCueCount >= 2) {
+        icpRaw = Math.min(9.0, icpRaw + 0.5);
+        applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (2+)', amount: 0.5 });
+      }
+      
+      // Update ICP score in rubric breakdown
+      rb.forEach((r: any) => {
+        if (String(r?.dimension || '').toLowerCase().includes('icp')) {
+          r.raw_score = icpRaw;
+        }
+      });
+      
       const weighted_mean = topicRaw*0.45 + icpRaw*0.45 + brandRaw*0.10;
 
       let adjusted = Number(data?.overall_score) || 0;
@@ -1230,11 +1393,11 @@ serve(async (req) => {
         cap_reason = `${type.replace(/_/g,' ')} — "${evidence || 'evidence required'}"`;
       };
 
-      const payToPlayMatch = notesText.match(/(sponsored by|paid placement|advertorial|pay\s*to\s*play)/i);
-      const linkBanMatch = notesText.match(/(no\s+links|do\s+not\s+include\s+links|don['']t\s+include\s+urls|no\s+urls)/i);
-      const enterpriseVibe = /(enterprise|b2b|ciso|cio|governance|compliance|risk|security)/i.test(notesText);
-      const consumerCue = /(giveaway|coupon|subscribe and save|lifestyle|beauty|fashion|fitness|cooking|parenting|celebrity|gossip)/i.test(notesText);
-      const b2cMismatch = consumerCue && !enterpriseVibe;
+      const payToPlayMatch = notesText.match(/(sponsored by|paid placement|advertorial|pay\s*to\s*play|guest\s+fee|fee\s+for\s+interview)/i);
+      const linkBanMatch = notesText.match(/(no\s+links|no\s+external\s+links|no\s+backlinks|do\s+not\s+include\s+links|don['']t\s+include\s+urls|no\s+urls|utm\s+not\s+allowed)/i);
+      const enterpriseVibe = enterpriseCueCount >= 1;
+      const consumerCues = detectConsumerCues(notesText);
+      const b2cMismatch = consumerCues.length >= 2 && enterpriseCueCount === 0;
       const cryptoCue = /(crypto|bitcoin|blockchain|defi|web3|ethereum|nft|solana|token\b|altcoin)/i.test(notesText);
       const clientText = norm([
         client?.name,
@@ -1307,6 +1470,17 @@ serve(async (req) => {
           amount: 7.5 
         });
       }
+      
+      // Rule 2c: Near-Strong Floor - if Topic ≥ 8.0 AND ICP ≥ 7.0 AND Brand ≥ 7.0 AND no hard caps
+      const hasHardCap = cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play' || cap_type === 'link_ban' || cap_type === 'zero_overlap');
+      if (topicRaw >= 8.0 && icpRaw >= 7.0 && brandRaw >= 7.0 && !hasHardCap) {
+        adjusted = Math.max(adjusted, 7.5);
+        applied_adjustments.push({ 
+          type: 'floor', 
+          label: 'Near-strong foundation (8/7/7)', 
+          amount: 7.5 
+        });
+      }
 
       // Rule 3: If Brand ≤ 4 → cap final ≤ 6.0
       if (brandRaw <= 4) {
@@ -1318,16 +1492,16 @@ serve(async (req) => {
         });
       }
 
-      // Rule 4: If |Topic − ICP| ≥ 3 → apply -0.5 penalty
-      if (topicIcpGap >= 3) {
-        adjusted = Math.max(0, adjusted - 0.5);
+      // Rule 4: If |Topic − ICP| ≥ 3.5 → apply -0.25 penalty (softened)
+      if (topicIcpGap >= 3.5) {
+        adjusted = Math.max(0, adjusted - 0.25);
         const gapType = topicRaw > icpRaw 
           ? 'High concept / weaker audience match' 
           : 'Audience present / weak topical depth';
         applied_adjustments.push({ 
           type: 'penalty', 
           label: gapType, 
-          amount: -0.5 
+          amount: -0.25 
         });
       }
 
@@ -1413,6 +1587,7 @@ serve(async (req) => {
           cap_applied,
           cap_type,
           cap_evidence,
+          enterprise_cues_count: enterpriseCueCount,
           eligibility: gateResult.gate,
         },
       } as any;
