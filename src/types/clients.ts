@@ -3,6 +3,7 @@ export interface MinimalClient {
   id: string;
   name: string;
   company?: string;
+  company_url?: string;
   media_kit_url: string;
   target_audiences?: string[];
   talking_points?: string[];

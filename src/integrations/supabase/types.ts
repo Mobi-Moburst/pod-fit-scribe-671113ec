@@ -20,6 +20,7 @@ export type Database = {
           campaign_manager: string | null
           campaign_strategy: string
           company: string | null
+          company_url: string | null
           content_goals: string | null
           created_at: string | null
           cta: string | null
@@ -49,6 +50,7 @@ export type Database = {
           campaign_manager?: string | null
           campaign_strategy: string
           company?: string | null
+          company_url?: string | null
           content_goals?: string | null
           created_at?: string | null
           cta?: string | null
@@ -78,6 +80,7 @@ export type Database = {
           campaign_manager?: string | null
           campaign_strategy?: string
           company?: string | null
+          company_url?: string | null
           content_goals?: string | null
           created_at?: string | null
           cta?: string | null
