@@ -1139,7 +1139,7 @@ serve(async (req) => {
       const icpRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('icp'))?.raw_score) || 0);
       const ctaRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('cta'))?.raw_score) || 0);
       const brandRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('brand'))?.raw_score) || 0);
-      const weighted_mean = topicRaw*0.35 + icpRaw*0.30 + ctaRaw*0.20 + brandRaw*0.15;
+      const weighted_mean = topicRaw*0.40 + icpRaw*0.35 + ctaRaw*0.05 + brandRaw*0.20;
 
       let adjusted = Number(data?.overall_score) || 0;
       const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
@@ -1200,6 +1200,28 @@ serve(async (req) => {
       if (!criticalCap && adjusted < (weighted_mean - 2.0)) {
         adjusted = weighted_mean - 2.0;
       }
+      // Store baseline before eligibility gate
+      const baseline_overall = adjusted;
+
+      // Detect guest requirements from show notes
+      const guestRequirements = detectGuestRequirements(notesText);
+
+      // Score eligibility if requirements exist
+      let eligibilityResult = { eligible: true, confidence: 'none' as const, reasoning: 'No requirements detected' };
+      if (guestRequirements.class !== 'none') {
+        eligibilityResult = scoreGuestEligibility(guestRequirements, client);
+      }
+
+      // Apply eligibility gate
+      const gateResult = applyEligibilityGate(
+        baseline_overall,
+        guestRequirements,
+        eligibilityResult,
+        client
+      );
+
+      // Use gated score as final
+      adjusted = gateResult.final_overall;
       adjusted = roundToHalf(clamp(adjusted, 0, 10));
 
       const ensureArray = (v: any) => Array.isArray(v) ? v : [];
@@ -1217,6 +1239,14 @@ serve(async (req) => {
       const verdict: 'recommend' | 'consider' | 'not_recommended' = hasCritical ? 'not_recommended' : adjusted >= 7.5 ? 'recommend' : adjusted < 6.0 ? 'not_recommended' : 'consider';
       const confidence_label = data?.confidence_label || ((Number(data?.confidence) || 0.5) >= 0.75 ? 'High' : (Number(data?.confidence) || 0.5) >= 0.5 ? 'Med' : 'Low');
       const confidence_note = data?.confidence_note || `${(data?.citations || []).length} usable quotes`;
+
+      // Update rubric breakdown with correct weights
+      rb.forEach((r: any) => {
+        if (String(r?.dimension || '').toLowerCase().includes('topic')) r.weight = 0.40;
+        else if (String(r?.dimension || '').toLowerCase().includes('icp')) r.weight = 0.35;
+        else if (String(r?.dimension || '').toLowerCase().includes('brand')) r.weight = 0.20;
+        else if (String(r?.dimension || '').toLowerCase().includes('cta')) r.weight = 0.05;
+      });
 
       const merged = {
         overall_score: adjusted,
@@ -1242,11 +1272,14 @@ serve(async (req) => {
         cap_reason: cap_reason,
         cap_type,
         audit: {
+          baseline_overall,
+          final_overall: adjusted,
           weighted_mean,
           adjustments: { genericness: 0, multi_concept: 0, cadence: 0 },
           cap_applied,
           cap_type,
           cap_evidence,
+          eligibility: gateResult.gate,
         },
       } as any;
 
