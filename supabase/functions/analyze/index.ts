@@ -962,21 +962,6 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const confidence_label = confidence >= 0.75 ? 'High' : confidence >= 0.5 ? 'Med' : 'Low';
   const confidence_note = `${nonGenericQuotes.length} usable quotes; notes ${tokens.length} tokens; media kit ${mediaKitUrl ? 'present' : 'missing'}`;
 
-  // === CONFIDENCE BREAKDOWN (Heuristic Path) ===
-  const content_chars = show_notes.length;
-  const content_bucket = content_chars < 400 ? 'short' : content_chars < 1200 ? 'medium' : 'long';
-  const citation_count = citations.length;
-  const scrape_quality = content_chars > 300 ? 'success' : 'partial';
-  const last_publish_bucket = 'unknown'; // Heuristic path doesn't have publish date
-  
-  const confidence_breakdown = {
-    content_length_bucket: content_bucket,
-    citation_count,
-    scrape_success: scrape_quality,
-    last_publish_recency_bucket: last_publish_bucket,
-    evidence_thin: content_chars < 400 || citation_count < 2,
-  };
-
   // Verdict policy (aligned)
   const hasCritical = why_not_fit_structured.some(w => w.severity === 'Critical') || risk_flags_structured.some(r => r.severity === 'Critical') || (cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play'));
   const verdict: 'recommend' | 'consider' | 'not_recommended' = hasCritical ? 'not_recommended' : overall >= 7.5 ? 'recommend' : overall < 6.0 ? 'not_recommended' : 'consider';
@@ -1026,7 +1011,6 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     risk_flags_structured,
     confidence_label,
     confidence_note,
-    confidence_breakdown,
     what_would_change,
     summary_text,
     applied_adjustments,
@@ -1080,11 +1064,6 @@ serve(async (req) => {
 
   try {
     const { client, show_notes } = await req.json();
-    console.log('[analyze] Request received:', {
-      clientName: client?.name,
-      clientCompany: client?.company,
-      notesLength: show_notes?.length || 0,
-    });
     if (!client || !show_notes) {
       return new Response(
         JSON.stringify({ success: false, error: "Missing client or show_notes" }),
@@ -1093,13 +1072,10 @@ serve(async (req) => {
     }
 
     if (!OPENAI_API_KEY || !OPENAI_API_KEY.trim()) {
-      console.error('[analyze] Missing OPENAI_API_KEY');
       const data = await scoreGoalCentric(client, String(show_notes || ""));
       data.fallback_reason = "Missing OPENAI_API_KEY";
       return new Response(JSON.stringify({ success: false, error: "missing_api_key", fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    console.log('[analyze] API key present, length:', OPENAI_API_KEY.length, 'starts with:', OPENAI_API_KEY.substring(0, 7));
 
     // Build audience-first prompt with NEW weights
     const prompt = `You will analyze podcast episode content against client campaign fit using this audience-first scoring rubric:
@@ -1187,7 +1163,6 @@ serve(async (req) => {
     let json: any = null;
 
     try {
-      console.log('[analyze] Calling OpenAI API with model:', body.model);
       const resp = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
@@ -1196,14 +1171,9 @@ serve(async (req) => {
       });
       clearTimeout(t);
 
-      console.log('[analyze] OpenAI response status:', resp.status);
-
-      try { json = await resp.json(); } catch (parseErr) {
-        console.error('[analyze] Failed to parse OpenAI response:', parseErr);
-      }
+      try { json = await resp.json(); } catch {}
       if (!resp.ok) {
         const errMsg = json?.error?.message || resp.statusText || `status ${resp.status}`;
-        console.error('[analyze] OpenAI API error:', errMsg, 'Full error:', JSON.stringify(json?.error || {}));
         const data = await scoreGoalCentric(client, String(show_notes || ""));
         data.fallback_reason = `OpenAI API error: ${errMsg}`;
         const errorType = resp.status === 429 ? "rate_limit" : "api_error";
@@ -1404,27 +1374,6 @@ serve(async (req) => {
       const confidence_label = data?.confidence_label || ((Number(data?.confidence) || 0.5) >= 0.75 ? 'High' : (Number(data?.confidence) || 0.5) >= 0.5 ? 'Med' : 'Low');
       const confidence_note = data?.confidence_note || `${(data?.citations || []).length} usable quotes`;
 
-      // === CONFIDENCE BREAKDOWN ===
-      const content_chars = notesText.length;
-      const content_bucket = content_chars < 400 ? 'short' : content_chars < 1200 ? 'medium' : 'long';
-      const citation_count = (data?.citations || []).length;
-      const scrape_quality = content_chars > 300 ? 'success' : 'partial';
-
-      // Estimate recency bucket from content hints (since we may not have publish date in all paths)
-      let last_publish_bucket = 'unknown';
-      if ((result as any).last_publish_date) {
-        const daysSince = (Date.now() - new Date((result as any).last_publish_date).getTime()) / (1000 * 60 * 60 * 24);
-        last_publish_bucket = daysSince < 90 ? 'fresh' : 'stale';
-      }
-
-      const confidence_breakdown = {
-        content_length_bucket: content_bucket,
-        citation_count,
-        scrape_success: scrape_quality,
-        last_publish_recency_bucket: last_publish_bucket,
-        evidence_thin: content_chars < 400 || citation_count < 2,
-      };
-
       // Update rubric breakdown with correct weights
       rb.forEach((r: any) => {
         if (String(r?.dimension || '').toLowerCase().includes('topic')) r.weight = 0.45;
@@ -1451,7 +1400,6 @@ serve(async (req) => {
         risk_flags_structured,
         confidence_label,
         confidence_note,
-        confidence_breakdown,
         what_would_change: ensureArray(data?.what_would_change).slice(0,2),
         applied_adjustments,
         summary_text: '',
@@ -1482,12 +1430,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, data: merged }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (e) {
       clearTimeout(t);
-      console.error('[analyze] Exception during AI scoring:', {
-        message: (e as any)?.message,
-        name: (e as any)?.name,
-        stack: (e as any)?.stack,
-        cause: (e as any)?.cause,
-      });
       const data = await scoreGoalCentric(client, String(show_notes || ""));
       const errorMsg = (e as any)?.message || 'LLM call failed';
       data.fallback_reason = errorMsg;
@@ -1495,11 +1437,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: errorType, fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   } catch (_e) {
-    console.error('[analyze] Fatal error in analyze function:', {
-      message: (_e as any)?.message,
-      name: (_e as any)?.name,
-      stack: (_e as any)?.stack,
-    });
     return new Response(
       JSON.stringify({ success: false, error: "Analyze error" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }

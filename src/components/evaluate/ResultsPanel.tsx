@@ -222,32 +222,26 @@ export const ResultsPanel = ({
             {fitItems.map((w: any, i: number) => (
               <li key={i}>
                 <div className="font-medium">{w.claim}</div>
-                {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">"{w.evidence}"</blockquote>}
+                {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">“{w.evidence}”</blockquote>}
                 {w.interpretation && <div className="text-sm mt-1">{w.interpretation}</div>}
               </li>
             ))}
           </ul>
         </Card>
         <Card className="p-4 card-surface">
-          <h3 className="text-lg font-semibold mb-2">Why it doesn't</h3>
-          {notFitItems.length === 0 ? (
-            <div className="text-sm text-muted-foreground italic py-2 px-3 border-l-2 border-green-500 bg-green-50/50 dark:bg-green-950/10">
-              No material gaps identified
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {notFitItems.map((w: any, i: number) => (
-                <li key={i}>
-                  <div className="flex items-center gap-2">
-                    <div className="font-medium">{w.claim}</div>
-                    {w.severity && <Badge variant="outline">{w.severity}</Badge>}
-                  </div>
-                  {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">"{w.evidence}"</blockquote>}
-                  {w.interpretation && <div className="text-sm mt-1">{w.interpretation}</div>}
-                </li>
-              ))}
-            </ul>
-          )}
+          <h3 className="text-lg font-semibold mb-2">Why it doesn’t</h3>
+          <ul className="space-y-2">
+            {notFitItems.map((w: any, i: number) => (
+              <li key={i}>
+                <div className="flex items-center gap-2">
+                  <div className="font-medium">{w.claim}</div>
+                  {w.severity && <Badge variant="outline">{w.severity}</Badge>}
+                </div>
+                {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">“{w.evidence}”</blockquote>}
+                {w.interpretation && <div className="text-sm mt-1">{w.interpretation}</div>}
+              </li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Recommendation</h3>
@@ -268,112 +262,29 @@ export const ResultsPanel = ({
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Risk Flags</h3>
-          {riskItems.length === 0 ? (
-            <div className="flex items-center gap-2 p-3 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
-              <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
-              <span className="text-sm font-medium text-green-900 dark:text-green-100">
-                No material risks detected
-              </span>
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {riskItems.map((r: any, i: number) => (
-                <li key={i} className="flex items-start gap-2">
-                  {r.severity && <Badge variant="outline" className="shrink-0">{r.severity}</Badge>}
-                  <div className="text-sm">
-                    <div className="font-medium">{r.flag || r}</div>
-                    {r.mitigation && <div className="text-muted-foreground">Mitigation: {r.mitigation}</div>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="space-y-2">
+            {riskItems.map((r: any, i: number) => (
+              <li key={i} className="flex items-start gap-2">
+                {r.severity && <Badge variant="outline" className="shrink-0">{r.severity}</Badge>}
+                <div className="text-sm">
+                  <div className="font-medium">{r.flag || r}</div>
+                  {r.mitigation && <div className="text-muted-foreground">Mitigation: {r.mitigation}</div>}
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-4 card-surface">
-          <h3 className="text-lg font-semibold mb-2">Confidence & Evidence</h3>
-          
-          {/* Confidence meter */}
-          <div className="flex items-center gap-2 mb-3">
+          <h3 className="text-lg font-semibold mb-2">Confidence & Next Checks</h3>
+          <div className="flex items-center gap-2">
             {confidence_label && <Badge variant="secondary">{confidence_label}</Badge>}
-            {typeof confidence === 'number' && (
-              <>
-                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-amber-500 to-green-500 transition-all duration-300"
-                    style={{ width: `${Math.round(confidence * 100)}%` }}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground font-mono">
-                  {Math.round(confidence * 100)}%
-                </span>
-              </>
-            )}
+            {typeof confidence === 'number' && <span className="text-sm text-muted-foreground">{Math.round(confidence * 100)}% modeled</span>}
           </div>
-
-          {/* Evidence quality indicators */}
-          {(result as any).confidence_breakdown && (() => {
-            const cb = (result as any).confidence_breakdown;
-            return (
-              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${
-                    cb.content_length_bucket === 'long' ? 'bg-green-500' : 
-                    cb.content_length_bucket === 'medium' ? 'bg-amber-500' : 
-                    'bg-red-500'
-                  }`} />
-                  <span className="text-muted-foreground">
-                    Content: <span className="font-medium text-foreground">{cb.content_length_bucket}</span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${
-                    cb.citation_count > 2 ? 'bg-green-500' : 
-                    cb.citation_count > 0 ? 'bg-amber-500' : 
-                    'bg-red-500'
-                  }`} />
-                  <span className="text-muted-foreground">
-                    Citations: <span className="font-medium text-foreground">{cb.citation_count}</span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${
-                    cb.scrape_success === 'success' ? 'bg-green-500' : 'bg-amber-500'
-                  }`} />
-                  <span className="text-muted-foreground">
-                    Scrape: <span className="font-medium text-foreground">{cb.scrape_success}</span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${
-                    cb.last_publish_recency_bucket === 'fresh' ? 'bg-green-500' : 
-                    cb.last_publish_recency_bucket === 'stale' ? 'bg-amber-500' : 
-                    'bg-gray-400'
-                  }`} />
-                  <span className="text-muted-foreground">
-                    Recency: <span className="font-medium text-foreground">{cb.last_publish_recency_bucket}</span>
-                  </span>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Low evidence warning */}
-          {(result as any).confidence_breakdown?.evidence_thin && (
-            <Alert className="mb-3 py-2 px-3 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-xs ml-2 text-amber-900 dark:text-amber-100">
-                <span className="font-semibold">Low evidence</span> — manual skim suggested
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {confidence_note && <p className="text-sm text-muted-foreground mb-2">{confidence_note}</p>}
-          
-          {/* What would change verdict */}
+          {confidence_note && <p className="text-sm mt-2">{confidence_note}</p>}
           {Array.isArray(what_would_change) && what_would_change.length > 0 && (
-            <div className="mt-3 pt-3 border-t">
+            <div className="mt-3">
               <div className="text-sm font-medium mb-1">What would change the verdict</div>
-              <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+              <ul className="list-disc pl-5 space-y-1 text-sm">
                 {what_would_change.slice(0,2).map((w, i) => (<li key={i}>{w}</li>))}
               </ul>
             </div>
