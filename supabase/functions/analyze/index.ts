@@ -1080,6 +1080,11 @@ serve(async (req) => {
 
   try {
     const { client, show_notes } = await req.json();
+    console.log('[analyze] Request received:', {
+      clientName: client?.name,
+      clientCompany: client?.company,
+      notesLength: show_notes?.length || 0,
+    });
     if (!client || !show_notes) {
       return new Response(
         JSON.stringify({ success: false, error: "Missing client or show_notes" }),
@@ -1088,10 +1093,13 @@ serve(async (req) => {
     }
 
     if (!OPENAI_API_KEY || !OPENAI_API_KEY.trim()) {
+      console.error('[analyze] Missing OPENAI_API_KEY');
       const data = await scoreGoalCentric(client, String(show_notes || ""));
       data.fallback_reason = "Missing OPENAI_API_KEY";
       return new Response(JSON.stringify({ success: false, error: "missing_api_key", fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    console.log('[analyze] API key present, length:', OPENAI_API_KEY.length, 'starts with:', OPENAI_API_KEY.substring(0, 7));
 
     // Build audience-first prompt with NEW weights
     const prompt = `You will analyze podcast episode content against client campaign fit using this audience-first scoring rubric:
@@ -1179,6 +1187,7 @@ serve(async (req) => {
     let json: any = null;
 
     try {
+      console.log('[analyze] Calling OpenAI API with model:', body.model);
       const resp = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
@@ -1187,9 +1196,14 @@ serve(async (req) => {
       });
       clearTimeout(t);
 
-      try { json = await resp.json(); } catch {}
+      console.log('[analyze] OpenAI response status:', resp.status);
+
+      try { json = await resp.json(); } catch (parseErr) {
+        console.error('[analyze] Failed to parse OpenAI response:', parseErr);
+      }
       if (!resp.ok) {
         const errMsg = json?.error?.message || resp.statusText || `status ${resp.status}`;
+        console.error('[analyze] OpenAI API error:', errMsg, 'Full error:', JSON.stringify(json?.error || {}));
         const data = await scoreGoalCentric(client, String(show_notes || ""));
         data.fallback_reason = `OpenAI API error: ${errMsg}`;
         const errorType = resp.status === 429 ? "rate_limit" : "api_error";
@@ -1468,6 +1482,12 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, data: merged }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (e) {
       clearTimeout(t);
+      console.error('[analyze] Exception during AI scoring:', {
+        message: (e as any)?.message,
+        name: (e as any)?.name,
+        stack: (e as any)?.stack,
+        cause: (e as any)?.cause,
+      });
       const data = await scoreGoalCentric(client, String(show_notes || ""));
       const errorMsg = (e as any)?.message || 'LLM call failed';
       data.fallback_reason = errorMsg;
@@ -1475,6 +1495,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: errorType, fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   } catch (_e) {
+    console.error('[analyze] Fatal error in analyze function:', {
+      message: (_e as any)?.message,
+      name: (_e as any)?.name,
+      stack: (_e as any)?.stack,
+    });
     return new Response(
       JSON.stringify({ success: false, error: "Analyze error" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
