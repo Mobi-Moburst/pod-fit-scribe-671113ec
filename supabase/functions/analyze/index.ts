@@ -712,7 +712,7 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
 
   // NEW: Fixed weights (no eligibility in weighted calculation)
-  const weights = { topic: 0.35, icp: 0.30, cta: 0.20, brand: 0.15 } as const;
+  const weights = { topic: 0.40, icp: 0.35, brand: 0.20, cta: 0.05 } as const;
   
   const weighted_mean = 
     topicRelevance * weights.topic + 
