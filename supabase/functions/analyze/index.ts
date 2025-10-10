@@ -688,9 +688,10 @@ function scoreGuestEligibility(client: any, clientEnrichment: any, guestRequirem
 }
 
 // ---------------- Heuristic Scorer (Goal-centric) ----------------
-async function scoreGoalCentric(client: any, show_notes: string) {
+async function scoreGoalCentric(client: any, show_notes: string, consumerCues: string[] = []) {
   const notes: string = String(show_notes || "");
   console.log('[ANALYZE v2.0] scoreGoalCentric called - notes length:', notes.length);
+  console.log('[ANALYZE v2.0] Consumer cues provided to scoreGoalCentric:', consumerCues.length);
   const tokens = tokenize(notes);
   const { strong, near } = expandConcepts(client);
   const audiences: string[] = (client?.target_audiences || client?.target_roles || []) as string[];
@@ -948,14 +949,7 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     interpretation: "Supports demo/consult/guide-style CTA for B2B motion",
   });
 
-  // Detect consumer cues early (used in multiple places below)
-  let consumerCues: string[] = [];
-  try {
-    consumerCues = detectConsumerCues(notes);
-    console.log('[ANALYZE v2.0] Consumer cues detected:', consumerCues.length);
-  } catch (e) {
-    console.error('[ANALYZE v2.0] ERROR detecting consumer cues:', e);
-  }
+  // Consumer cues now passed as parameter to avoid scoping issues
 
   const why_not_fit_structured: { severity: 'Red' | 'Amber' | 'Green'; claim: string; evidence: string; interpretation: string }[] = [];
   if (cap_type === 'avoid') {
@@ -1371,12 +1365,29 @@ serve(async (req) => {
         isEmpty: OPENAI_API_KEY === '',
         type: typeof OPENAI_API_KEY
       });
-      const data = await scoreGoalCentric(client, String(show_notes || ""));
+      const notesForFallback = String(show_notes || "");
+      let consumerCuesForFallback: string[] = [];
+      try {
+        consumerCuesForFallback = detectConsumerCues(notesForFallback);
+      } catch (e) {
+        console.error('[ANALYZE v2.0] ERROR detecting consumer cues for fallback:', e);
+      }
+      const data = await scoreGoalCentric(client, notesForFallback, consumerCuesForFallback);
       data.fallback_reason = "Missing OPENAI_API_KEY environment variable";
       return new Response(JSON.stringify({ success: false, error: "missing_api_key", fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     
     console.log('[ANALYZE v2.0] ✅ OPENAI_API_KEY validated - proceeding with OpenAI API call');
+
+    // Detect consumer cues early (needed by both OpenAI and fallback paths)
+    const notesForAnalysis = String(show_notes || "");
+    let consumerCues: string[] = [];
+    try {
+      consumerCues = detectConsumerCues(notesForAnalysis);
+      console.log('[ANALYZE v2.0] Consumer cues detected early:', consumerCues.length);
+    } catch (e) {
+      console.error('[ANALYZE v2.0] ERROR detecting consumer cues early:', e);
+    }
 
     // Build audience-first prompt with NEW weights
     const prompt = `You will analyze podcast episode content against client campaign fit using this audience-first scoring rubric:
@@ -1499,7 +1510,7 @@ serve(async (req) => {
       try { json = await resp.json(); } catch {}
       if (!resp.ok) {
         const errMsg = json?.error?.message || resp.statusText || `status ${resp.status}`;
-        const data = await scoreGoalCentric(client, String(show_notes || ""));
+        const data = await scoreGoalCentric(client, String(show_notes || ""), consumerCues);
         data.fallback_reason = `OpenAI API error: ${errMsg}`;
         const errorType = resp.status === 429 ? "rate_limit" : "api_error";
         return new Response(JSON.stringify({ success: false, error: errorType, fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -1517,7 +1528,7 @@ serve(async (req) => {
         }
       }
       if (!data) {
-        const fb = await scoreGoalCentric(client, String(show_notes || ""));
+        const fb = await scoreGoalCentric(client, String(show_notes || ""), consumerCues);
         fb.fallback_reason = "LLM returned invalid JSON";
         return new Response(JSON.stringify({ success: false, error: "invalid_json", fallback_data: fb }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
