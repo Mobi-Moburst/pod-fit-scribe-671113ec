@@ -1,4 +1,1 @@
 project_id = "xjmcrvdczkefcbkayfbn"
-
-[functions.prep-sheet-analyze]
-verify_jwt = false
