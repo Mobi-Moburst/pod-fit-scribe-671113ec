@@ -976,7 +976,7 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const risk_flags_structured: { severity: 'Red' | 'Amber' | 'Green'; flag: string; evidence: string; mitigation: string }[] = [];
   
   // RED (dealbreakers)
-  const payToPlayMatch = notes.match(/(pay\s+to\s+play|guest\s+fee|sponsorship\s+required|paid\s+placement)/i);
+  // Reuse payToPlayMatch from line 859
   if (payToPlayMatch) {
     risk_flags_structured.push({ 
       severity: 'Red', 
