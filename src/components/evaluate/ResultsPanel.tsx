@@ -269,7 +269,7 @@ export const ResultsPanel = ({
           ) : (
             <div className="space-y-3">
               {/* Group risks by severity */}
-              {['Red', 'Amber', 'Green'].map(severity => {
+              {['Red', 'Amber'].map(severity => {
                 const items = riskItems.filter((r: any) => r.severity === severity);
                 if (items.length === 0) return null;
                 
@@ -294,7 +294,7 @@ export const ResultsPanel = ({
                             variant={severity === 'Red' ? 'destructive' : severity === 'Amber' ? 'secondary' : 'default'}
                             className="shrink-0 mt-0.5"
                           >
-                            {severity}
+                            {severity === 'Red' ? '⛔ Dealbreaker' : '⚠️ Concern'}
                           </Badge>
                           <div className="flex-1 space-y-1.5">
                             <div className={`font-semibold text-sm ${textClass}`}>
