@@ -831,21 +831,10 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
   const enterpriseCueCount = countEnterpriseCues(notes);
   
   // NEW: Allow broad "security pros/practitioners" to score 7.5-8.5 if enterprise themes present
-  const hasSecurityPractitionerAudience = /(security\s+(pros?|professionals?|practitioners?|experts?|engineers?|analysts?))/i.test(notes);
-  const hasEnterpriseThemes = /(breach|identity|ransomware|zero\s*trust|cloud\s*security|soc|risk|compliance|ciso|cio|threat|vulnerability|incident\s*response)/i.test(notes);
-  
-  // Count how many enterprise themes are present (depth signal)
-  const enterpriseThemeMatches = (notes.match(/(breach|identity|ransomware|zero\s*trust|cloud\s*security|soc|risk|compliance|ciso|cio|threat|vulnerability|incident\s*response)/gi) || []).length;
-
-  if (hasSecurityPractitionerAudience && hasEnterpriseThemes) {
-    // Strong enterprise depth (3+ theme mentions) → 8.0-8.5
-    if (enterpriseThemeMatches >= 3 && enterpriseCueCount >= 3) {
-      icpAlignment = Math.max(icpAlignment, 8.0);
-    } 
-    // Moderate enterprise depth (1-2 theme mentions) → 7.5-8.0
-    else if (enterpriseThemeMatches >= 1) {
-      icpAlignment = Math.max(icpAlignment, 7.5);
-    }
+  const hasSecurityPractitionerAudience = /(security\s+(pros?|professionals?|practitioners?|experts?))/i.test(notes);
+  const hasEnterpriseThemes = /(breach|identity|ransomware|zero\s*trust|cloud\s*security|soc|risk|compliance)/i.test(notes);
+  if (hasSecurityPractitionerAudience && hasEnterpriseThemes && icpAlignment < 7.5) {
+    icpAlignment = Math.max(icpAlignment, 7.5);
   }
   
   // Only penalize ICP when audience is consumer/entry-level or purely hobbyist
@@ -942,20 +931,6 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
       type: 'floor', 
       label: 'Strong topic + audience fit', 
       amount: 7.5 
-    });
-  }
-  
-  // NEW: Clean Fit Bonus
-  // Apply +0.5 if strong fundamentals (Topic ≥8, ICP ≥8, Brand ≥7) with no identified gaps/risks
-  const hasNoGaps = why_not_fit.length === 0;
-  const hasNoRisks = risk_flags_structured.filter(r => r.severity === 'Red' || r.severity === 'Amber').length === 0;
-
-  if (topicRelevance >= 8 && icpAlignment >= 8 && brandSuitability >= 7 && hasNoGaps && hasNoRisks) {
-    overall = Math.min(10, overall + 0.5);
-    applied_adjustments.push({ 
-      type: 'bonus', 
-      label: 'Clean fit (no gaps/risks)', 
-      amount: 0.5 
     });
   }
   
@@ -1077,11 +1052,11 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
     overall = weighted_mean - 2.0;
   }
 
-  const final_overall = roundToHalf(clamp(overall, 0, 10));
+  const baseline_overall = roundToHalf(clamp(overall, 0, 10));
 
   // Apply eligibility gate AFTER baseline score
   const gateResult = applyEligibilityGate(
-    final_overall,
+    baseline_overall,
     guestRequirements,
     eligibilityResult,
     client
@@ -1404,9 +1379,7 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
   const hasCritical = why_not_fit_structured.some(w => w.severity === 'Critical') || risk_flags_structured.some(r => r.severity === 'Critical') || (cap_applied && (cap_type === 'avoid' || cap_type === 'pay_to_play'));
   const verdict: 'recommend' | 'consider' | 'not_recommended' = hasCritical ? 'not_recommended' : overall >= 7.5 ? 'recommend' : overall < 6.0 ? 'not_recommended' : 'consider';
   const verdict_reason = verdict === 'recommend'
-    ? overall >= 8.0 
-      ? 'Strong thematic and audience alignment with low risk'
-      : 'Meets recommendation threshold with solid fundamentals'
+    ? 'Strong thematic and audience alignment with low risk'
     : verdict === 'consider'
       ? 'Partial alignment; proceed if a condition is met'
       : 'Low alignment or critical blocker present';
@@ -1471,8 +1444,7 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
       influence_multiplier: influence_m,
       influence_signals: influenceSignals,
       post_influence_score,
-      final_overall,
-      gated_overall: overall,
+      final_overall: overall,
       weighted_mean,
       adjustments: { genericness: adj_genericness, multi_concept: adj_multi_concept, cadence: adj_cadence },
       cap_applied,
