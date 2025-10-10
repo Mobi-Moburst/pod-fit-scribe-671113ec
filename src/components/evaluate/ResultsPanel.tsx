@@ -179,6 +179,75 @@ export const ResultsPanel = ({
             ))}
         </div>
 
+        {/* Score Audit Trail - Show only when audit data exists */}
+        {result.audit && (
+          <Card className="p-4 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              Score Calculation Audit
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              {result.audit.weighted_mean !== undefined && (
+                <div>
+                  <div className="text-muted-foreground">Weighted Mean</div>
+                  <div className="font-mono font-semibold">{result.audit.weighted_mean.toFixed(2)}</div>
+                </div>
+              )}
+              {result.audit.adjustments && (
+                <>
+                  {result.audit.adjustments.genericness !== undefined && (
+                    <div>
+                      <div className="text-muted-foreground">Genericness</div>
+                      <div className="font-mono font-semibold">{result.audit.adjustments.genericness > 0 ? '+' : ''}{result.audit.adjustments.genericness.toFixed(2)}</div>
+                    </div>
+                  )}
+                  {result.audit.adjustments.multi_concept !== undefined && (
+                    <div>
+                      <div className="text-muted-foreground">Multi-concept</div>
+                      <div className="font-mono font-semibold">{result.audit.adjustments.multi_concept > 0 ? '+' : ''}{result.audit.adjustments.multi_concept.toFixed(2)}</div>
+                    </div>
+                  )}
+                  {result.audit.adjustments.cadence !== undefined && (
+                    <div>
+                      <div className="text-muted-foreground">Cadence</div>
+                      <div className="font-mono font-semibold">{result.audit.adjustments.cadence > 0 ? '+' : ''}{result.audit.adjustments.cadence.toFixed(2)}</div>
+                    </div>
+                  )}
+                </>
+              )}
+              {result.audit.baseline_overall !== undefined && (
+                <div>
+                  <div className="text-muted-foreground">Baseline</div>
+                  <div className="font-mono font-semibold">{result.audit.baseline_overall.toFixed(1)}</div>
+                </div>
+              )}
+              {(result.audit as any).influence_multiplier && (result.audit as any).influence_multiplier !== 1.0 && (
+                <div>
+                  <div className="text-muted-foreground">Influence ×</div>
+                  <div className="font-mono font-semibold">{((result.audit as any).influence_multiplier as number).toFixed(2)}</div>
+                </div>
+              )}
+              {result.audit.final_overall !== undefined && (
+                <div>
+                  <div className="text-muted-foreground">Final Score</div>
+                  <div className="font-mono font-semibold text-lg">{result.audit.final_overall.toFixed(1)}</div>
+                </div>
+              )}
+            </div>
+            {result.applied_adjustments && result.applied_adjustments.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <div className="text-xs text-muted-foreground mb-1">Applied Adjustments:</div>
+                <div className="flex flex-wrap gap-1">
+                  {result.applied_adjustments.map((adj: any, i: number) => (
+                    <Badge key={i} variant="outline" className="text-xs">
+                      {adj.label} {adj.amount !== undefined && `(${adj.amount > 0 ? '+' : ''}${adj.amount})`}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
         
         {/* Show eligibility warning only when there's a concern */}
         {(result.audit?.eligibility?.action === 'fail' || result.audit?.eligibility?.action === 'conditional') && (
@@ -219,13 +288,9 @@ export const ResultsPanel = ({
             ))}
           </ul>
         </Card>
-        <Card className="p-4 card-surface">
-          <h3 className="text-lg font-semibold mb-2">Why it doesn't</h3>
-          {notFitItems.length === 0 ? (
-            <div className="text-sm text-muted-foreground italic py-2 px-3 border-l-2 border-green-500 bg-green-50/50 dark:bg-green-950/10 rounded-r">
-              No material gaps identified
-            </div>
-          ) : (
+        {notFitItems.length > 0 && (
+          <Card className="p-4 card-surface">
+            <h3 className="text-lg font-semibold mb-2">Why it doesn't</h3>
             <ul className="space-y-2">
               {notFitItems.map((w: any, i: number) => (
                 <li key={i}>
@@ -238,8 +303,8 @@ export const ResultsPanel = ({
                 </li>
               ))}
             </ul>
-          )}
-        </Card>
+          </Card>
+        )}
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Recommendation</h3>
           <div className="flex items-center gap-2">
