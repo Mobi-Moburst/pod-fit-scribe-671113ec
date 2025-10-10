@@ -820,7 +820,15 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
 
   // Topic relevance (0.30)
   const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
-  const topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
+  let topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
+  
+  // Concept density multiplier: reward shows with exceptional thematic depth
+  if (strongHits.length >= 8) {
+    topicRelevance = Math.min(10.0, topicRelevance * 1.25); // 8+ strong hits → 1.25x
+  } else if (strongHits.length >= 5) {
+    topicRelevance = Math.min(10.0, topicRelevance * 1.15); // 5-7 strong hits → 1.15x
+  }
+  topicRelevance = roundToHalf(topicRelevance);
 
   // ICP alignment (0.45) - UPDATED: more permissive for "security pros/practitioners" with enterprise themes
   const audStrong = findPositions(notes, audiences.map(norm)).length;
@@ -881,12 +889,12 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
   else if (nonGenericCount === 2) { adj_genericness = -0.5; }
   if (adj_genericness) applied_adjustments.push({ type: 'penalty', label: 'Genericness', amount: adj_genericness });
 
-  // Enterprise cue lift for ICP (cap at 9.0)
+  // Enterprise cue lift for ICP (cap at 10.0 - allow exceptional fits)
   if (enterpriseCueCount >= 4) {
-    icpAlignment = Math.min(9.0, icpAlignment + 1.0);
+    icpAlignment = Math.min(10.0, icpAlignment + 1.0);
     applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (4+)', amount: 1.0 });
   } else if (enterpriseCueCount >= 2) {
-    icpAlignment = Math.min(9.0, icpAlignment + 0.5);
+    icpAlignment = Math.min(10.0, icpAlignment + 0.5);
     applied_adjustments.push({ type: 'bonus', label: 'Enterprise cues (2+)', amount: 0.5 });
   }
 
@@ -932,6 +940,32 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
       label: 'Strong topic + audience fit', 
       amount: 7.5 
     });
+  }
+  
+  // Exceptional Fit Bonus (+1.0-1.5): reward objectively outstanding episodes
+  // Apply when: Topic ≥ 8.5, ICP ≥ 8.5, Brand ≥ 7.5, no gaps, no risks
+  const hasNoGaps = why_not_fit.length === 0;
+  const hasNoRisks = risk_flags_structured.filter(r => r.severity === 'Red' || r.severity === 'Amber').length === 0;
+  
+  if (topicRelevance >= 8.5 && icpAlignment >= 8.5 && brandSuitability >= 7.5 && hasNoGaps && hasNoRisks) {
+    // Tier 1: Perfect fundamentals (9.0+/9.0+/8.0+) → +1.5
+    if (topicRelevance >= 9.0 && icpAlignment >= 9.0 && brandSuitability >= 8.0) {
+      overall = Math.min(10, overall + 1.5);
+      applied_adjustments.push({ 
+        type: 'bonus', 
+        label: 'Exceptional fit (9+/9+/8+, no issues)', 
+        amount: 1.5 
+      });
+    } 
+    // Tier 2: Near-perfect (8.5+/8.5+/7.5+) → +1.0
+    else {
+      overall = Math.min(10, overall + 1.0);
+      applied_adjustments.push({ 
+        type: 'bonus', 
+        label: 'Exceptional fit (8.5+/8.5+/7.5+, no issues)', 
+        amount: 1.0 
+      });
+    }
   }
   
   // Store baseline before influence multiplier
