@@ -711,13 +711,12 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const toneNegInNotes = /(explicit|nsfw|politics|gambling|hype|clickbait)/i.test(notes) ? 1 : 0;
   const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
 
-  // NEW: Fixed weights (no eligibility in weighted calculation)
-  const weights = { topic: 0.40, icp: 0.35, brand: 0.20, cta: 0.05 } as const;
+  // NEW: Audience-first weights (CTA is info-only, not scored)
+  const weights = { topic: 0.45, icp: 0.45, brand: 0.10 } as const;
   
   const weighted_mean = 
     topicRelevance * weights.topic + 
     icpAlignment * weights.icp + 
-    ctaSynergy * weights.cta + 
     brandSuitability * weights.brand;
 
   // Adjustments
@@ -738,6 +737,66 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   const adj_cadence = 0;
 
   let overall = clamp(weighted_mean + adj_genericness + adj_multi_concept, 0, 10);
+
+  // === AGGREGATION RULES (audience-first) ===
+  const minTopicIcp = Math.min(topicRelevance, icpAlignment);
+  const topicIcpGap = Math.abs(topicRelevance - icpAlignment);
+
+  // Rule 1: If min(Topic, ICP) ≤ 4 → cap final ≤ 5.5
+  if (minTopicIcp <= 4) {
+    overall = Math.min(overall, 5.5);
+    applied_adjustments.push({ 
+      type: 'cap', 
+      label: 'Weak topic or audience fit', 
+      amount: 5.5 
+    });
+  }
+
+  // Rule 2: If Topic ≥ 8 AND ICP ≥ 8 AND Brand ≤ 5 → apply penalty
+  if (topicRelevance >= 8 && icpAlignment >= 8 && brandSuitability <= 5) {
+    const brandPenalty = brandSuitability <= 4 ? -1.0 : -0.5;
+    overall = Math.max(0, overall + brandPenalty);
+    applied_adjustments.push({ 
+      type: 'penalty', 
+      label: 'Brand quality concern', 
+      amount: brandPenalty 
+    });
+  }
+  // Rule 2b: If Topic ≥ 8 AND ICP ≥ 8 → ensure final ≥ 7.5 (unless brand killed it)
+  else if (topicRelevance >= 8 && icpAlignment >= 8) {
+    overall = Math.max(overall, 7.5);
+    applied_adjustments.push({ 
+      type: 'floor', 
+      label: 'Strong topic + audience fit', 
+      amount: 7.5 
+    });
+  }
+
+  // Rule 3: If Brand ≤ 4 → cap final ≤ 6.0
+  if (brandSuitability <= 4) {
+    overall = Math.min(overall, 6.0);
+    applied_adjustments.push({ 
+      type: 'cap', 
+      label: 'Brand suitability concern', 
+      amount: 6.0 
+    });
+  }
+
+  // Rule 4: If |Topic − ICP| ≥ 3 → apply -0.5 penalty
+  if (topicIcpGap >= 3) {
+    overall = Math.max(0, overall - 0.5);
+    const gapType = topicRelevance > icpAlignment 
+      ? 'High concept / weaker audience match' 
+      : 'Audience present / weak topical depth';
+    applied_adjustments.push({ 
+      type: 'penalty', 
+      label: gapType, 
+      amount: -0.5 
+    });
+  }
+
+  // Apply final clamp
+  overall = clamp(overall, 0, 10);
 
   // Caps (evidence-gated, apply at most one)
   const avoidCounts = avoids.map(a => ({ a, c: count(notes, [a]) })).sort((x,y)=>y.c - x.c);
@@ -925,12 +984,12 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   // Summary
   const summary_text = buildSummary({ overall: overall, verdict, why_fit_structured, why_not_fit_structured, risk_flags_structured, clientName: client?.name || client?.company || 'the client' });
 
-  // NEW: Rubric with only 4 content dimensions (no eligibility)
+  // NEW: Rubric with 3 scored dimensions + 1 info-only (CTA)
   const rubric_breakdown = [
-    { dimension: "Topic relevance", weight: weights.topic, raw_score: topicRelevance, notes: citations.slice(0, 3).join("; ") || "No specific matches" },
-    { dimension: "ICP alignment", weight: weights.icp, raw_score: icpAlignment, notes: audStrong ? `${audStrong} audience hits` : "Weak audience signals" },
-    { dimension: "CTA synergy", weight: weights.cta, raw_score: ctaSynergy, notes: enterpriseVibe ? "Enterprise tone supports B2B CTA" : `${ctaOverlap} CTA terms` },
-    { dimension: "Brand suitability", weight: weights.brand, raw_score: brandSuitability, notes: toneNegInNotes ? "Tone concerns detected" : "Appropriate brand fit" },
+    { dimension: "Topic relevance", weight: 0.45, raw_score: topicRelevance, notes: citations.slice(0, 3).join("; ") || "No specific matches" },
+    { dimension: "ICP alignment", weight: 0.45, raw_score: icpAlignment, notes: audStrong ? `${audStrong} audience hits` : "Weak audience signals" },
+    { dimension: "Brand suitability", weight: 0.10, raw_score: brandSuitability, notes: toneNegInNotes ? "Tone concerns detected" : "Appropriate brand fit" },
+    { dimension: "Format/CTA notes", weight: 0, raw_score: ctaSynergy, notes: enterpriseVibe ? "Enterprise tone supports B2B CTA" : `${ctaOverlap} CTA terms (info only)` },
   ] as const;
 
   return {
@@ -1018,62 +1077,76 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: "missing_api_key", fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Build goal-centric prompt with NEW eligibility gate approach
-    const prompt = `You will analyze podcast episode content against client campaign fit using this 4-dimension scoring rubric:
+    // Build audience-first prompt with NEW weights
+    const prompt = `You will analyze podcast episode content against client campaign fit using this audience-first scoring rubric:
 
-      1. **Topic relevance** (Weight: 0.35): How well the episode content aligns with the client's talking points, business focus, and target themes. Score 0-10.
+  **Scoring dimensions (apply independently, then aggregate):**
 
-      2. **ICP alignment** (Weight: 0.30): How well the podcast audience matches the client's target customer profile and decision-makers. Score 0-10.
+  1. **Topic relevance** (Weight: 0.45): How well the episode content aligns with the client's talking points, business focus, and target themes. Score 0-10.
 
-      3. **CTA synergy** (Weight: 0.20): How compatible the episode format and tone are with the client's preferred call-to-action (demo, guide, consultation). Score 0-10.
+  2. **ICP alignment** (Weight: 0.45): How well the podcast audience matches the client's target customer profile and decision-makers. Score 0-10.
 
-      4. **Brand suitability** (Weight: 0.15): How appropriate the podcast's editorial standards, tone, and content are for the client's brand positioning. Score 0-10.
+  3. **Brand suitability** (Weight: 0.10): How appropriate the podcast's editorial standards, tone, and content are for the client's brand positioning. Score 0-10.
 
-      CRITICAL: Guest eligibility is NOT a scored dimension. Instead:
-      - Calculate baseline_overall from the 4 dimensions above only
-      - Analyze guest requirements separately (exclusive/effective/preferential/none)
-      - The system will apply an eligibility gate AFTER your baseline score:
-        * exclusive/effective + confirmed mismatch → cap final to 3.0
-        * exclusive/effective + unknown eligibility → cap final to 6.0
-        * preferential/none → no score impact
+  4. **Format/CTA notes** (Weight: 0.00 - info only): Note episode format and CTA compatibility. This does NOT affect the score. Only raise risk flags for: pay-to-play, guest fees, link-ban policies, hard sales pitch format.
 
-        **Client context:**
-        - Name: ${client.name || 'Unknown'}
-        - Company: ${client.company || 'Not specified'}  
-        - Target audiences: ${(client.target_audiences || []).join(', ') || 'None specified'}
-        - Talking points: ${(client.talking_points || []).join(', ') || 'None specified'}
-        - Avoid topics: ${(client.avoid || []).join(', ') || 'None specified'}
-        - Campaign notes: ${client.notes || 'None'}
-        - Media kit URL: ${client.media_kit_url || 'Not provided'}
-        
-        **Episode content to analyze:**
-        ${show_notes}
-        
-        **Policy: Only infer gender from explicit client.gender or high-confidence pronoun/name analysis.**
-        **Do not infer ethnicity, religion, or political alignment unless explicitly stated in client identity tags.**
+  **Aggregation rules (apply AFTER calculating baseline from weighted dimensions):**
+  - If min(Topic, ICP) ≤ 4 → cap overall_score ≤ 5.5 (verdict: Not recommended)
+  - If Topic ≥ 8 AND ICP ≥ 8 → ensure overall_score ≥ 7.5 unless Brand ≤ 5 (then apply -0.5 to -1.0)
+  - If Brand ≤ 4 → cap overall_score ≤ 6.0 (maximum Consider)
+  - If |Topic − ICP| ≥ 3 → overall_score -= 0.5 and add insight tag: "High concept / weaker audience match" or "Audience present / weak topical depth"
 
-        Your response must be valid JSON with this exact structure:
-        {
-          "baseline_overall": <number 0-10 calculated from 4 dimensions only>,
-          "rubric_breakdown": [
-            {"dimension": "Topic relevance", "weight": 0.35, "raw_score": <0-10>, "notes": "<brief explanation>"},
-            {"dimension": "ICP alignment", "weight": 0.30, "raw_score": <0-10>, "notes": "<brief explanation>"},
-            {"dimension": "CTA synergy", "weight": 0.20, "raw_score": <0-10>, "notes": "<brief explanation>"},
-            {"dimension": "Brand suitability", "weight": 0.15, "raw_score": <0-10>, "notes": "<brief explanation>"}
-          ],
-          "verdict": "recommend|consider|not_recommended",
-          "verdict_reason": "<one sentence>",
-          "why_fit_structured": [{"claim": "<claim>", "evidence": "<quote>", "interpretation": "<explanation>"}],
-          "why_not_fit_structured": [{"severity": "Critical|Major|Minor", "claim": "<claim>", "evidence": "<quote>", "interpretation": "<explanation>"}],
-          "risk_flags_structured": [{"severity": "Critical|Major|Minor", "flag": "<flag>", "mitigation": "<action>"}],
-          "recommended_talking_points": ["<point1>", "<point2>", "<point3>"],
-          "citations": ["<quote1>", "<quote2>"],
-          "confidence": <0-1>,
-          "confidence_label": "High|Med|Low",
-          "confidence_note": "<explanation>",
-          "what_would_change": ["<condition1>", "<condition2>"],
-          "summary_text": "<140-200 words>"
-        }`;
+  **Guest eligibility (NOT a scored dimension):**
+  - Analyze guest requirements separately (exclusive/effective/preferential/none)
+  - The system will apply an eligibility gate AFTER your baseline score:
+    * exclusive/effective + confirmed mismatch → cap final to 3.0
+    * exclusive/effective + unknown eligibility → cap final to 6.0
+    * preferential/none → no score impact
+
+  **Verdict mapping:**
+  - Recommend: overall_score ≥ 7.5 AND no red risk flags
+  - Consider: 6.0–7.4 OR conditional eligibility
+  - Not recommended: < 6.0 OR blocked by eligibility gate
+
+    **Client context:**
+    - Name: ${client.name || 'Unknown'}
+    - Company: ${client.company || 'Not specified'}
+    - Gender: ${client.gender || 'unspecified'}
+    - Identity tags: ${(client.guest_identity_tags || []).join(', ') || 'None specified'}
+    - Target audiences: ${(client.target_audiences || []).join(', ') || 'None specified'}
+    - Talking points: ${(client.talking_points || []).join(', ') || 'None specified'}
+    - Avoid topics: ${(client.avoid || []).join(', ') || 'None specified'}
+    - Campaign notes: ${client.notes || 'None'}
+    - Media kit URL: ${client.media_kit_url || 'Not provided'}
+    
+    **Episode content to analyze:**
+    ${show_notes}
+    
+    **Policy: Only infer gender from explicit client.gender or high-confidence pronoun/name analysis.**
+    **Do not infer ethnicity, religion, or political alignment unless explicitly stated in client identity tags.**
+
+    Your response must be valid JSON with this exact structure:
+    {
+      "overall_score": <number 0-10 after applying aggregation rules>,
+      "rubric_breakdown": [
+        {"dimension": "Topic relevance", "weight": 0.45, "raw_score": <0-10>, "notes": "<brief explanation>"},
+        {"dimension": "ICP alignment", "weight": 0.45, "raw_score": <0-10>, "notes": "<brief explanation>"},
+        {"dimension": "Brand suitability", "weight": 0.10, "raw_score": <0-10>, "notes": "<brief explanation>"},
+        {"dimension": "Format/CTA notes", "weight": 0, "raw_score": <0-10>, "notes": "<format observations, CTA compatibility - info only>"}
+      ],
+      "verdict": "recommend|consider|not_recommended",
+      "verdict_reason": "<one sentence>",
+      "why_fit_structured": [{"claim": "<claim>", "evidence": "<quote>", "interpretation": "<explanation>"}],
+      "why_not_fit_structured": [{"severity": "Critical|Major|Minor", "claim": "<claim>", "evidence": "<quote>", "interpretation": "<explanation>"}],
+      "risk_flags_structured": [{"severity": "Critical|Major|Minor", "flag": "<flag>", "mitigation": "<action>"}],
+      "recommended_talking_points": ["<point1>", "<point2>", "<point3>"],
+      "citations": ["<quote1>", "<quote2>"],
+      "confidence": <0-1>,
+      "confidence_label": "High|Med|Low",
+      "confidence_note": "<explanation>",
+      "what_would_change": ["<condition1>", "<condition2>"],
+      "summary_text": "<140-200 words>"
+    }`;
 
     const body = {
       model: "gpt-4.1-2025-04-14",
@@ -1139,7 +1212,7 @@ serve(async (req) => {
       const icpRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('icp'))?.raw_score) || 0);
       const ctaRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('cta'))?.raw_score) || 0);
       const brandRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('brand'))?.raw_score) || 0);
-      const weighted_mean = topicRaw*0.40 + icpRaw*0.35 + ctaRaw*0.05 + brandRaw*0.20;
+      const weighted_mean = topicRaw*0.45 + icpRaw*0.45 + brandRaw*0.10;
 
       let adjusted = Number(data?.overall_score) || 0;
       const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
@@ -1200,6 +1273,67 @@ serve(async (req) => {
       if (!criticalCap && adjusted < (weighted_mean - 2.0)) {
         adjusted = weighted_mean - 2.0;
       }
+
+      // === AGGREGATION RULES (audience-first) ===
+      const minTopicIcp = Math.min(topicRaw, icpRaw);
+      const topicIcpGap = Math.abs(topicRaw - icpRaw);
+
+      // Rule 1: If min(Topic, ICP) ≤ 4 → cap final ≤ 5.5
+      if (minTopicIcp <= 4) {
+        adjusted = Math.min(adjusted, 5.5);
+        applied_adjustments.push({ 
+          type: 'cap', 
+          label: 'Weak topic or audience fit', 
+          amount: 5.5 
+        });
+      }
+
+      // Rule 2: If Topic ≥ 8 AND ICP ≥ 8 AND Brand ≤ 5 → apply penalty
+      if (topicRaw >= 8 && icpRaw >= 8 && brandRaw <= 5) {
+        const brandPenalty = brandRaw <= 4 ? -1.0 : -0.5;
+        adjusted = Math.max(0, adjusted + brandPenalty);
+        applied_adjustments.push({ 
+          type: 'penalty', 
+          label: 'Brand quality concern', 
+          amount: brandPenalty 
+        });
+      }
+      // Rule 2b: If Topic ≥ 8 AND ICP ≥ 8 → ensure final ≥ 7.5 (unless brand killed it)
+      else if (topicRaw >= 8 && icpRaw >= 8) {
+        adjusted = Math.max(adjusted, 7.5);
+        applied_adjustments.push({ 
+          type: 'floor', 
+          label: 'Strong topic + audience fit', 
+          amount: 7.5 
+        });
+      }
+
+      // Rule 3: If Brand ≤ 4 → cap final ≤ 6.0
+      if (brandRaw <= 4) {
+        adjusted = Math.min(adjusted, 6.0);
+        applied_adjustments.push({ 
+          type: 'cap', 
+          label: 'Brand suitability concern', 
+          amount: 6.0 
+        });
+      }
+
+      // Rule 4: If |Topic − ICP| ≥ 3 → apply -0.5 penalty
+      if (topicIcpGap >= 3) {
+        adjusted = Math.max(0, adjusted - 0.5);
+        const gapType = topicRaw > icpRaw 
+          ? 'High concept / weaker audience match' 
+          : 'Audience present / weak topical depth';
+        applied_adjustments.push({ 
+          type: 'penalty', 
+          label: gapType, 
+          amount: -0.5 
+        });
+      }
+
+      // Apply final clamp
+      adjusted = clamp(adjusted, 0, 10);
+
       // Store baseline before eligibility gate
       const baseline_overall = adjusted;
 
@@ -1242,10 +1376,10 @@ serve(async (req) => {
 
       // Update rubric breakdown with correct weights
       rb.forEach((r: any) => {
-        if (String(r?.dimension || '').toLowerCase().includes('topic')) r.weight = 0.40;
-        else if (String(r?.dimension || '').toLowerCase().includes('icp')) r.weight = 0.35;
-        else if (String(r?.dimension || '').toLowerCase().includes('brand')) r.weight = 0.20;
-        else if (String(r?.dimension || '').toLowerCase().includes('cta')) r.weight = 0.05;
+        if (String(r?.dimension || '').toLowerCase().includes('topic')) r.weight = 0.45;
+        else if (String(r?.dimension || '').toLowerCase().includes('icp')) r.weight = 0.45;
+        else if (String(r?.dimension || '').toLowerCase().includes('brand')) r.weight = 0.10;
+        else if (String(r?.dimension || '').toLowerCase().includes('cta') || String(r?.dimension || '').toLowerCase().includes('format')) r.weight = 0;
       });
 
       const merged = {

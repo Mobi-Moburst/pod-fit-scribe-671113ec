@@ -184,19 +184,59 @@ export const ResultsPanel = ({
         </div>
       </div>
 
-      {/* Rubric - Now 4 dimensions + separate eligibility status */}
+      {/* Rubric - Now 3 scored dimensions + Format/CTA info-only */}
       <div className="grid gap-4">
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
           {rubric_breakdown
-            .filter((r) => !/recency|consistency|eligibility/i.test(r.dimension))
+            .filter((r) => !/recency|consistency|eligibility|cta|format/i.test(r.dimension))
             .map((r) => (
               <Card key={r.dimension} className="p-4 card-surface">
                 <div className="text-sm text-muted-foreground">{r.dimension}</div>
                 <div className="text-2xl font-semibold mt-1">{r.raw_score.toFixed(1)}</div>
+                {r.weight > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">Weight: {(r.weight * 100).toFixed(0)}%</div>
+                )}
                 <p className="text-sm mt-2">{r.notes}</p>
               </Card>
             ))}
         </div>
+
+        {/* Format/CTA Notes (info-only, not scored) */}
+        {(() => {
+          const ctaCard = rubric_breakdown.find((r) => /cta|format/i.test(r.dimension));
+          if (!ctaCard) return null;
+          
+          return (
+            <Card className="p-4 border-muted bg-muted/30">
+              <div className="flex items-start gap-3">
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-muted-foreground mb-1">
+                    📋 Format/CTA Notes (Info Only)
+                  </div>
+                  <p className="text-sm">{ctaCard.notes}</p>
+                  {riskItems.some((r: any) => 
+                    /pay.*play|guest.*fee|link.*ban|sales.*pitch/i.test(r.flag)
+                  ) && (
+                    <div className="mt-2 pt-2 border-t">
+                      <div className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">
+                        ⚠️ Format Constraints:
+                      </div>
+                      <ul className="text-xs space-y-1">
+                        {riskItems
+                          .filter((r: any) => /pay.*play|guest.*fee|link.*ban|sales.*pitch/i.test(r.flag))
+                          .map((r: any, i: number) => (
+                            <li key={i} className="text-amber-800 dark:text-amber-300">
+                              • {r.flag}
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          );
+        })()}
         
         {/* Show eligibility warning only when there's a concern */}
         {(result.audit?.eligibility?.action === 'fail' || result.audit?.eligibility?.action === 'conditional') && (
