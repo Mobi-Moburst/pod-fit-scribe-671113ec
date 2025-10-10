@@ -33,6 +33,19 @@ export interface AnalyzeResult {
   // Caps and calibration (new)
   cap_reason?: string;
   cap_type?: 'zero_overlap' | 'avoid' | 'pay_to_play' | 'link_ban' | 'b2c_mismatch' | 'none';
+  
+  // New UX enhancement fields
+  strategy_preset?: 'audience-first' | 'brand-sensitive' | 'icp-strict-abm';
+  confidence_breakdown?: {
+    content_length_bucket: 'short' | 'medium' | 'long';
+    citation_count: number;
+    scrape_success: 'success' | 'partial';
+    last_publish_recency_bucket: 'fresh' | 'stale' | 'unknown';
+    evidence_thin: boolean;
+  };
+  positive_signals?: string[];
+  path_to_9_plus?: string[];
+  
   audit?: {
     baseline_overall: number; // Score before eligibility gate
     final_overall: number; // Score after gate (same as overall_score)

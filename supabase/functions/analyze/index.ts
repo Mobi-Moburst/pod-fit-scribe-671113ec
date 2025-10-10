@@ -174,7 +174,6 @@ function extractPronouns(content: string): string | null {
 }
 
 function inferGender(content: string): { value: 'male' | 'female' | 'non_binary' | 'unknown'; confidence: 'high' | 'medium' | 'low'; source: string } {
-  // Check explicit pronouns first
   const pronouns = extractPronouns(content);
   if (pronouns) {
     if (pronouns.includes('she')) return { value: 'female', confidence: 'high', source: 'explicit_pronouns' };
@@ -182,7 +181,6 @@ function inferGender(content: string): { value: 'male' | 'female' | 'non_binary'
     if (pronouns.includes('they')) return { value: 'non_binary', confidence: 'high', source: 'explicit_pronouns' };
   }
   
-  // Check bio context
   const femaleContexts = /\b(woman|female|lady|girl|mother|mom|wife|daughter|sister|ms\.|mrs\.|miss)\b/i;
   const maleContexts = /\b(man|male|gentleman|boy|father|dad|husband|son|brother|mr\.)\b/i;
   
@@ -238,6 +236,22 @@ function extractIdentityMarkers(content: string): string[] {
   }
   
   return markers;
+}
+
+// ---------------- Positive Signals Detection ----------------
+function detectPositiveSignals(text: string): string[] {
+  const lower = norm(text);
+  const signals: string[] = [];
+  
+  if (/guest.*application|booking.*form|submit.*topic|pitch.*us|book.*appearance|apply.*guest|contact.*producer/i.test(lower)) {
+    signals.push('Accepts guests');
+  }
+  
+  if (/@[\w.-]+\.\w{2,}|contact.*email|reach.*out/i.test(lower)) {
+    signals.push('Contact email present');
+  }
+  
+  return signals;
 }
 
 // ---------------- Guest Requirements Detection ----------------
@@ -1077,16 +1091,28 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: "missing_api_key", fallback_data: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Build audience-first prompt with NEW weights
+    // Strategy preset handling
+    const strategy: 'audience-first' | 'brand-sensitive' | 'icp-strict-abm' = (client as any).strategy_preset || 'audience-first';
+    const WEIGHTS_MAP = {
+      'audience-first': { topic: 0.45, icp: 0.45, brand: 0.10 },
+      'brand-sensitive': { topic: 0.40, icp: 0.40, brand: 0.20 },
+      'icp-strict-abm': { topic: 0.35, icp: 0.55, brand: 0.10 },
+    };
+    const weights = WEIGHTS_MAP[strategy];
+
+    // Build audience-first prompt with strategy weights
     const prompt = `You will analyze podcast episode content against client campaign fit using this audience-first scoring rubric:
+    
+  **Strategy: ${strategy}**
+  Use weights: Topic ${(weights.topic * 100).toFixed(0)}%, ICP ${(weights.icp * 100).toFixed(0)}%, Brand ${(weights.brand * 100).toFixed(0)}%
 
   **Scoring dimensions (apply independently, then aggregate):**
 
-  1. **Topic relevance** (Weight: 0.45): How well the episode content aligns with the client's talking points, business focus, and target themes. Score 0-10.
+  1. **Topic relevance** (Weight: ${weights.topic}): How well the episode content aligns with the client's talking points, business focus, and target themes. Score 0-10.
 
-  2. **ICP alignment** (Weight: 0.45): How well the podcast audience matches the client's target customer profile and decision-makers. Score 0-10.
+  2. **ICP alignment** (Weight: ${weights.icp}): How well the podcast audience matches the client's target customer profile and decision-makers. Score 0-10.
 
-  3. **Brand suitability** (Weight: 0.10): How appropriate the podcast's editorial standards, tone, and content are for the client's brand positioning. Score 0-10.
+  3. **Brand suitability** (Weight: ${weights.brand}): How appropriate the podcast's editorial standards, tone, and content are for the client's brand positioning. Score 0-10.
 
   4. **Format/CTA notes** (Weight: 0.00 - info only): Note episode format and CTA compatibility. This does NOT affect the score. Only raise risk flags for: pay-to-play, guest fees, link-ban policies, hard sales pitch format.
 
@@ -1129,9 +1155,9 @@ serve(async (req) => {
     {
       "overall_score": <number 0-10 after applying aggregation rules>,
       "rubric_breakdown": [
-        {"dimension": "Topic relevance", "weight": 0.45, "raw_score": <0-10>, "notes": "<brief explanation>"},
-        {"dimension": "ICP alignment", "weight": 0.45, "raw_score": <0-10>, "notes": "<brief explanation>"},
-        {"dimension": "Brand suitability", "weight": 0.10, "raw_score": <0-10>, "notes": "<brief explanation>"},
+        {"dimension": "Topic relevance", "weight": ${weights.topic}, "raw_score": <0-10>, "notes": "<brief explanation>"},
+        {"dimension": "ICP alignment", "weight": ${weights.icp}, "raw_score": <0-10>, "notes": "<brief explanation>"},
+        {"dimension": "Brand suitability", "weight": ${weights.brand}, "raw_score": <0-10>, "notes": "<brief explanation>"},
         {"dimension": "Format/CTA notes", "weight": 0, "raw_score": <0-10>, "notes": "<format observations, CTA compatibility - info only>"}
       ],
       "verdict": "recommend|consider|not_recommended",
@@ -1212,7 +1238,7 @@ serve(async (req) => {
       const icpRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('icp'))?.raw_score) || 0);
       const ctaRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('cta'))?.raw_score) || 0);
       const brandRaw = Number((rb.find((r: any) => String(r?.dimension || '').toLowerCase().includes('brand'))?.raw_score) || 0);
-      const weighted_mean = topicRaw*0.45 + icpRaw*0.45 + brandRaw*0.10;
+      const weighted_mean = topicRaw * weights.topic + icpRaw * weights.icp + brandRaw * weights.brand;
 
       let adjusted = Number(data?.overall_score) || 0;
       const applied_adjustments: { type: 'cap'|'floor'|'penalty'|'bonus'; label: string; amount?: number }[] = [];
@@ -1374,11 +1400,85 @@ serve(async (req) => {
       const confidence_label = data?.confidence_label || ((Number(data?.confidence) || 0.5) >= 0.75 ? 'High' : (Number(data?.confidence) || 0.5) >= 0.5 ? 'Med' : 'Low');
       const confidence_note = data?.confidence_note || `${(data?.citations || []).length} usable quotes`;
 
+      // === POSITIVE SIGNALS ===
+      const positive_signals = detectPositiveSignals(notesText);
+      const lastPublishDate = (client as any).last_publish_date;
+      if (lastPublishDate) {
+        const daysSince = (Date.now() - new Date(lastPublishDate).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSince < 90) {
+          positive_signals.push('Active feed (<90d)');
+        }
+      }
+
+      // === CONFIDENCE BREAKDOWN ===
+      const content_chars = notesText.length;
+      const content_bucket = content_chars < 400 ? 'short' : content_chars < 1200 ? 'medium' : 'long';
+      const citation_count = (data?.citations || []).length;
+      const scrape_quality = content_chars > 300 ? 'success' : 'partial';
+      const last_publish_bucket = lastPublishDate
+        ? ((Date.now() - new Date(lastPublishDate).getTime()) / (1000 * 60 * 60 * 24) < 90 ? 'fresh' : 'stale')
+        : 'unknown';
+      
+      const confidence_breakdown = {
+        content_length_bucket: content_bucket,
+        citation_count,
+        scrape_success: scrape_quality,
+        last_publish_recency_bucket: last_publish_bucket,
+        evidence_thin: content_chars < 400 || citation_count < 2,
+      };
+
+      // === PATH TO 9+ ===
+      const generatePathTo9Plus = (
+        overall: number,
+        topicScore: number,
+        icpScore: number,
+        brandScore: number,
+        why_not_fit: any[]
+      ) => {
+        if (overall >= 9) return [];
+        
+        const levers: string[] = [];
+        
+        if (topicScore < 8.5) {
+          const topicGaps = why_not_fit
+            .filter((w: any) => /topic|content|theme/i.test(w.claim))
+            .map((w: any) => w.claim)
+            .slice(0, 1);
+          if (topicGaps.length) {
+            levers.push(`Address topic gap: ${topicGaps[0]}`);
+          } else {
+            levers.push('Deepen episode topic alignment with campaign themes');
+          }
+        }
+        
+        if (icpScore < 8.5) {
+          levers.push('Confirm audience composition includes more decision-makers');
+        }
+        
+        if (brandScore < 7 && brandScore < Math.min(topicScore, icpScore)) {
+          levers.push('Verify editorial quality and brand alignment');
+        }
+        
+        if (levers.length === 0) {
+          levers.push('Gather more detailed audience demographics', 'Confirm CTA and link policy');
+        }
+        
+        return levers.slice(0, 3);
+      };
+
+      const path_to_9_plus = generatePathTo9Plus(
+        adjusted,
+        topicRaw,
+        icpRaw,
+        brandRaw,
+        why_not_fit_structured || []
+      );
+
       // Update rubric breakdown with correct weights
       rb.forEach((r: any) => {
-        if (String(r?.dimension || '').toLowerCase().includes('topic')) r.weight = 0.45;
-        else if (String(r?.dimension || '').toLowerCase().includes('icp')) r.weight = 0.45;
-        else if (String(r?.dimension || '').toLowerCase().includes('brand')) r.weight = 0.10;
+        if (String(r?.dimension || '').toLowerCase().includes('topic')) r.weight = weights.topic;
+        else if (String(r?.dimension || '').toLowerCase().includes('icp')) r.weight = weights.icp;
+        else if (String(r?.dimension || '').toLowerCase().includes('brand')) r.weight = weights.brand;
         else if (String(r?.dimension || '').toLowerCase().includes('cta') || String(r?.dimension || '').toLowerCase().includes('format')) r.weight = 0;
       });
 
@@ -1405,6 +1505,11 @@ serve(async (req) => {
         summary_text: '',
         cap_reason: cap_reason,
         cap_type,
+        // new features
+        strategy_preset: strategy,
+        confidence_breakdown,
+        positive_signals,
+        path_to_9_plus,
         audit: {
           baseline_overall,
           final_overall: adjusted,
