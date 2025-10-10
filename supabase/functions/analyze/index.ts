@@ -947,6 +947,9 @@ async function scoreGoalCentric(client: any, show_notes: string) {
     interpretation: "Supports demo/consult/guide-style CTA for B2B motion",
   });
 
+  // Detect consumer cues early (used in multiple places below)
+  const consumerCues = detectConsumerCues(notesText);
+
   const why_not_fit_structured: { severity: 'Red' | 'Amber' | 'Green'; claim: string; evidence: string; interpretation: string }[] = [];
   if (cap_type === 'avoid') {
     const avoidA = avoidCounts[0]?.a;
@@ -1553,7 +1556,7 @@ serve(async (req) => {
       const payToPlayMatch = notesText.match(/(sponsored by|paid placement|advertorial|pay\s*to\s*play|guest\s+fee|fee\s+for\s+interview)/i);
       const linkBanMatch = notesText.match(/(no\s+links|no\s+external\s+links|no\s+backlinks|do\s+not\s+include\s+links|don['']t\s+include\s+urls|no\s+urls|utm\s+not\s+allowed)/i);
       const enterpriseVibe = enterpriseCueCount >= 1;
-      const consumerCues = detectConsumerCues(notesText);
+      // consumerCues now declared earlier (line ~952) to avoid ReferenceError
       const b2cMismatch = consumerCues.length >= 2 && enterpriseCueCount === 0;
       const cryptoCue = /(crypto|bitcoin|blockchain|defi|web3|ethereum|nft|solana|token\b|altcoin)/i.test(notesText);
       const clientText = norm([
