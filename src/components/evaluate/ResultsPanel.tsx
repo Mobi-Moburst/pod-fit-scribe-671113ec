@@ -267,21 +267,58 @@ export const ResultsPanel = ({
               </span>
             </div>
           ) : (
-            <ul className="space-y-2">
-              {riskItems.map((r: any, i: number) => {
-                const severityVariant = r.severity === 'Red' ? 'destructive' : r.severity === 'Amber' ? 'secondary' : 'default';
+            <div className="space-y-3">
+              {/* Group risks by severity */}
+              {['Red', 'Amber', 'Green'].map(severity => {
+                const items = riskItems.filter((r: any) => r.severity === severity);
+                if (items.length === 0) return null;
+                
+                const bgClass = severity === 'Red' 
+                  ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' 
+                  : severity === 'Amber'
+                  ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
+                  : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800';
+                
+                const textClass = severity === 'Red'
+                  ? 'text-red-900 dark:text-red-100'
+                  : severity === 'Amber'
+                  ? 'text-amber-900 dark:text-amber-100'
+                  : 'text-green-900 dark:text-green-100';
+                
                 return (
-                  <li key={i} className="flex items-start gap-2">
-                    {r.severity && <Badge variant={severityVariant} className="shrink-0">{r.severity}</Badge>}
-                    <div className="text-sm">
-                      <div className="font-medium">{r.flag || r}</div>
-                      {r.evidence && <div className="text-xs text-muted-foreground mt-0.5">Evidence: {r.evidence}</div>}
-                      {r.mitigation && <div className="text-muted-foreground mt-1">→ {r.mitigation}</div>}
-                    </div>
-                  </li>
+                  <div key={severity} className="space-y-2">
+                    {items.map((r: any, i: number) => (
+                      <div key={i} className={`p-3 rounded-lg border ${bgClass}`}>
+                        <div className="flex items-start gap-2">
+                          <Badge 
+                            variant={severity === 'Red' ? 'destructive' : severity === 'Amber' ? 'secondary' : 'default'}
+                            className="shrink-0 mt-0.5"
+                          >
+                            {severity}
+                          </Badge>
+                          <div className="flex-1 space-y-1.5">
+                            <div className={`font-semibold text-sm ${textClass}`}>
+                              {r.flag || r}
+                            </div>
+                            {r.evidence && (
+                              <div className="text-xs italic opacity-80">
+                                "{r.evidence}"
+                              </div>
+                            )}
+                            {r.mitigation && (
+                              <div className="text-sm font-medium mt-1.5 pt-1.5 border-t border-current/10">
+                                <span className="opacity-60">→ </span>
+                                {r.mitigation}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           )}
         </Card>
         <Card className="p-4 card-surface">

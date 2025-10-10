@@ -975,7 +975,8 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   // === NEW OPERATIONAL RISK TAXONOMY (Red/Amber/Green) ===
   const risk_flags_structured: { severity: 'Red' | 'Amber' | 'Green'; flag: string; evidence: string; mitigation: string }[] = [];
   
-  // RED (blocking)
+  // RED (dealbreakers)
+  const payToPlayMatch = notes.match(/(pay\s+to\s+play|guest\s+fee|sponsorship\s+required|paid\s+placement)/i);
   if (payToPlayMatch) {
     risk_flags_structured.push({ 
       severity: 'Red', 
@@ -1012,8 +1013,19 @@ async function scoreGoalCentric(client: any, show_notes: string) {
       mitigation: 'DO NOT PITCH - Client does not meet exclusive requirements'
     });
   }
+
+  // Controversial/polarizing content
+  const controversialMatch = notes.match(/(political\s+views|religious\s+content|partisan|controversial|polarizing|culture\s+war)/i);
+  if (controversialMatch) {
+    risk_flags_structured.push({
+      severity: 'Red',
+      flag: 'Potentially controversial or polarizing content',
+      evidence: controversialMatch[0],
+      mitigation: 'Assess brand risk; may alienate segments of target audience'
+    });
+  }
   
-  // AMBER (friction)
+  // AMBER (strategic concerns)
   const formOnlyMatch = notes.match(/(contact\s+form|submission\s+form|google\s+form|typeform)/i);
   const hasEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(notes);
   if (formOnlyMatch && !hasEmail) {
@@ -1044,13 +1056,74 @@ async function scoreGoalCentric(client: any, show_notes: string) {
       mitigation: 'Ensure thought-leadership angle; avoid pure product pitch'
     });
   }
+
+  // Content depth & format mismatches
+  const narrativeMatch = notes.match(/(personal\s+journey|founder\s+story|transformation\s+story|life\s+story|origin\s+story)/i);
+  const tacticalNeeds = (client.talking_points || []).some((tp: string) => 
+    /framework|methodology|tactic|strategy|implementation|process|how\s+to/i.test(tp)
+  );
+  if (narrativeMatch && tacticalNeeds) {
+    risk_flags_structured.push({
+      severity: 'Amber',
+      flag: 'Content format: narrative-driven vs tactical needs',
+      evidence: `${narrativeMatch[0]}; client needs tactical frameworks`,
+      mitigation: 'Pitch client\'s journey angle rather than deep technical dive'
+    });
+  }
+
+  const beginnerMatch = notes.match(/(beginner|101|getting\s+started|basics|introduction\s+to|first\s+steps)/i);
+  const seniorTarget = (client.target_audiences || []).some((aud: string) => 
+    /c-suite|executive|vp|director|senior|experienced|expert/i.test(aud)
+  );
+  if (beginnerMatch && seniorTarget) {
+    risk_flags_structured.push({
+      severity: 'Amber',
+      flag: 'Expertise level mismatch - beginner focus vs senior target',
+      evidence: `${beginnerMatch[0]}; client targets ${(client.target_audiences || []).join(', ')}`,
+      mitigation: 'Frame pitch around lessons for senior leaders, not fundamentals'
+    });
+  }
+
+  const shortEpisodeMatch = notes.match(/(\d+)\s*min/i);
+  if (shortEpisodeMatch && parseInt(shortEpisodeMatch[1]) < 20) {
+    risk_flags_structured.push({
+      severity: 'Amber',
+      flag: 'Short episode format - may limit depth',
+      evidence: `${shortEpisodeMatch[0]} episodes`,
+      mitigation: 'Focus pitch on concise, high-impact talking points'
+    });
+  }
   
+  // Audience sophistication mismatches
+  const consumerHeavy = notes.match(/(your\s+business|small\s+business|solopreneur|freelancer|side\s+hustle)/gi);
+  const enterpriseTarget = (client.target_audiences || []).some((aud: string) => 
+    /enterprise|fortune|mid-market|b2b|saas/i.test(aud)
+  );
+  if (consumerHeavy && consumerHeavy.length >= 3 && enterpriseTarget) {
+    risk_flags_structured.push({
+      severity: 'Amber',
+      flag: 'Audience seniority mismatch - consumer-focused vs enterprise target',
+      evidence: `Heavy consumer language: ${consumerHeavy.slice(0,2).join(', ')}`,
+      mitigation: 'Emphasize enterprise angle; verify ICP with host before pitching'
+    });
+  }
+
+  const aspiringMatch = notes.match(/(aspiring|first-time|new\s+to|starting\s+out|early\s+stage)/i);
+  if (aspiringMatch && seniorTarget) {
+    risk_flags_structured.push({
+      severity: 'Amber',
+      flag: 'Junior audience focus vs senior decision-maker needs',
+      evidence: aspiringMatch[0],
+      mitigation: 'Position client as mentor/advisor sharing advanced insights'
+    });
+  }
+
   // Audience dilution (consumer content mixed with enterprise cues)
   if (consumerCues.length >= 1 && enterpriseCueCount >= 2) {
     risk_flags_structured.push({ 
       severity: 'Amber', 
-      flag: 'Audience dilution - mixed consumer/enterprise content', 
-      evidence: `Consumer: ${consumerCues.slice(0,2).join(', ')}; Enterprise present`,
+      flag: 'Audience dilution - mixed consumer/enterprise signals', 
+      evidence: `Consumer: ${consumerCues.slice(0,2).join(', ')}; Enterprise cues present`,
       mitigation: 'Focus pitch on enterprise angle; verify ICP fit with host'
     });
   }
@@ -1064,33 +1137,87 @@ async function scoreGoalCentric(client: any, show_notes: string) {
       mitigation: 'May have longer lead time; verify active production schedule'
     });
   }
+
+  // Brand tone concerns
+  const casualMatch = notes.match(/(unedited|raw\s+conversations|unfiltered|casual\s+chat|no\s+prep)/i);
+  const professionalBrand = client.notes && /professional|corporate|polished|premium|enterprise/i.test(client.notes);
+  if (casualMatch && professionalBrand) {
+    risk_flags_structured.push({
+      severity: 'Amber',
+      flag: 'Production quality: casual/raw format vs professional brand positioning',
+      evidence: casualMatch[0],
+      mitigation: 'Verify brand fit; ensure content aligns with professional image'
+    });
+  }
+
+  // Content recency
+  const outdatedMatch = notes.match(/(2019|2020|2021|legacy|outdated|deprecated)/i);
+  if (outdatedMatch) {
+    risk_flags_structured.push({
+      severity: 'Amber',
+      flag: 'Content recency concern - references outdated frameworks/tech',
+      evidence: outdatedMatch[0],
+      mitigation: 'Verify episode is recent and content is current'
+    });
+  }
   
   if (gateResult.gate.action === 'conditional') {
     risk_flags_structured.push({ 
       severity: 'Amber', 
-      flag: `Guest eligibility check: ${guestRequirements.evidence}`, 
+      flag: `Guest eligibility requires verification: ${guestRequirements.evidence}`, 
       evidence: gateResult.gate.reasoning,
-      mitigation: 'Verify eligibility with campaign manager before pitching'
+      mitigation: 'Confirm eligibility with campaign manager before pitching'
+    });
+  }
+
+  // Pitch strategy concerns
+  const warmIntroMatch = notes.match(/(referral\s+only|warm\s+intro|personal\s+connection|invitation\s+only)/i);
+  if (warmIntroMatch) {
+    risk_flags_structured.push({
+      severity: 'Amber',
+      flag: 'Prefers warm introductions over cold pitches',
+      evidence: warmIntroMatch[0],
+      mitigation: 'Seek mutual connection or referral before pitching'
     });
   }
   
   // GREEN (positive signals)
-  const bookingLinkMatch = notes.match(/(booking\s+link|guest\s+intake|apply\s+to\s+be\s+a\s+guest|pitch\s+form)/i);
+  const bookingLinkMatch = notes.match(/(booking\s+link|guest\s+intake|apply\s+to\s+be\s+a\s+guest|pitch\s+form|guest\s+application)/i);
   if (bookingLinkMatch) {
     risk_flags_structured.push({ 
       severity: 'Green', 
-      flag: 'Accepts guests - booking link present', 
+      flag: 'Guest-friendly: booking/intake process available', 
       evidence: bookingLinkMatch[0],
-      mitigation: 'Use provided guest intake process'
+      mitigation: 'Use provided guest intake process for streamlined submission'
     });
   }
   
   if (hasEmail && !formOnlyMatch) {
     risk_flags_structured.push({ 
       severity: 'Green', 
-      flag: 'Direct contact email available', 
+      flag: 'Direct contact available', 
       evidence: 'Email found in show notes',
-      mitigation: 'Pitch directly via email'
+      mitigation: 'Pitch directly via email with personalized angle'
+    });
+  }
+
+  const recentMatch = notes.match(/(recent|latest|new\s+episode|just\s+published|this\s+week)/i);
+  if (recentMatch) {
+    risk_flags_structured.push({
+      severity: 'Green',
+      flag: 'Active publishing schedule confirmed',
+      evidence: recentMatch[0],
+      mitigation: 'Show is actively producing; timely pitch opportunity'
+    });
+  }
+
+  const diverseMatch = notes.match(/(diverse\s+guests|wide\s+range|variety\s+of|different\s+backgrounds)/i);
+  if (diverseMatch) {
+    risk_flags_structured.push({
+      severity: 'Green',
+      flag: 'Open to diverse guest perspectives',
+      evidence: diverseMatch[0],
+      mitigation: 'Highlight unique perspective or background in pitch'
     });
   }
 
@@ -1272,6 +1399,22 @@ serve(async (req) => {
     **Policy: Only infer gender from explicit client.gender or high-confidence pronoun/name analysis.**
     **Do not infer ethnicity, religion, or political alignment unless explicitly stated in client identity tags.**
 
+    **Risk flags to evaluate (focus on strategic fit, not just mechanical issues):**
+    - **RED (dealbreakers)**: Pay-to-play/guest fees, link/UTM bans, no guest submissions, confirmed eligibility mismatch, polarizing/controversial content that creates brand risk
+    - **AMBER (strategic concerns requiring mitigation)**: 
+      * Content format mismatches (narrative-heavy vs tactical needs, expertise level gaps)
+      * Audience sophistication mismatches (consumer-focused vs enterprise target, junior vs senior)
+      * Production/brand tone concerns (casual/raw vs professional brand)
+      * Content recency issues (outdated frameworks/tech references)
+      * Pitch strategy friction (warm intro preference, form-only contact)
+      * Publishing irregularity or mixed enterprise/consumer signals
+    - **GREEN (positive signals)**: Guest intake process available, direct contact email, active recent publishing, diverse guest perspectives, established audience engagement
+    
+    **For each risk flag, provide:**
+    - Specific evidence (quote from episode or observation)
+    - Clear mitigation strategy (actionable next step)
+    - Focus on strategic fit concerns that affect campaign success
+
     Your response must be valid JSON with this exact structure:
     {
       "overall_score": <number 0-10 after applying aggregation rules>,
@@ -1285,7 +1428,14 @@ serve(async (req) => {
       "verdict_reason": "<one sentence>",
       "why_fit_structured": [{"claim": "<claim>", "evidence": "<quote>", "interpretation": "<explanation>"}],
       "why_not_fit_structured": [{"severity": "Critical|Major|Minor", "claim": "<claim>", "evidence": "<quote>", "interpretation": "<explanation>"}],
-      "risk_flags_structured": [{"severity": "Critical|Major|Minor", "flag": "<flag>", "mitigation": "<action>"}],
+      "risk_flags_structured": [
+        {
+          "severity": "Red|Amber|Green",
+          "flag": "<specific concern or positive signal>",
+          "evidence": "<quote or observation from episode>",
+          "mitigation": "<actionable next step>"
+        }
+      ],
       "recommended_talking_points": ["<point1>", "<point2>", "<point3>"],
       "citations": ["<quote1>", "<quote2>"],
       "confidence": <0-1>,
