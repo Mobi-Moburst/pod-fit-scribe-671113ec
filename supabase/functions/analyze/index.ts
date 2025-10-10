@@ -690,6 +690,7 @@ function scoreGuestEligibility(client: any, clientEnrichment: any, guestRequirem
 // ---------------- Heuristic Scorer (Goal-centric) ----------------
 async function scoreGoalCentric(client: any, show_notes: string) {
   const notes: string = String(show_notes || "");
+  console.log('[ANALYZE v2.0] scoreGoalCentric called - notes length:', notes.length);
   const tokens = tokenize(notes);
   const { strong, near } = expandConcepts(client);
   const audiences: string[] = (client?.target_audiences || client?.target_roles || []) as string[];
@@ -948,7 +949,13 @@ async function scoreGoalCentric(client: any, show_notes: string) {
   });
 
   // Detect consumer cues early (used in multiple places below)
-  const consumerCues = detectConsumerCues(notes);
+  let consumerCues: string[] = [];
+  try {
+    consumerCues = detectConsumerCues(notes);
+    console.log('[ANALYZE v2.0] Consumer cues detected:', consumerCues.length);
+  } catch (e) {
+    console.error('[ANALYZE v2.0] ERROR detecting consumer cues:', e);
+  }
 
   const why_not_fit_structured: { severity: 'Red' | 'Amber' | 'Green'; claim: string; evidence: string; interpretation: string }[] = [];
   if (cap_type === 'avoid') {
