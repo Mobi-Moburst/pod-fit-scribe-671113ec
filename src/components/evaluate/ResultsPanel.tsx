@@ -229,19 +229,25 @@ export const ResultsPanel = ({
           </ul>
         </Card>
         <Card className="p-4 card-surface">
-          <h3 className="text-lg font-semibold mb-2">Why it doesn’t</h3>
-          <ul className="space-y-2">
-            {notFitItems.map((w: any, i: number) => (
-              <li key={i}>
-                <div className="flex items-center gap-2">
-                  <div className="font-medium">{w.claim}</div>
-                  {w.severity && <Badge variant="outline">{w.severity}</Badge>}
-                </div>
-                {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">“{w.evidence}”</blockquote>}
-                {w.interpretation && <div className="text-sm mt-1">{w.interpretation}</div>}
-              </li>
-            ))}
-          </ul>
+          <h3 className="text-lg font-semibold mb-2">Why it doesn't</h3>
+          {notFitItems.length === 0 ? (
+            <div className="text-sm text-muted-foreground italic py-2 px-3 border-l-2 border-green-500 bg-green-50/50 dark:bg-green-950/10 rounded-r">
+              No material gaps identified
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {notFitItems.map((w: any, i: number) => (
+                <li key={i}>
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium">{w.claim}</div>
+                    {w.severity && <Badge variant="outline">{w.severity}</Badge>}
+                  </div>
+                  {w.evidence && <blockquote className="text-sm text-muted-foreground border-l pl-3 mt-1">"{w.evidence}"</blockquote>}
+                  {w.interpretation && <div className="text-sm mt-1">{w.interpretation}</div>}
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Recommendation</h3>
@@ -262,17 +268,26 @@ export const ResultsPanel = ({
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Risk Flags</h3>
-          <ul className="space-y-2">
-            {riskItems.map((r: any, i: number) => (
-              <li key={i} className="flex items-start gap-2">
-                {r.severity && <Badge variant="outline" className="shrink-0">{r.severity}</Badge>}
-                <div className="text-sm">
-                  <div className="font-medium">{r.flag || r}</div>
-                  {r.mitigation && <div className="text-muted-foreground">Mitigation: {r.mitigation}</div>}
-                </div>
-              </li>
-            ))}
-          </ul>
+          {riskItems.length === 0 ? (
+            <div className="flex items-center gap-2 p-3 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+              <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
+              <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                No material risks detected
+              </span>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {riskItems.map((r: any, i: number) => (
+                <li key={i} className="flex items-start gap-2">
+                  {r.severity && <Badge variant="outline" className="shrink-0">{r.severity}</Badge>}
+                  <div className="text-sm">
+                    <div className="font-medium">{r.flag || r}</div>
+                    {r.mitigation && <div className="text-muted-foreground">Mitigation: {r.mitigation}</div>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
         <Card className="p-4 card-surface">
           <h3 className="text-lg font-semibold mb-2">Confidence & Next Checks</h3>
