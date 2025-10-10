@@ -128,6 +128,7 @@ export const ResultsPanel = ({
                 const date = new Date((result as any).last_publish_date);
                 const daysSince = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
                 const isStale = daysSince > 90;
+                const isInactive = daysSince > 730; // 2 years = likely inactive
                 const formatRelativeTime = (days: number) => {
                   if (days < 1) return "Today";
                   if (days < 2) return "Yesterday";
@@ -146,7 +147,11 @@ export const ResultsPanel = ({
                     <span>
                       Published {date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} 
                       ({formatRelativeTime(daysSince)})
-                      {isStale && <span className="text-amber-600 ml-1">- Stale content ({Math.floor(daysSince)}d)</span>}
+                      {isInactive ? (
+                        <span className="text-red-600 ml-1 font-medium">- No longer publishing</span>
+                      ) : isStale ? (
+                        <span className="text-amber-600 ml-1">- Stale content ({Math.floor(daysSince)}d)</span>
+                      ) : null}
                     </span>
                   </div>
                 );
@@ -196,12 +201,48 @@ export const ResultsPanel = ({
         {/* Show eligibility status separately (not in rubric) */}
         {result.audit?.eligibility?.class !== 'none' && result.audit?.eligibility?.class !== 'preferential' && (
           <Card className="p-4 card-surface">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium mb-1">Guest Eligibility Status</div>
-                <p className="text-xs text-muted-foreground">{result.audit?.eligibility?.reasoning}</p>
+            <div className="text-sm font-medium mb-3 flex items-center gap-2">
+              Guest Eligibility Status
+              {result.audit?.eligibility?.class && (
+                <Badge variant="outline" className="capitalize">
+                  {result.audit.eligibility.class}
+                </Badge>
+              )}
+            </div>
+            
+            {/* Evidence section */}
+            {result.audit?.eligibility?.evidence && (
+              <div className="mb-3 p-2 bg-muted/50 rounded">
+                <span className="text-xs font-medium text-muted-foreground">Requirement detected:</span>
+                <p className="text-sm mt-1 italic">"{result.audit.eligibility.evidence}"</p>
               </div>
-              <div className="flex items-center gap-2">
+            )}
+            
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                {/* Expanded reasoning */}
+                {result.audit?.eligibility?.action === 'fail' && (
+                  <p className="text-sm text-muted-foreground">
+                    Client may not be eligible given {result.audit.eligibility.class} theme.
+                    {result.audit.eligibility.reasoning && ` ${result.audit.eligibility.reasoning}`}
+                  </p>
+                )}
+                {result.audit?.eligibility?.action === 'conditional' && (
+                  <p className="text-sm text-muted-foreground">
+                    Unable to confirm eligibility from client data.
+                    {result.audit.eligibility.reasoning && ` ${result.audit.eligibility.reasoning}`}
+                    {' '}Please verify before pitching.
+                  </p>
+                )}
+                {result.audit?.eligibility?.action === 'pass' && (
+                  <p className="text-sm text-muted-foreground">
+                    {result.audit.eligibility.reasoning || 'Client meets eligibility requirements.'}
+                  </p>
+                )}
+              </div>
+              
+              {/* Status icon (moved to right side) */}
+              <div className="flex items-center gap-2 shrink-0">
                 {result.audit?.eligibility?.action === 'pass' && (
                   <>
                     <CheckCircle className="h-5 w-5 text-green-600" />
