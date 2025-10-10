@@ -848,13 +848,6 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
     icpAlignment = Math.min(10.0, icpAlignment + 0.5);
   }
   
-  // NEW: Allow broad "security pros/practitioners" to score 7.5-8.5 if enterprise themes present
-  const hasSecurityPractitionerAudience = /(security\s+(pros?|professionals?|practitioners?|experts?))/i.test(notes);
-  const hasEnterpriseThemes = /(breach|identity|ransomware|zero\s*trust|cloud\s*security|soc|risk|compliance)/i.test(notes);
-  if (hasSecurityPractitionerAudience && hasEnterpriseThemes && icpAlignment < 7.5) {
-    icpAlignment = Math.max(icpAlignment, 7.5);
-  }
-  
   // Only penalize ICP when audience is consumer/entry-level or purely hobbyist
   const hasConsumerAudience = consumerCues.length > 0 || /(consumer|lifestyle|hobbyist|entry[\s-]?level|beginner|personal\s+tech)/i.test(notes);
   if (hasConsumerAudience && icpAlignment > 6.0) {
