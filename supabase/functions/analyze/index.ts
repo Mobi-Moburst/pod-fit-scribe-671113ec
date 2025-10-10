@@ -90,6 +90,100 @@ function detectConsumerCues(text: string): string[] {
   return cues.filter(cue => new RegExp(`\\b${esc(cue)}\\b`, 'g').test(lower));
 }
 
+// ---------------- Influence & Authority Signals ----------------
+function extractInfluenceSignals(text: string) {
+  const lower = norm(text);
+  
+  // Awards/wins detection
+  let awards = 0;
+  const awardPatterns = [
+    /best\s+([\w\s]+\s+)?podcast/i,
+    /award[\s-]?winning/i,
+    /shortlisted?\s+for/i,
+    /nominated\s+for/i,
+    /top\s+\d+\s+podcast/i,
+  ];
+  const awardMatches = awardPatterns.reduce((sum, p) => sum + (text.match(p) || []).length, 0);
+  if (awardMatches >= 3) awards = 2; // Repeated wins
+  else if (awardMatches >= 1) awards = 1; // Mentions
+  
+  // Download scale detection
+  let downloads_tier = 0;
+  const downloadPatterns = [
+    { pattern: /(\d+)\s*(?:million|m)\+?\s+download/i, threshold: 10, tier: 3 },
+    { pattern: /(\d+)\s*(?:million|m)\+?\s+download/i, threshold: 5, tier: 2 },
+    { pattern: /(\d+)\s*(?:million|m)\+?\s+download/i, threshold: 1, tier: 1 },
+  ];
+  for (const { pattern, threshold, tier } of downloadPatterns) {
+    const match = text.match(pattern);
+    if (match && parseInt(match[1]) >= threshold) {
+      downloads_tier = Math.max(downloads_tier, tier);
+    }
+  }
+  
+  // Top guest detection (recognized security/tech leaders)
+  const topGuestNames = [
+    'mikko hyppönen', 'hypponen', 'garry kasparov', 'kasparov',
+    'jack rhysider', 'rhysider', 'bruce schneier', 'schneier',
+    'katie moussouris', 'moussouris', 'troy hunt', 'brian krebs', 'krebs',
+    'adam shostack', 'shostack', 'rik ferguson', 'ferguson',
+    'nicole perlroth', 'perlroth', 'kim zetter', 'zetter',
+    'tarah wheeler', 'wheeler', 'parisa tabriz', 'tabriz',
+  ];
+  const top_guests = topGuestNames.filter(name => lower.includes(name)).length;
+  
+  // Longevity & cadence detection
+  const yearsMatch = text.match(/(\d+)\+?\s+years?/i);
+  const years = yearsMatch ? parseInt(yearsMatch[1]) : 0;
+  const cadencePatterns = /\b(weekly|bi-?weekly|consistent|regular|every\s+(week|monday|tuesday|wednesday|thursday|friday))/i;
+  const hasCadence = cadencePatterns.test(lower);
+  const longevity = years >= 3 && hasCadence;
+  
+  // Chart rankings / press mentions
+  const chartPatterns = [
+    /top\s+\d+/i,
+    /chart[\s-]?topping/i,
+    /featured\s+by\s+(apple|spotify|google)/i,
+    /\b(techcrunch|wired|forbes|wsj|new york times|nyt)\b/i,
+  ];
+  const charts = chartPatterns.some(p => p.test(text));
+  
+  return {
+    awards,
+    downloads_tier,
+    top_guests: Math.min(3, top_guests),
+    longevity,
+    charts,
+  };
+}
+
+function calculateInfluenceMultiplier(signals: ReturnType<typeof extractInfluenceSignals>): number {
+  let multiplier = 1.0;
+  
+  // Awards bonus
+  if (signals.awards === 2) multiplier += 0.08; // Repeated wins
+  else if (signals.awards === 1) multiplier += 0.05; // Mentions
+  
+  // Download scale bonus
+  if (signals.downloads_tier === 3) multiplier += 0.10; // 10M+
+  else if (signals.downloads_tier === 2) multiplier += 0.07; // 5M+
+  else if (signals.downloads_tier === 1) multiplier += 0.04; // 1M+
+  
+  // Guest caliber bonus
+  if (signals.top_guests >= 3) multiplier += 0.06;
+  else if (signals.top_guests === 2) multiplier += 0.04;
+  else if (signals.top_guests === 1) multiplier += 0.03;
+  
+  // Longevity bonus
+  if (signals.longevity) multiplier += 0.04;
+  
+  // Chart/press bonus
+  if (signals.charts) multiplier += 0.04;
+  
+  // Cap at 1.15, floor at 0.90
+  return Math.max(0.90, Math.min(1.15, multiplier));
+}
+
 // ---------------- Concept Set Expansion ----------------
 function expandConcepts(client: any) {
   const talking: string[] = (client?.talking_points || client?.keywords_positive || []) as string[];
@@ -728,13 +822,26 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
   const weightedConceptScore = clamp(Math.min(10, strongHits.length * 2 + nearHits.length * 1));
   const topicRelevance = roundToHalf(clamp(2 + weightedConceptScore * 0.5));
 
-  // ICP alignment (0.45) - baseline calculation
+  // ICP alignment (0.45) - UPDATED: more permissive for "security pros/practitioners" with enterprise themes
   const audStrong = findPositions(notes, audiences.map(norm)).length;
   const audAdj = nearHits.filter(h => audiences.some(a => norm(h.term).includes(norm(a)))).length;
   let icpAlignment = roundToHalf(clamp(2 + Math.min(7, audStrong * 2 + Math.min(2, audAdj * 0.5))));
   
   // Count enterprise cues (lift applied later after applied_adjustments is declared)
   const enterpriseCueCount = countEnterpriseCues(notes);
+  
+  // NEW: Allow broad "security pros/practitioners" to score 7.5-8.5 if enterprise themes present
+  const hasSecurityPractitionerAudience = /(security\s+(pros?|professionals?|practitioners?|experts?))/i.test(notes);
+  const hasEnterpriseThemes = /(breach|identity|ransomware|zero\s*trust|cloud\s*security|soc|risk|compliance)/i.test(notes);
+  if (hasSecurityPractitionerAudience && hasEnterpriseThemes && icpAlignment < 7.5) {
+    icpAlignment = Math.max(icpAlignment, 7.5);
+  }
+  
+  // Only penalize ICP when audience is consumer/entry-level or purely hobbyist
+  const hasConsumerAudience = consumerCues.length > 0 || /(consumer|lifestyle|hobbyist|entry[\s-]?level|beginner|personal\s+tech)/i.test(notes);
+  if (hasConsumerAudience && icpAlignment > 6.0) {
+    icpAlignment = Math.min(icpAlignment, 6.0);
+  }
 
   // CTA synergy (0.20)
   const ctaTerms = ["book","demo","consult","download","guide","report","contact","learn more","talk to","sales","trial","start"];
@@ -742,11 +849,20 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
   const enterpriseVibe = /(enterprise|b2b|ciso|cio|governance|compliance|risk|security)/i.test(notes) ? 1 : 0;
   const ctaSynergy = roundToHalf(clamp(2 + Math.min(7, ctaOverlap * 1.5 + enterpriseVibe * 2)));
 
-  // Brand suitability (0.15)
+  // Brand suitability (0.10) - UPDATED: tolerate humor unless client requires formal tone
   const tonePref = norm(notesPref);
   const tonePos = ["authoritative","technical","tactical","educational","interview","case study","no pay-to-play"].filter(t => tonePref.includes(t)).length;
   const toneNegInNotes = /(explicit|nsfw|politics|gambling|hype|clickbait)/i.test(notes) ? 1 : 0;
-  const brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
+  const hasHumor = /(humor|funny|comedic|lighthearted)/i.test(notes);
+  const requiresFormal = /(formal\s+only|enterprise[\s-]?only\s+tone)/i.test(tonePref);
+  const isProfessionalContent = /(accurate|ethical|professional|credible)/i.test(notes) && toneNegInNotes === 0;
+  
+  let brandSuitability = roundToHalf(clamp(4 + tonePos * 1.2 - toneNegInNotes * 2));
+  
+  // NEW: If humor detected but client doesn't require formal AND content is professional → clamp Brand ≥ 7.5
+  if (hasHumor && !requiresFormal && isProfessionalContent && brandSuitability < 7.5) {
+    brandSuitability = 7.5;
+  }
 
   // NEW: Audience-first weights (CTA is info-only, not scored)
   const weights = { topic: 0.45, icp: 0.45, brand: 0.10 } as const;
@@ -808,7 +924,7 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
       amount: brandPenalty 
     });
   }
-  // Rule 2b: If Topic ≥ 8 AND ICP ≥ 8 → ensure final ≥ 7.5 (unless brand killed it)
+  // Rule 2b: If Topic ≥ 8 AND ICP ≥ 8 → ensure final ≥ 7.5 (unless brand killed it) - BEFORE influence multiplier
   else if (topicRelevance >= 8 && icpAlignment >= 8) {
     overall = Math.max(overall, 7.5);
     applied_adjustments.push({ 
@@ -817,6 +933,24 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
       amount: 7.5 
     });
   }
+  
+  // Store baseline before influence multiplier
+  const baseline_overall = overall;
+  
+  // NEW: Extract influence signals and calculate multiplier
+  const influenceSignals = extractInfluenceSignals(notes);
+  const influence_m = calculateInfluenceMultiplier(influenceSignals);
+  
+  // Apply influence multiplier to baseline
+  if (influence_m !== 1.0) {
+    overall = clamp(overall * influence_m, 0, 10);
+    applied_adjustments.push({
+      type: 'bonus',
+      label: `Influence multiplier (${influence_m.toFixed(2)}x)`,
+      amount: overall - baseline_overall,
+    });
+  }
+  const post_influence_score = overall;
   
   // Declare cap variables BEFORE they're used
   let cap_applied = false;
@@ -1261,7 +1395,16 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
   const risk_flags = risk_flags_structured.map(r => `${r.flag} [${r.severity}]`);
 
   // Summary
-  const summary_text = buildSummary({ overall: overall, verdict, why_fit_structured, why_not_fit_structured, risk_flags_structured, clientName: client?.name || client?.company || 'the client' });
+  const summary_text = buildSummary({ 
+    overall: overall, 
+    verdict, 
+    why_fit_structured, 
+    why_not_fit_structured, 
+    risk_flags_structured, 
+    clientName: client?.name || client?.company || 'the client',
+    influence_m,
+    influenceSignals,
+  });
 
   // NEW: Rubric with 3 scored dimensions + 1 info-only (CTA)
   const rubric_breakdown = [
@@ -1295,9 +1438,12 @@ async function scoreGoalCentric(client: any, show_notes: string, consumerCues: s
     applied_adjustments,
     cap_reason,
     cap_type,
-    // NEW: Audit object with baseline, final, eligibility gate, and enterprise cues
+    // NEW: Audit object with baseline, final, eligibility gate, influence multiplier, and enterprise cues
     audit: {
       baseline_overall,
+      influence_multiplier: influence_m,
+      influence_signals: influenceSignals,
+      post_influence_score,
       final_overall: overall,
       weighted_mean,
       adjustments: { genericness: adj_genericness, multi_concept: adj_multi_concept, cadence: adj_cadence },
@@ -1317,6 +1463,8 @@ function buildSummary(args: {
   why_not_fit_structured: { severity: 'Critical' | 'Major' | 'Minor'; claim: string; evidence: string; interpretation: string }[];
   risk_flags_structured: { severity: 'Critical' | 'Major' | 'Minor'; flag: string; mitigation: string }[];
   clientName: string;
+  influence_m?: number;
+  influenceSignals?: ReturnType<typeof extractInfluenceSignals>;
 }) {
   const verdictWord = args.verdict === 'recommend' ? 'Fit' : args.verdict === 'consider' ? 'Consider' : 'Not a fit';
   const audienceClaim = args.why_fit_structured.find(i => /audience|ICP/i.test(i.claim))?.claim
@@ -1333,7 +1481,22 @@ function buildSummary(args: {
       ? 'Next step: proceed if ICP and topic are confirmed by the host.'
       : 'Next step: suggest an adjacent show type with stronger audience alignment.';
 
-  return `Verdict: ${verdictWord} for ${args.clientName}. Audience: ${audienceClaim} and why that matters to the campaign. Content focus: ${themes} mapped to the client's talking points. Why it aligns: ${align} Gaps to note: ${gapsText}. ${risksText} Next step: ${next}`;
+  // NEW: Add influence note when multiplier > 1.05
+  let influenceNote = '';
+  if (args.influence_m && args.influence_m > 1.05 && args.influenceSignals) {
+    const signals = args.influenceSignals;
+    const details: string[] = [];
+    if (signals.awards > 0) details.push('awards');
+    if (signals.downloads_tier > 0) details.push(`${signals.downloads_tier >= 3 ? '10M+' : signals.downloads_tier >= 2 ? '5M+' : '1M+'} downloads`);
+    if (signals.top_guests > 0) details.push('top guests');
+    if (signals.longevity) details.push(`${details.length > 0 ? '' : ''}consistent ${details.length > 0 ? '' : 'track record'}`);
+    
+    if (details.length > 0) {
+      influenceNote = ` High-authority show (${details.join(', ')}) increases impact despite broad positioning.`;
+    }
+  }
+
+  return `Verdict: ${verdictWord} for ${args.clientName}. Audience: ${audienceClaim} and why that matters to the campaign. Content focus: ${themes} mapped to the client's talking points. Why it aligns: ${align} Gaps to note: ${gapsText}. ${risksText}${influenceNote} Next step: ${next}`;
 }
 
 // ---------------- HTTP handler ----------------
@@ -1397,8 +1560,12 @@ serve(async (req) => {
   1. **Topic relevance** (Weight: 0.45): How well the episode content aligns with the client's talking points, business focus, and target themes. Score 0-10.
 
   2. **ICP alignment** (Weight: 0.45): How well the podcast audience matches the client's target customer profile and decision-makers. Score 0-10.
+     - **IMPORTANT**: If audience is "security pros/practitioners" AND content includes enterprise-grade themes (breaches, identity, ransomware, zero trust, cloud security, SOC, risk, compliance), treat as 7.5-8.5 ICP even without explicit "CISO" or "decision maker" mentions.
+     - Only penalize ICP when audience is consumer/entry-level or purely hobbyist.
 
   3. **Brand suitability** (Weight: 0.10): How appropriate the podcast's editorial standards, tone, and content are for the client's brand positioning. Score 0-10.
+     - **IMPORTANT**: Humor or informal tone should NOT reduce Brand Suitability unless client notes explicitly require "formal only" or "enterprise-only tone."
+     - For security clients without "formal only" constraint, clamp Brand Suitability to ≥7.5 when content is accurate, ethical, and professional despite humor.
 
   4. **Format/CTA notes** (Weight: 0.00 - info only): Note episode format and CTA compatibility. This does NOT affect the score. Only raise risk flags for: pay-to-play, guest fees, link-ban policies, hard sales pitch format.
 
@@ -1437,6 +1604,16 @@ serve(async (req) => {
     
     **Policy: Only infer gender from explicit client.gender or high-confidence pronoun/name analysis.**
     **Do not infer ethnicity, religion, or political alignment unless explicitly stated in client identity tags.**
+    
+    **Influence signals (extract for confidence_note):**
+    When scoring, note any high-authority signals you observe:
+    - Awards/wins or repeated shortlistings (e.g., "best cybersecurity podcast")
+    - Download scale mentions (1M+, 5M+, 10M+ lifetime downloads)
+    - Guest caliber (recognized industry leaders like Mikko Hyppönen, Garry Kasparov, Jack Rhysider, Bruce Schneier, Katie Moussouris, Troy Hunt, etc.)
+    - Longevity (≥3 years) with consistent weekly/regular publishing cadence
+    - Chart rankings or press mentions (Apple Charts, TechCrunch, Wired, Forbes, etc.)
+    
+    **Note**: The system will apply an influence multiplier post-scoring based on these signals. Include them in your confidence_note for transparency.
 
     **Risk flags to evaluate (focus on strategic fit, not just mechanical issues):**
     - **RED (dealbreakers)**: Pay-to-play/guest fees, link/UTM bans, no guest submissions, confirmed eligibility mismatch, polarizing/controversial content that creates brand risk
