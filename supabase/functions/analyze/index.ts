@@ -1485,7 +1485,7 @@ serve(async (req) => {
     }`;
 
     const body = {
-      model: "gpt-4.1-2025-04-14",
+      model: "gpt-4o-mini",
       temperature: 0.15,
       response_format: { type: "json_object" },
       messages: [
