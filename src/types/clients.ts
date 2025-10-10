@@ -9,7 +9,10 @@ export interface MinimalClient {
   avoid?: string[];
   avoid_text?: string;
   notes?: string;
-  campaign_manager?: string; // Campaign Manager assignment
-  // Kept for backward compatibility with older seeds/forms
+  campaign_manager?: string;
   campaign_strategy?: string;
+  // New eligibility fields
+  gender?: 'male' | 'female' | 'non_binary' | 'unspecified';
+  guest_identity_tags?: string[];
+  professional_credentials?: string[];
 }

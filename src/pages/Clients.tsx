@@ -26,8 +26,11 @@ const empty: MinimalClient = {
   avoid: [],
   avoid_text: '',
   notes: '',
-  campaign_strategy: '', // keep for backward compatibility
+  campaign_strategy: '',
   campaign_manager: '',
+  gender: undefined,
+  guest_identity_tags: [],
+  professional_credentials: [],
 };
 
 // Deterministic color classes for CM badge using design tokens
@@ -77,6 +80,9 @@ const Clients = () => {
       notes: c.notes || '',
       campaign_strategy: c.campaign_strategy || '',
       campaign_manager: c.campaign_manager || '',
+      gender: c.gender,
+      guest_identity_tags: c.guest_identity_tags || [],
+      professional_credentials: c.professional_credentials || [],
     })));
   };
 
@@ -136,6 +142,9 @@ const Clients = () => {
           notes: editing.notes || null,
           campaign_strategy: editing.campaign_strategy || '',
           campaign_manager: (editing as any).campaign_manager || null,
+          gender: editing.gender || null,
+          guest_identity_tags: editing.guest_identity_tags || [],
+          professional_credentials: editing.professional_credentials || [],
         } as any,
       ]);
       if (error) {
@@ -153,6 +162,9 @@ const Clients = () => {
         notes: editing.notes || null,
         campaign_strategy: editing.campaign_strategy || '',
         campaign_manager: (editing as any).campaign_manager || null,
+        gender: editing.gender || null,
+        guest_identity_tags: editing.guest_identity_tags || [],
+        professional_credentials: editing.professional_credentials || [],
       }).eq('id', editing.id);
       if (error) {
         toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
@@ -206,6 +218,38 @@ const Clients = () => {
               <div>
                 <Label>Campaign Manager</Label>
                 <Input placeholder="e.g., Troy" value={(editing as any).campaign_manager || ''} onChange={(e) => setEditing({ ...editing, campaign_manager: e.target.value })} />
+              </div>
+              <div>
+                <Label>Gender</Label>
+                <select 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={editing.gender || ''}
+                  onChange={(e) => setEditing({ ...editing, gender: e.target.value as any })}
+                >
+                  <option value="">Prefer not to specify</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="non_binary">Non-binary</option>
+                  <option value="unspecified">Unspecified</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <Label>Identity Tags (for shows with specific guest requirements)</Label>
+                <Textarea
+                  rows={2}
+                  placeholder="e.g., woman_entrepreneur, black_founder, veteran, lgbtq+, christian, conservative, progressive"
+                  value={(editing.guest_identity_tags || []).join(', ')}
+                  onChange={(e) => setEditing({ ...editing, guest_identity_tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Professional Credentials</Label>
+                <Textarea
+                  rows={2}
+                  placeholder="e.g., published_author, ceo, founder, professor, researcher, industry_veteran"
+                  value={(editing.professional_credentials || []).join(', ')}
+                  onChange={(e) => setEditing({ ...editing, professional_credentials: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+                />
               </div>
               <div className="md:col-span-2">
                 <Label>Campaign strategy</Label>
