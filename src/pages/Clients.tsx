@@ -234,24 +234,6 @@ const Clients = () => {
                 </select>
               </div>
               <div className="md:col-span-2">
-                <Label>Identity Tags (for shows with specific guest requirements)</Label>
-                <Textarea
-                  rows={2}
-                  placeholder="e.g., woman_entrepreneur, black_founder, veteran, lgbtq+, christian, conservative, progressive"
-                  value={(editing.guest_identity_tags || []).join(', ')}
-                  onChange={(e) => setEditing({ ...editing, guest_identity_tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label>Professional Credentials</Label>
-                <Textarea
-                  rows={2}
-                  placeholder="e.g., published_author, ceo, founder, professor, researcher, industry_veteran"
-                  value={(editing.professional_credentials || []).join(', ')}
-                  onChange={(e) => setEditing({ ...editing, professional_credentials: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-                />
-              </div>
-              <div className="md:col-span-2">
                 <Label>Campaign strategy</Label>
                 <Textarea
                   rows={10}
@@ -285,6 +267,16 @@ const Clients = () => {
                   placeholder="Authoritative, technical; no pay-to-play; prefers interview format."
                   value={editing.notes || ''}
                   onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Guest Identity Tags (for shows with specific requirements)</Label>
+                <p className="text-xs text-muted-foreground mb-2">Professional credentials like CEO, Founder, etc. are auto-detected from media kits</p>
+                <Textarea
+                  rows={2}
+                  placeholder="e.g., woman_entrepreneur, black_founder, veteran, lgbtq+, christian, conservative, progressive"
+                  value={(editing.guest_identity_tags || []).join(', ')}
+                  onChange={(e) => setEditing({ ...editing, guest_identity_tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
                 />
               </div>
             </div>
