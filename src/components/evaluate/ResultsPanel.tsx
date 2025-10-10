@@ -198,68 +198,24 @@ export const ResultsPanel = ({
             ))}
         </div>
         
-        {/* Show eligibility status separately (not in rubric) */}
-        {result.audit?.eligibility?.class !== 'none' && result.audit?.eligibility?.class !== 'preferential' && (
-          <Card className="p-4 card-surface">
-            <div className="text-sm font-medium mb-3 flex items-center gap-2">
-              Guest Eligibility Status
-              {result.audit?.eligibility?.class && (
-                <Badge variant="outline" className="capitalize">
-                  {result.audit.eligibility.class}
-                </Badge>
-              )}
-            </div>
-            
-            {/* Evidence section */}
-            {result.audit?.eligibility?.evidence && (
-              <div className="mb-3 p-2 bg-muted/50 rounded">
-                <span className="text-xs font-medium text-muted-foreground">Requirement detected:</span>
-                <p className="text-sm mt-1 italic">"{result.audit.eligibility.evidence}"</p>
-              </div>
-            )}
-            
-            <div className="flex items-start justify-between gap-4">
+        {/* Show eligibility warning only when there's a concern */}
+        {(result.audit?.eligibility?.action === 'fail' || result.audit?.eligibility?.action === 'conditional') && (
+          <Card className="p-4 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="flex-1">
-                {/* Expanded reasoning */}
-                {result.audit?.eligibility?.action === 'fail' && (
-                  <p className="text-sm text-muted-foreground">
-                    Client may not be eligible given {result.audit.eligibility.class} theme.
-                    {result.audit.eligibility.reasoning && ` ${result.audit.eligibility.reasoning}`}
+                <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                  ⚠️ Guest Eligibility Review Required
+                </div>
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  {result.audit.eligibility.action === 'fail' 
+                    ? 'Client may not be eligible for this show\'s guest requirements. Please review before pitching.'
+                    : 'Unable to confirm guest eligibility from available client data. Please verify before pitching.'}
+                </p>
+                {result.audit?.eligibility?.evidence && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 italic">
+                    Show requirement: "{result.audit.eligibility.evidence}"
                   </p>
-                )}
-                {result.audit?.eligibility?.action === 'conditional' && (
-                  <p className="text-sm text-muted-foreground">
-                    Unable to confirm eligibility from client data.
-                    {result.audit.eligibility.reasoning && ` ${result.audit.eligibility.reasoning}`}
-                    {' '}Please verify before pitching.
-                  </p>
-                )}
-                {result.audit?.eligibility?.action === 'pass' && (
-                  <p className="text-sm text-muted-foreground">
-                    {result.audit.eligibility.reasoning || 'Client meets eligibility requirements.'}
-                  </p>
-                )}
-              </div>
-              
-              {/* Status icon (moved to right side) */}
-              <div className="flex items-center gap-2 shrink-0">
-                {result.audit?.eligibility?.action === 'pass' && (
-                  <>
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-green-600 font-semibold">Eligible</span>
-                  </>
-                )}
-                {result.audit?.eligibility?.action === 'fail' && (
-                  <>
-                    <XCircle className="h-5 w-5 text-red-600" />
-                    <span className="text-red-600 font-semibold">Not Eligible</span>
-                  </>
-                )}
-                {result.audit?.eligibility?.action === 'conditional' && (
-                  <>
-                    <AlertCircle className="h-5 w-5 text-amber-600" />
-                    <span className="text-amber-600 font-semibold">Check Required</span>
-                  </>
                 )}
               </div>
             </div>
