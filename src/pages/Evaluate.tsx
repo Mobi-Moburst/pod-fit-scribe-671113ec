@@ -185,8 +185,8 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
     const topicItems = (themeClaims.length ? themeClaims : pitchTopics).slice(0, 2);
     const themes = topicItems.length === 2 ? `${topicItems[0]} and ${topicItems[1]}` : (topicItems[0] || 'practical themes that support the campaign');
 
-    // Risks: include only material (Critical) if present
-    const criticalRiskRaw = (result.risk_flags_structured || []).find(r => r.severity === 'Critical')?.flag || '';
+    // Risks: include only material (Red) if present
+    const criticalRiskRaw = (result.risk_flags_structured || []).find(r => r.severity === 'Red')?.flag || '';
     const criticalRisk = clean(criticalRiskRaw).toLowerCase();
 
     // Next step depends on verdict
