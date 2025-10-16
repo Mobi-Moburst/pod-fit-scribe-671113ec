@@ -62,7 +62,7 @@ Return ONLY the pitch text (no JSON, no preamble). Use this exact structure with
 
 <p style="margin: 0 0 1em 0;">Hey [host_first_name],</p>
 
-<p style="margin: 0 0 1em 0;">[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a>, their title at [company_name] (or with <a href="[company_url]">[company_name]</a> if company_url exists), with credibility and context. Hyperlink their name to media kit and optionally company to company URL in opening paragraphs ONLY]</p>
+<p style="margin: 0 0 1em 0;">[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a>, USE THE EXACT TITLE PROVIDED IN CLIENT DATA at [company_name] (or with <a href="[company_url]">[company_name]</a> if company_url exists), with credibility and context. Hyperlink their name to media kit and optionally company to company URL in opening paragraphs ONLY]</p>
 
 <p style="margin: 0 0 1em 0;">[Guest credentials and expertise paragraph]</p>
 
