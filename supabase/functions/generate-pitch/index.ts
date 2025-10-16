@@ -55,27 +55,28 @@ serve(async (req) => {
 Return ONLY the pitch text (no JSON, no preamble). Use this exact structure with proper HTML formatting:
 
 **CRITICAL FORMATTING RULES:**
-- Use <br> for paragraph breaks (single line break between paragraphs creates normal email spacing)
-- Use <ul> and <li> tags for bullet points
+- Use <p> tags with inline margin styles for each paragraph: <p style="margin: 0 0 1em 0;">content</p>
+- Use <ul> and <li> tags for bullet points with inline margin: <ul style="margin: 0 0 1em 0;">
 - Do NOT introduce yourself or the sender - start directly with the greeting
+- The inline margin ensures proper spacing in both UI preview and when copied to Gmail
 
-Hey [host_first_name],<br>
+<p style="margin: 0 0 1em 0;">Hey [host_first_name],</p>
 
-[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a>, their title, with credibility and context. Hyperlink their name to media kit on this first mention only]<br>
+<p style="margin: 0 0 1em 0;">[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a>, their title, with credibility and context. Hyperlink their name to media kit on this first mention only]</p>
 
-[Guest credentials and expertise paragraph]<br>
+<p style="margin: 0 0 1em 0;">[Guest credentials and expertise paragraph]</p>
 
-They would love to dive into a conversation with you about:<br>
+<p style="margin: 0 0 1em 0;">They would love to dive into a conversation with you about:</p>
 
-<ul>
+<ul style="margin: 0 0 1em 0;">
 <li>[talking_point_1]</li>
 <li>[talking_point_2]</li>
 <li>[talking_point_3]</li>
 </ul>
 
-Would you be interested in having [client_first_name] [client_last_name] on your show?<br>
+<p style="margin: 0 0 1em 0;">Would you be interested in having [client_first_name] [client_last_name] on your show?</p>
 
-Thank you so much for your consideration. I'm looking forward to hearing from you.`;
+<p style="margin: 0;">Thank you so much for your consideration. I'm looking forward to hearing from you.</p>`;
 
     // Build the user prompt with all context
     let userPrompt = '';
