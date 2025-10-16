@@ -5,8 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, RefreshCw, Copy, Sparkles, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 interface ResultsTableProps {
   rows: BatchRow[];
@@ -220,18 +222,81 @@ export function ResultsTable({
                       {row.error}
                     </span>
                   )}
+                  {row.status === 'error' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRetry(row);
+                      }}
+                      className="h-6 w-6 p-0 ml-1"
+                      title="Retry processing"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
-                {row.status === 'error' && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onRetry(row)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                  </Button>
+                {row.status === 'success' && row.verdict && (
+                  <TooltipProvider>
+                    <div className="flex items-center gap-1">
+                      {/* Copy Summary */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const summary = `${row.show_title || 'Podcast'}\n\nVerdict: ${row.verdict}\nScore: ${row.overall_score ? Math.round(row.overall_score) : 'N/A'}\nConfidence: ${row.confidence ? Math.round(row.confidence * 100) + '%' : 'N/A'}\n\nRationale: ${row.rationale_short || 'No rationale provided'}`;
+                              navigator.clipboard.writeText(summary);
+                              toast.success('Summary copied to clipboard');
+                            }}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Copy Summary</TooltipContent>
+                      </Tooltip>
+
+                      {/* Generate Pitch (Coming Soon) */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              toast.info('Pitch generation coming soon!');
+                            }}
+                            className="h-7 w-7 p-0 opacity-50"
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Generate Pitch (Coming Soon)</TooltipContent>
+                      </Tooltip>
+
+                      {/* Copy Link */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              navigator.clipboard.writeText(row.podcast_url);
+                              toast.success('Link copied to clipboard');
+                            }}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Copy Link</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
                 )}
               </TableCell>
             </TableRow>
