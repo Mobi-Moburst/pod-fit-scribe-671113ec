@@ -60,13 +60,15 @@ const Batch = () => {
           id: client.id,
           name: client.name,
           company: client.company || undefined,
+          company_url: client.company_url || undefined,
           media_kit_url: client.media_kit_url,
           target_audiences: client.target_audiences || [],
           talking_points: client.talking_points || [],
           avoid: client.avoid || [],
           notes: client.notes || undefined,
           campaign_manager: client.campaign_manager || undefined,
-          campaign_strategy: client.campaign_strategy
+          campaign_strategy: client.campaign_strategy,
+          pitch_template: client.pitch_template || undefined
         }));
         
         setClients(mappedClients);
@@ -933,6 +935,7 @@ const Batch = () => {
           <EvaluationPanel
             row={selectedRow}
             onClose={() => setSelectedRow(null)}
+            client={clients.find(c => c.id === state.client_id) || null}
           />
         </div>
       )}

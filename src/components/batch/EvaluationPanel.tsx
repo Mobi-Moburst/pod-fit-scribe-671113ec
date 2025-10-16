@@ -1,20 +1,26 @@
+import { useState } from 'react';
 import { BatchRow } from '@/types/batch';
+import { MinimalClient } from '@/types/clients';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, ExternalLink, MessageCircle } from 'lucide-react';
+import { Copy, ExternalLink, MessageCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EvaluationPanelProps {
   row: BatchRow | null;
   onClose: () => void;
+  client: MinimalClient | null;
 }
 
-export function EvaluationPanel({ row, onClose }: EvaluationPanelProps) {
+export function EvaluationPanel({ row, onClose, client }: EvaluationPanelProps) {
   const { toast } = useToast();
+  const [generatingPitch, setGeneratingPitch] = useState(false);
+  const [generatedPitch, setGeneratedPitch] = useState<string | null>(null);
   
   if (!row) return null;
   
@@ -32,9 +38,68 @@ export function EvaluationPanel({ row, onClose }: EvaluationPanelProps) {
     toast({ description: `${label} copied to clipboard` });
   };
   
-  const generatePitch = () => {
-    // Placeholder for pitch generation
-    toast({ description: 'Pitch generation coming soon!' });
+  const generatePitch = async () => {
+    if (!client || !row) return;
+    
+    setGeneratingPitch(true);
+    setGeneratedPitch(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-pitch', {
+        body: {
+          client: {
+            name: client.name,
+            company: client.company,
+            company_url: client.company_url,
+            media_kit_url: client.media_kit_url,
+            talking_points: client.talking_points,
+            target_audiences: client.target_audiences,
+            campaign_strategy: client.campaign_strategy,
+            notes: client.notes,
+            pitch_template: client.pitch_template,
+          },
+          podcast: {
+            show_title: row.show_title,
+            show_notes_excerpt: row.show_notes_fallback || row.evaluation_data?.show_notes_excerpt,
+            podcast_url: row.podcast_url,
+            host_name: row.metadata?.publisher || 'the host',
+          },
+          evaluation: {
+            verdict: row.verdict,
+            overall_score: row.overall_score,
+            evaluation_data: row.evaluation_data,
+            rationale_short: row.rationale_short,
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Pitch generation error:', error);
+        toast({
+          title: 'Failed to generate pitch',
+          description: error.message || 'Please try again',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (data?.pitch) {
+        setGeneratedPitch(data.pitch);
+        toast({
+          title: 'Pitch generated!',
+          description: 'Review and copy the pitch below'
+        });
+      }
+    } catch (error) {
+      console.error('Pitch generation error:', error);
+      toast({
+        title: 'Failed to generate pitch',
+        description: 'An unexpected error occurred',
+        variant: 'destructive'
+      });
+    } finally {
+      setGeneratingPitch(false);
+    }
   };
   
   return (
@@ -224,11 +289,37 @@ export function EvaluationPanel({ row, onClose }: EvaluationPanelProps) {
                 size="sm"
                 variant="outline"
                 onClick={generatePitch}
+                disabled={generatingPitch || !client}
               >
-                <MessageCircle className="h-3 w-3 mr-1" />
+                {generatingPitch ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <MessageCircle className="h-3 w-3 mr-1" />
+                )}
                 Generate Pitch
               </Button>
             </div>
+            
+            {/* Show generated pitch */}
+            {generatedPitch && (
+              <Card className="p-3 mt-3 bg-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <h6 className="text-sm font-medium">Generated Pitch</h6>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      copyToClipboard(generatedPitch, 'Pitch');
+                    }}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground whitespace-pre-wrap max-h-96 overflow-y-auto">
+                  {generatedPitch}
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </ScrollArea>

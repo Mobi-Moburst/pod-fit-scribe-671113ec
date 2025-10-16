@@ -68,6 +68,7 @@ export type Database = {
           name: string
           notes: string | null
           org_id: string
+          pitch_template: string | null
           professional_credentials: string[] | null
           talking_points: string[] | null
           target_audiences: string[] | null
@@ -98,6 +99,7 @@ export type Database = {
           name: string
           notes?: string | null
           org_id: string
+          pitch_template?: string | null
           professional_credentials?: string[] | null
           talking_points?: string[] | null
           target_audiences?: string[] | null
@@ -128,6 +130,7 @@ export type Database = {
           name?: string
           notes?: string | null
           org_id?: string
+          pitch_template?: string | null
           professional_credentials?: string[] | null
           talking_points?: string[] | null
           target_audiences?: string[] | null

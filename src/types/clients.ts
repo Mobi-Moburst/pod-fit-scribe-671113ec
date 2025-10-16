@@ -12,6 +12,7 @@ export interface MinimalClient {
   notes?: string;
   campaign_manager?: string;
   campaign_strategy?: string;
+  pitch_template?: string; // Optional custom pitch template
   // New eligibility fields
   gender?: 'male' | 'female' | 'non_binary' | 'unspecified';
   guest_identity_tags?: string[];

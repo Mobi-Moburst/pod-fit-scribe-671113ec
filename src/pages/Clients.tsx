@@ -29,6 +29,7 @@ const empty: MinimalClient = {
   notes: '',
   campaign_strategy: '',
   campaign_manager: '',
+  pitch_template: '',
   gender: undefined,
   guest_identity_tags: [],
   professional_credentials: [],
@@ -82,6 +83,7 @@ const Clients = () => {
       notes: c.notes || '',
       campaign_strategy: c.campaign_strategy || '',
       campaign_manager: c.campaign_manager || '',
+      pitch_template: c.pitch_template || '',
       gender: c.gender,
       guest_identity_tags: c.guest_identity_tags || [],
       professional_credentials: c.professional_credentials || [],
@@ -121,7 +123,7 @@ const Clients = () => {
   }, []);
 
   const startNew = () => setEditing({ ...empty, id: crypto.randomUUID() });
-  const startEdit = (c: MinimalClient) => setEditing({ ...empty, ...c, target_audiences: c.target_audiences || [], talking_points: c.talking_points || [], avoid: c.avoid || [], notes: c.notes || '' });
+  const startEdit = (c: MinimalClient) => setEditing({ ...empty, ...c, target_audiences: c.target_audiences || [], talking_points: c.talking_points || [], avoid: c.avoid || [], notes: c.notes || '', pitch_template: c.pitch_template || '' });
   const cancel = () => setEditing(null);
 
   const canSave = useMemo(() => {
@@ -177,6 +179,7 @@ const Clients = () => {
       notes: editing.notes?.trim() || null,
       campaign_strategy: editing.campaign_strategy?.trim() || '',
       campaign_manager: (editing as any).campaign_manager?.trim() || null,
+      pitch_template: editing.pitch_template?.trim() || null,
       gender: editing.gender || null,
       guest_identity_tags: editing.guest_identity_tags || [],
       professional_credentials: editing.professional_credentials || [],
@@ -362,6 +365,31 @@ const Clients = () => {
                   value={(editing.guest_identity_tags || []).join(', ')}
                   onChange={(e) => setEditing({ ...editing, guest_identity_tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
                 />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Custom Pitch Template (Optional)</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  If provided, this pitch will be tailored to each podcast. Leave empty to auto-generate from client details.
+                </p>
+                <Textarea
+                  rows={12}
+                  placeholder={`Hey [host_first_name],
+
+I'd like to recommend a guest to [podcast_name] – [client_first_name] [client_last_name].
+
+[client_first_name] is the [title] of [company], [company_description]. They would love to dive into:
+
+• [talking_point_1]
+• [talking_point_2]
+• [talking_point_3]
+
+Would you be interested in having them on your show?`}
+                  value={editing.pitch_template || ''}
+                  onChange={(e) => setEditing({ ...editing, pitch_template: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use placeholders like [host_first_name], [podcast_name], [client_first_name], etc.
+                </p>
               </div>
             </div>
             <div className="flex justify-end gap-2">

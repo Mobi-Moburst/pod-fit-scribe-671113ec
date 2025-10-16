@@ -17,6 +17,7 @@ interface ResultsTableProps {
   onSelectAll: (selected: boolean) => void;
   onRowClick: (row: BatchRow) => void;
   onRetry: (row: BatchRow) => void;
+  onGeneratePitch?: (row: BatchRow) => void;
   loading?: boolean;
 }
 
@@ -27,6 +28,7 @@ export function ResultsTable({
   onSelectAll, 
   onRowClick, 
   onRetry,
+  onGeneratePitch,
   loading = false 
 }: ResultsTableProps) {
   const allSelected = rows.length > 0 && rows.every(row => selectedRows.has(row.id));
@@ -261,21 +263,22 @@ export function ResultsTable({
                         <TooltipContent>Copy Summary</TooltipContent>
                       </Tooltip>
 
-                      {/* Generate Pitch (Coming Soon) */}
+                      {/* Generate Pitch */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => {
-                              toast.info('Pitch generation coming soon!');
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRowClick(row);
                             }}
-                            className="h-7 w-7 p-0 opacity-50"
+                            className="h-7 w-7 p-0"
                           >
                             <Sparkles className="h-3.5 w-3.5" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Generate Pitch (Coming Soon)</TooltipContent>
+                        <TooltipContent>Generate Pitch</TooltipContent>
                       </Tooltip>
 
                       {/* Copy Link */}
