@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { client, podcast, evaluation } = await req.json();
+    const { client, podcast, evaluation, messages } = await req.json();
     
     console.log('Generating pitch for:', {
       client: client.name,
@@ -143,6 +143,15 @@ Create a personalized pitch following the standard format. Analyze the podcast's
     }
 
     // Call Lovable AI
+    // If messages are provided (refinement), use conversation history
+    // Otherwise, use system + user prompts (initial generation)
+    const aiMessages = messages && messages.length > 0
+      ? messages
+      : [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ];
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -151,10 +160,7 @@ Create a personalized pitch following the standard format. Analyze the podcast's
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
+        messages: aiMessages,
       }),
     });
 

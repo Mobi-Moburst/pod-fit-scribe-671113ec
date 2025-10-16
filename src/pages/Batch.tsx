@@ -141,7 +141,8 @@ const Batch = () => {
             language: sourceRow.Language,
             status: sourceRow.Status,
             publishes: sourceRow.Publishes,
-            website: sourceRow.Website
+            website: sourceRow.Website,
+            email: sourceRow.Email || sourceRow['Contact Email'] || sourceRow.email
           } : undefined
         };
       });
