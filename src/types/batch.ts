@@ -49,6 +49,7 @@ export interface BatchState {
     min_listeners: 'all' | '10000+' | '5000+' | '1000+' | '500+' | '100+';
     categories: string[];
     min_engagement: 'all' | '70+' | '60+' | '50+' | '40+';
+    published_within: 'all' | '30d' | '90d' | '180d' | '1y';
   };
   selected_rows: Set<string>;
   current_page: number;

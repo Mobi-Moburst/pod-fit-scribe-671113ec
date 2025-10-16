@@ -112,7 +112,13 @@ export function EvaluationPanel({ row, onClose }: EvaluationPanelProps) {
           {row.last_publish_date && (
             <Card className="p-3">
               <div className="text-sm text-muted-foreground">Last Published</div>
-              <div className="mt-1">{row.last_publish_date}</div>
+              <div className="mt-1">
+                {new Date(row.last_publish_date).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })}
+              </div>
             </Card>
           )}
           

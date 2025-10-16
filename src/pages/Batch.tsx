@@ -96,7 +96,8 @@ const Batch = () => {
       stale: false,
       min_listeners: 'all',
       categories: [],
-      min_engagement: 'all'
+      min_engagement: 'all',
+      published_within: 'all'
     },
     selected_rows: new Set(),
     current_page: 1,
@@ -361,6 +362,25 @@ const Batch = () => {
       // Engagement filter
       if (engagementThreshold > 0) {
         if (!row.metadata?.engagement || row.metadata.engagement < engagementThreshold) {
+          return false;
+        }
+      }
+      
+      // Published within filter
+      if (state.filters.published_within !== 'all') {
+        if (!row.last_publish_date) return false;
+        
+        const publishDate = new Date(row.last_publish_date);
+        const now = Date.now();
+        const daysMap = {
+          '30d': 30,
+          '90d': 90,
+          '180d': 180,
+          '1y': 365
+        };
+        const maxAge = daysMap[state.filters.published_within] * 24 * 60 * 60 * 1000;
+        
+        if (now - publishDate.getTime() > maxAge) {
           return false;
         }
       }
@@ -639,15 +659,25 @@ const Batch = () => {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="stale-filter"
-                        checked={state.filters.stale}
-                        onCheckedChange={(checked) => setState(prev => ({
+                      <Label className="text-sm">Published:</Label>
+                      <Select
+                        value={state.filters.published_within}
+                        onValueChange={(value: any) => setState(prev => ({
                           ...prev,
-                          filters: { ...prev.filters, stale: !!checked }
+                          filters: { ...prev.filters, published_within: value }
                         }))}
-                      />
-                      <Label htmlFor="stale-filter" className="text-sm">Stale (&gt;90d)</Label>
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any Time</SelectItem>
+                          <SelectItem value="30d">Last 30 Days</SelectItem>
+                          <SelectItem value="90d">Last 90 Days</SelectItem>
+                          <SelectItem value="180d">Last 6 Months</SelectItem>
+                          <SelectItem value="1y">Last Year</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   
@@ -755,7 +785,8 @@ const Batch = () => {
                           stale: false,
                           min_listeners: 'all',
                           categories: [],
-                          min_engagement: 'all'
+                          min_engagement: 'all',
+                          published_within: 'all'
                         }
                       }))}
                     >

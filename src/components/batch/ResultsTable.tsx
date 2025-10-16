@@ -81,6 +81,7 @@ export function ResultsTable({
             <TableHead>Listeners</TableHead>
             <TableHead>Reach</TableHead>
             <TableHead className="min-w-[150px]">Categories</TableHead>
+            <TableHead>Last Published</TableHead>
             <TableHead>Verdict</TableHead>
             <TableHead>Score</TableHead>
             <TableHead>Confidence</TableHead>
@@ -110,11 +111,6 @@ export function ResultsTable({
                   <div className="text-xs text-muted-foreground truncate max-w-[300px]">
                     {row.podcast_url}
                   </div>
-                  {row.last_publish_date && isStale(row.last_publish_date) && (
-                    <Badge variant="outline" className="text-xs">
-                      Stale (&gt;90d)
-                    </Badge>
-                  )}
                 </div>
               </TableCell>
               
@@ -161,6 +157,28 @@ export function ResultsTable({
                       </Badge>
                     )}
                   </div>
+                )}
+              </TableCell>
+              
+              {/* Last Published Date */}
+              <TableCell>
+                {row.last_publish_date ? (
+                  <div className="text-sm">
+                    <div className="font-medium">
+                      {new Date(row.last_publish_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                    {isStale(row.last_publish_date) && (
+                      <div className="text-xs text-amber-600">
+                        Stale
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Unknown</span>
                 )}
               </TableCell>
               
