@@ -19,7 +19,9 @@ import {
   parseCSV, 
   validateAndDedupeUrls, 
   processSingleUrl, 
-  exportToCSV 
+  exportToCSV,
+  detectUrlColumn,
+  detectDescriptionColumn
 } from '@/utils/batchProcessor';
 import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -86,7 +88,10 @@ const Batch = () => {
     filters: {
       min_score: 0,
       verdict: 'all',
-      stale: false
+      stale: false,
+      min_listeners: undefined,
+      categories: [],
+      min_engagement: undefined
     },
     selected_rows: new Set(),
     current_page: 1,
@@ -104,13 +109,30 @@ const Batch = () => {
       const preflight = validateAndDedupeUrls(data);
       setPreflightResult(preflight);
       
-      // Convert to batch rows
-      const rows: BatchRow[] = preflight.valid_urls.map((url, index) => ({
-        id: `row-${index}`,
-        podcast_url: url,
-        show_notes_fallback: data.find(d => d.podcast_url === url || d.url === url)?.show_notes_fallback,
-        status: 'pending'
-      }));
+      // Convert to batch rows, preserving Rephonic metadata
+      const rows: BatchRow[] = preflight.valid_urls.map((url, index) => {
+        const sourceRow = data.find(d => detectUrlColumn(d) === url);
+        
+        return {
+          id: `row-${index}`,
+          podcast_url: url,
+          show_notes_fallback: sourceRow ? detectDescriptionColumn(sourceRow) : undefined,
+          status: 'pending',
+          metadata: sourceRow ? {
+            name: sourceRow.Name,
+            publisher: sourceRow.Publisher,
+            listeners_per_episode: sourceRow['Listeners Per Episode'] ? parseInt(sourceRow['Listeners Per Episode'].replace(/,/g, '')) : undefined,
+            monthly_listens: sourceRow['Monthly Listens'] ? parseInt(sourceRow['Monthly Listens'].replace(/,/g, '')) : undefined,
+            categories: sourceRow.Categories,
+            social_reach: sourceRow['Social Reach'] ? parseInt(sourceRow['Social Reach'].replace(/,/g, '')) : undefined,
+            engagement: sourceRow.Engagement ? parseInt(sourceRow.Engagement) : undefined,
+            language: sourceRow.Language,
+            status: sourceRow.Status,
+            publishes: sourceRow.Publishes,
+            website: sourceRow.Website
+          } : undefined
+        };
+      });
       
       setState(prev => ({ ...prev, rows, total: rows.length }));
     } catch (error) {
@@ -221,6 +243,30 @@ const Batch = () => {
         const isStale = row.last_publish_date && 
           new Date(row.last_publish_date) < new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
         if (!isStale) return false;
+      }
+      
+      // NEW: Listener filter
+      if (state.filters.min_listeners !== undefined) {
+        if (!row.metadata?.listeners_per_episode || row.metadata.listeners_per_episode < state.filters.min_listeners) {
+          return false;
+        }
+      }
+      
+      // NEW: Category filter
+      if (state.filters.categories && state.filters.categories.length > 0) {
+        if (!row.metadata?.categories) return false;
+        const rowCategories = row.metadata.categories.toLowerCase();
+        const hasMatch = state.filters.categories.some(filterCat => 
+          rowCategories.includes(filterCat.toLowerCase())
+        );
+        if (!hasMatch) return false;
+      }
+      
+      // NEW: Engagement filter
+      if (state.filters.min_engagement !== undefined) {
+        if (!row.metadata?.engagement || row.metadata.engagement < state.filters.min_engagement) {
+          return false;
+        }
       }
       
       return true;
@@ -340,7 +386,7 @@ const Batch = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    CSV format: podcast_url, show_notes_fallback (optional)
+                    CSV format: HubSpot (podcast_url) or Rephonic (Apple Podcasts column)
                   </p>
                 </div>
               </div>
@@ -380,59 +426,130 @@ const Batch = () => {
             {/* Controls */}
             {state.rows.length > 0 && (
               <Card className="p-4">
-                <div className="flex flex-wrap items-center gap-4">
-                  {/* Filters */}
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
-                    <Label className="text-sm">Min Score:</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={state.filters.min_score}
-                      onChange={(e) => setState(prev => ({
-                        ...prev,
-                        filters: { ...prev.filters, min_score: parseInt(e.target.value) || 0 }
-                      }))}
-                      className="w-20"
-                    />
+                <div className="space-y-4">
+                  {/* Row 1: Existing filters */}
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      <Label className="text-sm">Min Score:</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={state.filters.min_score}
+                        onChange={(e) => setState(prev => ({
+                          ...prev,
+                          filters: { ...prev.filters, min_score: parseInt(e.target.value) || 0 }
+                        }))}
+                        className="w-20"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Verdict:</Label>
+                      <Select
+                        value={state.filters.verdict}
+                        onValueChange={(value) => setState(prev => ({
+                          ...prev,
+                          filters: { ...prev.filters, verdict: value as any }
+                        }))}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="Fit">Fit</SelectItem>
+                          <SelectItem value="Consider">Consider</SelectItem>
+                          <SelectItem value="Not">Not</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="stale-filter"
+                        checked={state.filters.stale}
+                        onCheckedChange={(checked) => setState(prev => ({
+                          ...prev,
+                          filters: { ...prev.filters, stale: !!checked }
+                        }))}
+                      />
+                      <Label htmlFor="stale-filter" className="text-sm">Stale (&gt;90d)</Label>
+                    </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm">Verdict:</Label>
-                    <Select
-                      value={state.filters.verdict}
-                      onValueChange={(value) => setState(prev => ({
+                  {/* Row 2: NEW Rephonic filters */}
+                  <div className="flex flex-wrap items-center gap-4 pt-2 border-t">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Min Listeners/Ep:</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="e.g. 1000"
+                        value={state.filters.min_listeners || ''}
+                        onChange={(e) => setState(prev => ({
+                          ...prev,
+                          filters: { ...prev.filters, min_listeners: parseInt(e.target.value) || undefined }
+                        }))}
+                        className="w-32"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Category:</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. Technology"
+                        value={state.filters.categories?.join(', ') || ''}
+                        onChange={(e) => setState(prev => ({
+                          ...prev,
+                          filters: { 
+                            ...prev.filters, 
+                            categories: e.target.value ? e.target.value.split(',').map(c => c.trim()) : [] 
+                          }
+                        }))}
+                        className="w-48"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Min Engagement:</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="e.g. 50"
+                        value={state.filters.min_engagement || ''}
+                        onChange={(e) => setState(prev => ({
+                          ...prev,
+                          filters: { ...prev.filters, min_engagement: parseInt(e.target.value) || undefined }
+                        }))}
+                        className="w-24"
+                      />
+                    </div>
+                    
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => setState(prev => ({
                         ...prev,
-                        filters: { ...prev.filters, verdict: value as any }
+                        filters: {
+                          min_score: 0,
+                          verdict: 'all',
+                          stale: false,
+                          min_listeners: undefined,
+                          categories: [],
+                          min_engagement: undefined
+                        }
                       }))}
                     >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="Fit">Fit</SelectItem>
-                        <SelectItem value="Consider">Consider</SelectItem>
-                        <SelectItem value="Not">Not</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      Clear Filters
+                    </Button>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="stale-filter"
-                      checked={state.filters.stale}
-                      onCheckedChange={(checked) => setState(prev => ({
-                        ...prev,
-                        filters: { ...prev.filters, stale: !!checked }
-                      }))}
-                    />
-                    <Label htmlFor="stale-filter" className="text-sm">Show only stale (&gt;90d)</Label>
-                  </div>
-                  
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 ml-auto">
+                  {/* Row 3: Actions */}
+                  <div className="flex items-center gap-2 pt-2 border-t">
                     <Button size="sm" variant="outline" onClick={selectAllPassing}>
                       Select All Passing
                     </Button>

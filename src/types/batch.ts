@@ -5,6 +5,21 @@ export interface BatchRow {
   status: 'pending' | 'processing' | 'success' | 'error' | 'retry';
   error?: string;
   
+  // Rephonic metadata (preserved from CSV import)
+  metadata?: {
+    name?: string;
+    publisher?: string;
+    listeners_per_episode?: number;
+    monthly_listens?: number;
+    categories?: string;
+    social_reach?: number;
+    engagement?: number;
+    language?: string;
+    status?: string;
+    publishes?: string;
+    website?: string;
+  };
+  
   // Results
   show_title?: string;
   verdict?: 'Fit' | 'Consider' | 'Not';
@@ -31,6 +46,9 @@ export interface BatchState {
     min_score: number;
     verdict: 'all' | 'Fit' | 'Consider' | 'Not';
     stale: boolean;
+    min_listeners?: number;
+    categories?: string[];
+    min_engagement?: number;
   };
   selected_rows: Set<string>;
   current_page: number;

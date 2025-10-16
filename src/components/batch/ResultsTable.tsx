@@ -78,6 +78,9 @@ export function ResultsTable({
               />
             </TableHead>
             <TableHead className="min-w-[200px]">Podcast</TableHead>
+            <TableHead>Listeners</TableHead>
+            <TableHead>Reach</TableHead>
+            <TableHead className="min-w-[150px]">Categories</TableHead>
             <TableHead>Verdict</TableHead>
             <TableHead>Score</TableHead>
             <TableHead>Confidence</TableHead>
@@ -114,6 +117,53 @@ export function ResultsTable({
                   )}
                 </div>
               </TableCell>
+              
+              {/* Listeners Per Episode */}
+              <TableCell>
+                {row.metadata?.listeners_per_episode !== undefined && (
+                  <div className="text-sm">
+                    <div className="font-medium">
+                      {row.metadata.listeners_per_episode.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      per ep
+                    </div>
+                  </div>
+                )}
+              </TableCell>
+
+              {/* Social Reach */}
+              <TableCell>
+                {row.metadata?.social_reach !== undefined && (
+                  <div className="text-sm">
+                    <div className="font-medium">
+                      {row.metadata.social_reach.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      followers
+                    </div>
+                  </div>
+                )}
+              </TableCell>
+
+              {/* Categories */}
+              <TableCell>
+                {row.metadata?.categories && (
+                  <div className="flex flex-wrap gap-1 max-w-[200px]">
+                    {row.metadata.categories.split(',').slice(0, 2).map((cat, i) => (
+                      <Badge key={i} variant="outline" className="text-xs">
+                        {cat.trim()}
+                      </Badge>
+                    ))}
+                    {row.metadata.categories.split(',').length > 2 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{row.metadata.categories.split(',').length - 2}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </TableCell>
+              
               <TableCell>
                 {row.verdict && (
                   <Badge className={cn('text-xs', getVerdictColor(row.verdict))}>

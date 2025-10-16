@@ -37,6 +37,28 @@ export function createUrlHash(url: string): string {
   return Math.abs(hash).toString(36).substring(0, 16);
 }
 
+// Helper to detect URL column
+function detectUrlColumn(row: any): string | null {
+  const urlColumns = ['podcast_url', 'url', 'Apple Podcasts', 'apple_podcasts', 'Website', 'website'];
+  for (const col of urlColumns) {
+    if (row[col] && typeof row[col] === 'string' && row[col].trim()) {
+      return row[col].trim();
+    }
+  }
+  return null;
+}
+
+// Helper to detect description column
+function detectDescriptionColumn(row: any): string | null {
+  const descColumns = ['show_notes_fallback', 'Description', 'description', 'Notes', 'notes'];
+  for (const col of descColumns) {
+    if (row[col] && typeof row[col] === 'string' && row[col].trim()) {
+      return row[col].trim();
+    }
+  }
+  return null;
+}
+
 // Pre-flight validation
 export function validateAndDedupeUrls(csvData: any[]): PreflightResult {
   const urlCounts = new Map<string, number>();
@@ -44,7 +66,7 @@ export function validateAndDedupeUrls(csvData: any[]): PreflightResult {
   const invalidUrls: { url: string; reason: string }[] = [];
   
   csvData.forEach(row => {
-    const url = row.podcast_url || row.url || '';
+    const url = detectUrlColumn(row);
     if (!url) return;
     
     const normalized = normalizeUrl(url);
@@ -73,6 +95,8 @@ export function validateAndDedupeUrls(csvData: any[]): PreflightResult {
     total_unique: validUrls.length
   };
 }
+
+export { detectUrlColumn, detectDescriptionColumn };
 
 // Cache management
 export function getCachedResult(urlHash: string): any | null {
@@ -256,13 +280,20 @@ export function exportToCSV(rows: BatchRow[], filename = 'batch-results.csv'): v
   const exportData = rows.map(row => ({
     podcast_url: row.podcast_url,
     show_title: row.show_title || '',
+    publisher: row.metadata?.publisher || '',
+    listeners_per_episode: row.metadata?.listeners_per_episode || '',
+    monthly_listens: row.metadata?.monthly_listens || '',
+    social_reach: row.metadata?.social_reach || '',
+    categories: row.metadata?.categories || '',
+    engagement: row.metadata?.engagement || '',
     verdict: row.verdict || '',
-    overall_score: row.overall_score || '',
-    confidence: row.confidence || '',
+    overall_score: row.overall_score !== undefined ? Math.round(row.overall_score) : '',
+    confidence: row.confidence !== undefined ? Math.round(row.confidence * 100) : '',
     eligibility_class: row.eligibility_class || '',
     eligibility_action: row.eligibility_action || '',
     last_publish_date: row.last_publish_date || '',
     rationale_short: row.rationale_short || '',
+    status: row.status,
     error: row.error || ''
   }));
   
