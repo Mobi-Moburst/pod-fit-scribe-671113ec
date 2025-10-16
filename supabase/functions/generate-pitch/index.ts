@@ -51,23 +51,28 @@ serve(async (req) => {
 - Purpose-Driven → wellbeing, empathy, community, impact
 
 ## Output Format:
-Return ONLY the pitch text (no JSON, no preamble). Use this exact structure:
+Return ONLY the pitch text (no JSON, no preamble). Use this exact structure with proper HTML formatting:
 
-**CRITICAL: Do NOT introduce yourself or the sender. Start directly with the greeting and guest introduction.**
+**CRITICAL FORMATTING RULES:**
+- Use <br><br> for paragraph breaks (double line breaks between paragraphs)
+- Use <ul> and <li> tags for bullet points
+- Do NOT introduce yourself or the sender - start directly with the greeting
 
-Hey [host_first_name],
+Hey [host_first_name],<br><br>
 
-[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a> with credibility and context, hyperlink their name to media kit on this first mention only]
+[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a>, their title, with credibility and context. Hyperlink their name to media kit on this first mention only]<br><br>
 
-[Guest credentials and expertise paragraph]
+[Guest credentials and expertise paragraph]<br><br>
 
-[They would love to dive into a conversation with you about:]
+They would love to dive into a conversation with you about:<br><br>
 
-• [talking_point_1]
-• [talking_point_2]
-• [talking_point_3]
+<ul>
+<li>[talking_point_1]</li>
+<li>[talking_point_2]</li>
+<li>[talking_point_3]</li>
+</ul><br>
 
-Would you be interested in having [client_first_name] [client_last_name] on your show?
+Would you be interested in having [client_first_name] [client_last_name] on your show?<br><br>
 
 Thank you so much for your consideration. I'm looking forward to hearing from you.`;
 
@@ -83,6 +88,7 @@ ${client.pitch_template}
 
 ## Client Details:
 - Name: ${client.name}
+- Title: ${client.title || 'N/A'}
 - Company: ${client.company || 'N/A'}
 - Company URL: ${client.company_url || 'N/A'}
 - Media Kit: ${client.media_kit_url}
@@ -109,6 +115,7 @@ Tailor the pitch template above to perfectly match this specific podcast's tone,
 
 ## Client Details:
 - Name: ${client.name}
+- Title: ${client.title || 'N/A'}
 - Company: ${client.company || 'N/A'}
 - Company URL: ${client.company_url || 'N/A'}
 - Media Kit: ${client.media_kit_url}

@@ -75,6 +75,7 @@ export type Database = {
           target_company_sizes: string[] | null
           target_regions: string[] | null
           target_roles: string[] | null
+          title: string | null
           topics_to_avoid: string[] | null
           topics_to_prioritize: string[] | null
           updated_at: string | null
@@ -106,6 +107,7 @@ export type Database = {
           target_company_sizes?: string[] | null
           target_regions?: string[] | null
           target_roles?: string[] | null
+          title?: string | null
           topics_to_avoid?: string[] | null
           topics_to_prioritize?: string[] | null
           updated_at?: string | null
@@ -137,6 +139,7 @@ export type Database = {
           target_company_sizes?: string[] | null
           target_regions?: string[] | null
           target_roles?: string[] | null
+          title?: string | null
           topics_to_avoid?: string[] | null
           topics_to_prioritize?: string[] | null
           updated_at?: string | null
