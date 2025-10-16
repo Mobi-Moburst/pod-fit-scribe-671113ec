@@ -55,25 +55,25 @@ serve(async (req) => {
 Return ONLY the pitch text (no JSON, no preamble). Use this exact structure with proper HTML formatting:
 
 **CRITICAL FORMATTING RULES:**
-- Use <br><br> for paragraph breaks (double line breaks between paragraphs)
+- Use <br> for paragraph breaks (single line break between paragraphs creates normal email spacing)
 - Use <ul> and <li> tags for bullet points
 - Do NOT introduce yourself or the sender - start directly with the greeting
 
-Hey [host_first_name],<br><br>
+Hey [host_first_name],<br>
 
-[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a>, their title, with credibility and context. Hyperlink their name to media kit on this first mention only]<br><br>
+[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a>, their title, with credibility and context. Hyperlink their name to media kit on this first mention only]<br>
 
-[Guest credentials and expertise paragraph]<br><br>
+[Guest credentials and expertise paragraph]<br>
 
-They would love to dive into a conversation with you about:<br><br>
+They would love to dive into a conversation with you about:<br>
 
 <ul>
 <li>[talking_point_1]</li>
 <li>[talking_point_2]</li>
 <li>[talking_point_3]</li>
-</ul><br>
+</ul>
 
-Would you be interested in having [client_first_name] [client_last_name] on your show?<br><br>
+Would you be interested in having [client_first_name] [client_last_name] on your show?<br>
 
 Thank you so much for your consideration. I'm looking forward to hearing from you.`;
 
