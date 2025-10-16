@@ -128,18 +128,21 @@ export function EvaluationPanel({ row, onClose }: EvaluationPanelProps) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h5 className="font-medium">Rationale</h5>
-              {row.rationale_short && (
+              {(row.evaluation_data?.summary_text || row.rationale_short) && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(row.rationale_short!, 'Rationale')}
+                  onClick={() => copyToClipboard(
+                    row.evaluation_data?.summary_text || row.rationale_short!,
+                    'Rationale'
+                  )}
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
               )}
             </div>
             <div className="text-sm text-muted-foreground leading-relaxed">
-              {row.rationale_short || 'No rationale available'}
+              {row.evaluation_data?.summary_text || row.rationale_short || 'No rationale available'}
             </div>
           </div>
           
