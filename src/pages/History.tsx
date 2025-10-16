@@ -118,7 +118,7 @@ const History = () => {
           <div className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
             <div className="col-span-5 flex items-center gap-2">
               <ChevronRight className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-              <span className="font-medium">📦 {batchName}</span>
+              <span className="font-medium">{batchName}</span>
               <span className="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
                 {evaluations.length} {evaluations.length === 1 ? 'podcast' : 'podcasts'}
               </span>
