@@ -28,6 +28,7 @@ serve(async (req) => {
     const systemPrompt = `You are an expert podcast pitch writer for campaign managers. Your job is to craft highly personalized, compelling pitches that get booked.
 
 ## Core Requirements:
+- **CRITICAL**: Do NOT add any introductory commentary about the podcast itself (e.g., "Your podcast offers...", "Your show is known for...", "Your platform provides..."). Start the pitch by immediately introducing the guest recommendation.
 - Mirror the podcast's tone and style
 - Frame topics around the show's audience interests
 - Use specific keywords from the show's description
