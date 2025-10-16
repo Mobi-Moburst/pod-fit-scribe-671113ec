@@ -43,12 +43,12 @@ export interface BatchState {
   completed: number;
   total: number;
   filters: {
-    min_score: number;
+    min_score: 'all' | '8+' | '7+' | '6+' | '5+' | '4+';
     verdict: 'all' | 'Fit' | 'Consider' | 'Not';
     stale: boolean;
-    min_listeners?: number;
-    categories?: string[];
-    min_engagement?: number;
+    min_listeners: 'all' | '10000+' | '5000+' | '1000+' | '500+' | '100+';
+    categories: string[];
+    min_engagement: 'all' | '70+' | '60+' | '50+' | '40+';
   };
   selected_rows: Set<string>;
   current_page: number;

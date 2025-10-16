@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ClientCombobox } from '@/components/ClientCombobox';
 import { ResultsTable } from '@/components/batch/ResultsTable';
@@ -86,12 +87,12 @@ const Batch = () => {
     completed: 0,
     total: 0,
     filters: {
-      min_score: 0,
+      min_score: 'all',
       verdict: 'all',
       stale: false,
-      min_listeners: undefined,
+      min_listeners: 'all',
       categories: [],
-      min_engagement: undefined
+      min_engagement: 'all'
     },
     selected_rows: new Set(),
     current_page: 1,
@@ -228,32 +229,75 @@ const Batch = () => {
     }
   }, [state.client_id, clients]);
   
+  // Extract unique categories from all rows
+  const availableCategories = useMemo(() => {
+    const categorySet = new Set<string>();
+    state.rows.forEach(row => {
+      if (row.metadata?.categories) {
+        row.metadata.categories.split(',').forEach(cat => {
+          categorySet.add(cat.trim());
+        });
+      }
+    });
+    return Array.from(categorySet).sort();
+  }, [state.rows]);
+
   // Filtering
   const filteredRows = useMemo(() => {
+    // Convert dropdown values to numeric thresholds
+    const scoreThreshold = {
+      'all': 0,
+      '8+': 8.0,
+      '7+': 7.0,
+      '6+': 6.0,
+      '5+': 5.0,
+      '4+': 4.0
+    }[state.filters.min_score];
+    
+    const listenerThreshold = {
+      'all': 0,
+      '10000+': 10000,
+      '5000+': 5000,
+      '1000+': 1000,
+      '500+': 500,
+      '100+': 100
+    }[state.filters.min_listeners];
+    
+    const engagementThreshold = {
+      'all': 0,
+      '70+': 70,
+      '60+': 60,
+      '50+': 50,
+      '40+': 40
+    }[state.filters.min_engagement];
+
     return state.rows.filter(row => {
-      if (state.filters.min_score > 0 && (row.overall_score ?? 0) < state.filters.min_score) {
+      // Score filter
+      if ((row.overall_score ?? 0) < scoreThreshold) {
         return false;
       }
       
+      // Verdict filter
       if (state.filters.verdict !== 'all' && row.verdict !== state.filters.verdict) {
         return false;
       }
       
+      // Stale filter
       if (state.filters.stale) {
         const isStale = row.last_publish_date && 
           new Date(row.last_publish_date) < new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
         if (!isStale) return false;
       }
       
-      // NEW: Listener filter
-      if (state.filters.min_listeners !== undefined) {
-        if (!row.metadata?.listeners_per_episode || row.metadata.listeners_per_episode < state.filters.min_listeners) {
+      // Listener filter
+      if (listenerThreshold > 0) {
+        if (!row.metadata?.listeners_per_episode || row.metadata.listeners_per_episode < listenerThreshold) {
           return false;
         }
       }
       
-      // NEW: Category filter
-      if (state.filters.categories && state.filters.categories.length > 0) {
+      // Category filter
+      if (state.filters.categories.length > 0) {
         if (!row.metadata?.categories) return false;
         const rowCategories = row.metadata.categories.toLowerCase();
         const hasMatch = state.filters.categories.some(filterCat => 
@@ -262,9 +306,9 @@ const Batch = () => {
         if (!hasMatch) return false;
       }
       
-      // NEW: Engagement filter
-      if (state.filters.min_engagement !== undefined) {
-        if (!row.metadata?.engagement || row.metadata.engagement < state.filters.min_engagement) {
+      // Engagement filter
+      if (engagementThreshold > 0) {
+        if (!row.metadata?.engagement || row.metadata.engagement < engagementThreshold) {
           return false;
         }
       }
@@ -302,8 +346,17 @@ const Batch = () => {
   }, [paginatedRows]);
   
   const selectAllPassing = useCallback(() => {
+    const scoreThreshold = {
+      'all': 0,
+      '8+': 8.0,
+      '7+': 7.0,
+      '6+': 6.0,
+      '5+': 5.0,
+      '4+': 4.0
+    }[state.filters.min_score];
+    
     const passingRows = state.rows.filter(row => 
-      row.verdict === 'Fit' && (row.overall_score ?? 0) >= state.filters.min_score
+      row.verdict === 'Fit' && (row.overall_score ?? 0) >= scoreThreshold
     );
     setState(prev => ({
       ...prev,
@@ -427,31 +480,39 @@ const Batch = () => {
             {state.rows.length > 0 && (
               <Card className="p-4">
                 <div className="space-y-4">
-                  {/* Row 1: Existing filters */}
+                  {/* Row 1: Primary filters */}
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2">
                       <Filter className="h-4 w-4" />
-                      <Label className="text-sm">Min Score:</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
+                      <Label className="text-sm">Score:</Label>
+                      <Select
                         value={state.filters.min_score}
-                        onChange={(e) => setState(prev => ({
+                        onValueChange={(value: any) => setState(prev => ({
                           ...prev,
-                          filters: { ...prev.filters, min_score: parseInt(e.target.value) || 0 }
+                          filters: { ...prev.filters, min_score: value }
                         }))}
-                        className="w-20"
-                      />
+                      >
+                        <SelectTrigger className="w-44">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Scores</SelectItem>
+                          <SelectItem value="8+">8.0+ (Excellent Fit)</SelectItem>
+                          <SelectItem value="7+">7.0+ (Strong Fit)</SelectItem>
+                          <SelectItem value="6+">6.0+ (Good Fit)</SelectItem>
+                          <SelectItem value="5+">5.0+ (Consider)</SelectItem>
+                          <SelectItem value="4+">4.0+ (Weak Fit)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     <div className="flex items-center gap-2">
                       <Label className="text-sm">Verdict:</Label>
                       <Select
                         value={state.filters.verdict}
-                        onValueChange={(value) => setState(prev => ({
+                        onValueChange={(value: any) => setState(prev => ({
                           ...prev,
-                          filters: { ...prev.filters, verdict: value as any }
+                          filters: { ...prev.filters, verdict: value }
                         }))}
                       >
                         <SelectTrigger className="w-32">
@@ -479,54 +540,97 @@ const Batch = () => {
                     </div>
                   </div>
                   
-                  {/* Row 2: NEW Rephonic filters */}
+                  {/* Row 2: Audience & Engagement filters */}
                   <div className="flex flex-wrap items-center gap-4 pt-2 border-t">
                     <div className="flex items-center gap-2">
-                      <Label className="text-sm">Min Listeners/Ep:</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="e.g. 1000"
-                        value={state.filters.min_listeners || ''}
-                        onChange={(e) => setState(prev => ({
+                      <Label className="text-sm">Listeners:</Label>
+                      <Select
+                        value={state.filters.min_listeners}
+                        onValueChange={(value: any) => setState(prev => ({
                           ...prev,
-                          filters: { ...prev.filters, min_listeners: parseInt(e.target.value) || undefined }
+                          filters: { ...prev.filters, min_listeners: value }
                         }))}
-                        className="w-32"
-                      />
+                      >
+                        <SelectTrigger className="w-44">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Sizes</SelectItem>
+                          <SelectItem value="10000+">10,000+ (Large)</SelectItem>
+                          <SelectItem value="5000+">5,000+ (Medium-Large)</SelectItem>
+                          <SelectItem value="1000+">1,000+ (Medium)</SelectItem>
+                          <SelectItem value="500+">500+ (Small-Medium)</SelectItem>
+                          <SelectItem value="100+">100+ (Small)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Label className="text-sm">Category:</Label>
-                      <Input
-                        type="text"
-                        placeholder="e.g. Technology"
-                        value={state.filters.categories?.join(', ') || ''}
-                        onChange={(e) => setState(prev => ({
-                          ...prev,
-                          filters: { 
-                            ...prev.filters, 
-                            categories: e.target.value ? e.target.value.split(',').map(c => c.trim()) : [] 
-                          }
-                        }))}
-                        className="w-48"
-                      />
+                      <Label className="text-sm">Categories:</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-48 justify-between">
+                            {state.filters.categories.length > 0
+                              ? `${state.filters.categories.length} selected`
+                              : "All Categories"}
+                            <Filter className="ml-2 h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-0" align="start">
+                          <div className="p-2 space-y-2 max-h-64 overflow-y-auto">
+                            {availableCategories.length > 0 ? (
+                              availableCategories.map((category) => (
+                                <div key={category} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`cat-${category}`}
+                                    checked={state.filters.categories.includes(category)}
+                                    onCheckedChange={(checked) => {
+                                      setState(prev => ({
+                                        ...prev,
+                                        filters: {
+                                          ...prev.filters,
+                                          categories: checked
+                                            ? [...prev.filters.categories, category]
+                                            : prev.filters.categories.filter(c => c !== category)
+                                        }
+                                      }));
+                                    }}
+                                  />
+                                  <Label htmlFor={`cat-${category}`} className="text-sm cursor-pointer">
+                                    {category}
+                                  </Label>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-sm text-muted-foreground p-2">
+                                Upload CSV to filter by category
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Label className="text-sm">Min Engagement:</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        placeholder="e.g. 50"
-                        value={state.filters.min_engagement || ''}
-                        onChange={(e) => setState(prev => ({
+                      <Label className="text-sm">Engagement:</Label>
+                      <Select
+                        value={state.filters.min_engagement}
+                        onValueChange={(value: any) => setState(prev => ({
                           ...prev,
-                          filters: { ...prev.filters, min_engagement: parseInt(e.target.value) || undefined }
+                          filters: { ...prev.filters, min_engagement: value }
                         }))}
-                        className="w-24"
-                      />
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Levels</SelectItem>
+                          <SelectItem value="70+">High (70+)</SelectItem>
+                          <SelectItem value="60+">Medium-High (60+)</SelectItem>
+                          <SelectItem value="50+">Medium (50+)</SelectItem>
+                          <SelectItem value="40+">Low-Medium (40+)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     <Button 
@@ -535,12 +639,12 @@ const Batch = () => {
                       onClick={() => setState(prev => ({
                         ...prev,
                         filters: {
-                          min_score: 0,
+                          min_score: 'all',
                           verdict: 'all',
                           stale: false,
-                          min_listeners: undefined,
+                          min_listeners: 'all',
                           categories: [],
-                          min_engagement: undefined
+                          min_engagement: 'all'
                         }
                       }))}
                     >
