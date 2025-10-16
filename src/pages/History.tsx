@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const History = () => {
   useEffect(() => { document.title = 'History — Podcast Fit Rater'; }, []);
@@ -35,6 +37,7 @@ const History = () => {
       const { data: cls } = await supabase.from('clients').select('id,name').order('name', { ascending: true });
       if (Array.isArray(evals)) {
         setList(evals.map((r: any) => ({
+          id: r.id,
           ...(r.rubric_json || {}),
           url: r.url,
           show_title: r.show_title,
@@ -95,12 +98,49 @@ const History = () => {
 
   const getDisplayTitle = (r: any) => r.show_title || prettifyFromUrl(r.url || '');
 
+  const deleteEvaluation = async (evalId: string, title: string) => {
+    const { error } = await supabase
+      .from('evaluations')
+      .delete()
+      .eq('id', evalId);
+    
+    if (error) {
+      toast.error('Failed to delete evaluation');
+      console.error(error);
+      return;
+    }
+    
+    // Remove from local state
+    setList(prev => prev.filter(e => e.id !== evalId));
+    toast.success('Evaluation deleted');
+  };
+
+  const deleteBatch = async (batchId: string, batchName: string, evaluationCount: number) => {
+    const { error } = await supabase
+      .from('batch_sessions')
+      .delete()
+      .eq('id', batchId);
+    
+    if (error) {
+      toast.error('Failed to delete batch');
+      console.error(error);
+      return;
+    }
+    
+    // Remove batch and its evaluations from local state
+    setBatches(prev => prev.filter(b => b.id !== batchId));
+    setList(prev => prev.filter(e => e.batch_session_id !== batchId));
+    toast.success(`Batch "${batchName}" deleted (${evaluationCount} evaluation${evaluationCount !== 1 ? 's' : ''})`);
+  };
+
   const BatchRow = ({ 
     batchId, 
     evaluations, 
     metadata,
     clientNameById,
-    getDisplayTitle 
+    getDisplayTitle,
+    onDeleteBatch,
+    onDeleteEvaluation
   }: any) => {
     const [isOpen, setIsOpen] = useState(selectedBatch === batchId);
     
@@ -129,8 +169,36 @@ const History = () => {
             <div className="col-span-2 font-semibold">
               Avg: {avgScore.toFixed(1)}
             </div>
-            <div className="col-span-2 text-sm text-muted-foreground">
-              {new Date(batchDate).toLocaleString()}
+            <div className="col-span-2 flex items-center justify-between text-sm text-muted-foreground">
+              <span>{new Date(batchDate).toLocaleString()}</span>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button 
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1.5 hover:bg-destructive/10 rounded transition-colors"
+                    aria-label="Delete batch"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete batch "{batchName}"?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete this batch and all {evaluations.length} podcast evaluation{evaluations.length !== 1 ? 's' : ''} within it. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => onDeleteBatch(batchId, batchName, evaluations.length)} 
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete Batch
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </CollapsibleTrigger>
@@ -149,7 +217,7 @@ const History = () => {
                   )}
                 </div>
                 <div className="col-span-3"></div>
-                <div className="col-span-2">
+                <div className="col-span-2 flex items-center gap-2">
                   <Dialog>
                     <DialogTrigger asChild>
                       <button className="font-semibold underline decoration-dotted underline-offset-4 text-sm" aria-label={`View score breakdown for ${getDisplayTitle(r)}`}>
@@ -192,6 +260,34 @@ const History = () => {
                       )}
                     </DialogContent>
                   </Dialog>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button 
+                        className="p-1 hover:bg-destructive/10 rounded transition-colors" 
+                        aria-label="Delete evaluation"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this evaluation?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete the evaluation for "{getDisplayTitle(r)}". This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => onDeleteEvaluation(r.id, getDisplayTitle(r))} 
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
                 <div className="col-span-2"></div>
               </div>
@@ -248,6 +344,8 @@ const History = () => {
                   metadata={batchMetadata}
                   clientNameById={clientNameById}
                   getDisplayTitle={getDisplayTitle}
+                  onDeleteBatch={deleteBatch}
+                  onDeleteEvaluation={deleteEvaluation}
                 />
               ))}
             
@@ -259,7 +357,7 @@ const History = () => {
                     {r.url ? <a className="underline" href={r.url} target="_blank" rel="noreferrer" title={r.url}>{getDisplayTitle(r)}</a> : <span>{getDisplayTitle(r)}</span>}
                   </div>
                   <div className="col-span-3 text-sm text-muted-foreground truncate">{clientNameById[r.clientId] || r.clientId}</div>
-                  <div className="col-span-2">
+                  <div className="col-span-2 flex items-center gap-2">
                     <Dialog>
                       <DialogTrigger asChild>
                         <button className="font-semibold underline decoration-dotted underline-offset-4" aria-label={`View score breakdown for ${getDisplayTitle(r)}`}>
@@ -302,6 +400,34 @@ const History = () => {
                         )}
                       </DialogContent>
                     </Dialog>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button 
+                          className="p-1 hover:bg-destructive/10 rounded transition-colors" 
+                          aria-label="Delete evaluation"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this evaluation?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the evaluation for "{getDisplayTitle(r)}". This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => deleteEvaluation(r.id, getDisplayTitle(r))} 
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                   <div className="col-span-2 text-sm text-muted-foreground">{new Date(r.date).toLocaleString()}</div>
                 </div>

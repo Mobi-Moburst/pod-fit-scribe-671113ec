@@ -470,12 +470,7 @@ const Batch = () => {
 
     try {
       // Create batch session
-      const clientName = clients.find(c => c.id === state.client_id)?.name || 'Unknown Client';
-      const batchName = `${clientName} - ${new Date().toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      })}`;
+      const batchName = `Batch - ${uploadedFileName?.replace('.csv', '') || 'Untitled'} (${new Date().toLocaleDateString()})`;
       
       const { data: batchSession, error: batchError } = await supabase
         .from('batch_sessions')
