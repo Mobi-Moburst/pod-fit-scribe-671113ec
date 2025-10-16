@@ -96,6 +96,7 @@ export function EvaluationPanel({ row, onClose, client }: EvaluationPanelProps) 
           body: JSON.stringify({
             client: {
               name: client.name,
+              title: client.title,
               company: client.company,
               company_url: client.company_url,
               media_kit_url: client.media_kit_url,
