@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BatchRow } from '@/types/batch';
 import { MinimalClient } from '@/types/clients';
 import { Card } from '@/components/ui/card';
@@ -18,14 +18,22 @@ interface EvaluationPanelProps {
   row: BatchRow | null;
   onClose: () => void;
   client: MinimalClient | null;
+  autoGeneratePitch?: boolean;
 }
 
-export function EvaluationPanel({ row, onClose, client }: EvaluationPanelProps) {
+export function EvaluationPanel({ row, onClose, client, autoGeneratePitch }: EvaluationPanelProps) {
   const { toast } = useToast();
   const [generatingPitch, setGeneratingPitch] = useState(false);
   const [generatedPitch, setGeneratedPitch] = useState<string | null>(null);
   
   if (!row) return null;
+  
+  // Auto-generate pitch when flag is set
+  useEffect(() => {
+    if (autoGeneratePitch && row && client) {
+      generatePitch();
+    }
+  }, [autoGeneratePitch, row?.id]);
   
   const getVerdictColor = (verdict?: string) => {
     switch (verdict) {

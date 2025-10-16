@@ -39,6 +39,7 @@ const Batch = () => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
   const [selectedRow, setSelectedRow] = useState<BatchRow | null>(null);
+  const [autoGenerate, setAutoGenerate] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const { toast } = useToast();
@@ -438,6 +439,12 @@ const Batch = () => {
       selected_rows: new Set(passingRows.map(r => r.id))
     }));
   }, [state.rows, state.filters.min_score]);
+  
+  // Handle generate pitch from sparkle button
+  const handleGeneratePitch = useCallback((row: BatchRow) => {
+    setSelectedRow(row);
+    setAutoGenerate(true);
+  }, []);
   
   // Export handlers
   const exportSelected = useCallback(() => {
@@ -920,8 +927,12 @@ const Batch = () => {
                   selectedRows={state.selected_rows}
                   onRowSelect={handleRowSelect}
                   onSelectAll={handleSelectAll}
-                  onRowClick={setSelectedRow}
+                  onRowClick={(row) => {
+                    setSelectedRow(row);
+                    setAutoGenerate(false);
+                  }}
                   onRetry={retryRow}
+                  onGeneratePitch={handleGeneratePitch}
                   loading={state.processing}
                 />
               </div>
@@ -935,8 +946,12 @@ const Batch = () => {
         <div className="w-96 shrink-0">
           <EvaluationPanel
             row={selectedRow}
-            onClose={() => setSelectedRow(null)}
+            onClose={() => {
+              setSelectedRow(null);
+              setAutoGenerate(false);
+            }}
             client={clients.find(c => c.id === state.client_id) || null}
+            autoGeneratePitch={autoGenerate}
           />
         </div>
       )}

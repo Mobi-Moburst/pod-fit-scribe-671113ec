@@ -271,7 +271,11 @@ export function ResultsTable({
                             variant="ghost"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onRowClick(row);
+                              if (onGeneratePitch) {
+                                onGeneratePitch(row);
+                              } else {
+                                onRowClick(row);
+                              }
                             }}
                             className="h-7 w-7 p-0"
                           >
