@@ -22,7 +22,6 @@ const empty: MinimalClient = {
   media_kit_url: '',
   company: '',
   company_url: '',
-  title: '',
   target_audiences: [],
   talking_points: [],
   avoid: [],
@@ -76,7 +75,6 @@ const Clients = () => {
       name: c.name,
       company: c.company || '',
       company_url: c.company_url || '',
-      title: c.title || '',
       media_kit_url: c.media_kit_url || '',
       target_audiences: c.target_audiences || [],
       talking_points: c.talking_points || [],
@@ -174,7 +172,6 @@ const Clients = () => {
       name: editing.name.trim(),
       company: editing.company?.trim() || null,
       company_url: editing.company_url?.trim() || null,
-      title: editing.title?.trim() || null,
       media_kit_url: editing.media_kit_url.trim(),
       target_audiences: editing.target_audiences || [],
       talking_points: editing.talking_points || [],
@@ -248,28 +245,6 @@ const Clients = () => {
                 {!editing.name.trim() && (
                   <p className="text-xs text-red-500 mt-1">Guest name is required</p>
                 )}
-              </div>
-              <div>
-                <Label>Title</Label>
-                <Input 
-                  placeholder="e.g., CEO & Founder"
-                  value={editing.title || ''} 
-                  onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  e.g., CEO & Founder, CTO
-                </p>
-              </div>
-              <div>
-                <Label>Company</Label>
-                <Input 
-                  placeholder="Acme Inc. (name only, not URL)"
-                  value={editing.company || ''} 
-                  onChange={(e) => handleCompanyChange(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Company name only - use "Company URL" field below for website
-                </p>
               </div>
               <div>
                 <Label className="flex items-center gap-1">
