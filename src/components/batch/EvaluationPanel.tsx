@@ -36,9 +36,25 @@ export function EvaluationPanel({ row, onClose, client }: EvaluationPanelProps) 
     }
   };
   
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ description: `${label} copied to clipboard` });
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      // Create HTML blob for rich text copying
+      const htmlBlob = new Blob([text], { type: 'text/html' });
+      const plainBlob = new Blob([text.replace(/<[^>]*>/g, '')], { type: 'text/plain' });
+      
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': htmlBlob,
+          'text/plain': plainBlob,
+        }),
+      ]);
+      
+      toast({ description: `${label} copied to clipboard` });
+    } catch (err) {
+      // Fallback to plain text if HTML copy fails
+      navigator.clipboard.writeText(text);
+      toast({ description: `${label} copied to clipboard (plain text)` });
+    }
   };
   
   const generatePitch = async () => {

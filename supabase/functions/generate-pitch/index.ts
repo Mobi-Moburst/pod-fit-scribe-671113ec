@@ -34,6 +34,8 @@ serve(async (req) => {
 - Keep formatting pristine with proper spacing and bullets
 - Hyperlink using HTML: client's full name to media kit URL (ONLY on first mention in opening paragraph) and company name to company URL (if mentioned)
 - Format: <a href="url">text</a>
+- DO NOT introduce the sender or include phrases like "My name is..." or "I'm [name]"
+- Start immediately with "Hey [host_name]," followed by the guest introduction
 
 ## Tone Matching:
 - Conversational/Playful → lighter phrasing, humor, approachable
@@ -50,6 +52,8 @@ serve(async (req) => {
 
 ## Output Format:
 Return ONLY the pitch text (no JSON, no preamble). Use this exact structure:
+
+**CRITICAL: Do NOT introduce yourself or the sender. Start directly with the greeting and guest introduction.**
 
 Hey [host_first_name],
 
