@@ -11,6 +11,9 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+const SUPABASE_URL = "https://xjmcrvdczkefcbkayfbn.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqbWNydmRjemtlZmNia2F5ZmJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2Nzk2NzEsImV4cCI6MjA3MDI1NTY3MX0.AGAIZWrqXrYXJtgdwuduOAqAPZX743vM3JT_EVCMtzo";
+
 interface EvaluationPanelProps {
   row: BatchRow | null;
   onClose: () => void;
@@ -64,33 +67,46 @@ export function EvaluationPanel({ row, onClose, client }: EvaluationPanelProps) 
     setGeneratedPitch(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke('generate-pitch', {
-        body: {
-          client: {
-            name: client.name,
-            company: client.company,
-            company_url: client.company_url,
-            media_kit_url: client.media_kit_url,
-            talking_points: client.talking_points,
-            target_audiences: client.target_audiences,
-            campaign_strategy: client.campaign_strategy,
-            notes: client.notes,
-            pitch_template: client.pitch_template,
+      // Use direct fetch with explicit authorization headers
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/generate-pitch`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
           },
-          podcast: {
-            show_title: row.show_title,
-            show_notes_excerpt: row.show_notes_fallback || row.evaluation_data?.show_notes_excerpt,
-            podcast_url: row.podcast_url,
-            host_name: row.metadata?.publisher || 'the host',
-          },
-          evaluation: {
-            verdict: row.verdict,
-            overall_score: row.overall_score,
-            evaluation_data: row.evaluation_data,
-            rationale_short: row.rationale_short,
-          }
+          body: JSON.stringify({
+            client: {
+              name: client.name,
+              company: client.company,
+              company_url: client.company_url,
+              media_kit_url: client.media_kit_url,
+              talking_points: client.talking_points,
+              target_audiences: client.target_audiences,
+              campaign_strategy: client.campaign_strategy,
+              notes: client.notes,
+              pitch_template: client.pitch_template,
+            },
+            podcast: {
+              show_title: row.show_title,
+              show_notes_excerpt: row.show_notes_fallback || row.evaluation_data?.show_notes_excerpt,
+              podcast_url: row.podcast_url,
+              host_name: row.metadata?.publisher || 'the host',
+            },
+            evaluation: {
+              verdict: row.verdict,
+              overall_score: row.overall_score,
+              evaluation_data: row.evaluation_data,
+              rationale_short: row.rationale_short,
+            }
+          })
         }
-      });
+      );
+
+      const data = await response.json();
+      const error = !response.ok ? data : null;
 
       // Enhanced error handling
       if (error) {
