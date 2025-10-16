@@ -30,6 +30,7 @@ const empty: MinimalClient = {
   campaign_strategy: '',
   campaign_manager: '',
   pitch_template: '',
+  title: '',
   gender: undefined,
   guest_identity_tags: [],
   professional_credentials: [],
@@ -84,6 +85,7 @@ const Clients = () => {
       campaign_strategy: c.campaign_strategy || '',
       campaign_manager: c.campaign_manager || '',
       pitch_template: c.pitch_template || '',
+      title: c.title || '',
       gender: c.gender,
       guest_identity_tags: c.guest_identity_tags || [],
       professional_credentials: c.professional_credentials || [],
@@ -180,6 +182,7 @@ const Clients = () => {
       campaign_strategy: editing.campaign_strategy?.trim() || '',
       campaign_manager: (editing as any).campaign_manager?.trim() || null,
       pitch_template: editing.pitch_template?.trim() || null,
+      title: editing.title?.trim() || null,
       gender: editing.gender || null,
       guest_identity_tags: editing.guest_identity_tags || [],
       professional_credentials: editing.professional_credentials || [],
@@ -313,6 +316,15 @@ const Clients = () => {
                   <option value="non_binary">Non-binary</option>
                   <option value="unspecified">Unspecified</option>
                 </select>
+              </div>
+              <div>
+                <Label>Title</Label>
+                <Input 
+                  placeholder="e.g., CEO & Founder"
+                  value={editing.title || ''} 
+                  onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">e.g., CEO & Founder, CTO</p>
               </div>
               <div className="md:col-span-2">
                 <Label className="flex items-center gap-1">
