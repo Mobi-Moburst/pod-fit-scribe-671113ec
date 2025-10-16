@@ -6,8 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
-import { Copy, ExternalLink, MessageCircle, Loader2, Send } from 'lucide-react';
+import { Copy, ExternalLink, MessageCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,9 +25,6 @@ export function EvaluationPanel({ row, onClose, client, autoGeneratePitch }: Eva
   const { toast } = useToast();
   const [generatingPitch, setGeneratingPitch] = useState(false);
   const [generatedPitch, setGeneratedPitch] = useState<string | null>(null);
-  const [pitchMessages, setPitchMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
-  const [refinementPrompt, setRefinementPrompt] = useState('');
-  const [isRefining, setIsRefining] = useState(false);
   
   if (!row) return null;
   
@@ -67,36 +63,6 @@ export function EvaluationPanel({ row, onClose, client, autoGeneratePitch }: Eva
       navigator.clipboard.writeText(text);
       toast({ description: `${label} copied to clipboard (plain text)` });
     }
-  };
-
-  const buildGmailUrl = (email: string, pitchHtml: string): string => {
-    // Convert HTML to plain text while preserving structure
-    let plainText = pitchHtml
-      .replace(/<p[^>]*>/g, '')
-      .replace(/<\/p>/g, '\n\n')
-      .replace(/<br\s*\/?>/g, '\n')
-      .replace(/<li[^>]*>/g, '• ')
-      .replace(/<\/li>/g, '\n')
-      .replace(/<ul[^>]*>/g, '\n')
-      .replace(/<\/ul>/g, '\n')
-      .replace(/<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g, '$2 ($1)')
-      .replace(/<[^>]+>/g, '')
-      .replace(/\n\n\n+/g, '\n\n')
-      .trim();
-
-    const subject = client?.name 
-      ? `Podcast Guest Pitch: ${client.name}` 
-      : 'Podcast Guest Pitch';
-    
-    // Gmail has ~2000 char URL limit, truncate if needed
-    const maxBodyLength = 1800;
-    if (plainText.length > maxBodyLength) {
-      plainText = plainText.substring(0, maxBodyLength) + '\n\n[...see full pitch in clipboard]';
-      copyToClipboard(pitchHtml, 'Full pitch');
-    }
-    
-    const mailtoUrl = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainText)}`;
-    return mailtoUrl;
   };
   
   const generatePitch = async () => {
@@ -257,92 +223,6 @@ export function EvaluationPanel({ row, onClose, client, autoGeneratePitch }: Eva
       });
     } finally {
       setGeneratingPitch(false);
-    }
-  };
-
-  const refinePitch = async () => {
-    if (!refinementPrompt.trim() || !client || !row || !generatedPitch) {
-      toast({
-        description: 'Please enter a refinement request',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    setIsRefining(true);
-    
-    try {
-      // Build conversation history
-      const messages = [
-        ...pitchMessages,
-        { role: 'user' as const, content: refinementPrompt }
-      ];
-      
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/generate-pitch`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-            'apikey': SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({
-            client: {
-              name: client.name,
-              title: client.title,
-              company: client.company,
-              company_url: client.company_url,
-              media_kit_url: client.media_kit_url,
-              talking_points: client.talking_points,
-              target_audiences: client.target_audiences,
-              campaign_strategy: client.campaign_strategy,
-              notes: client.notes,
-              pitch_template: client.pitch_template,
-            },
-            podcast: {
-              show_title: row.show_title,
-              show_notes_excerpt: row.show_notes_fallback || row.evaluation_data?.show_notes_excerpt,
-              podcast_url: row.podcast_url,
-              host_name: row.metadata?.publisher || 'the host',
-            },
-            evaluation: {
-              verdict: row.verdict,
-              overall_score: row.overall_score,
-              evaluation_data: row.evaluation_data,
-              rationale_short: row.rationale_short,
-            },
-            messages // Send conversation history for refinement
-          })
-        }
-      );
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to refine pitch');
-      }
-
-      if (data?.pitch) {
-        setGeneratedPitch(data.pitch);
-        setPitchMessages([
-          ...messages,
-          { role: 'assistant', content: data.pitch }
-        ]);
-        setRefinementPrompt('');
-        toast({
-          description: 'Pitch refined successfully'
-        });
-      }
-    } catch (error) {
-      console.error('Pitch refinement error:', error);
-      toast({
-        title: 'Failed to refine pitch',
-        description: error instanceof Error ? error.message : 'Please try again',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsRefining(false);
     }
   };
   
@@ -549,73 +429,20 @@ export function EvaluationPanel({ row, onClose, client, autoGeneratePitch }: Eva
               <Card className="p-3 mt-3 bg-muted/50">
                 <div className="flex items-center justify-between mb-2">
                   <h6 className="text-sm font-medium">Generated Pitch</h6>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        const email = row.metadata?.email;
-                        if (!email) {
-                          toast({ 
-                            description: 'No email found for this podcast. Please add an email column to your CSV.',
-                            variant: 'destructive' 
-                          });
-                          return;
-                        }
-                        const gmailUrl = buildGmailUrl(email, generatedPitch);
-                        window.open(gmailUrl, '_blank');
-                      }}
-                      disabled={!row.metadata?.email}
-                      title={!row.metadata?.email ? 'No email available' : 'Send via Gmail'}
-                    >
-                      <Send className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        copyToClipboard(generatedPitch, 'Pitch');
-                      }}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      copyToClipboard(generatedPitch, 'Pitch');
+                    }}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
                 </div>
                 <div 
                   className="text-xs text-muted-foreground max-h-96 overflow-y-auto [&_p]:my-3 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:my-3 [&_ul]:pl-1 [&_li]:my-1.5 [&_li]:pl-1 [&_a]:text-blue-400 [&_a]:underline [&_a]:hover:text-blue-300 [&_a]:cursor-pointer"
                   dangerouslySetInnerHTML={{ __html: generatedPitch }}
                 />
-                
-                {/* Pitch refinement UI */}
-                <Separator className="my-3" />
-                <div className="space-y-2">
-                  <h6 className="text-xs font-medium">Refine This Pitch</h6>
-                  <Textarea
-                    placeholder="e.g., 'Make it more casual' or 'Add more emphasis on AI expertise'"
-                    value={refinementPrompt}
-                    onChange={(e) => setRefinementPrompt(e.target.value)}
-                    className="text-xs min-h-[60px]"
-                    disabled={isRefining}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={refinePitch}
-                    disabled={isRefining || !refinementPrompt.trim()}
-                    className="w-full"
-                  >
-                    {isRefining ? (
-                      <>
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        Refining...
-                      </>
-                    ) : (
-                      <>
-                        <MessageCircle className="h-3 w-3 mr-1" />
-                        Refine Pitch
-                      </>
-                    )}
-                  </Button>
-                </div>
               </Card>
             )}
           </div>
