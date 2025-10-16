@@ -136,6 +136,7 @@ const Clients = () => {
     const hasCampaignManager = (editing.campaign_manager || '').trim().length > 0;
     const hasMediaKitUrl = editing.media_kit_url.trim().length > 0;
     const hasCampaignStrategy = (editing.campaign_strategy || '').trim().length > 0;
+    const hasTitle = (editing.title || '').trim().length > 0;
     
     // URL format validation for media_kit_url
     const isValidMediaKitUrl = /^https?:\/\/.+/.test(editing.media_kit_url.trim());
@@ -150,6 +151,7 @@ const Clients = () => {
            hasMediaKitUrl && 
            isValidMediaKitUrl &&
            hasCampaignStrategy &&
+           hasTitle &&
            companyUrlValid;
   }, [editing]);
 
@@ -318,13 +320,18 @@ const Clients = () => {
                 </select>
               </div>
               <div>
-                <Label>Title</Label>
+                <Label className="flex items-center gap-1">
+                  Title <span className="text-red-500">*</span>
+                </Label>
                 <Input 
                   placeholder="e.g., CEO & Founder"
                   value={editing.title || ''} 
                   onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+                  className={(editing.title || '').trim() ? 'border-green-500/50' : ''}
                 />
-                <p className="text-xs text-muted-foreground mt-1">e.g., CEO & Founder, CTO</p>
+                {!(editing.title || '').trim() && (
+                  <p className="text-xs text-red-500 mt-1">Title is required</p>
+                )}
               </div>
               <div className="md:col-span-2">
                 <Label className="flex items-center gap-1">
