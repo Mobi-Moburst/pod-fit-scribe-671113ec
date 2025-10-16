@@ -104,13 +104,8 @@ export function ResultsTable({
                 />
               </TableCell>
               <TableCell>
-                <div className="space-y-1">
-                  <div className="font-medium truncate max-w-[300px]">
-                    {row.show_title || new URL(row.podcast_url).hostname}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate max-w-[300px]">
-                    {row.podcast_url}
-                  </div>
+                <div className="font-medium truncate max-w-[300px]">
+                  {row.show_title || new URL(row.podcast_url).hostname}
                 </div>
               </TableCell>
               

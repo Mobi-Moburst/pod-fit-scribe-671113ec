@@ -58,7 +58,7 @@ export function EvaluationPanel({ row, onClose }: EvaluationPanelProps) {
                 </a>
               </Button>
             </div>
-            <div className="text-sm text-muted-foreground truncate">
+            <div className="text-sm text-muted-foreground break-all">
               {row.podcast_url}
             </div>
           </div>
@@ -156,9 +156,9 @@ export function EvaluationPanel({ row, onClose }: EvaluationPanelProps) {
                     <h6 className="text-sm font-medium text-green-600 mb-2">Why This Fits</h6>
                     <ul className="space-y-1">
                       {row.evaluation_data.why_fit.map((reason: string, i: number) => (
-                        <li key={i} className="text-sm text-muted-foreground flex items-start">
-                          <span className="text-green-500 mr-2">•</span>
-                          {reason}
+                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-green-500 shrink-0">•</span>
+                          <span className="break-words">{reason}</span>
                         </li>
                       ))}
                     </ul>
@@ -171,9 +171,9 @@ export function EvaluationPanel({ row, onClose }: EvaluationPanelProps) {
                     <h6 className="text-sm font-medium text-red-600 mb-2">Concerns</h6>
                     <ul className="space-y-1">
                       {row.evaluation_data.why_not_fit.map((reason: string, i: number) => (
-                        <li key={i} className="text-sm text-muted-foreground flex items-start">
-                          <span className="text-red-500 mr-2">•</span>
-                          {reason}
+                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-red-500 shrink-0">•</span>
+                          <span className="break-words">{reason}</span>
                         </li>
                       ))}
                     </ul>
@@ -186,9 +186,9 @@ export function EvaluationPanel({ row, onClose }: EvaluationPanelProps) {
                     <h6 className="text-sm font-medium text-orange-600 mb-2">Risk Flags</h6>
                     <ul className="space-y-1">
                       {row.evaluation_data.risk_flags.map((flag: string, i: number) => (
-                        <li key={i} className="text-sm text-muted-foreground flex items-start">
-                          <span className="text-orange-500 mr-2">⚠</span>
-                          {flag}
+                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-orange-500 shrink-0">⚠</span>
+                          <span className="break-words">{flag}</span>
                         </li>
                       ))}
                     </ul>
