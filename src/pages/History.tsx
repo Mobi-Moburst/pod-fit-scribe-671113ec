@@ -139,8 +139,7 @@ const History = () => {
     metadata,
     clientNameById,
     getDisplayTitle,
-    onDeleteBatch,
-    onDeleteEvaluation
+    onDeleteBatch
   }: any) => {
     const [isOpen, setIsOpen] = useState(selectedBatch === batchId);
     
@@ -217,7 +216,7 @@ const History = () => {
                   )}
                 </div>
                 <div className="col-span-3"></div>
-                <div className="col-span-2 flex items-center gap-2">
+                <div className="col-span-2">
                   <Dialog>
                     <DialogTrigger asChild>
                       <button className="font-semibold underline decoration-dotted underline-offset-4 text-sm" aria-label={`View score breakdown for ${getDisplayTitle(r)}`}>
@@ -260,34 +259,6 @@ const History = () => {
                       )}
                     </DialogContent>
                   </Dialog>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button 
-                        className="p-1 hover:bg-destructive/10 rounded transition-colors" 
-                        aria-label="Delete evaluation"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete this evaluation?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete the evaluation for "{getDisplayTitle(r)}". This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => onDeleteEvaluation(r.id, getDisplayTitle(r))} 
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                 </div>
                 <div className="col-span-2"></div>
               </div>
@@ -345,7 +316,6 @@ const History = () => {
                   clientNameById={clientNameById}
                   getDisplayTitle={getDisplayTitle}
                   onDeleteBatch={deleteBatch}
-                  onDeleteEvaluation={deleteEvaluation}
                 />
               ))}
             
@@ -357,7 +327,7 @@ const History = () => {
                     {r.url ? <a className="underline" href={r.url} target="_blank" rel="noreferrer" title={r.url}>{getDisplayTitle(r)}</a> : <span>{getDisplayTitle(r)}</span>}
                   </div>
                   <div className="col-span-3 text-sm text-muted-foreground truncate">{clientNameById[r.clientId] || r.clientId}</div>
-                  <div className="col-span-2 flex items-center gap-2">
+                  <div className="col-span-2">
                     <Dialog>
                       <DialogTrigger asChild>
                         <button className="font-semibold underline decoration-dotted underline-offset-4" aria-label={`View score breakdown for ${getDisplayTitle(r)}`}>
@@ -400,14 +370,16 @@ const History = () => {
                         )}
                       </DialogContent>
                     </Dialog>
-                    
+                  </div>
+                  <div className="col-span-2 flex items-center justify-between text-sm text-muted-foreground">
+                    <span>{new Date(r.date).toLocaleString()}</span>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <button 
-                          className="p-1 hover:bg-destructive/10 rounded transition-colors" 
+                          className="p-1.5 hover:bg-destructive/10 rounded transition-colors"
                           aria-label="Delete evaluation"
                         >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -429,7 +401,6 @@ const History = () => {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                  <div className="col-span-2 text-sm text-muted-foreground">{new Date(r.date).toLocaleString()}</div>
                 </div>
               ))}
             
