@@ -33,7 +33,7 @@ serve(async (req) => {
 - Frame topics around the show's audience interests
 - Use specific keywords from the show's description
 - Keep formatting pristine with proper spacing and bullets
-- Hyperlink using HTML: client's full name to media kit URL (ONLY on first mention in opening paragraph) and company name to company URL (if mentioned)
+- Hyperlink using HTML: client's full name to media kit URL (ONLY on first mention in opening paragraph) and company name to company URL (ONLY in opening paragraphs, NEVER in talking points bullets)
 - Format: <a href="url">text</a>
 - DO NOT introduce the sender or include phrases like "My name is..." or "I'm [name]"
 - Start immediately with "Hey [host_name]," followed by the guest introduction
@@ -62,7 +62,7 @@ Return ONLY the pitch text (no JSON, no preamble). Use this exact structure with
 
 <p style="margin: 0 0 1em 0;">Hey [host_first_name],</p>
 
-<p style="margin: 0 0 1em 0;">[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a>, their title, with credibility and context. Hyperlink their name to media kit on this first mention only]</p>
+<p style="margin: 0 0 1em 0;">[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a>, their title at [company_name] (or with <a href="[company_url]">[company_name]</a> if company_url exists), with credibility and context. Hyperlink their name to media kit and optionally company to company URL in opening paragraphs ONLY]</p>
 
 <p style="margin: 0 0 1em 0;">[Guest credentials and expertise paragraph]</p>
 
@@ -110,7 +110,7 @@ ${client.pitch_template}
 - Rationale: ${evaluation.rationale_short || evaluation.evaluation_data?.summary_text || 'N/A'}
 
 ## Task:
-Tailor the pitch template above to perfectly match this specific podcast's tone, audience, and focus. Fill in all placeholders with the correct data. Adjust language, structure, and topic framing to align with how this show communicates. Keep the same hyperlink format (client name to media kit, company name to company URL).`;
+Tailor the pitch template above to perfectly match this specific podcast's tone, audience, and focus. Fill in all placeholders with the correct data. Adjust language, structure, and topic framing to align with how this show communicates. Keep the same hyperlink format (client name to media kit in first mention, company name to company URL only in opening paragraphs). NEVER hyperlink company names within the bulleted talking points list - keep those as plain text.`;
     } else {
       // Generate from scratch
       userPrompt = `Generate a pitch for a podcast guest booking.
