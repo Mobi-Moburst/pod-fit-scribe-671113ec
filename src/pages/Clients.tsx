@@ -257,7 +257,7 @@ const Clients = () => {
                   onChange={(e) => setEditing({ ...editing, title: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Professional title (e.g., "CEO & Founder", "Chief Technology Officer")
+                  e.g., CEO & Founder, CTO
                 </p>
               </div>
               <div>
