@@ -183,6 +183,7 @@ export async function processSingleUrl(
     const result = {
       ...row,
       status: 'success' as const,
+      error: undefined,
       url_hash: urlHash,
       cache_timestamp: Date.now(),
       show_title: scrapeResult.title || data.show_title,
