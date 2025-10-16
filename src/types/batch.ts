@@ -36,6 +36,17 @@ export interface BatchRow {
   cache_timestamp?: number;
 }
 
+export interface BatchSession {
+  id: string;
+  org_id: string;
+  client_id: string;
+  name: string;
+  description?: string;
+  total_count: number;
+  success_count: number;
+  created_at: string;
+}
+
 export interface BatchState {
   client_id: string | null;
   rows: BatchRow[];

@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      batch_sessions: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          org_id: string
+          success_count: number
+          total_count: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          org_id: string
+          success_count?: number
+          total_count?: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          success_count?: number
+          total_count?: number
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           avoid: string[] | null
@@ -109,6 +142,7 @@ export type Database = {
       }
       evaluations: {
         Row: {
+          batch_session_id: string | null
           citations: string[] | null
           client_id: string
           confidence: number | null
@@ -122,6 +156,7 @@ export type Database = {
           url: string
         }
         Insert: {
+          batch_session_id?: string | null
           citations?: string[] | null
           client_id: string
           confidence?: number | null
@@ -135,6 +170,7 @@ export type Database = {
           url: string
         }
         Update: {
+          batch_session_id?: string | null
           citations?: string[] | null
           client_id?: string
           confidence?: number | null
@@ -148,6 +184,13 @@ export type Database = {
           url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "evaluations_batch_session_id_fkey"
+            columns: ["batch_session_id"]
+            isOneToOne: false
+            referencedRelation: "batch_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "evaluations_client_id_fkey"
             columns: ["client_id"]

@@ -14,10 +14,21 @@ const History = () => {
   const [minScore, setMinScore] = useState<number | ''>('');
   const [list, setList] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<string>('');
   const clientNameById = useMemo(() => Object.fromEntries(clients.map((c: any) => [c.id, c.name])), [clients]);
 
   useEffect(() => {
     const load = async () => {
+      const { data: batchData } = await supabase
+        .from('batch_sessions')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (Array.isArray(batchData)) {
+        setBatches(batchData);
+      }
+
       const { data: evals } = await supabase.from('evaluations').select('*').order('created_at', { ascending: false });
       const { data: cls } = await supabase.from('clients').select('id,name').order('name', { ascending: true });
       if (Array.isArray(evals)) {
@@ -27,6 +38,7 @@ const History = () => {
           show_title: r.show_title,
           overall_score: r.overall_score,
           clientId: r.client_id,
+          batch_session_id: r.batch_session_id,
           date: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
         })));
       }
@@ -35,7 +47,15 @@ const History = () => {
     load();
   }, []);
 
-  const filtered = useMemo(() => list.filter(r => (!clientFilter || r.clientId === clientFilter) && (minScore === '' || (r.overall_score ?? 0) >= (minScore as number))), [list, clientFilter, minScore]);
+  const filtered = useMemo(() => {
+    return list.filter(r => {
+      if (clientFilter && r.clientId !== clientFilter) return false;
+      if (minScore !== '' && (r.overall_score ?? 0) < (minScore as number)) return false;
+      if (selectedBatch === '__individual__' && r.batch_session_id) return false;
+      if (selectedBatch && selectedBatch !== '__individual__' && r.batch_session_id !== selectedBatch) return false;
+      return true;
+    });
+  }, [list, clientFilter, minScore, selectedBatch]);
 
   const prettifyFromUrl = (u: string) => {
     try {
@@ -56,12 +76,20 @@ const History = () => {
       <BackgroundFX />
       <Navbar />
       <main className="container mx-auto px-3 py-6 grid gap-6">
-        <Card className="p-4 card-surface grid md:grid-cols-4 gap-3 items-end">
+        <Card className="p-4 card-surface grid md:grid-cols-5 gap-3 items-end">
           <div>
             <label className="text-sm">Client</label>
             <select className="h-10 rounded-md border bg-background px-3 w-full" value={clientFilter} onChange={(e)=>setClientFilter(e.target.value)}>
               <option value="">All</option>
               {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm">Batch</label>
+            <select className="h-10 rounded-md border bg-background px-3 w-full" value={selectedBatch} onChange={(e)=>setSelectedBatch(e.target.value)}>
+              <option value="">All (Individual + Batches)</option>
+              <option value="__individual__">Individual Only</option>
+              {batches.map(b => (<option key={b.id} value={b.id}>{b.name} ({b.success_count} items)</option>))}
             </select>
           </div>
           <div>
@@ -76,8 +104,15 @@ const History = () => {
         <Card className="p-4 card-surface">
           <div className="grid gap-2">
             {filtered.map((r,i)=> (
-                <div className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
-                  <div className="col-span-5 truncate">{r.url ? <a className="underline" href={r.url} target="_blank" rel="noreferrer" title={r.url}>{getDisplayTitle(r)}</a> : <span>{getDisplayTitle(r)}</span>}</div>
+                <div key={i} className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
+                  <div className="col-span-5 truncate flex items-center gap-2">
+                    {r.url ? <a className="underline" href={r.url} target="_blank" rel="noreferrer" title={r.url}>{getDisplayTitle(r)}</a> : <span>{getDisplayTitle(r)}</span>}
+                    {r.batch_session_id && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                        Batch
+                      </span>
+                    )}
+                  </div>
                   <div className="col-span-3 text-sm text-muted-foreground truncate">{clientNameById[r.clientId] || r.clientId}</div>
                   <div className="col-span-2">
                     <Dialog>

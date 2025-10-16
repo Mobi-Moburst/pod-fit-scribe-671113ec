@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ClientCombobox } from '@/components/ClientCombobox';
 import { ResultsTable } from '@/components/batch/ResultsTable';
 import { EvaluationPanel } from '@/components/batch/EvaluationPanel';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 import { MinimalClient } from '@/types/clients';
 import { BatchRow, BatchState, PreflightResult } from '@/types/batch';
 import { 
@@ -455,6 +455,68 @@ const Batch = () => {
     exportToCSV(completedRows);
   }, [state.rows, toast]);
 
+  const saveBatchToHistory = useCallback(async () => {
+    if (!state.client_id) {
+      toast({ description: 'No client selected', variant: 'destructive' });
+      return;
+    }
+
+    const successfulRows = state.rows.filter(row => row.status === 'success');
+    
+    if (successfulRows.length === 0) {
+      toast({ description: 'No successful evaluations to save', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      // Create batch session
+      const batchName = `Batch - ${uploadedFileName?.replace('.csv', '') || 'Untitled'} (${new Date().toLocaleDateString()})`;
+      
+      const { data: batchSession, error: batchError } = await supabase
+        .from('batch_sessions')
+        .insert({
+          client_id: state.client_id,
+          name: batchName,
+          total_count: successfulRows.length,
+          success_count: successfulRows.length,
+          org_id: TEAM_ORG_ID
+        })
+        .select()
+        .single();
+
+      if (batchError) throw batchError;
+
+      // Insert all evaluations with batch_session_id
+      const evaluationsToInsert = successfulRows.map(row => ({
+        batch_session_id: batchSession.id,
+        client_id: state.client_id,
+        url: row.podcast_url,
+        show_title: row.show_title,
+        overall_score: row.overall_score,
+        confidence: row.confidence,
+        rubric_json: row.evaluation_data || {},
+        citations: row.evaluation_data?.citations || [],
+        org_id: TEAM_ORG_ID
+      }));
+
+      const { error: evalError } = await supabase
+        .from('evaluations')
+        .insert(evaluationsToInsert);
+
+      if (evalError) throw evalError;
+
+      toast({
+        description: `✓ Saved ${successfulRows.length} evaluations to History`,
+      });
+    } catch (error) {
+      console.error('Failed to save batch:', error);
+      toast({
+        description: 'Failed to save batch to history',
+        variant: 'destructive'
+      });
+    }
+  }, [state.client_id, state.rows, uploadedFileName, toast]);
+
   return (
     <div className="flex h-screen">
       <BackgroundFX />
@@ -806,6 +868,10 @@ const Batch = () => {
                     <Button size="sm" variant="outline" onClick={exportAll}>
                       <Download className="h-3 w-3 mr-1" />
                       Export All
+                    </Button>
+                    <Button size="sm" onClick={saveBatchToHistory}>
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Save to History
                     </Button>
                   </div>
                 </div>
