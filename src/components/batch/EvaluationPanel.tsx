@@ -431,7 +431,7 @@ export function EvaluationPanel({ row, onClose, client }: EvaluationPanelProps) 
                   </Button>
                 </div>
                 <div 
-                  className="text-xs text-muted-foreground whitespace-pre-wrap max-h-96 overflow-y-auto"
+                  className="text-xs text-muted-foreground max-h-96 overflow-y-auto prose prose-sm prose-invert max-w-none [&_p]:my-2 [&_ul]:list-disc [&_ul]:ml-5 [&_ul]:my-2 [&_li]:my-1 [&_a]:text-primary [&_a]:underline [&_a]:cursor-pointer"
                   dangerouslySetInnerHTML={{ __html: generatedPitch }}
                 />
               </Card>
