@@ -39,7 +39,26 @@ export function EvaluationPanel({ row, onClose, client }: EvaluationPanelProps) 
   };
   
   const generatePitch = async () => {
-    if (!client || !row) return;
+    if (!client || !row) {
+      toast({
+        title: 'Cannot generate pitch',
+        description: 'Missing client or podcast data',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    console.log('🎯 Generating pitch for:', {
+      client: client.name,
+      podcast: row.show_title,
+      has_template: !!client.pitch_template,
+      client_data: {
+        name: client.name,
+        company: client.company,
+        media_kit: client.media_kit_url,
+        talking_points_count: client.talking_points?.length || 0,
+      }
+    });
     
     setGeneratingPitch(true);
     setGeneratedPitch(null);
@@ -73,28 +92,92 @@ export function EvaluationPanel({ row, onClose, client }: EvaluationPanelProps) 
         }
       });
 
+      // Enhanced error handling
       if (error) {
-        console.error('Pitch generation error:', error);
+        console.error('❌ Pitch generation error:', {
+          error,
+          message: error.message,
+          details: error
+        });
+        
+        let errorTitle = 'Failed to generate pitch';
+        let errorDescription = error.message || 'Please try again';
+        
+        // Provide specific error messages based on error type
+        if (error.message?.includes('Failed to send a request to the Edge Function')) {
+          errorTitle = 'Service Unavailable';
+          errorDescription = 'The pitch generation service is not yet deployed. Please refresh the page and try again in a moment.';
+        } else if (error.message?.includes('Rate limit')) {
+          errorTitle = 'Rate Limit Exceeded';
+          errorDescription = 'Too many requests. Please wait a moment and try again.';
+        } else if (error.message?.includes('402') || error.message?.includes('credits')) {
+          errorTitle = 'AI Credits Depleted';
+          errorDescription = 'Please add credits to your Lovable AI workspace in Settings.';
+        } else if (error.message?.includes('timeout')) {
+          errorTitle = 'Request Timeout';
+          errorDescription = 'The request took too long. Please try again.';
+        }
+        
         toast({
-          title: 'Failed to generate pitch',
-          description: error.message || 'Please try again',
+          title: errorTitle,
+          description: errorDescription,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Check if we got valid data back
+      if (!data) {
+        console.error('❌ No data returned from edge function');
+        toast({
+          title: 'No Response',
+          description: 'The pitch service returned no data. Please try again.',
           variant: 'destructive'
         });
         return;
       }
 
       if (data?.pitch) {
+        console.log('✅ Pitch generated successfully, length:', data.pitch.length);
         setGeneratedPitch(data.pitch);
         toast({
           title: 'Pitch generated!',
           description: 'Review and copy the pitch below'
         });
+      } else {
+        console.error('❌ No pitch in response data:', data);
+        toast({
+          title: 'Invalid Response',
+          description: 'The service returned an unexpected response format.',
+          variant: 'destructive'
+        });
       }
     } catch (error) {
-      console.error('Pitch generation error:', error);
+      console.error('❌ Unexpected pitch generation error:', {
+        error,
+        type: typeof error,
+        message: error instanceof Error ? error.message : String(error)
+      });
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
+      let errorTitle = 'Failed to generate pitch';
+      let errorDescription = errorMessage;
+      
+      // Handle specific error scenarios
+      if (errorMessage.includes('Failed to send a request')) {
+        errorTitle = 'Service Unavailable';
+        errorDescription = 'The pitch generation service is currently unavailable. This usually means the service needs to be deployed. Please refresh and try again in a moment.';
+      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        errorTitle = 'Network Error';
+        errorDescription = 'Unable to connect to the pitch service. Please check your connection and try again.';
+      }
+      
       toast({
-        title: 'Failed to generate pitch',
-        description: 'An unexpected error occurred',
+        title: errorTitle,
+        description: errorDescription,
         variant: 'destructive'
       });
     } finally {
