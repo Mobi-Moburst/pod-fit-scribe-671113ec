@@ -32,7 +32,8 @@ serve(async (req) => {
 - Frame topics around the show's audience interests
 - Use specific keywords from the show's description
 - Keep formatting pristine with proper spacing and bullets
-- Hyperlink ONLY: client's full name (media kit) and company name (company URL)
+- Hyperlink using HTML: client's full name to media kit URL (ONLY on first mention in opening paragraph) and company name to company URL (if mentioned)
+- Format: <a href="url">text</a>
 
 ## Tone Matching:
 - Conversational/Playful → lighter phrasing, humor, approachable
@@ -52,7 +53,7 @@ Return ONLY the pitch text (no JSON, no preamble). Use this exact structure:
 
 Hey [host_first_name],
 
-[Opening paragraph: introduce guest with credibility and context]
+[Opening paragraph: introduce <a href="[media_kit_url]">[client_full_name]</a> with credibility and context, hyperlink their name to media kit on this first mention only]
 
 [Guest credentials and expertise paragraph]
 
@@ -62,7 +63,7 @@ Hey [host_first_name],
 • [talking_point_2]
 • [talking_point_3]
 
-Would you be interested in having [client_first_name] [client_last_name](media_kit_url) on your show?
+Would you be interested in having [client_first_name] [client_last_name] on your show?
 
 Thank you so much for your consideration. I'm looking forward to hearing from you.`;
 

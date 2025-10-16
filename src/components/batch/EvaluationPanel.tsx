@@ -414,9 +414,10 @@ export function EvaluationPanel({ row, onClose, client }: EvaluationPanelProps) 
                     <Copy className="h-3 w-3" />
                   </Button>
                 </div>
-                <div className="text-xs text-muted-foreground whitespace-pre-wrap max-h-96 overflow-y-auto">
-                  {generatedPitch}
-                </div>
+                <div 
+                  className="text-xs text-muted-foreground whitespace-pre-wrap max-h-96 overflow-y-auto"
+                  dangerouslySetInnerHTML={{ __html: generatedPitch }}
+                />
               </Card>
             )}
           </div>
