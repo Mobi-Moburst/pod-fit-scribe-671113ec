@@ -68,7 +68,8 @@ const Batch = () => {
           notes: client.notes || undefined,
           campaign_manager: client.campaign_manager || undefined,
           campaign_strategy: client.campaign_strategy,
-          pitch_template: client.pitch_template || undefined
+          pitch_template: client.pitch_template || undefined,
+          title: client.title || undefined
         }));
         
         setClients(mappedClients);
