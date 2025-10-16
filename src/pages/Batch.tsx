@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { BackgroundFX } from '@/components/BackgroundFX';
 import { Card } from '@/components/ui/card';
@@ -24,8 +24,9 @@ import {
   detectUrlColumn,
   detectDescriptionColumn
 } from '@/utils/batchProcessor';
-import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2 } from 'lucide-react';
+import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const CONCURRENT_LIMIT = 8;
 const ROWS_PER_PAGE = 25;
@@ -38,7 +39,10 @@ const Batch = () => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
   const [selectedRow, setSelectedRow] = useState<BatchRow | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load clients from Supabase
   useEffect(() => {
@@ -104,6 +108,8 @@ const Batch = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     
+    setUploadedFileName(file.name);
+    
     try {
       setCsvFile(file);
       const data = await parseCSV(file);
@@ -141,8 +147,54 @@ const Batch = () => {
         description: `Failed to parse CSV: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive'
       });
+      setUploadedFileName(null);
     }
   }, [toast]);
+  
+  // Drag and drop handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      
+      if (!file.name.endsWith('.csv')) {
+        toast({
+          description: 'Please upload a CSV file',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      const syntheticEvent = {
+        target: { files: [file] }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      
+      handleFileUpload(syntheticEvent);
+    }
+  }, [handleFileUpload, toast]);
   
   // Process URLs concurrently
   const startProcessing = useCallback(async () => {
@@ -423,24 +475,83 @@ const Batch = () => {
                 {/* CSV Upload */}
                 <div className="space-y-2">
                   <Label>Upload CSV</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
+                  
+                  {/* Drag and Drop Zone */}
+                  <div
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={cn(
+                      "relative border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer",
+                      isDragging 
+                        ? "border-primary bg-primary/5" 
+                        : "border-muted-foreground/25 hover:border-primary/50",
+                      (!state.client_id || clientsLoading) && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <input
+                      ref={fileInputRef}
                       type="file"
                       accept=".csv"
                       onChange={handleFileUpload}
                       disabled={!state.client_id || clientsLoading}
+                      className="hidden"
+                      id="csv-upload"
                     />
+                    
+                    <label 
+                      htmlFor="csv-upload" 
+                      className="flex flex-col items-center gap-2 cursor-pointer"
+                    >
+                      {uploadedFileName ? (
+                        <>
+                          <CheckCircle className="h-8 w-8 text-green-600" />
+                          <div className="text-center">
+                            <p className="font-medium">{uploadedFileName}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Click to replace or drag new file
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-8 w-8 text-muted-foreground" />
+                          <div className="text-center">
+                            <p className="font-medium">
+                              {isDragging ? 'Drop CSV file here' : 'Drag & drop CSV file here'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              or click to browse
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      CSV format: HubSpot (podcast_url) or Rephonic (Apple Podcasts column)
+                    </p>
                     <Button
                       onClick={startProcessing}
                       disabled={!state.client_id || state.rows.length === 0 || state.processing || clientsLoading}
                       className="shrink-0"
                     >
-                      {state.processing ? 'Processing...' : 'Start'}
+                      {state.processing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-4 w-4 mr-2" />
+                          Start
+                        </>
+                      )}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    CSV format: HubSpot (podcast_url) or Rephonic (Apple Podcasts column)
-                  </p>
                 </div>
               </div>
             </Card>
