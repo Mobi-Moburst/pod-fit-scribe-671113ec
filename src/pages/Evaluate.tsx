@@ -51,7 +51,6 @@ const Evaluate = () => {
   const [loading, setLoading] = useState(false);
 const [result, setResult] = useState<(AnalyzeResult & { show_title?: string; last_publish_date?: string }) | null>(null);
 const [showNotesOpen, setShowNotesOpen] = useState(false);
-const [scrapedNotes, setScrapedNotes] = useState('');
 
    const handleAnalyze = async () => {
     setLoading(true); setResult(null);
@@ -77,7 +76,6 @@ const [scrapedNotes, setScrapedNotes] = useState('');
         notes = s.show_notes as string;
         title = s.title;
         publishDate = s.publish_date;
-        setScrapedNotes(notes);
         // Warn if the scraped content looks like bot-protection or a captcha page
         if (/(captcha|are you a robot|verify you(?:'|’)re a human|access denied|cloudflare|just a moment|attention required)/i.test(notes)) {
           toast({ title: 'Site blocked scraping', description: 'Try pasting notes manually or use Apple/Spotify/ListenNotes.', variant: 'default' });
@@ -306,9 +304,6 @@ const [scrapedNotes, setScrapedNotes] = useState('');
             onSave={handleSave}
             onCopySummary={handleCopySummary}
             onExportJson={handleExportJson}
-            client={client}
-            podcastUrl={url}
-            showNotes={paste || scrapedNotes}
           />
         )}
       </main>
