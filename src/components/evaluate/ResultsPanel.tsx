@@ -1,21 +1,41 @@
+import { useState } from "react";
 import { AnalyzeResult } from "@/utils/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { ScoreBadge } from "./ScoreBadge";
-import { Calendar, AlertTriangle } from "lucide-react";
+import { Calendar, AlertTriangle, Copy, Send, Sparkles, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import type { MinimalClient } from "@/types/clients";
+
+const SUPABASE_URL = "https://xjmcrvdczkefcbkayfbn.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqbWNydmRjemtlZmNia2F5ZmJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2Nzk2NzEsImV4cCI6MjA3MDI1NTY3MX0.AGAIZWrqXrYXJtgdwuduOAqAPZX743vM3JT_EVCMtzo";
 
 export const ResultsPanel = ({
   result,
   onSave,
   onCopySummary,
   onExportJson,
+  client,
+  podcastUrl,
+  showNotes,
 }: {
   result: AnalyzeResult & { show_title?: string };
   onSave: () => void;
   onCopySummary: () => void;
   onExportJson: () => void;
+  client?: MinimalClient | null;
+  podcastUrl?: string;
+  showNotes?: string;
 }) => {
+  const { toast } = useToast();
+  const [generatingPitch, setGeneratingPitch] = useState(false);
+  const [generatedPitch, setGeneratedPitch] = useState<string | null>(null);
+  const [pitchMessages, setPitchMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [refinementPrompt, setRefinementPrompt] = useState('');
+  const [isRefining, setIsRefining] = useState(false);
   const {
     overall_score,
     rubric_breakdown,
@@ -53,6 +73,220 @@ export const ResultsPanel = ({
     ? risk_flags_structured
     : (risk_flags || []).map((r) => ({ severity: 'Minor' as const, flag: r, mitigation: '' }))
   ).slice(0, 6);
+
+  const buildGmailUrl = (email: string, pitchHtml: string, clientName: string) => {
+    const plainText = pitchHtml
+      .replace(/<p[^>]*>/gi, '\n\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '\n• ')
+      .replace(/<\/?(ul|ol|div|h[1-6]|span|strong|em|b|i)[^>]*>/gi, '')
+      .replace(/<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/gi, '$2 ($1)')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    
+    const subject = encodeURIComponent(`Podcast Guest Pitch: ${clientName}`);
+    const body = encodeURIComponent(plainText);
+    const gmailUrl = `mailto:${email}?subject=${subject}&body=${body}`;
+    
+    if (gmailUrl.length > 2000) {
+      copyToClipboard(pitchHtml, 'Full pitch');
+      return `mailto:${email}?subject=${subject}&body=${encodeURIComponent('See full pitch in clipboard')}`;
+    }
+    
+    return gmailUrl;
+  };
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      const htmlBlob = new Blob([text], { type: 'text/html' });
+      const plainBlob = new Blob([text.replace(/<[^>]*>/g, '')], { type: 'text/plain' });
+      
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': htmlBlob,
+          'text/plain': plainBlob,
+        }),
+      ]);
+      
+      toast({ description: `${label} copied to clipboard` });
+    } catch {
+      navigator.clipboard.writeText(text);
+      toast({ description: `${label} copied to clipboard (plain text)` });
+    }
+  };
+
+  const generatePitch = async () => {
+    if (!client) {
+      toast({
+        title: 'Cannot generate pitch',
+        description: 'No client selected',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setGeneratingPitch(true);
+    setGeneratedPitch(null);
+    
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/generate-pitch`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            client: {
+              name: client.name,
+              title: client.title,
+              company: client.company,
+              company_url: client.company_url,
+              media_kit_url: client.media_kit_url,
+              talking_points: client.talking_points,
+              target_audiences: client.target_audiences,
+              campaign_strategy: client.campaign_strategy,
+              notes: client.notes,
+              pitch_template: client.pitch_template,
+            },
+            podcast: {
+              show_title: result.show_title || 'the podcast',
+              show_notes_excerpt: showNotes?.slice(0, 500) || '',
+              podcast_url: podcastUrl || 'manual',
+              host_name: 'the host',
+            },
+            evaluation: {
+              verdict: result.verdict,
+              overall_score: result.overall_score,
+              evaluation_data: result,
+              rationale_short: (result as any).summary_text || result.verdict_reason,
+            }
+          })
+        }
+      );
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        let errorDescription = data.message || 'Please try again';
+        
+        if (data.message?.includes('Rate limit')) {
+          errorDescription = 'Too many requests. Please wait a moment and try again.';
+        } else if (data.message?.includes('402') || data.message?.includes('credits')) {
+          errorDescription = 'Please add credits to your Lovable AI workspace in Settings.';
+        }
+        
+        toast({
+          title: 'Failed to generate pitch',
+          description: errorDescription,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (data?.pitch) {
+        setGeneratedPitch(data.pitch);
+        setPitchMessages([{ role: 'assistant', content: data.pitch }]);
+        toast({
+          title: 'Pitch generated!',
+          description: 'Review and copy the pitch below'
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Failed to generate pitch',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive'
+      });
+    } finally {
+      setGeneratingPitch(false);
+    }
+  };
+
+  const refinePitch = async () => {
+    if (!refinementPrompt.trim() || !generatedPitch || !client) return;
+    
+    setIsRefining(true);
+    
+    try {
+      const messages = [
+        ...pitchMessages,
+        { role: 'user' as const, content: refinementPrompt }
+      ];
+      
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/generate-pitch`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            client: {
+              name: client.name,
+              title: client.title,
+              company: client.company,
+              company_url: client.company_url,
+              media_kit_url: client.media_kit_url,
+              talking_points: client.talking_points,
+              target_audiences: client.target_audiences,
+              campaign_strategy: client.campaign_strategy,
+              notes: client.notes,
+              pitch_template: client.pitch_template,
+            },
+            podcast: {
+              show_title: result.show_title || 'the podcast',
+              show_notes_excerpt: showNotes?.slice(0, 500) || '',
+              podcast_url: podcastUrl || 'manual',
+              host_name: 'the host',
+            },
+            evaluation: {
+              verdict: result.verdict,
+              overall_score: result.overall_score,
+              evaluation_data: result,
+              rationale_short: (result as any).summary_text || result.verdict_reason,
+            },
+            messages
+          })
+        }
+      );
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        toast({
+          title: 'Failed to refine pitch',
+          description: data.message || 'Please try again',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (data?.pitch) {
+        setGeneratedPitch(data.pitch);
+        setPitchMessages([...messages, { role: 'assistant', content: data.pitch }]);
+        setRefinementPrompt('');
+        toast({ description: 'Pitch refined successfully' });
+      }
+    } catch (error) {
+      toast({
+        title: 'Failed to refine pitch',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsRefining(false);
+    }
+  };
 
   return (
     <section className="mt-6 grid gap-6">
@@ -215,6 +449,101 @@ export const ResultsPanel = ({
           )}
         </Card>
       </div>
+
+      {/* Pitch Generation Section */}
+      {client && (
+        <Card className="p-6 card-surface">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Personalized Pitch
+            </h3>
+            {!generatedPitch && (
+              <Button
+                variant="hero"
+                onClick={generatePitch}
+                disabled={generatingPitch}
+              >
+                {generatingPitch && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {generatingPitch ? 'Generating...' : 'Generate Pitch'}
+              </Button>
+            )}
+          </div>
+
+          {generatingPitch && (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              Crafting personalized pitch...
+            </div>
+          )}
+
+          {generatedPitch && (
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4 bg-background">
+                <div 
+                  className="prose prose-sm max-w-none dark:prose-invert"
+                  dangerouslySetInnerHTML={{ __html: generatedPitch }}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => copyToClipboard(generatedPitch, 'Pitch')}
+                >
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copy to Clipboard
+                </Button>
+                
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    toast({ 
+                      title: 'Email needed',
+                      description: 'Copy the pitch and paste into your email client.',
+                      variant: 'default' 
+                    });
+                    copyToClipboard(generatedPitch, 'Pitch');
+                  }}
+                >
+                  <Send className="h-3 w-3 mr-1" />
+                  Send Email
+                </Button>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Refine the pitch</label>
+                <Textarea
+                  placeholder="E.g., 'Make it more casual' or 'Emphasize the technical expertise'"
+                  value={refinementPrompt}
+                  onChange={(e) => setRefinementPrompt(e.target.value)}
+                  rows={2}
+                  disabled={isRefining}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={refinePitch}
+                  disabled={!refinementPrompt.trim() || isRefining}
+                >
+                  {isRefining && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                  {isRefining ? 'Refining...' : 'Refine Pitch'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!generatedPitch && !generatingPitch && (
+            <p className="text-sm text-muted-foreground">
+              Generate a personalized pitch email based on this evaluation and your client's profile.
+            </p>
+          )}
+        </Card>
+      )}
     </section>
   );
 };
