@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
+import kitcasterLogo from "@/assets/kitcaster-logo.png";
 
 const tabs = [
   { to: "/", label: "Evaluate" },
@@ -16,8 +17,12 @@ export const Navbar = () => {
     <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-14 px-3">
         <Link to="/" className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-md bg-gradient-to-tr from-primary to-accent" aria-hidden />
-          <span className="font-semibold">Podcast Fit Rater</span>
+          <img 
+            src={kitcasterLogo} 
+            alt="Kitcaster by Moburst" 
+            className="h-8 w-auto"
+          />
+          <span className="font-semibold">Podcast Qualifying Engine</span>
         </Link>
 
         <nav className="flex items-center gap-1">
