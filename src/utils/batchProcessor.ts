@@ -6,6 +6,42 @@ import Papa from 'papaparse';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 const CACHE_KEY_PREFIX = 'pfr_batch_cache_';
 
+export type CSVFormat = 'rephonic' | 'hubspot' | 'unknown';
+
+// CSV Format Detection
+export function detectCSVFormat(csvData: any[]): CSVFormat {
+  if (csvData.length === 0) return 'unknown';
+  
+  const firstRow = csvData[0];
+  const headers = Object.keys(firstRow);
+  
+  // Check for HubSpot indicators
+  const hasListenNotes = headers.some(h => 
+    h.toLowerCase().includes('listen notes') || 
+    h === 'Listen Notes Link'
+  );
+  const hasShowNotes = headers.includes('Show Notes');
+  const hasCompanyName = headers.includes('Company name');
+  
+  if (hasListenNotes && hasShowNotes && hasCompanyName) {
+    return 'hubspot';
+  }
+  
+  // Check for Rephonic indicators
+  const hasApplePodcasts = headers.some(h => 
+    h === 'Apple Podcasts' || 
+    h.toLowerCase() === 'apple podcasts'
+  );
+  const hasListeners = headers.includes('Listeners Per Episode');
+  const hasPublisher = headers.includes('Publisher');
+  
+  if (hasApplePodcasts && (hasListeners || hasPublisher)) {
+    return 'rephonic';
+  }
+  
+  return 'unknown';
+}
+
 // URL validation and normalization
 export function normalizeUrl(url: string): string {
   try {
@@ -39,7 +75,7 @@ export function createUrlHash(url: string): string {
 
 // Helper to detect URL column
 function detectUrlColumn(row: any): string | null {
-  const urlColumns = ['podcast_url', 'url', 'Apple Podcasts', 'apple_podcasts', 'Website', 'website'];
+  const urlColumns = ['podcast_url', 'url', 'Apple Podcasts', 'apple_podcasts', 'Listen Notes Link', 'Website', 'website'];
   for (const col of urlColumns) {
     if (row[col] && typeof row[col] === 'string' && row[col].trim()) {
       return row[col].trim();
@@ -134,7 +170,8 @@ export function setCachedResult(urlHash: string, data: any): void {
 export async function processSingleUrl(
   row: BatchRow, 
   client: MinimalClient,
-  forceRefresh = false
+  forceRefresh = false,
+  skipScraping = false
 ): Promise<BatchRow> {
   try {
     const urlHash = createUrlHash(row.podcast_url);
@@ -153,15 +190,28 @@ export async function processSingleUrl(
       }
     }
     
-    // Scrape content
-    const scrapeResult = await callScrape(row.podcast_url);
-    if (!scrapeResult || scrapeResult.error) {
-      throw new Error(scrapeResult?.error || 'Failed to scrape content');
-    }
+    // Scrape content (skip if HubSpot CSV with show notes)
+    let showNotes = '';
+    let showTitle = '';
+    let scrapeResult: any = null;
     
-    const showNotes = scrapeResult.show_notes || row.show_notes_fallback || '';
-    if (!showNotes) {
-      throw new Error('No content found');
+    if (skipScraping && row.show_notes_fallback) {
+      // Use provided show notes directly (HubSpot case)
+      showNotes = row.show_notes_fallback;
+      showTitle = row.metadata?.name || '';
+    } else {
+      // Scrape content (Rephonic case or fallback)
+      scrapeResult = await callScrape(row.podcast_url);
+      if (!scrapeResult || scrapeResult.error) {
+        throw new Error(scrapeResult?.error || 'Failed to scrape content');
+      }
+      
+      showNotes = scrapeResult.show_notes || row.show_notes_fallback || '';
+      showTitle = scrapeResult.title || '';
+      
+      if (!showNotes) {
+        throw new Error('No content found');
+      }
     }
     
     // Analyze content
@@ -186,7 +236,7 @@ export async function processSingleUrl(
       error: undefined,
       url_hash: urlHash,
       cache_timestamp: Date.now(),
-      show_title: scrapeResult.title || data.show_title,
+      show_title: showTitle || data.show_title,
       verdict: mapVerdict(data.verdict),
       overall_score: data.overall_score,
       confidence: data.confidence,
@@ -285,8 +335,11 @@ export function exportToCSV(rows: BatchRow[], filename = 'batch-results.csv'): v
     listeners_per_episode: row.metadata?.listeners_per_episode || '',
     monthly_listens: row.metadata?.monthly_listens || '',
     social_reach: row.metadata?.social_reach || '',
+    global_rank: row.metadata?.social_reach || '', // HubSpot uses this field
     categories: row.metadata?.categories || '',
     engagement: row.metadata?.engagement || '',
+    language: row.metadata?.language || '',
+    status_field: row.metadata?.status || '',
     verdict: row.verdict || '',
     overall_score: row.overall_score !== undefined ? Math.round(row.overall_score) : '',
     confidence: row.confidence !== undefined ? Math.round(row.confidence * 100) : '',

@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { ClientCombobox } from '@/components/ClientCombobox';
 import { ResultsTable } from '@/components/batch/ResultsTable';
 import { EvaluationPanel } from '@/components/batch/EvaluationPanel';
@@ -22,7 +23,9 @@ import {
   processSingleUrl, 
   exportToCSV,
   detectUrlColumn,
-  detectDescriptionColumn
+  detectDescriptionColumn,
+  detectCSVFormat,
+  CSVFormat
 } from '@/utils/batchProcessor';
 import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +41,7 @@ const Batch = () => {
   const [clientsLoading, setClientsLoading] = useState(true);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
+  const [detectedFormat, setDetectedFormat] = useState<CSVFormat>('unknown');
   const [selectedRow, setSelectedRow] = useState<BatchRow | null>(null);
   const [autoGenerate, setAutoGenerate] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -118,32 +122,58 @@ const Batch = () => {
     try {
       setCsvFile(file);
       const data = await parseCSV(file);
+      const format = detectCSVFormat(data);
+      setDetectedFormat(format);
+      
       const preflight = validateAndDedupeUrls(data);
       setPreflightResult(preflight);
       
-      // Convert to batch rows, preserving Rephonic metadata
+      // Convert to batch rows based on detected format
       const rows: BatchRow[] = preflight.valid_urls.map((url, index) => {
         const sourceRow = data.find(d => detectUrlColumn(d) === url);
         
-        return {
-          id: `row-${index}`,
-          podcast_url: url,
-          show_notes_fallback: sourceRow ? detectDescriptionColumn(sourceRow) : undefined,
-          status: 'pending',
-          metadata: sourceRow ? {
-            name: sourceRow.Name,
-            publisher: sourceRow.Publisher,
-            listeners_per_episode: sourceRow['Listeners Per Episode'] ? parseInt(sourceRow['Listeners Per Episode'].replace(/,/g, '')) : undefined,
-            monthly_listens: sourceRow['Monthly Listens'] ? parseInt(sourceRow['Monthly Listens'].replace(/,/g, '')) : undefined,
-            categories: sourceRow.Categories,
-            social_reach: sourceRow['Social Reach'] ? parseInt(sourceRow['Social Reach'].replace(/,/g, '')) : undefined,
-            engagement: sourceRow.Engagement ? parseInt(sourceRow.Engagement) : undefined,
-            language: sourceRow.Language,
-            status: sourceRow.Status,
-            publishes: sourceRow.Publishes,
-            website: sourceRow.Website
-          } : undefined
-        };
+        if (format === 'hubspot') {
+          // HubSpot format mapping
+          return {
+            id: `row-${index}`,
+            podcast_url: url,
+            show_notes_fallback: sourceRow?.['Show Notes'],
+            status: 'pending',
+            metadata: {
+              name: sourceRow?.['Company name'],
+              publisher: sourceRow?.['Company owner'],
+              categories: [
+                sourceRow?.['Category 1'],
+                sourceRow?.['Category 2']
+              ].filter(Boolean).join('; '),
+              social_reach: sourceRow?.['Global Rank'] ? parseInt(sourceRow['Global Rank']) : undefined,
+              language: undefined,
+              status: sourceRow?.['No Longer in Production?'] === 'Yes' ? 'Inactive' : 'Active',
+              website: sourceRow?.['Listen Notes Link']
+            }
+          };
+        } else {
+          // Rephonic format mapping (default)
+          return {
+            id: `row-${index}`,
+            podcast_url: url,
+            show_notes_fallback: sourceRow ? detectDescriptionColumn(sourceRow) : undefined,
+            status: 'pending',
+            metadata: sourceRow ? {
+              name: sourceRow.Name,
+              publisher: sourceRow.Publisher,
+              listeners_per_episode: sourceRow['Listeners Per Episode'] ? parseInt(sourceRow['Listeners Per Episode'].replace(/,/g, '')) : undefined,
+              monthly_listens: sourceRow['Monthly Listens'] ? parseInt(sourceRow['Monthly Listens'].replace(/,/g, '')) : undefined,
+              categories: sourceRow.Categories,
+              social_reach: sourceRow['Social Reach'] ? parseInt(sourceRow['Social Reach'].replace(/,/g, '')) : undefined,
+              engagement: sourceRow.Engagement ? parseInt(sourceRow.Engagement) : undefined,
+              language: sourceRow.Language,
+              status: sourceRow.Status,
+              publishes: sourceRow.Publishes,
+              website: sourceRow.Website
+            } : undefined
+          };
+        }
       });
       
       setState(prev => ({ ...prev, rows, total: rows.length }));
@@ -214,6 +244,9 @@ const Batch = () => {
       return;
     }
     
+    // Determine if we should skip scraping based on format
+    const skipScraping = detectedFormat === 'hubspot';
+    
     setState(prev => ({ ...prev, processing: true, completed: 0 }));
     
     const processingQueue = [...state.rows.filter(row => row.status === 'pending' || row.status === 'retry')];
@@ -231,9 +264,9 @@ const Batch = () => {
         )
       }));
       
-      // Process batch concurrently
+      // Process batch concurrently with skipScraping parameter
       const results = await Promise.allSettled(
-        batch.map(row => processSingleUrl(row, client))
+        batch.map(row => processSingleUrl(row, client, false, skipScraping))
       );
       
       // Update results
@@ -258,7 +291,7 @@ const Batch = () => {
     
     setState(prev => ({ ...prev, processing: false }));
     toast({ description: 'Batch processing completed' });
-  }, [state.client_id, state.rows, clients, toast]);
+  }, [state.client_id, state.rows, clients, toast, detectedFormat]);
   
   // Retry failed row
   const retryRow = useCallback(async (row: BatchRow) => {
@@ -267,13 +300,16 @@ const Batch = () => {
     const client = clients.find(c => c.id === state.client_id);
     if (!client) return;
     
+    // Determine if we should skip scraping based on format
+    const skipScraping = detectedFormat === 'hubspot';
+    
     setState(prev => ({
       ...prev,
       rows: prev.rows.map(r => r.id === row.id ? { ...r, status: 'processing', error: undefined } : r)
     }));
     
     try {
-      const result = await processSingleUrl(row, client, true); // Force refresh
+      const result = await processSingleUrl(row, client, true, skipScraping); // Force refresh
       setState(prev => ({
         ...prev,
         rows: prev.rows.map(r => r.id === row.id ? result : r)
@@ -284,7 +320,7 @@ const Batch = () => {
         rows: prev.rows.map(r => r.id === row.id ? { ...r, status: 'error', error: 'Retry failed' } : r)
       }));
     }
-  }, [state.client_id, clients]);
+  }, [state.client_id, clients, detectedFormat]);
   
   // Extract unique categories from all rows
   const availableCategories = useMemo(() => {
@@ -653,13 +689,20 @@ const Batch = () => {
               <Alert>
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span>{preflightResult.total_unique} valid URLs</span>
-                    {preflightResult.invalid_urls.length > 0 && (
-                      <span className="text-red-600">{preflightResult.invalid_urls.length} invalid</span>
-                    )}
-                    {preflightResult.duplicates.length > 0 && (
-                      <span className="text-orange-600">{preflightResult.duplicates.length} duplicates removed</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-sm">
+                      <span>{preflightResult.total_unique} valid URLs</span>
+                      {preflightResult.invalid_urls.length > 0 && (
+                        <span className="text-red-600">{preflightResult.invalid_urls.length} invalid</span>
+                      )}
+                      {preflightResult.duplicates.length > 0 && (
+                        <span className="text-orange-600">{preflightResult.duplicates.length} duplicates removed</span>
+                      )}
+                    </div>
+                    {detectedFormat !== 'unknown' && (
+                      <Badge variant={detectedFormat === 'rephonic' ? 'default' : 'secondary'}>
+                        {detectedFormat === 'rephonic' ? '🎵 Rephonic' : '🎧 HubSpot'}
+                      </Badge>
                     )}
                   </div>
                 </AlertDescription>
