@@ -254,6 +254,112 @@ export function parseContactFirstName(associatedContact: string | undefined): st
   return 'the host';
 }
 
+/**
+ * Parse contact info from Rephonic's "All Contacts" field
+ * Priority: Host contacts > Podcast contacts > First available
+ * 
+ * Format: Multi-line with "Email: address (Name, Role)"
+ * Example:
+ *   Email: maya.harper@singlegrain.com (Podcast)
+ *   Email: eric@singlegrain.com (Eric Siu, Host)
+ *   Email: neil@neilpatel.com (Neil Patel, Host)
+ * 
+ * Returns the FIRST Host contact if available, otherwise first Podcast contact
+ */
+export function parseRephonicContact(
+  allContacts: string | undefined,
+  publisherFallback?: string
+): ParsedContact {
+  const fallback: ParsedContact = {
+    firstName: '',
+    lastName: '',
+    email: ''
+  };
+  
+  if (!allContacts || allContacts.trim() === '') {
+    // Fallback to Publisher field if All Contacts is empty
+    if (publisherFallback && publisherFallback.trim()) {
+      const parts = publisherFallback.trim().split(/\s+/).filter(Boolean);
+      return {
+        firstName: parts[0] || '',
+        lastName: parts.slice(1).join(' ') || '',
+        email: ''
+      };
+    }
+    return fallback;
+  }
+  
+  // Split by newlines to get individual contact entries
+  const contactLines = allContacts.split(/\n/).map(line => line.trim()).filter(Boolean);
+  
+  // Filter for email lines only (ignore "Page:" lines)
+  const emailLines = contactLines.filter(line => line.startsWith('Email:'));
+  
+  if (emailLines.length === 0) {
+    return fallback;
+  }
+  
+  // Look for Host contact first (contains "Host" or ends with ", Host)")
+  let targetLine = emailLines.find(line => 
+    /\(.*Host.*\)/i.test(line)
+  );
+  
+  // If no host, look for Podcast contact
+  if (!targetLine) {
+    targetLine = emailLines.find(line => 
+      /\(.*Podcast.*\)/i.test(line)
+    );
+  }
+  
+  // If still nothing, take the first email line
+  if (!targetLine) {
+    targetLine = emailLines[0];
+  }
+  
+  // Parse the selected line
+  // Format: "Email: address@domain.com (First Last, Role)" or "Email: address@domain.com"
+  
+  // Remove "Email:" prefix
+  let content = targetLine.replace(/^Email:\s*/i, '').trim();
+  
+  // Extract email (everything before the opening parenthesis or end of string)
+  const emailMatch = content.match(/^([^\s(]+@[^\s(]+)/);
+  const email = emailMatch ? emailMatch[1].trim() : '';
+  
+  // Extract name from parentheses if present
+  const nameMatch = content.match(/\(([^)]+)\)/);
+  let nameOnly = '';
+  
+  if (nameMatch) {
+    // Format: "First Last, Role" or "First Last"
+    nameOnly = nameMatch[1];
+    
+    // Remove role suffix (everything after comma)
+    if (nameOnly.includes(',')) {
+      nameOnly = nameOnly.split(',')[0].trim();
+    }
+  }
+  
+  // Split name into parts
+  const nameParts = nameOnly.split(/\s+/).filter(Boolean);
+  
+  if (nameParts.length === 0) {
+    return { ...fallback, email };
+  } else if (nameParts.length === 1) {
+    return {
+      firstName: nameParts[0],
+      lastName: '',
+      email
+    };
+  } else {
+    return {
+      firstName: nameParts[0],
+      lastName: nameParts.slice(1).join(' '),
+      email
+    };
+  }
+}
+
 export { detectUrlColumn, detectDescriptionColumn };
 
 // Cache management
@@ -501,6 +607,44 @@ export function exportToHubSpotTickets(
       'Ticket owner': campaignManager || '',
       'Ticket Name': row.show_title || row.metadata?.name || '',
       'Company Properties - Record ID': row.metadata?.record_id || '',
+      'Ticket Client': clientName || '',
+      'Host First Name': contact.firstName,
+      'Host Last name': contact.lastName,
+      'Host Email': contact.email
+    };
+  });
+  
+  const csv = Papa.unparse(exportData);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+/**
+ * Export Rephonic CSV results in HubSpot ticket import format
+ * ONLY for Rephonic-sourced data
+ * Company Properties - Record ID is always blank for Rephonic
+ */
+export function exportRephonicToHubSpotTickets(
+  rows: BatchRow[], 
+  campaignManager: string,
+  clientName: string,
+  filename = 'rephonic-hubspot-tickets.csv'
+): void {
+  const exportData = rows.map(row => {
+    const contact = parseRephonicContact(
+      row.metadata?.all_contacts,
+      row.metadata?.publisher
+    );
+    
+    return {
+      'Pipeline': 'Agent Master Pipeline',
+      'Ticket status': 'Working 1',
+      'Ticket owner': campaignManager || '',
+      'Ticket Name': row.show_title || row.metadata?.name || '',
+      'Company Properties - Record ID': '',  // Always blank for Rephonic
       'Ticket Client': clientName || '',
       'Host First Name': contact.firstName,
       'Host Last name': contact.lastName,

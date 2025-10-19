@@ -23,6 +23,7 @@ import {
   processSingleUrl, 
   exportToCSV,
   exportToHubSpotTickets,
+  exportRephonicToHubSpotTickets,
   detectUrlColumn,
   detectDescriptionColumn,
   detectCSVFormat,
@@ -174,6 +175,7 @@ const Batch = () => {
             metadata: sourceRow ? {
               name: sourceRow.Name,
               publisher: sourceRow.Publisher,
+              all_contacts: sourceRow['All Contacts'],
               listeners_per_episode: sourceRow['Listeners Per Episode'] ? parseInt(sourceRow['Listeners Per Episode'].replace(/,/g, '')) : undefined,
               monthly_listens: sourceRow['Monthly Listens'] ? parseInt(sourceRow['Monthly Listens'].replace(/,/g, '')) : undefined,
               categories: sourceRow.Categories,
@@ -524,14 +526,24 @@ const Batch = () => {
       return;
     }
     
-    if (format === 'tickets' && detectedFormat === 'hubspot') {
-      const client = clients.find(c => c.id === state.client_id);
-      exportToHubSpotTickets(
-        selectedRows,
-        client?.campaign_manager || '',
-        client?.name || '',
-        `hubspot-tickets-selected-${Date.now()}.csv`
-      );
+    const client = clients.find(c => c.id === state.client_id);
+    
+    if (format === 'tickets') {
+      if (detectedFormat === 'hubspot') {
+        exportToHubSpotTickets(
+          selectedRows,
+          client?.campaign_manager || '',
+          client?.name || '',
+          `hubspot-tickets-selected-${Date.now()}.csv`
+        );
+      } else if (detectedFormat === 'rephonic') {
+        exportRephonicToHubSpotTickets(
+          selectedRows,
+          client?.campaign_manager || '',
+          client?.name || '',
+          `rephonic-hubspot-tickets-selected-${Date.now()}.csv`
+        );
+      }
       toast({ description: `Exported ${selectedRows.length} rows as HubSpot tickets` });
     } else {
       exportToCSV(selectedRows, `batch-selected-${Date.now()}.csv`);
@@ -546,14 +558,24 @@ const Batch = () => {
       return;
     }
     
-    if (format === 'tickets' && detectedFormat === 'hubspot') {
-      const client = clients.find(c => c.id === state.client_id);
-      exportToHubSpotTickets(
-        completedRows,
-        client?.campaign_manager || '',
-        client?.name || '',
-        `hubspot-tickets-all-${Date.now()}.csv`
-      );
+    const client = clients.find(c => c.id === state.client_id);
+    
+    if (format === 'tickets') {
+      if (detectedFormat === 'hubspot') {
+        exportToHubSpotTickets(
+          completedRows,
+          client?.campaign_manager || '',
+          client?.name || '',
+          `hubspot-tickets-all-${Date.now()}.csv`
+        );
+      } else if (detectedFormat === 'rephonic') {
+        exportRephonicToHubSpotTickets(
+          completedRows,
+          client?.campaign_manager || '',
+          client?.name || '',
+          `rephonic-hubspot-tickets-all-${Date.now()}.csv`
+        );
+      }
       toast({ description: `Exported ${completedRows.length} rows as HubSpot tickets` });
     } else {
       exportToCSV(completedRows, `batch-all-${Date.now()}.csv`);
@@ -1016,7 +1038,7 @@ const Batch = () => {
                         <DropdownMenuItem onClick={() => exportSelected('raw')}>
                           Export as Raw Data
                         </DropdownMenuItem>
-                        {detectedFormat === 'hubspot' && (
+                        {(detectedFormat === 'hubspot' || detectedFormat === 'rephonic') && (
                           <DropdownMenuItem onClick={() => exportSelected('tickets')}>
                             Export as HubSpot Tickets
                           </DropdownMenuItem>
@@ -1037,7 +1059,7 @@ const Batch = () => {
                         <DropdownMenuItem onClick={() => exportAll('raw')}>
                           Export as Raw Data
                         </DropdownMenuItem>
-                        {detectedFormat === 'hubspot' && (
+                        {(detectedFormat === 'hubspot' || detectedFormat === 'rephonic') && (
                           <DropdownMenuItem onClick={() => exportAll('tickets')}>
                             Export as HubSpot Tickets
                           </DropdownMenuItem>

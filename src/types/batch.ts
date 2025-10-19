@@ -22,6 +22,7 @@ export interface BatchRow {
     website?: string;
     record_id?: string;
     only_emails?: string;
+    all_contacts?: string;
   };
   
   // Results
