@@ -132,20 +132,21 @@ export function ResultsTable({
               {/* Social Reach (Rephonic) OR Global Rank (HubSpot) */}
               <TableCell>
                 {detectedFormat === 'hubspot' ? (
-                  // HubSpot: Show Global Rank
-                  row.metadata?.global_rank !== undefined ? (
+                  // HubSpot: Show Global Rank as percentage
+                  row.metadata?.global_rank ? (
                     <div className="text-sm">
                       <div className="font-medium">
-                        {row.metadata.global_rank === 0 
-                          ? 'unranked' 
-                          : `#${row.metadata.global_rank.toLocaleString()}`
-                        }
+                        {row.metadata.global_rank}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         global
                       </div>
                     </div>
-                  ) : null
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      unranked
+                    </div>
+                  )
                 ) : (
                   // Rephonic: Show Social Reach
                   row.metadata?.social_reach !== undefined ? (

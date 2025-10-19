@@ -25,6 +25,7 @@ import {
   detectUrlColumn,
   detectDescriptionColumn,
   detectCSVFormat,
+  parseGlobalRankPercentage,
   CSVFormat
 } from '@/utils/batchProcessor';
 import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2, Play } from 'lucide-react';
@@ -149,7 +150,7 @@ const Batch = () => {
                 sourceRow?.['Category 1'],
                 sourceRow?.['Category 2']
               ].filter(Boolean).join('; '),
-              global_rank: sourceRow?.['Global Rank'] ? parseInt(sourceRow['Global Rank']) : undefined,
+              global_rank: sourceRow?.['Global Rank'] || undefined,
               language: undefined,
               status: sourceRow?.['No Longer in Production?'] === 'Yes' ? 'Inactive' : 'Active',
               website: sourceRow?.['Listen Notes Link']
@@ -429,20 +430,23 @@ const Batch = () => {
       }
       // Global rank filter (HubSpot only)
       if (detectedFormat === 'hubspot' && state.filters.min_global_rank !== 'all') {
-        const rankThresholdMap = {
+        const rankThresholdMap: Record<string, number> = {
           'all': Infinity,
-          '1000+': 1000,
-          '5000+': 5000,
-          '10000+': 10000,
-          '50000+': 50000,
-          '100000+': 100000
+          '10%': 10,
+          '5%': 5,
+          '3%': 3,
+          '2%': 2,
+          '1%': 1,
+          '0.5%': 0.5
         };
-        const maxRank = rankThresholdMap[state.filters.min_global_rank];
+        const maxPercentage = rankThresholdMap[state.filters.min_global_rank];
         
-        // Filter: must have global_rank, must be > 0 (ranked), and must be <= threshold
-        if (!row.metadata?.global_rank || 
-            row.metadata.global_rank === 0 || 
-            row.metadata.global_rank > maxRank) {
+        // Parse the percentage from the global_rank string
+        const rowPercentage = parseGlobalRankPercentage(row.metadata?.global_rank);
+        
+        // Filter: must have valid percentage and must be <= threshold
+        // (Lower percentage = better rank, e.g., Top 1% is better than Top 10%)
+        if (rowPercentage === null || rowPercentage > maxPercentage) {
           return false;
         }
       }
@@ -927,11 +931,12 @@ const Batch = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Ranks</SelectItem>
-                            <SelectItem value="1000+">Top 1,000</SelectItem>
-                            <SelectItem value="5000+">Top 5,000</SelectItem>
-                            <SelectItem value="10000+">Top 10,000</SelectItem>
-                            <SelectItem value="50000+">Top 50,000</SelectItem>
-                            <SelectItem value="100000+">Top 100,000</SelectItem>
+                            <SelectItem value="10%">Top 10%</SelectItem>
+                            <SelectItem value="5%">Top 5%</SelectItem>
+                            <SelectItem value="3%">Top 3%</SelectItem>
+                            <SelectItem value="2%">Top 2%</SelectItem>
+                            <SelectItem value="1%">Top 1%</SelectItem>
+                            <SelectItem value="0.5%">Top 0.5%</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

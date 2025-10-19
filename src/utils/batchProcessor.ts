@@ -139,6 +139,24 @@ export function validateAndDedupeUrls(csvData: any[]): PreflightResult {
  * - "IBM podcasts team (ibmpods@ibm.com)" -> "IBM podcasts team"
  * - "John Doe, Jane Smith (emails...)" -> "John" (takes first contact only)
  */
+/**
+ * Extract numeric percentage from HubSpot's Global Rank field
+ * Examples: "Top 10%" → 10, "Top 0.5%" → 0.5, "unranked" → null
+ */
+export function parseGlobalRankPercentage(globalRank: string | undefined): number | null {
+  if (!globalRank || globalRank.toLowerCase() === 'unranked') {
+    return null;
+  }
+  
+  // Extract numbers from strings like "Top 10%" or "Top 0.5%"
+  const match = globalRank.match(/(\d+\.?\d*)/);
+  if (match && match[1]) {
+    return parseFloat(match[1]);
+  }
+  
+  return null;
+}
+
 export function parseContactFirstName(associatedContact: string | undefined): string {
   if (!associatedContact || associatedContact.trim() === '') {
     return 'the host';
@@ -376,9 +394,7 @@ export function exportToCSV(rows: BatchRow[], filename = 'batch-results.csv'): v
     listeners_per_episode: row.metadata?.listeners_per_episode !== undefined ? row.metadata.listeners_per_episode : '',
     monthly_listens: row.metadata?.monthly_listens !== undefined ? row.metadata.monthly_listens : '',
     social_reach: row.metadata?.social_reach || '',
-    global_rank: row.metadata?.global_rank !== undefined 
-      ? (row.metadata.global_rank === 0 ? 'unranked' : row.metadata.global_rank)
-      : '',
+    global_rank: row.metadata?.global_rank || '',
     categories: row.metadata?.categories || '',
     engagement: row.metadata?.engagement !== undefined ? row.metadata.engagement : '',
     language: row.metadata?.language || '',
