@@ -376,7 +376,9 @@ export function exportToCSV(rows: BatchRow[], filename = 'batch-results.csv'): v
     listeners_per_episode: row.metadata?.listeners_per_episode !== undefined ? row.metadata.listeners_per_episode : '',
     monthly_listens: row.metadata?.monthly_listens !== undefined ? row.metadata.monthly_listens : '',
     social_reach: row.metadata?.social_reach || '',
-    global_rank: row.metadata?.social_reach || '',
+    global_rank: row.metadata?.global_rank !== undefined 
+      ? (row.metadata.global_rank === 0 ? 'unranked' : row.metadata.global_rank)
+      : '',
     categories: row.metadata?.categories || '',
     engagement: row.metadata?.engagement !== undefined ? row.metadata.engagement : '',
     language: row.metadata?.language || '',

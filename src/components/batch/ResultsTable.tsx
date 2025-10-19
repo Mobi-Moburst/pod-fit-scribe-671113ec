@@ -19,6 +19,7 @@ interface ResultsTableProps {
   onRetry: (row: BatchRow) => void;
   onGeneratePitch?: (row: BatchRow) => void;
   loading?: boolean;
+  detectedFormat?: 'rephonic' | 'hubspot' | 'unknown';
 }
 
 export function ResultsTable({ 
@@ -29,7 +30,8 @@ export function ResultsTable({
   onRowClick, 
   onRetry,
   onGeneratePitch,
-  loading = false 
+  loading = false,
+  detectedFormat = 'unknown'
 }: ResultsTableProps) {
   const allSelected = rows.length > 0 && rows.every(row => selectedRows.has(row.id));
   const someSelected = rows.some(row => selectedRows.has(row.id));
@@ -83,7 +85,7 @@ export function ResultsTable({
             </TableHead>
             <TableHead className="min-w-[200px]">Podcast</TableHead>
             <TableHead>Listeners</TableHead>
-            <TableHead>Reach</TableHead>
+            <TableHead>{detectedFormat === 'hubspot' ? 'Global Rank' : 'Reach'}</TableHead>
             <TableHead className="min-w-[150px]">Categories</TableHead>
             <TableHead>Last Published</TableHead>
             <TableHead>Verdict</TableHead>
@@ -127,17 +129,35 @@ export function ResultsTable({
                 )}
               </TableCell>
 
-              {/* Social Reach */}
+              {/* Social Reach (Rephonic) OR Global Rank (HubSpot) */}
               <TableCell>
-                {row.metadata?.social_reach !== undefined && (
-                  <div className="text-sm">
-                    <div className="font-medium">
-                      {row.metadata.social_reach.toLocaleString()}
+                {detectedFormat === 'hubspot' ? (
+                  // HubSpot: Show Global Rank
+                  row.metadata?.global_rank !== undefined ? (
+                    <div className="text-sm">
+                      <div className="font-medium">
+                        {row.metadata.global_rank === 0 
+                          ? 'unranked' 
+                          : `#${row.metadata.global_rank.toLocaleString()}`
+                        }
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        global
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      followers
+                  ) : null
+                ) : (
+                  // Rephonic: Show Social Reach
+                  row.metadata?.social_reach !== undefined ? (
+                    <div className="text-sm">
+                      <div className="font-medium">
+                        {row.metadata.social_reach.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        followers
+                      </div>
                     </div>
-                  </div>
+                  ) : null
                 )}
               </TableCell>
 

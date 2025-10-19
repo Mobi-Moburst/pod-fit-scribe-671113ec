@@ -14,6 +14,7 @@ export interface BatchRow {
     monthly_listens?: number;
     categories?: string;
     social_reach?: number;
+    global_rank?: number;
     engagement?: number;
     language?: string;
     status?: string;
@@ -62,6 +63,7 @@ export interface BatchState {
     categories: string[];
     min_engagement: 'all' | '70+' | '60+' | '50+' | '40+';
     published_within: 'all' | '30d' | '90d' | '180d' | '1y';
+    min_global_rank: 'all' | '1000+' | '5000+' | '10000+' | '50000+' | '100000+';
   };
   selected_rows: Set<string>;
   current_page: number;
