@@ -1,7 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { ThemeProvider } from './components/ThemeProvider'
 
 const root = document.getElementById("root")!
 
@@ -10,8 +9,4 @@ if (!document.documentElement.classList.contains('dark')) {
   document.documentElement.classList.add('dark')
 }
 
-createRoot(root).render(
-  <ThemeProvider>
-    <App />
-  </ThemeProvider>
-);
+createRoot(root).render(<App />);
