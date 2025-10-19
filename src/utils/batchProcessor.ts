@@ -144,14 +144,21 @@ export function validateAndDedupeUrls(csvData: any[]): PreflightResult {
  * Examples: "Top 10%" → 10, "Top 0.5%" → 0.5, "unranked" → null
  */
 export function parseGlobalRankPercentage(globalRank: string | undefined): number | null {
-  if (!globalRank || globalRank.toLowerCase() === 'unranked') {
+  if (!globalRank || 
+      globalRank.toLowerCase() === 'unranked' || 
+      globalRank.trim() === '0') {
     return null;
   }
   
   // Extract numbers from strings like "Top 10%" or "Top 0.5%"
   const match = globalRank.match(/(\d+\.?\d*)/);
   if (match && match[1]) {
-    return parseFloat(match[1]);
+    const parsed = parseFloat(match[1]);
+    // Double-check that we didn't just parse "0" or "0.0"
+    if (parsed === 0) {
+      return null;
+    }
+    return parsed;
   }
   
   return null;
