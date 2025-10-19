@@ -20,6 +20,8 @@ export interface BatchRow {
     status?: string;
     publishes?: string;
     website?: string;
+    record_id?: string;
+    only_emails?: string;
   };
   
   // Results

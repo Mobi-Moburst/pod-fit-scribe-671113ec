@@ -22,13 +22,20 @@ import {
   validateAndDedupeUrls, 
   processSingleUrl, 
   exportToCSV,
+  exportToHubSpotTickets,
   detectUrlColumn,
   detectDescriptionColumn,
   detectCSVFormat,
   parseGlobalRankPercentage,
   CSVFormat
 } from '@/utils/batchProcessor';
-import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2, Play } from 'lucide-react';
+import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2, Play, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -145,6 +152,7 @@ const Batch = () => {
               name: sourceRow?.['Company name'],
               publisher: sourceRow?.['Company owner'],
               associated_contact: sourceRow?.['Associated Contact'],
+              record_id: sourceRow?.['Record ID'],
               // No listener data for HubSpot CSVs
               categories: [
                 sourceRow?.['Category 1'],
@@ -509,23 +517,49 @@ const Batch = () => {
   }, []);
   
   // Export handlers
-  const exportSelected = useCallback(() => {
+  const exportSelected = useCallback((format: 'raw' | 'tickets' = 'raw') => {
     const selectedRows = state.rows.filter(row => state.selected_rows.has(row.id));
     if (selectedRows.length === 0) {
       toast({ description: 'No rows selected for export', variant: 'destructive' });
       return;
     }
-    exportToCSV(selectedRows, 'batch-results-selected.csv');
-  }, [state.rows, state.selected_rows, toast]);
+    
+    if (format === 'tickets' && detectedFormat === 'hubspot') {
+      const client = clients.find(c => c.id === state.client_id);
+      exportToHubSpotTickets(
+        selectedRows,
+        client?.campaign_manager || '',
+        client?.name || '',
+        `hubspot-tickets-selected-${Date.now()}.csv`
+      );
+      toast({ description: `Exported ${selectedRows.length} rows as HubSpot tickets` });
+    } else {
+      exportToCSV(selectedRows, `batch-selected-${Date.now()}.csv`);
+      toast({ description: `Exported ${selectedRows.length} rows` });
+    }
+  }, [state.rows, state.selected_rows, state.client_id, detectedFormat, clients, toast]);
   
-  const exportAll = useCallback(() => {
+  const exportAll = useCallback((format: 'raw' | 'tickets' = 'raw') => {
     const completedRows = state.rows.filter(row => row.status === 'success');
     if (completedRows.length === 0) {
       toast({ description: 'No completed results to export', variant: 'destructive' });
       return;
     }
-    exportToCSV(completedRows);
-  }, [state.rows, toast]);
+    
+    if (format === 'tickets' && detectedFormat === 'hubspot') {
+      const client = clients.find(c => c.id === state.client_id);
+      exportToHubSpotTickets(
+        completedRows,
+        client?.campaign_manager || '',
+        client?.name || '',
+        `hubspot-tickets-all-${Date.now()}.csv`
+      );
+      toast({ description: `Exported ${completedRows.length} rows as HubSpot tickets` });
+    } else {
+      exportToCSV(completedRows, `batch-all-${Date.now()}.csv`);
+      toast({ description: `Exported ${completedRows.length} rows` });
+    }
+  }, [state.rows, state.client_id, detectedFormat, clients, toast]);
 
   const saveBatchToHistory = useCallback(async () => {
     if (!state.client_id) {
@@ -968,14 +1002,49 @@ const Batch = () => {
                     <Button size="sm" variant="outline" onClick={selectAllPassing}>
                       Select All Passing
                     </Button>
-                    <Button size="sm" variant="outline" onClick={exportSelected} disabled={state.selected_rows.size === 0}>
-                      <Download className="h-3 w-3 mr-1" />
-                      Export Selected ({state.selected_rows.size})
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={exportAll}>
-                      <Download className="h-3 w-3 mr-1" />
-                      Export All
-                    </Button>
+                    
+                    {/* Export Selected Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline" disabled={state.selected_rows.size === 0}>
+                          <Download className="h-3 w-3 mr-1" />
+                          Export Selected ({state.selected_rows.size})
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => exportSelected('raw')}>
+                          Export as Raw Data
+                        </DropdownMenuItem>
+                        {detectedFormat === 'hubspot' && (
+                          <DropdownMenuItem onClick={() => exportSelected('tickets')}>
+                            Export as HubSpot Tickets
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    
+                    {/* Export All Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline" disabled={filteredRows.length === 0}>
+                          <Download className="h-3 w-3 mr-1" />
+                          Export All
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => exportAll('raw')}>
+                          Export as Raw Data
+                        </DropdownMenuItem>
+                        {detectedFormat === 'hubspot' && (
+                          <DropdownMenuItem onClick={() => exportAll('tickets')}>
+                            Export as HubSpot Tickets
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    
                     <Button size="sm" onClick={saveBatchToHistory}>
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Save to History

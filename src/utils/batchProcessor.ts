@@ -133,12 +133,69 @@ export function validateAndDedupeUrls(csvData: any[]): PreflightResult {
 }
 
 /**
- * Extract first name from HubSpot's "Associated Contact" field
- * Handles formats like:
- * - "Scott Davison (scottydavison@gmail.com)" -> "Scott"
- * - "IBM podcasts team (ibmpods@ibm.com)" -> "IBM podcasts team"
- * - "John Doe, Jane Smith (emails...)" -> "John" (takes first contact only)
+ * Parse full name and email from contact fields
+ * Used for both HubSpot "Associated Contact" and Rephonic "Publisher"/"Only Emails"
  */
+export interface ParsedContact {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+/**
+ * Parse contact information from HubSpot's "Associated Contact" field
+ * Examples:
+ * - "Scott Davison (scottydavison@gmail.com)" → { firstName: "Scott", lastName: "Davison", email: "scottydavison@gmail.com" }
+ * - "John Smith, Jane Doe (emails...)" → { firstName: "John", lastName: "Smith", email: "..." } (first contact only)
+ */
+export function parseContactInfo(associatedContact: string | undefined): ParsedContact {
+  const fallback: ParsedContact = {
+    firstName: '',
+    lastName: '',
+    email: ''
+  };
+  
+  if (!associatedContact || associatedContact.trim() === '') {
+    return fallback;
+  }
+  
+  // Extract email from parentheses: "(email@example.com)"
+  const emailMatch = associatedContact.match(/\(([^)]*@[^)]*)\)/);
+  const email = emailMatch ? emailMatch[1].trim() : '';
+  
+  // Remove email portion to get name
+  let nameOnly = associatedContact.replace(/\([^)]*\)/g, '').trim();
+  
+  // Handle multiple contacts separated by commas - take first one
+  if (nameOnly.includes(',')) {
+    nameOnly = nameOnly.split(',')[0].trim();
+  }
+  if (nameOnly.includes(';')) {
+    nameOnly = nameOnly.split(';')[0].trim();
+  }
+  
+  // Split name into parts
+  const nameParts = nameOnly.split(/\s+/).filter(Boolean);
+  
+  if (nameParts.length === 0) {
+    return { ...fallback, email };
+  } else if (nameParts.length === 1) {
+    // Single name - treat as first name
+    return {
+      firstName: nameParts[0],
+      lastName: '',
+      email
+    };
+  } else {
+    // Multiple parts - first is first name, rest is last name
+    return {
+      firstName: nameParts[0],
+      lastName: nameParts.slice(1).join(' '),
+      email
+    };
+  }
+}
+
 /**
  * Extract numeric percentage from HubSpot's Global Rank field
  * Examples: "Top 10%" → 10, "Top 0.5%" → 0.5, "unranked" → null
@@ -416,6 +473,40 @@ export function exportToCSV(rows: BatchRow[], filename = 'batch-results.csv'): v
     status: row.status,
     error: row.error || ''
   }));
+  
+  const csv = Papa.unparse(exportData);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+/**
+ * Export HubSpot CSV results in ticket import format
+ * Only for HubSpot-sourced data
+ */
+export function exportToHubSpotTickets(
+  rows: BatchRow[], 
+  campaignManager: string,
+  clientName: string,
+  filename = 'hubspot-tickets.csv'
+): void {
+  const exportData = rows.map(row => {
+    const contact = parseContactInfo(row.metadata?.associated_contact);
+    
+    return {
+      'Pipeline': 'Agent Master Pipeline',
+      'Ticket status': 'Working 1',
+      'Ticket owner': campaignManager || '',
+      'Ticket Name': row.show_title || row.metadata?.name || '',
+      'Company Properties - Record ID': row.metadata?.record_id || '',
+      'Ticket Client': clientName || '',
+      'Host First Name': contact.firstName,
+      'Host Last name': contact.lastName,
+      'Host Email': contact.email
+    };
+  });
   
   const csv = Papa.unparse(exportData);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
