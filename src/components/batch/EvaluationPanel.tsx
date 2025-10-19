@@ -10,6 +10,7 @@ import { Copy, ExternalLink, MessageCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { parseContactFirstName } from '@/utils/batchProcessor';
 
 const SUPABASE_URL = "https://xjmcrvdczkefcbkayfbn.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqbWNydmRjemtlZmNia2F5ZmJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2Nzk2NzEsImV4cCI6MjA3MDI1NTY3MX0.AGAIZWrqXrYXJtgdwuduOAqAPZX743vM3JT_EVCMtzo";
@@ -118,7 +119,9 @@ export function EvaluationPanel({ row, onClose, client, autoGeneratePitch }: Eva
               show_title: row.show_title,
               show_notes_excerpt: row.show_notes_fallback || row.evaluation_data?.show_notes_excerpt,
               podcast_url: row.podcast_url,
-              host_name: row.metadata?.publisher || 'the host',
+              host_name: row.metadata?.associated_contact 
+                ? parseContactFirstName(row.metadata.associated_contact)
+                : (row.metadata?.publisher || 'the host'),
             },
             evaluation: {
               verdict: row.verdict,

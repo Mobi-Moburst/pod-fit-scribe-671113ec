@@ -142,6 +142,8 @@ const Batch = () => {
             metadata: {
               name: sourceRow?.['Company name'],
               publisher: sourceRow?.['Company owner'],
+              associated_contact: sourceRow?.['Associated Contact'],
+              // No listener data for HubSpot CSVs
               categories: [
                 sourceRow?.['Category 1'],
                 sourceRow?.['Category 2']

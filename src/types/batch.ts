@@ -9,6 +9,7 @@ export interface BatchRow {
   metadata?: {
     name?: string;
     publisher?: string;
+    associated_contact?: string;
     listeners_per_episode?: number;
     monthly_listens?: number;
     categories?: string;

@@ -132,6 +132,46 @@ export function validateAndDedupeUrls(csvData: any[]): PreflightResult {
   };
 }
 
+/**
+ * Extract first name from HubSpot's "Associated Contact" field
+ * Handles formats like:
+ * - "Scott Davison (scottydavison@gmail.com)" -> "Scott"
+ * - "IBM podcasts team (ibmpods@ibm.com)" -> "IBM podcasts team"
+ * - "John Doe, Jane Smith (emails...)" -> "John" (takes first contact only)
+ */
+export function parseContactFirstName(associatedContact: string | undefined): string {
+  if (!associatedContact || associatedContact.trim() === '') {
+    return 'the host';
+  }
+  
+  // Remove email addresses in parentheses: "(email@example.com)"
+  let cleaned = associatedContact.replace(/\([^)]*@[^)]*\)/g, '').trim();
+  
+  // Handle multiple contacts separated by commas or semicolons - take first one
+  if (cleaned.includes(',')) {
+    cleaned = cleaned.split(',')[0].trim();
+  }
+  if (cleaned.includes(';')) {
+    cleaned = cleaned.split(';')[0].trim();
+  }
+  
+  // Check if it's a team name (contains "team", "podcast", "podcasts")
+  const lowerCleaned = cleaned.toLowerCase();
+  if (lowerCleaned.includes('team') || lowerCleaned.includes('podcast')) {
+    // Return the full team name
+    return cleaned;
+  }
+  
+  // Extract first name from "First Last" format
+  const nameParts = cleaned.split(/\s+/);
+  if (nameParts.length > 0 && nameParts[0]) {
+    return nameParts[0];
+  }
+  
+  // Fallback
+  return 'the host';
+}
+
 export { detectUrlColumn, detectDescriptionColumn };
 
 // Cache management
@@ -332,12 +372,13 @@ export function exportToCSV(rows: BatchRow[], filename = 'batch-results.csv'): v
     podcast_url: row.podcast_url,
     show_title: row.show_title || '',
     publisher: row.metadata?.publisher || '',
-    listeners_per_episode: row.metadata?.listeners_per_episode || '',
-    monthly_listens: row.metadata?.monthly_listens || '',
+    associated_contact: row.metadata?.associated_contact || '',
+    listeners_per_episode: row.metadata?.listeners_per_episode !== undefined ? row.metadata.listeners_per_episode : '',
+    monthly_listens: row.metadata?.monthly_listens !== undefined ? row.metadata.monthly_listens : '',
     social_reach: row.metadata?.social_reach || '',
-    global_rank: row.metadata?.social_reach || '', // HubSpot uses this field
+    global_rank: row.metadata?.social_reach || '',
     categories: row.metadata?.categories || '',
-    engagement: row.metadata?.engagement || '',
+    engagement: row.metadata?.engagement !== undefined ? row.metadata.engagement : '',
     language: row.metadata?.language || '',
     status_field: row.metadata?.status || '',
     verdict: row.verdict || '',
