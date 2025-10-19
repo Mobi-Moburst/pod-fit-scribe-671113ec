@@ -58,14 +58,14 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
       let notes = paste.trim();
       let title: string | undefined;
       let publishDate: string | undefined;
-      const isAllowedPodcastUrl = (u: string) => /^(https?:\/\/)?(podcasts\.apple\.com|open\.spotify\.com)\//i.test(u);
+      const isAllowedPodcastUrl = (u: string) => /^(https?:\/\/)?(podcasts\.apple\.com|open\.spotify\.com|rephonic\.com\/podcasts)\//i.test(u);
       if (!notes) {
         if (!url) {
           toast({ title: 'Need notes', description: 'Enter a URL or paste show notes.', variant: 'destructive' });
           return;
         }
         if (!isAllowedPodcastUrl(url)) {
-          toast({ title: 'Unsupported URL', description: 'Please use an Apple Podcasts or Spotify URL.', variant: 'destructive' });
+          toast({ title: 'Unsupported URL', description: 'Please use an Apple Podcasts, Spotify, or Rephonic URL.', variant: 'destructive' });
           return;
         }
         const s = await callScrape(url);
@@ -251,7 +251,7 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
           <Card className="p-4 card-surface md:col-span-2">
             <div className="grid gap-3">
               <Label htmlFor="url">Podcast URL</Label>
-              <Input id="url" placeholder="Apple Podcasts or Spotify URL" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleAnalyze(); }} />
+              <Input id="url" placeholder="Apple Podcasts, Spotify, or Rephonic URL" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleAnalyze(); }} />
 <Collapsible open={showNotesOpen} onOpenChange={setShowNotesOpen}>
   <CollapsibleTrigger asChild>
     <Button type="button" variant="outline" className="mt-2">
