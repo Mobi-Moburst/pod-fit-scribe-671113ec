@@ -17,11 +17,13 @@ export const Navbar = () => {
     <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-14 px-3">
         <Link to="/" className="flex items-center gap-2">
-          <img 
-            src={kitcasterLogo} 
-            alt="Kitcaster by Moburst" 
-            className="h-8 w-auto"
-          />
+          <div className="bg-white rounded-md p-1.5 shadow-sm">
+            <img 
+              src={kitcasterLogo} 
+              alt="Kitcaster by Moburst" 
+              className="h-6 w-auto"
+            />
+          </div>
           <span className="font-semibold">Podcast Qualifying Engine</span>
         </Link>
 
