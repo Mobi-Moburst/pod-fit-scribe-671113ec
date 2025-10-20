@@ -1,0 +1,57 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+interface CampaignOverviewProps {
+  strategy: string;
+  target_audiences: string[];
+  talking_points: string[];
+}
+
+export const CampaignOverview = ({ 
+  strategy, 
+  target_audiences, 
+  talking_points 
+}: CampaignOverviewProps) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Campaign Overview</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {strategy && (
+          <div>
+            <h4 className="text-sm font-medium mb-2">Strategy</h4>
+            <p className="text-sm text-muted-foreground">{strategy}</p>
+          </div>
+        )}
+        
+        {target_audiences && target_audiences.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium mb-2">Target Audiences</h4>
+            <div className="flex flex-wrap gap-2">
+              {target_audiences.map((audience, idx) => (
+                <Badge key={idx} variant="secondary">
+                  {audience}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {talking_points && talking_points.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium mb-2">Key Talking Points</h4>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              {talking_points.map((point, idx) => (
+                <li key={idx} className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
