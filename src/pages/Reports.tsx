@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ClientCombobox } from "@/components/ClientCombobox";
+import { MinimalClient } from "@/types/clients";
 import { getClients } from "@/data/clientStore";
 import { parseCSV } from "@/utils/batchProcessor";
 import { generateReportFromCSV } from "@/utils/reportGenerator";
@@ -18,11 +19,15 @@ import { Upload, FileText, TrendingUp, Users, Target, Printer } from "lucide-rea
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
-  const [clients] = useState(getClients());
+  const [clients, setClients] = useState<MinimalClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setClients(getClients());
+  }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
