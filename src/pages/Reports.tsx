@@ -161,22 +161,22 @@ const Reports = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {visual_blocks.funnel_bars?.enabled && (
+          {visual_blocks?.funnel_bars?.enabled && visual_blocks.funnel_bars.data && (
             <FunnelChart data={visual_blocks.funnel_bars.data} />
           )}
           
-          {visual_blocks.score_distribution?.enabled && (
+          {visual_blocks?.score_distribution?.enabled && visual_blocks.score_distribution.data && (
             <ScoreDistributionChart data={visual_blocks.score_distribution.data} />
           )}
         </div>
 
-        {visual_blocks.fit_vs_reach_matrix?.enabled && (
+        {visual_blocks?.fit_vs_reach_matrix?.enabled && visual_blocks.fit_vs_reach_matrix.data && (
           <div className="mb-8">
             <FitVsReachMatrix data={visual_blocks.fit_vs_reach_matrix.data} />
           </div>
         )}
 
-        {visual_blocks.category_heatmap?.enabled && (
+        {visual_blocks?.category_heatmap?.enabled && visual_blocks.category_heatmap.data && (
           <div className="mb-8">
             <CategoryHeatmap data={visual_blocks.category_heatmap.data} />
           </div>

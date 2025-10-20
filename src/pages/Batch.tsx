@@ -728,7 +728,7 @@ const Batch = () => {
       });
 
       // Save report to batch_sessions
-      const { error: updateError } = await supabase
+      const { error: updateError, count } = await supabase
         .from('batch_sessions')
         .update({
           report_data: reportData,
@@ -739,11 +739,18 @@ const Batch = () => {
             accent_color: accentColor
           }
         } as any)
-        .eq('id', savedBatchId);
+        .eq('id', savedBatchId)
+        .select();
 
       if (updateError) {
         console.error('❌ Database update error:', updateError);
         throw updateError;
+      }
+
+      // Check if update actually affected a row
+      if (!count || count === 0) {
+        console.error('❌ Update succeeded but no rows affected - possible RLS block or batch not found');
+        throw new Error('Failed to save report to database. Please check permissions.');
       }
 
       console.log('✅ Report saved to database');
