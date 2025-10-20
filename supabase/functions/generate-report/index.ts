@@ -13,6 +13,7 @@ serve(async (req) => {
 
   try {
     const { batch_session_id, client_brand, visual_toggles, comparison_batch_ids, competitor_names } = await req.json();
+    console.log('📊 Generate Report - Processing batch:', batch_session_id);
 
     if (!batch_session_id) {
       throw new Error('batch_session_id is required');
