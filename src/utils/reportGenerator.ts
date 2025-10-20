@@ -10,9 +10,12 @@ export interface ReportData {
   };
   kpis: {
     total_evaluated: number;
+    avg_score: number;
     mean_fit_score: number;
     median_fit_score: number;
     mean_confidence: number;
+    high_fit_count: number;
+    total_reach: number;
   };
   visual_blocks: {
     kpi_strip: {
@@ -34,7 +37,7 @@ export interface ReportData {
     };
     score_distribution: {
       enabled: boolean;
-      data: Array<{ bucket: string; count: number }>;
+      data: Array<{ range: string; count: number }>;
     };
     category_heatmap: {
       enabled: boolean;
@@ -155,12 +158,16 @@ export async function generateReportFromCSV(
   // Calculate KPIs
   const scores = validRows.map(r => parseNumber(r.overall_score));
   const confidences = validRows.map(r => parseNumber(r.confidence));
+  const reaches = validRows.map(r => parseNumber(r.listeners_per_episode || r['Listeners Per Episode']));
   
   const kpis = {
     total_evaluated: validRows.length,
+    avg_score: mean(scores),
     mean_fit_score: mean(scores),
     median_fit_score: median(scores),
     mean_confidence: mean(confidences),
+    high_fit_count: validRows.filter(r => parseNumber(r.overall_score) >= 8).length,
+    total_reach: reaches.reduce((a, b) => a + b, 0),
   };
 
   // Generate funnel data
@@ -188,14 +195,14 @@ export async function generateReportFromCSV(
   };
 
   // Generate score distribution
-  const buckets = ['0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10'];
+  const buckets = ['0-5.9', '6-6.9', '7-7.9', '8-8.9', '9-10'];
   const distributionData = buckets.map(bucket => {
     const [min, max] = bucket.split('-').map(Number);
     const count = validRows.filter(r => {
       const score = parseNumber(r.overall_score);
-      return score >= min && score < max;
+      return score >= min && score <= max;
     }).length;
-    return { bucket, count };
+    return { range: bucket, count };
   });
 
   // Generate category heatmap

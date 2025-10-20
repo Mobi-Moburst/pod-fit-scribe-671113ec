@@ -148,7 +148,7 @@ const Reports = () => {
           onShare={handleShare}
         />
 
-        {visual_blocks.kpi_strip?.enabled && (
+        {visual_blocks?.kpi_strip?.enabled && visual_blocks.kpi_strip.data && (
           <KPIStrip data={visual_blocks.kpi_strip.data} />
         )}
 

@@ -698,6 +698,9 @@ const Batch = () => {
         ? clients.find(c => c.id === state.client_id)
         : null;
 
+      console.log('📊 Starting report generation from CSV...');
+      console.log('CSV file:', reportCsvFile.name, reportCsvFile.size, 'bytes');
+      
       // Convert visualToggles to the format expected by reportGenerator
       const toggles = {
         kpi_strip: visualToggles.show_kpi_strip,
@@ -716,6 +719,14 @@ const Batch = () => {
         toggles
       );
 
+      console.log('✅ Report data generated:', {
+        total_evaluated: reportData.kpis.total_evaluated,
+        avg_score: reportData.kpis.avg_score,
+        high_fit_count: reportData.kpis.high_fit_count,
+        has_notable_episodes: reportData.notable_episodes.length,
+        has_hidden_gems: reportData.hidden_gems.length
+      });
+
       // Save report to batch_sessions
       const { error: updateError } = await supabase
         .from('batch_sessions')
@@ -730,16 +741,21 @@ const Batch = () => {
         } as any)
         .eq('id', savedBatchId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ Database update error:', updateError);
+        throw updateError;
+      }
 
+      console.log('✅ Report saved to database');
       toast({ description: 'Report generated successfully!' });
       setShowReportModal(false);
       setReportCsvFile(null);
       navigate(`/reports/${savedBatchId}`);
     } catch (error: any) {
-      console.error('Report generation error:', error);
+      console.error('❌ Report generation error:', error);
       toast({ 
-        description: error.message || 'Failed to generate report', 
+        title: 'Report Generation Failed',
+        description: error.message || 'Unknown error occurred', 
         variant: 'destructive' 
       });
     } finally {
