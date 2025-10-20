@@ -910,7 +910,6 @@ serve(async (req) => {
 
     const body = {
       model: "gpt-4.1-2025-04-14",
-      temperature: 0.15,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: "Be precise and concise. Return JSON ONLY. No prose." },
