@@ -68,6 +68,7 @@ const Batch = () => {
   const [savedBatchId, setSavedBatchId] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [reportCsvFile, setReportCsvFile] = useState<File | null>(null);
   const [reportPeriod, setReportPeriod] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#9b87f5');
   const [secondaryColor, setSecondaryColor] = useState('#7E69AB');
@@ -679,28 +680,64 @@ const Batch = () => {
       return;
     }
 
+    if (!reportCsvFile) {
+      toast({
+        title: "CSV Required",
+        description: "Please upload the batch analysis CSV to generate report",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsGenerating(true);
+
     try {
-      const { data, error } = await supabase.functions.invoke('generate-report', {
-        body: {
-          batch_session_id: savedBatchId,
-          client_brand: {
-            quarter: reportPeriod || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      const { generateReportFromCSV } = await import('@/utils/reportGenerator');
+      
+      const clientData = state.client_id 
+        ? clients.find(c => c.id === state.client_id)
+        : null;
+
+      // Convert visualToggles to the format expected by reportGenerator
+      const toggles = {
+        kpi_strip: visualToggles.show_kpi_strip,
+        funnel_bars: visualToggles.show_funnel_bars,
+        score_distribution: visualToggles.show_score_distribution,
+        category_heatmap: visualToggles.show_heatmap,
+        fit_vs_reach_matrix: visualToggles.show_fit_vs_reach_matrix,
+      };
+      
+      const reportData = await generateReportFromCSV(
+        reportCsvFile,
+        clientData?.name || 'Client',
+        clientData?.company || '',
+        uploadedFileName || 'Batch Analysis',
+        reportPeriod || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        toggles
+      );
+
+      // Save report to batch_sessions
+      const { error: updateError } = await supabase
+        .from('batch_sessions')
+        .update({
+          report_data: reportData,
+          report_generated_at: new Date().toISOString(),
+          report_theme: {
             primary_color: primaryColor,
             secondary_color: secondaryColor,
-            accent_color: accentColor,
-          },
-          visual_toggles: visualToggles
-        }
-      });
+            accent_color: accentColor
+          }
+        } as any)
+        .eq('id', savedBatchId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       toast({ description: 'Report generated successfully!' });
       setShowReportModal(false);
+      setReportCsvFile(null);
       navigate(`/reports/${savedBatchId}`);
     } catch (error: any) {
-      console.error('Failed to generate report:', error);
+      console.error('Report generation error:', error);
       toast({ 
         description: error.message || 'Failed to generate report', 
         variant: 'destructive' 
@@ -708,7 +745,7 @@ const Batch = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [savedBatchId, reportPeriod, primaryColor, secondaryColor, accentColor, visualToggles, toast, navigate]);
+  }, [savedBatchId, reportCsvFile, state.client_id, clients, uploadedFileName, reportPeriod, visualToggles, primaryColor, secondaryColor, accentColor, toast, navigate]);
 
   return (
     <div className="flex h-screen">
@@ -1216,6 +1253,46 @@ const Batch = () => {
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {/* CSV Upload Section */}
+            <div className="space-y-2">
+              <Label>Upload Batch Analysis CSV *</Label>
+              <div className="border-2 border-dashed rounded-lg p-6 hover:border-primary/50 transition-colors">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setReportCsvFile(file);
+                  }}
+                  className="hidden"
+                  id="report-csv-upload"
+                />
+                <label 
+                  htmlFor="report-csv-upload" 
+                  className="flex flex-col items-center gap-2 cursor-pointer"
+                >
+                  {reportCsvFile ? (
+                    <>
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                      <p className="text-sm font-medium">{reportCsvFile.name}</p>
+                      <p className="text-xs text-muted-foreground">Click to replace</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-sm font-medium">Click to upload CSV</p>
+                      <p className="text-xs text-muted-foreground">
+                        Export your batch results first, then upload here
+                      </p>
+                    </>
+                  )}
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use the Export dropdown above to download your batch results as CSV
+              </p>
+            </div>
+
             {/* Report Period */}
             <div className="space-y-2">
               <Label htmlFor="report-period">Report Period</Label>
@@ -1421,7 +1498,7 @@ const Batch = () => {
             </Button>
             <Button 
               onClick={handleGenerateReport}
-              disabled={isGenerating}
+              disabled={isGenerating || !reportCsvFile}
             >
               {isGenerating ? (
                 <>
@@ -1435,6 +1512,11 @@ const Batch = () => {
                 </>
               )}
             </Button>
+            {!reportCsvFile && !isGenerating && (
+              <p className="text-xs text-center text-muted-foreground">
+                Upload a CSV file to enable report generation
+              </p>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
