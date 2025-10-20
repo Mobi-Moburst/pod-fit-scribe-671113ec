@@ -6,6 +6,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Timeout helper to prevent edge function from hanging
+function fetchWithTimeout(url: string, options: any, timeoutMs: number = 30000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+    )
+  ]);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -157,6 +167,7 @@ serve(async (req) => {
     };
 
     if (lovableApiKey) {
+      console.log('🤖 Starting AI insights generation...');
       try {
         const topShows = notable_episodes.slice(0, 5);
         const aiPrompt = `You are analyzing podcast performance data for ${batch.clients?.name} (${batch.clients?.company || 'N/A'}).
@@ -184,7 +195,7 @@ Generate a comprehensive performance report with:
 
 Format as JSON with keys: executive_summary, key_insights (array), category_analysis, notable_patterns (array), risk_recommendations (array), action_items (array)`;
 
-        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const aiResponse = await fetchWithTimeout('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${lovableApiKey}`,
@@ -209,8 +220,10 @@ Format as JSON with keys: executive_summary, key_insights (array), category_anal
             aiInsights = JSON.parse(jsonMatch[1]);
           }
         }
+        console.log('✅ AI insights generated successfully');
       } catch (error) {
-        console.error('AI insights generation failed:', error);
+        console.error('❌ AI insights generation failed:', error.message || error);
+        // Continue without AI insights - report will still work
       }
     }
 
