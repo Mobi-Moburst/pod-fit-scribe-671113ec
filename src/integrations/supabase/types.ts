@@ -22,9 +22,6 @@ export type Database = {
           id: string
           name: string
           org_id: string
-          report_data: Json | null
-          report_generated_at: string | null
-          report_theme: Json | null
           success_count: number
           total_count: number
         }
@@ -35,9 +32,6 @@ export type Database = {
           id?: string
           name: string
           org_id: string
-          report_data?: Json | null
-          report_generated_at?: string | null
-          report_theme?: Json | null
           success_count?: number
           total_count?: number
         }
@@ -48,9 +42,6 @@ export type Database = {
           id?: string
           name?: string
           org_id?: string
-          report_data?: Json | null
-          report_generated_at?: string | null
-          report_theme?: Json | null
           success_count?: number
           total_count?: number
         }
