@@ -30,15 +30,24 @@ import {
   parseGlobalRankPercentage,
   CSVFormat
 } from '@/utils/batchProcessor';
-import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2, Play, ChevronDown } from 'lucide-react';
+import { Upload, AlertTriangle, CheckCircle, Download, Filter, Loader2, Play, ChevronDown, FileText } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 const CONCURRENT_LIMIT = 8;
 const ROWS_PER_PAGE = 25;
@@ -46,6 +55,7 @@ const ROWS_PER_PAGE = 25;
 const Batch = () => {
   useEffect(() => { document.title = 'Batch — Podcast Fit Rater'; }, []);
   
+  const navigate = useNavigate();
   const [clients, setClients] = useState<MinimalClient[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -55,6 +65,13 @@ const Batch = () => {
   const [autoGenerate, setAutoGenerate] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [savedBatchId, setSavedBatchId] = useState<string | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#9b87f5');
+  const [secondaryColor, setSecondaryColor] = useState('#7E69AB');
+  const [accentColor, setAccentColor] = useState('#6E59A5');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -633,6 +650,8 @@ const Batch = () => {
 
       if (evalError) throw evalError;
 
+      setSavedBatchId(batchSession.id);
+
       toast({
         description: `✓ Saved ${successfulRows.length} evaluations to History`,
       });
@@ -644,6 +663,49 @@ const Batch = () => {
       });
     }
   }, [state.client_id, state.rows, uploadedFileName, toast]);
+
+  const handleGenerateReport = useCallback(async () => {
+    if (!savedBatchId) {
+      toast({ description: 'Please save to history first', variant: 'destructive' });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-report', {
+        body: {
+          batch_session_id: savedBatchId,
+          client_brand: {
+            quarter: reportPeriod || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+            primary_color: primaryColor,
+            secondary_color: secondaryColor,
+            accent_color: accentColor,
+          },
+          visual_toggles: {
+            show_kpi_strip: true,
+            show_funnel_bars: true,
+            show_score_distribution: true,
+            show_heatmap: true,
+            show_fit_vs_reach_matrix: true,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      toast({ description: 'Report generated successfully!' });
+      setShowReportModal(false);
+      navigate(`/reports/${savedBatchId}`);
+    } catch (error: any) {
+      console.error('Failed to generate report:', error);
+      toast({ 
+        description: error.message || 'Failed to generate report', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [savedBatchId, reportPeriod, primaryColor, secondaryColor, accentColor, toast, navigate]);
 
   return (
     <div className="flex h-screen">
@@ -1070,6 +1132,16 @@ const Batch = () => {
                     <Button size="sm" onClick={saveBatchToHistory}>
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Save to History
+                    </Button>
+
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setShowReportModal(true)}
+                      disabled={!savedBatchId}
+                    >
+                      <FileText className="h-3 w-3 mr-1" />
+                      Generate Report
                     </Button>
                   </div>
                 </div>

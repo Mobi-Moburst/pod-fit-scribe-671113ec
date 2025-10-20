@@ -8,6 +8,7 @@ import Index from "./pages/Evaluate";
 import Batch from "./pages/Batch";
 import Clients from "./pages/Clients";
 import History from "./pages/History";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/batch" element={<Batch />} />
             <Route path="/clients" element={<Clients />} />
             <Route path="/history" element={<History />} />
+            <Route path="/reports/:batch_id" element={<Reports />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
