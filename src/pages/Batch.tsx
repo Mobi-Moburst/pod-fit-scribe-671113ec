@@ -72,6 +72,15 @@ const Batch = () => {
   const [primaryColor, setPrimaryColor] = useState('#9b87f5');
   const [secondaryColor, setSecondaryColor] = useState('#7E69AB');
   const [accentColor, setAccentColor] = useState('#6E59A5');
+  const [visualToggles, setVisualToggles] = useState({
+    show_kpi_strip: true,
+    show_funnel_bars: true,
+    show_score_distribution: true,
+    show_heatmap: true,
+    show_fit_vs_reach_matrix: true,
+    show_freshness_donut: true,
+    show_next_wave: true,
+  });
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -681,13 +690,7 @@ const Batch = () => {
             secondary_color: secondaryColor,
             accent_color: accentColor,
           },
-          visual_toggles: {
-            show_kpi_strip: true,
-            show_funnel_bars: true,
-            show_score_distribution: true,
-            show_heatmap: true,
-            show_fit_vs_reach_matrix: true,
-          }
+          visual_toggles: visualToggles
         }
       });
 
@@ -705,7 +708,7 @@ const Batch = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [savedBatchId, reportPeriod, primaryColor, secondaryColor, accentColor, toast, navigate]);
+  }, [savedBatchId, reportPeriod, primaryColor, secondaryColor, accentColor, visualToggles, toast, navigate]);
 
   return (
     <div className="flex h-screen">
@@ -1201,6 +1204,240 @@ const Batch = () => {
           </div>
         </main>
       </div>
+
+      {/* Report Generation Modal */}
+      <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Generate Performance Report</DialogTitle>
+            <DialogDescription>
+              Create a branded quarterly report with AI-generated insights and custom visuals
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Report Period */}
+            <div className="space-y-2">
+              <Label htmlFor="report-period">Report Period</Label>
+              <Input
+                id="report-period"
+                placeholder="e.g., Q4 2025, January 2025"
+                value={reportPeriod}
+                onChange={(e) => setReportPeriod(e.target.value)}
+                disabled={isGenerating}
+              />
+              <p className="text-xs text-muted-foreground">
+                This will appear in the report header
+              </p>
+            </div>
+
+            {/* Brand Colors */}
+            <div className="space-y-3">
+              <Label>Brand Colors</Label>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="primary-color" className="text-xs">Primary</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="primary-color"
+                      type="color"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      disabled={isGenerating}
+                      className="h-10 w-16 p-1 cursor-pointer"
+                    />
+                    <Input
+                      type="text"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      disabled={isGenerating}
+                      className="flex-1 font-mono text-xs"
+                      placeholder="#9b87f5"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="secondary-color" className="text-xs">Secondary</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="secondary-color"
+                      type="color"
+                      value={secondaryColor}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      disabled={isGenerating}
+                      className="h-10 w-16 p-1 cursor-pointer"
+                    />
+                    <Input
+                      type="text"
+                      value={secondaryColor}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      disabled={isGenerating}
+                      className="flex-1 font-mono text-xs"
+                      placeholder="#7E69AB"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accent-color" className="text-xs">Accent</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="accent-color"
+                      type="color"
+                      value={accentColor}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      disabled={isGenerating}
+                      className="h-10 w-16 p-1 cursor-pointer"
+                    />
+                    <Input
+                      type="text"
+                      value={accentColor}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      disabled={isGenerating}
+                      className="flex-1 font-mono text-xs"
+                      placeholder="#6E59A5"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Toggles */}
+            <div className="space-y-3">
+              <Label>Report Sections</Label>
+              <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="toggle-kpi"
+                    checked={visualToggles.show_kpi_strip}
+                    onCheckedChange={(checked) => 
+                      setVisualToggles(prev => ({ ...prev, show_kpi_strip: checked === true }))
+                    }
+                    disabled={isGenerating}
+                  />
+                  <Label htmlFor="toggle-kpi" className="text-sm font-normal cursor-pointer">
+                    KPI Strip
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="toggle-funnel"
+                    checked={visualToggles.show_funnel_bars}
+                    onCheckedChange={(checked) => 
+                      setVisualToggles(prev => ({ ...prev, show_funnel_bars: checked === true }))
+                    }
+                    disabled={isGenerating}
+                  />
+                  <Label htmlFor="toggle-funnel" className="text-sm font-normal cursor-pointer">
+                    Funnel Chart
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="toggle-score"
+                    checked={visualToggles.show_score_distribution}
+                    onCheckedChange={(checked) => 
+                      setVisualToggles(prev => ({ ...prev, show_score_distribution: checked === true }))
+                    }
+                    disabled={isGenerating}
+                  />
+                  <Label htmlFor="toggle-score" className="text-sm font-normal cursor-pointer">
+                    Score Distribution
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="toggle-heatmap"
+                    checked={visualToggles.show_heatmap}
+                    onCheckedChange={(checked) => 
+                      setVisualToggles(prev => ({ ...prev, show_heatmap: checked === true }))
+                    }
+                    disabled={isGenerating}
+                  />
+                  <Label htmlFor="toggle-heatmap" className="text-sm font-normal cursor-pointer">
+                    Category Heatmap
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="toggle-matrix"
+                    checked={visualToggles.show_fit_vs_reach_matrix}
+                    onCheckedChange={(checked) => 
+                      setVisualToggles(prev => ({ ...prev, show_fit_vs_reach_matrix: checked === true }))
+                    }
+                    disabled={isGenerating}
+                  />
+                  <Label htmlFor="toggle-matrix" className="text-sm font-normal cursor-pointer">
+                    Fit × Reach Matrix
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="toggle-freshness"
+                    checked={visualToggles.show_freshness_donut}
+                    onCheckedChange={(checked) => 
+                      setVisualToggles(prev => ({ ...prev, show_freshness_donut: checked === true }))
+                    }
+                    disabled={isGenerating}
+                  />
+                  <Label htmlFor="toggle-freshness" className="text-sm font-normal cursor-pointer">
+                    Freshness Donut
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="toggle-nextwave"
+                    checked={visualToggles.show_next_wave}
+                    onCheckedChange={(checked) => 
+                      setVisualToggles(prev => ({ ...prev, show_next_wave: checked === true }))
+                    }
+                    disabled={isGenerating}
+                  />
+                  <Label htmlFor="toggle-nextwave" className="text-sm font-normal cursor-pointer">
+                    Next-Wave Targets
+                  </Label>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select which visualizations to include in the report
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowReportModal(false)}
+              disabled={isGenerating}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleGenerateReport}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Report
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* Evaluation Panel */}
       {selectedRow && (
