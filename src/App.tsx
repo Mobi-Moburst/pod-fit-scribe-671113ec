@@ -10,7 +10,6 @@ import Clients from "./pages/Clients";
 import History from "./pages/History";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
-import { useState } from "react";
 
 // Singleton pattern for QueryClient to prevent recreation during HMR
 let browserQueryClient: QueryClient | undefined = undefined;
@@ -28,10 +27,9 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
-const App = () => {
-  const [queryClient] = useState(() => getQueryClient());
-  
-  return (
+const queryClient = getQueryClient();
+
+const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
@@ -51,7 +49,6 @@ const App = () => {
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
-  );
-};
+);
 
 export default App;
