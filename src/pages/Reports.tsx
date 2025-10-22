@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ClientCombobox } from "@/components/ClientCombobox";
 import { MinimalClient } from "@/types/clients";
-import { getClients } from "@/data/clientStore";
+import { supabase } from "@/integrations/supabase/client";
 import { parseCSV } from "@/utils/batchProcessor";
 import { generateReportFromCSV } from "@/utils/reportGenerator";
 import { ReportData } from "@/types/reports";
@@ -26,8 +26,27 @@ export default function Reports() {
   const { toast } = useToast();
 
   useEffect(() => {
-    setClients(getClients());
-  }, []);
+    const loadClients = async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) {
+        console.error('Error loading clients:', error);
+        toast({
+          title: "Error loading clients",
+          description: "Failed to load client list from database.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setClients((data || []) as MinimalClient[]);
+    };
+    
+    loadClients();
+  }, [toast]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
