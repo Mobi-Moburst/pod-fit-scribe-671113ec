@@ -51,6 +51,11 @@ export function calculateKPIs(rows: any[]): ReportData['kpis'] {
     return sum + (typeof listeners === 'number' ? listeners : 0);
   }, 0);
 
+  const total_social_reach = rows.reduce((sum, r) => {
+    const social = r.metadata?.social_reach || 0;
+    return sum + (typeof social === 'number' ? social : 0);
+  }, 0);
+
   // Count categories
   const categoryCount = new Map<string, number>();
   rows.forEach(r => {
@@ -77,6 +82,7 @@ export function calculateKPIs(rows: any[]): ReportData['kpis'] {
     not_fit_count,
     avg_score: Math.round(avg_score * 10) / 10,
     total_reach,
+    total_social_reach,
     top_categories,
   };
 }

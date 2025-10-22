@@ -15,7 +15,7 @@ import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { PodcastTable } from "@/components/reports/PodcastTable";
-import { Upload, FileText, TrendingUp, Users, Target, Printer } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Target, Printer, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
@@ -163,7 +163,7 @@ export default function Reports() {
                 />
 
                 {/* KPIs Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   <KPICard
                     title="Total Evaluated"
                     value={reportData.kpis.total_evaluated}
@@ -182,10 +182,16 @@ export default function Reports() {
                     icon={TrendingUp}
                   />
                   <KPICard
-                    title="Total Reach"
+                    title="Projected Listeners"
                     value={reportData.kpis.total_reach.toLocaleString()}
-                    subtitle="Listeners per episode"
+                    subtitle="Total listeners per episode"
                     icon={Users}
+                  />
+                  <KPICard
+                    title="Total Social Reach"
+                    value={reportData.kpis.total_social_reach.toLocaleString()}
+                    subtitle="Combined social followers"
+                    icon={Share2}
                   />
                 </div>
 

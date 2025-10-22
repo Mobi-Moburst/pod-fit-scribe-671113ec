@@ -12,6 +12,7 @@ export interface ReportData {
     not_fit_count: number;
     avg_score: number;
     total_reach: number;
+    total_social_reach: number;
     top_categories: Array<{ name: string; count: number }>;
   };
   
