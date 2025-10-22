@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -909,7 +909,7 @@ serve(async (req) => {
         }`;
 
     const body = {
-      model: "gpt-4o",
+      model: "google/gemini-2.5-pro",
       temperature: 0.15,
       response_format: { type: "json_object" },
       messages: [
@@ -923,9 +923,9 @@ serve(async (req) => {
     let json: any = null;
 
     try {
-      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
         signal: controller.signal,
       });
