@@ -47,19 +47,24 @@ export function calculateKPIs(rows: any[]): ReportData['kpis'] {
     : 0;
   
   const total_reach = rows.reduce((sum, r) => {
-    const listeners = r.metadata?.listeners_per_episode || 0;
-    return sum + (typeof listeners === 'number' ? listeners : 0);
+    // CSV has these as top-level fields, not nested in metadata
+    const listeners = r.listeners_per_episode !== undefined ? r.listeners_per_episode : 0;
+    const parsed = typeof listeners === 'string' ? parseFloat(listeners) : listeners;
+    return sum + (typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0);
   }, 0);
 
   const total_social_reach = rows.reduce((sum, r) => {
-    const social = r.metadata?.social_reach || 0;
-    return sum + (typeof social === 'number' ? social : 0);
+    // CSV has these as top-level fields, not nested in metadata
+    const social = r.social_reach !== undefined ? r.social_reach : 0;
+    const parsed = typeof social === 'string' ? parseFloat(social) : social;
+    return sum + (typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0);
   }, 0);
 
   // Count categories
   const categoryCount = new Map<string, number>();
   rows.forEach(r => {
-    const cats = r.metadata?.categories || '';
+    // Try both top-level (from CSV) and metadata (from live data)
+    const cats = r.categories || r.metadata?.categories || '';
     if (cats) {
       cats.split(',').forEach((cat: string) => {
         const trimmed = cat.trim();
