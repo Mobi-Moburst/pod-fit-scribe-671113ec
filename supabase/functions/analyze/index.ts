@@ -909,7 +909,7 @@ serve(async (req) => {
         }`;
 
     const body = {
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       temperature: 0.15,
       response_format: { type: "json_object" },
       messages: [
