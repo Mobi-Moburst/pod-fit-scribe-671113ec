@@ -85,7 +85,6 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                 </Button>
               </TableHead>
               <TableHead>Categories</TableHead>
-              <TableHead className="w-[300px]">Why This Fits</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -100,9 +99,6 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {podcast.categories || '-'}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {podcast.rationale_short || '-'}
                 </TableCell>
               </TableRow>
             ))}
