@@ -1,6 +1,41 @@
 import { MinimalClient } from '@/types/clients';
 import { BatchRow } from '@/types/batch';
 import { ReportData } from '@/types/reports';
+import { pickTopAudienceTags } from '@/lib/campaignStrategy';
+
+function generateStrategyParagraph(client: MinimalClient): string {
+  const audiences = pickTopAudienceTags({
+    strategyText: client.campaign_strategy,
+    audiences: client.target_audiences,
+    max: 3
+  });
+  
+  const talkingPoints = client.talking_points?.slice(0, 3) || [];
+  const companyName = client.company || client.name;
+  const guestName = client.name;
+  const title = client.title || '';
+  
+  // Build natural paragraph
+  let paragraph = `This campaign positions ${guestName}`;
+  if (title) paragraph += `, ${title}`;
+  if (companyName && companyName !== guestName) paragraph += ` at ${companyName}`;
+  paragraph += `, as a thought leader reaching `;
+  
+  if (audiences.length > 0) {
+    paragraph += audiences.join(', ');
+  } else {
+    paragraph += 'key industry audiences';
+  }
+  
+  paragraph += '. ';
+  
+  if (talkingPoints.length > 0) {
+    paragraph += `Conversations focus on ${talkingPoints.join(', ').toLowerCase()}, `;
+    paragraph += 'positioning the guest as an authoritative voice in the space.';
+  }
+  
+  return paragraph;
+}
 
 export function generateReportFromCSV(
   csvData: any[],
@@ -17,8 +52,9 @@ export function generateReportFromCSV(
     show_title: row.show_title || row.metadata?.name || 'Unknown',
     verdict: row.verdict as 'Fit' | 'Consider' | 'Not',
     overall_score: parseFloat(row.overall_score) || 0,
-    listeners_per_episode: row.metadata?.listeners_per_episode,
-    categories: row.metadata?.categories,
+    // Use top-level CSV fields first, fallback to metadata
+    listeners_per_episode: row.listeners_per_episode || row.metadata?.listeners_per_episode,
+    categories: row.categories || row.metadata?.categories,
     rationale_short: row.rationale_short,
   })).sort((a, b) => b.overall_score - a.overall_score);
 
@@ -28,9 +64,13 @@ export function generateReportFromCSV(
     batch_name: batchName,
     kpis,
     campaign_overview: {
-      strategy: client.campaign_strategy || '',
-      target_audiences: client.target_audiences || [],
-      talking_points: client.talking_points || [],
+      strategy: generateStrategyParagraph(client),
+      target_audiences: pickTopAudienceTags({
+        strategyText: client.campaign_strategy,
+        audiences: client.target_audiences,
+        max: 3
+      }),
+      talking_points: client.talking_points?.slice(0, 3) || [],
     },
     podcasts,
   };

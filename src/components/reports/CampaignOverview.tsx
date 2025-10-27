@@ -20,8 +20,8 @@ export const CampaignOverview = ({
       <CardContent className="space-y-6">
         {strategy && (
           <div>
-            <h4 className="text-sm font-medium mb-2">Strategy</h4>
-            <p className="text-sm text-muted-foreground">{strategy}</p>
+            <h4 className="text-sm font-medium mb-2">Campaign Strategy</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">{strategy}</p>
           </div>
         )}
         

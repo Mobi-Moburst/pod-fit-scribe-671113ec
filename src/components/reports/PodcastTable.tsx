@@ -63,8 +63,7 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Show Title</TableHead>
-              <TableHead>Verdict</TableHead>
+              <TableHead className="w-[200px]">Show Title</TableHead>
               <TableHead>
                 <Button 
                   variant="ghost" 
@@ -86,17 +85,13 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                 </Button>
               </TableHead>
               <TableHead>Categories</TableHead>
+              <TableHead className="w-[300px]">Why This Fits</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedPodcasts.map((podcast, idx) => (
               <TableRow key={idx}>
                 <TableCell className="font-medium">{podcast.show_title}</TableCell>
-                <TableCell>
-                  <Badge variant={getVerdictColor(podcast.verdict)}>
-                    {podcast.verdict}
-                  </Badge>
-                </TableCell>
                 <TableCell>
                   <Badge variant="outline">{podcast.overall_score.toFixed(1)}</Badge>
                 </TableCell>
@@ -105,6 +100,9 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {podcast.categories || '-'}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {podcast.rationale_short || '-'}
                 </TableCell>
               </TableRow>
             ))}
