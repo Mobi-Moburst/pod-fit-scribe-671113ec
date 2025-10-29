@@ -1,17 +1,80 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Validation schemas
+const ClientSchema = z.object({
+  name: z.string().max(200),
+  title: z.string().max(200).optional(),
+  company: z.string().max(200).optional(),
+  company_url: z.string().url().max(2048).optional(),
+  media_kit_url: z.string().url().max(2048),
+  talking_points: z.array(z.string().max(500)).max(50).optional(),
+  target_audiences: z.array(z.string().max(200)).max(50).optional(),
+  campaign_strategy: z.string().max(1000).optional(),
+  notes: z.string().max(5000).optional(),
+  pitch_template: z.string().max(10000).optional(),
+}).passthrough();
+
+const PodcastSchema = z.object({
+  show_title: z.string().max(300),
+  show_notes_excerpt: z.string().max(10000).optional(),
+  host_name: z.string().max(200).optional(),
+  podcast_url: z.string().url().max(2048).optional(),
+}).passthrough();
+
+const EvaluationSchema = z.object({
+  verdict: z.enum(['recommend', 'consider', 'not_recommended']),
+  overall_score: z.number().min(0).max(10),
+  rationale_short: z.string().max(1000).optional(),
+  evaluation_data: z.object({
+    why_fit: z.array(z.string()).optional(),
+    summary_text: z.string().optional(),
+  }).passthrough().optional(),
+}).passthrough();
+
+const RequestSchema = z.object({
+  client: ClientSchema,
+  podcast: PodcastSchema,
+  evaluation: EvaluationSchema,
+});
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Verify authentication
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    console.error('Missing Authorization header');
+    return new Response(
+      JSON.stringify({ error: 'Authentication required' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
-    const { client, podcast, evaluation } = await req.json();
+    // Parse and validate request
+    const body = await req.json();
+    const validation = RequestSchema.safeParse(body);
+    
+    if (!validation.success) {
+      console.error('Validation error:', validation.error.issues);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid request data', 
+          details: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { client, podcast, evaluation } = validation.data;
     
     console.log('Generating pitch for:', {
       client: client.name,
