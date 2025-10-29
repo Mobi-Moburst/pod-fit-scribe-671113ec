@@ -909,8 +909,8 @@ serve(async (req) => {
         }`;
 
     const body = {
-      model: "gpt-4o-mini",
-      temperature: 0.15,
+      model: "gpt-4.1-2025-04-14",
+      max_completion_tokens: 4000,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: "Be precise and concise. Return JSON ONLY. No prose." },
