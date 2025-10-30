@@ -1,6 +1,5 @@
+
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0';
 
 function stripTags(html: string) {
   return html
@@ -172,85 +171,17 @@ function extractPublishDate(content: string, jsonld: any[]): string | undefined 
   return foundDates.length > 0 ? findLatestDate(foundDates) : undefined;
 }
 
-// Validation schema
-const RequestSchema = z.object({
-  url: z.string()
-    .url({ message: 'Invalid URL format' })
-    .max(2048, { message: 'URL must be less than 2048 characters' })
-    .refine(url => {
-      try {
-        const parsed = new URL(url);
-        // Block local/private IPs to prevent SSRF
-        const hostname = parsed.hostname;
-        if (hostname === 'localhost' || hostname.startsWith('127.') || hostname.startsWith('192.168.') || 
-            hostname.startsWith('10.') || hostname.startsWith('172.')) {
-          return false;
-        }
-        return true;
-      } catch {
-        return false;
-      }
-    }, { message: 'URL must not point to local/private networks' })
-});
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: { 
+      'Access-Control-Allow-Origin': '*', 
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    } });
   }
-
-  // Verify JWT authentication
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    console.error('Missing or invalid Authorization header');
-    return new Response(
-      JSON.stringify({ success: false, error: 'Authentication required' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // Create Supabase client with user's JWT
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } }
-  });
-
-  // Verify the JWT token and get user
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    console.error('Authentication failed:', authError?.message);
-    return new Response(
-      JSON.stringify({ success: false, error: 'Invalid authentication token' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  console.log('Authenticated user:', user.id);
-
   try {
-    // Parse and validate request
-    const body = await req.json();
-    const validation = RequestSchema.safeParse(body);
-    
-    if (!validation.success) {
-      console.error('Validation error:', validation.error.issues);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Invalid request', 
-          details: validation.error.issues.map(i => i.message).join(', ')
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { url } = validation.data;
+    const { url } = await req.json();
+    if (!url) return new Response(JSON.stringify({ success: false, error: 'Missing url' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, status: 400 });
 
     const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 PodcastFitRaterBot' } });
     const html = await r.text();
@@ -287,17 +218,10 @@ serve(async (req) => {
     // Combine candidates
     const text = stripTags([ldDesc, ogDesc].filter(Boolean).join(' \n ')) || stripTags(html).slice(0, 20000);
 
-    console.log(`Successfully scraped: ${url.substring(0, 50)}... (${text.length} chars)`);
-
-    return new Response(
-      JSON.stringify({ success: true, title, show_notes: text, publish_date: publishDate, length: text.length }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ success: true, title, show_notes: text, publish_date: publishDate, length: text.length }), {
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' },
+    });
   } catch (e) {
-    console.error('Error in scrape function:', e);
-    return new Response(
-      JSON.stringify({ success: false, error: 'Failed to fetch URL' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ success: false, error: 'Failed to fetch' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-org-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' }, status: 500 });
   }
 });

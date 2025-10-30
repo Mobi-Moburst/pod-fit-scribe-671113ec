@@ -1,36 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0';
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-
-// Validation schemas
-const ClientSchema = z.object({
-  name: z.string().max(200),
-  company: z.string().max(200).optional(),
-  title: z.string().max(200).optional(),
-  media_kit_url: z.string().url().max(2048).optional(),
-  company_url: z.string().url().max(2048).optional(),
-  talking_points: z.array(z.string().max(500)).max(50).optional(),
-  target_audiences: z.array(z.string().max(200)).max(50).optional(),
-  target_roles: z.array(z.string().max(200)).max(50).optional(),
-  avoid: z.array(z.string().max(200)).max(50).optional(),
-  keywords_positive: z.array(z.string().max(200)).max(50).optional(),
-  keywords_negative: z.array(z.string().max(200)).max(50).optional(),
-  notes: z.string().max(5000).optional(),
-  campaign_strategy: z.string().max(1000).optional(),
-  gender: z.string().max(50).optional(),
-  guest_identity_tags: z.array(z.string().max(100)).max(20).optional(),
-  professional_credentials: z.array(z.string().max(200)).max(20).optional(),
-}).passthrough(); // Allow other fields but validate known ones
-
-const RequestSchema = z.object({
-  client: ClientSchema,
-  show_notes: z.string()
-    .min(1, { message: 'Show notes cannot be empty' })
-    .max(100000, { message: 'Show notes must be less than 100KB' })
-});
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -862,53 +833,14 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Verify JWT authentication
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    console.error('Missing or invalid Authorization header');
-    return new Response(
-      JSON.stringify({ success: false, error: 'Authentication required' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // Create Supabase client with user's JWT
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } }
-  });
-
-  // Verify the JWT token and get user
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    console.error('Authentication failed:', authError?.message);
-    return new Response(
-      JSON.stringify({ success: false, error: 'Invalid authentication token' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  console.log('Authenticated user:', user.id);
-
   try {
-    // Parse and validate request
-    const body = await req.json();
-    const validation = RequestSchema.safeParse(body);
-    
-    if (!validation.success) {
-      console.error('Validation error:', validation.error.issues);
+    const { client, show_notes } = await req.json();
+    if (!client || !show_notes) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Invalid request data', 
-          details: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: "Missing client or show_notes" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
-
-    const { client, show_notes } = validation.data;
 
     if (!OPENAI_API_KEY || !OPENAI_API_KEY.trim()) {
       const data = await scoreGoalCentric(client, String(show_notes || ""));
