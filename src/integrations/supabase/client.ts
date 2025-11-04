@@ -2,24 +2,16 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://xjmcrvdczkefcbkayfbn.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqbWNydmRjemtlZmNia2F5ZmJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2Nzk2NzEsImV4cCI6MjA3MDI1NTY3MX0.AGAIZWrqXrYXJtgdwuduOAqAPZX743vM3JT_EVCMtzo";
+const SUPABASE_URL = "https://acrvymqsczclwzakpkip.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjcnZ5bXFzY3pjbHd6YWtwa2lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyODQ4NTcsImV4cCI6MjA3Nzg2MDg1N30.uHccf32IxPnTP2aGQO9V9KKMDfgGn7CMCasM0TyuVMQ";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
-
-// Single team/org scope for shared data across devices
-export const TEAM_ORG_ID = '11111111-1111-1111-1111-111111111111';
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  },
-  global: {
-    headers: {
-      'x-org-id': TEAM_ORG_ID,
-    },
-  },
+  }
 });
