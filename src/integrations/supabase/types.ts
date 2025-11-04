@@ -46,6 +46,8 @@ export type Database = {
           company: string
           company_url: string | null
           created_at: string | null
+          gender: string | null
+          guest_identity_tags: string[] | null
           id: string
           logo_url: string | null
           media_kit_url: string | null
@@ -58,6 +60,7 @@ export type Database = {
           tags: string[] | null
           talking_points: string[] | null
           target_audiences: string[] | null
+          title: string | null
           updated_at: string | null
         }
         Insert: {
@@ -67,6 +70,8 @@ export type Database = {
           company: string
           company_url?: string | null
           created_at?: string | null
+          gender?: string | null
+          guest_identity_tags?: string[] | null
           id?: string
           logo_url?: string | null
           media_kit_url?: string | null
@@ -79,6 +84,7 @@ export type Database = {
           tags?: string[] | null
           talking_points?: string[] | null
           target_audiences?: string[] | null
+          title?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -88,6 +94,8 @@ export type Database = {
           company?: string
           company_url?: string | null
           created_at?: string | null
+          gender?: string | null
+          guest_identity_tags?: string[] | null
           id?: string
           logo_url?: string | null
           media_kit_url?: string | null
@@ -100,6 +108,7 @@ export type Database = {
           tags?: string[] | null
           talking_points?: string[] | null
           target_audiences?: string[] | null
+          title?: string | null
           updated_at?: string | null
         }
         Relationships: []
