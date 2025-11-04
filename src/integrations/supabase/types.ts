@@ -14,13 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      batch_sessions: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          org_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          org_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          avoid: string[] | null
+          campaign_manager: string | null
+          campaign_strategy: string | null
+          company: string
+          company_url: string | null
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          media_kit_url: string | null
+          name: string
+          notes: string | null
+          org_id: string
+          pitch_template: string | null
+          product_type: string | null
+          professional_credentials: string[] | null
+          tags: string[] | null
+          talking_points: string[] | null
+          target_audiences: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          avoid?: string[] | null
+          campaign_manager?: string | null
+          campaign_strategy?: string | null
+          company: string
+          company_url?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          media_kit_url?: string | null
+          name: string
+          notes?: string | null
+          org_id: string
+          pitch_template?: string | null
+          product_type?: string | null
+          professional_credentials?: string[] | null
+          tags?: string[] | null
+          talking_points?: string[] | null
+          target_audiences?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          avoid?: string[] | null
+          campaign_manager?: string | null
+          campaign_strategy?: string | null
+          company?: string
+          company_url?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          media_kit_url?: string | null
+          name?: string
+          notes?: string | null
+          org_id?: string
+          pitch_template?: string | null
+          product_type?: string | null
+          professional_credentials?: string[] | null
+          tags?: string[] | null
+          talking_points?: string[] | null
+          target_audiences?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      evaluations: {
+        Row: {
+          batch_session_id: string | null
+          citations: Json | null
+          client_id: string
+          confidence: number | null
+          created_at: string | null
+          episode_description: string | null
+          episode_title: string | null
+          id: string
+          ineligibility_reason: string | null
+          is_eligible: boolean | null
+          org_id: string
+          overall_score: number | null
+          rubric_json: Json | null
+          show_description: string | null
+          show_title: string | null
+          url: string
+        }
+        Insert: {
+          batch_session_id?: string | null
+          citations?: Json | null
+          client_id: string
+          confidence?: number | null
+          created_at?: string | null
+          episode_description?: string | null
+          episode_title?: string | null
+          id?: string
+          ineligibility_reason?: string | null
+          is_eligible?: boolean | null
+          org_id: string
+          overall_score?: number | null
+          rubric_json?: Json | null
+          show_description?: string | null
+          show_title?: string | null
+          url: string
+        }
+        Update: {
+          batch_session_id?: string | null
+          citations?: Json | null
+          client_id?: string
+          confidence?: number | null
+          created_at?: string | null
+          episode_description?: string | null
+          episode_title?: string | null
+          id?: string
+          ineligibility_reason?: string | null
+          is_eligible?: boolean | null
+          org_id?: string
+          overall_score?: number | null
+          rubric_json?: Json | null
+          show_description?: string | null
+          show_title?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_team_org_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
