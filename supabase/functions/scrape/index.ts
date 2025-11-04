@@ -22,6 +22,24 @@ function extractMeta(content: string, name: string, attr: 'name'|'property' = 'n
   return m?.[1] || '';
 }
 
+function cleanRephonicTitle(title: string, url: string): string {
+  // Only apply cleaning for Rephonic URLs
+  if (!url.includes('rephonic.com')) return title;
+  
+  // Remove common Rephonic prefixes
+  const patterns = [
+    /^Listener Numbers,\s*Contacts,\s*Similar Podcasts\s*-\s*/i,
+    /^See the number of listeners[^-]*-\s*/i,
+  ];
+  
+  let cleaned = title;
+  for (const pattern of patterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  
+  return cleaned.trim();
+}
+
 function extractJSONLD(content: string): any[] {
   const scripts = [...content.matchAll(/<script[^>]+type=["']application\/(ld\+json)["'][^>]*>([\s\S]*?)<\/script>/gi)]
     .map((m) => m[2]);
@@ -186,11 +204,32 @@ serve(async (req) => {
     const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 PodcastFitRaterBot' } });
     const html = await r.text();
 
-    const title = extractMeta(html, 'og:title', 'property') || extractMeta(html, 'twitter:title', 'name') || (html.match(/<title>(.*?)<\/title>/i)?.[1] ?? '');
-    const ogDesc = extractMeta(html, 'og:description', 'property') || extractMeta(html, 'twitter:description', 'name') || extractMeta(html, 'description', 'name');
-
-    // JSON-LD descriptions
+    // JSON-LD extraction
     const jsonld = extractJSONLD(html);
+    
+    // Try JSON-LD for podcast name first (works well for directories)
+    let title = '';
+    for (const j of jsonld) {
+      const jType = (j as any)?.['@type'];
+      if (jType === 'PodcastSeries' || jType === 'PodcastEpisode') {
+        if ((j as any)?.name) {
+          title = (j as any).name;
+          break;
+        }
+      }
+    }
+
+    // Fallback to meta tags and HTML title
+    if (!title) {
+      title = extractMeta(html, 'og:title', 'property') || 
+              extractMeta(html, 'twitter:title', 'name') || 
+              (html.match(/<title>(.*?)<\/title>/i)?.[1] ?? '');
+    }
+
+    // Clean Rephonic-specific patterns
+    title = cleanRephonicTitle(title, url);
+    
+    const ogDesc = extractMeta(html, 'og:description', 'property') || extractMeta(html, 'twitter:description', 'name') || extractMeta(html, 'description', 'name');
     let ldDesc = '';
     for (const j of jsonld) {
       if ((j as any)?.description) {
