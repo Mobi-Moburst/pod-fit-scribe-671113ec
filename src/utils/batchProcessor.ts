@@ -343,6 +343,15 @@ export function parseRephonicContact(
   // Split name into parts
   const nameParts = nameOnly.split(/\s+/).filter(Boolean);
   
+  // Define common role labels that should not be treated as names
+  const roleLabels = ['podcast', 'host', 'publisher', 'producer', 'creator', 'owner', 'team', 'contact'];
+  
+  // Check if the extracted name is just a role label
+  if (nameParts.length === 1 && roleLabels.includes(nameParts[0].toLowerCase())) {
+    // Don't use role labels as names
+    return { firstName: '', lastName: '', email };
+  }
+  
   if (nameParts.length === 0) {
     return { ...fallback, email };
   } else if (nameParts.length === 1) {
