@@ -1,1 +1,10 @@
 project_id = "acrvymqsczclwzakpkip"
+
+[functions.scrape]
+verify_jwt = false
+
+[functions.analyze]
+verify_jwt = false
+
+[functions.generate-pitch]
+verify_jwt = false
