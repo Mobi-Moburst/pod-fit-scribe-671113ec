@@ -254,17 +254,150 @@ export function parseContactFirstName(associatedContact: string | undefined): st
   return 'the host';
 }
 
+// Name parsing helpers for Rephonic contact extraction
+const HONORIFICS = /^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|miss\.?|sir|dame)\s+/i;
+const LEADING_PHRASES: RegExp[] = [
+  /^hosted\s+by\s+/i,
+  /^hosts?\s*[:\-]?\s+/i,
+  /^with\s+/i,
+  /^w\/\s*/i,
+  /^presented\s+by\s+/i,
+  /^a\s+podcast\s+by\s+/i
+];
+const ORG_KEYWORDS = [
+  'inc', 'llc', 'ltd', 'media', 'studio', 'studios', 'network', 'podcast', 'show', 'company', 
+  'productions', 'group', 'agency', 'radio', 'tv', 'press', 'publishing', 'foundation', 
+  'association', 'university', 'college', 'school', 'institute', 'center', 'centre', 'labs'
+];
+const ROLE_LABELS = [
+  'podcast', 'host', 'producer', 'publisher', 'creator', 'owner', 'team', 'contact', 
+  'editor', 'manager'
+];
+
+function stripHonorifics(s: string): string {
+  let out = s.trim();
+  while (HONORIFICS.test(out)) {
+    out = out.replace(HONORIFICS, '');
+  }
+  return out.trim();
+}
+
+function removeLeadingPublisherPhrases(s: string): string {
+  let out = s.trim();
+  for (const rx of LEADING_PHRASES) {
+    if (rx.test(out)) {
+      out = out.replace(rx, '');
+    }
+  }
+  return out.trim();
+}
+
+function removeOrgSuffix(s: string): string {
+  let out = s.trim();
+  const SEP = /\s*(?:\-|—|\|)\s*/;
+  const parts = out.split(SEP);
+  if (parts.length >= 2) {
+    const right = parts[parts.length - 1].toLowerCase();
+    if (ORG_KEYWORDS.some(k => right.includes(k))) {
+      out = parts.slice(0, parts.length - 1).join(' - ');
+    }
+  }
+  return out.trim();
+}
+
+function isDomainLike(s: string): boolean {
+  const t = s.trim();
+  return /\S+\.\S+/.test(t) && !t.includes(' ');
+}
+
+function isOrgLike(s: string): boolean {
+  const t = s.trim().toLowerCase();
+  if (!t.includes(' ') || isDomainLike(t)) return true;
+  return ORG_KEYWORDS.some(k => t.includes(k));
+}
+
+function cleanPublisherCore(publisher?: string): string {
+  if (!publisher) return '';
+  let core = publisher.trim();
+  core = removeLeadingPublisherPhrases(core);
+  core = core.replace(/\((?:[^)]*podcast[^)]*|[^)]*show[^)]*)\)/ig, '').trim();
+  core = stripHonorifics(core);
+  core = removeOrgSuffix(core);
+  if (core.includes(',')) core = core.split(',')[0].trim();
+  core = core.replace(/^["']+|["']+$/g, '').trim();
+  return core;
+}
+
+function splitPersonName(name: string): { first: string; last: string } | null {
+  const n = name.replace(/\s+/g, ' ').trim();
+  if (!n) return null;
+  
+  // Pattern: "First and Second Last" or "First & Second Last"
+  const andMatch = n.match(/^(.+?)\s+(?:and|&)\s+.+\s+([A-Za-z'\-]+)$/);
+  if (andMatch) {
+    const first = andMatch[1].split(' ')[0];
+    const last = andMatch[2];
+    if (first && last) return { first, last };
+  }
+  
+  // Comma-delimited list: take first segment
+  const core = n.split(',')[0].trim();
+  const parts = core.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return { first: parts[0], last: '' };
+  }
+  const first = parts[0];
+  const last = parts.slice(1).join(' ');
+  return { first, last };
+}
+
+function extractNameFromPublisher(publisher?: string): { first: string; last: string } | null {
+  const cleaned = cleanPublisherCore(publisher);
+  if (!cleaned || isOrgLike(cleaned)) return null;
+  const split = splitPersonName(cleaned);
+  if (!split) return null;
+  return {
+    first: stripHonorifics(split.first),
+    last: stripHonorifics(split.last)
+  };
+}
+
+function extractNameFromAllContacts(allContacts?: string): { first: string; last: string } | null {
+  if (!allContacts || !allContacts.trim()) return null;
+  const lines = allContacts.split(/\n/).map(l => l.trim()).filter(Boolean);
+  const emails = lines.filter(l => l.toLowerCase().startsWith('email:'));
+  if (!emails.length) return null;
+  
+  const pickLine = emails.find(l => /\(.*host.*\)/i.test(l)) || 
+                   emails.find(l => /\(.*podcast.*\)/i.test(l)) || 
+                   emails[0];
+
+  const allCandidates = [pickLine, ...emails.filter(l => l !== pickLine)];
+  for (const line of allCandidates) {
+    const nameMatch = line.match(/\(([^)]+)\)/);
+    if (!nameMatch) continue;
+    let nameOnly = nameMatch[1];
+    if (nameOnly.includes(',')) nameOnly = nameOnly.split(',')[0].trim();
+    const lower = nameOnly.toLowerCase();
+    if (ROLE_LABELS.includes(lower)) continue;
+    if (isOrgLike(nameOnly)) continue;
+    const parts = nameOnly.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) continue;
+    const split = splitPersonName(stripHonorifics(nameOnly));
+    if (split) return { first: split.first, last: split.last };
+  }
+  return null;
+}
+
 /**
  * Parse contact info from Rephonic's "All Contacts" field
- * Priority: Host contacts > Podcast contacts > First available
+ * Priority: Publisher field (if person-like) > All Contacts > Empty
  * 
- * Format: Multi-line with "Email: address (Name, Role)"
- * Example:
- *   Email: maya.harper@singlegrain.com (Podcast)
- *   Email: eric@singlegrain.com (Eric Siu, Host)
- *   Email: neil@neilpatel.com (Neil Patel, Host)
- * 
- * Returns the FIRST Host contact if available, otherwise first Podcast contact
+ * Handles:
+ * - Cleaning prefixes ("Hosted by", "Dr.", etc.)
+ * - Multi-host patterns ("Jodi and Justin Daniels")
+ * - Organization detection (falls back to All Contacts)
+ * - Organization suffixes ("Name - Company Network")
  */
 export function parseRephonicContact(
   allContacts: string | undefined,
@@ -276,43 +409,29 @@ export function parseRephonicContact(
     email: ''
   };
   
-  // 1. Parse names from Publisher field (PRIMARY source for names)
-  if (publisherFallback && publisherFallback.trim()) {
-    const parts = publisherFallback.trim().split(/\s+/).filter(Boolean);
-    if (parts.length > 0) {
-      result.firstName = parts[0];
-      result.lastName = parts.slice(1).join(' ');
-    }
+  // Names: prefer Publisher if it looks like a person; else use All Contacts
+  const fromPublisher = extractNameFromPublisher(publisherFallback);
+  const fromContacts = fromPublisher ? null : extractNameFromAllContacts(allContacts);
+  
+  if (fromPublisher) {
+    result.firstName = fromPublisher.first;
+    result.lastName = fromPublisher.last;
+  } else if (fromContacts) {
+    result.firstName = fromContacts.first;
+    result.lastName = fromContacts.last;
   }
   
-  // 2. Extract email from All Contacts field
+  // Email: same logic as before (prefer Host > Podcast > first)
   if (allContacts && allContacts.trim()) {
-    // Split by newlines to get individual contact entries
-    const contactLines = allContacts.split(/\n/).map(line => line.trim()).filter(Boolean);
-    
-    // Filter for email lines only (ignore "Page:" lines)
-    const emailLines = contactLines.filter(line => line.startsWith('Email:'));
-    
-    if (emailLines.length > 0) {
-      // Look for Host contact first
-      let targetLine = emailLines.find(line => /\(.*Host.*\)/i.test(line));
-      
-      // If no host, look for Podcast contact
-      if (!targetLine) {
-        targetLine = emailLines.find(line => /\(.*Podcast.*\)/i.test(line));
-      }
-      
-      // If still nothing, take the first email line
-      if (!targetLine) {
-        targetLine = emailLines[0];
-      }
-      
-      // Extract email address
-      const content = targetLine.replace(/^Email:\s*/i, '').trim();
+    const lines = allContacts.split(/\n/).map(l => l.trim()).filter(Boolean);
+    const emails = lines.filter(l => l.toLowerCase().startsWith('email:'));
+    if (emails.length) {
+      let target = emails.find(l => /\(.*host.*\)/i.test(l));
+      if (!target) target = emails.find(l => /\(.*podcast.*\)/i.test(l));
+      if (!target) target = emails[0];
+      const content = target.replace(/^Email:\s*/i, '').trim();
       const emailMatch = content.match(/^([^\s(]+@[^\s(]+)/);
-      if (emailMatch) {
-        result.email = emailMatch[1].trim();
-      }
+      if (emailMatch) result.email = emailMatch[1].trim();
     }
   }
   
