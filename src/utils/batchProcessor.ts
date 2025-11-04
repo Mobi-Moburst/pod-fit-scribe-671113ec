@@ -270,103 +270,53 @@ export function parseRephonicContact(
   allContacts: string | undefined,
   publisherFallback?: string
 ): ParsedContact {
-  const fallback: ParsedContact = {
+  const result: ParsedContact = {
     firstName: '',
     lastName: '',
     email: ''
   };
   
-  if (!allContacts || allContacts.trim() === '') {
-    // Fallback to Publisher field if All Contacts is empty
-    if (publisherFallback && publisherFallback.trim()) {
-      const parts = publisherFallback.trim().split(/\s+/).filter(Boolean);
-      return {
-        firstName: parts[0] || '',
-        lastName: parts.slice(1).join(' ') || '',
-        email: ''
-      };
+  // 1. Parse names from Publisher field (PRIMARY source for names)
+  if (publisherFallback && publisherFallback.trim()) {
+    const parts = publisherFallback.trim().split(/\s+/).filter(Boolean);
+    if (parts.length > 0) {
+      result.firstName = parts[0];
+      result.lastName = parts.slice(1).join(' ');
     }
-    return fallback;
   }
   
-  // Split by newlines to get individual contact entries
-  const contactLines = allContacts.split(/\n/).map(line => line.trim()).filter(Boolean);
-  
-  // Filter for email lines only (ignore "Page:" lines)
-  const emailLines = contactLines.filter(line => line.startsWith('Email:'));
-  
-  if (emailLines.length === 0) {
-    return fallback;
-  }
-  
-  // Look for Host contact first (contains "Host" or ends with ", Host)")
-  let targetLine = emailLines.find(line => 
-    /\(.*Host.*\)/i.test(line)
-  );
-  
-  // If no host, look for Podcast contact
-  if (!targetLine) {
-    targetLine = emailLines.find(line => 
-      /\(.*Podcast.*\)/i.test(line)
-    );
-  }
-  
-  // If still nothing, take the first email line
-  if (!targetLine) {
-    targetLine = emailLines[0];
-  }
-  
-  // Parse the selected line
-  // Format: "Email: address@domain.com (First Last, Role)" or "Email: address@domain.com"
-  
-  // Remove "Email:" prefix
-  let content = targetLine.replace(/^Email:\s*/i, '').trim();
-  
-  // Extract email (everything before the opening parenthesis or end of string)
-  const emailMatch = content.match(/^([^\s(]+@[^\s(]+)/);
-  const email = emailMatch ? emailMatch[1].trim() : '';
-  
-  // Extract name from parentheses if present
-  const nameMatch = content.match(/\(([^)]+)\)/);
-  let nameOnly = '';
-  
-  if (nameMatch) {
-    // Format: "First Last, Role" or "First Last"
-    nameOnly = nameMatch[1];
+  // 2. Extract email from All Contacts field
+  if (allContacts && allContacts.trim()) {
+    // Split by newlines to get individual contact entries
+    const contactLines = allContacts.split(/\n/).map(line => line.trim()).filter(Boolean);
     
-    // Remove role suffix (everything after comma)
-    if (nameOnly.includes(',')) {
-      nameOnly = nameOnly.split(',')[0].trim();
+    // Filter for email lines only (ignore "Page:" lines)
+    const emailLines = contactLines.filter(line => line.startsWith('Email:'));
+    
+    if (emailLines.length > 0) {
+      // Look for Host contact first
+      let targetLine = emailLines.find(line => /\(.*Host.*\)/i.test(line));
+      
+      // If no host, look for Podcast contact
+      if (!targetLine) {
+        targetLine = emailLines.find(line => /\(.*Podcast.*\)/i.test(line));
+      }
+      
+      // If still nothing, take the first email line
+      if (!targetLine) {
+        targetLine = emailLines[0];
+      }
+      
+      // Extract email address
+      const content = targetLine.replace(/^Email:\s*/i, '').trim();
+      const emailMatch = content.match(/^([^\s(]+@[^\s(]+)/);
+      if (emailMatch) {
+        result.email = emailMatch[1].trim();
+      }
     }
   }
   
-  // Split name into parts
-  const nameParts = nameOnly.split(/\s+/).filter(Boolean);
-  
-  // Define common role labels that should not be treated as names
-  const roleLabels = ['podcast', 'host', 'publisher', 'producer', 'creator', 'owner', 'team', 'contact'];
-  
-  // Check if the extracted name is just a role label
-  if (nameParts.length === 1 && roleLabels.includes(nameParts[0].toLowerCase())) {
-    // Don't use role labels as names
-    return { firstName: '', lastName: '', email };
-  }
-  
-  if (nameParts.length === 0) {
-    return { ...fallback, email };
-  } else if (nameParts.length === 1) {
-    return {
-      firstName: nameParts[0],
-      lastName: '',
-      email
-    };
-  } else {
-    return {
-      firstName: nameParts[0],
-      lastName: nameParts.slice(1).join(' '),
-      email
-    };
-  }
+  return result;
 }
 
 export { detectUrlColumn, detectDescriptionColumn };
