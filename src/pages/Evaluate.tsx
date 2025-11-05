@@ -141,7 +141,6 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
         confidence: (result as any).confidence ?? null,
         rubric_json: result as any,
         citations: (result as any).citations ?? null,
-        show_notes_excerpt: paste ? paste.slice(0, 500) : null,
       } as any,
     ]);
     if (error) {
