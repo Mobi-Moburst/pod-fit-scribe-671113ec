@@ -545,7 +545,7 @@ export async function processSingleUrl(
       show_title: showTitle || data.show_title,
       verdict: mapVerdict(data.verdict),
       overall_score: data.overall_score,
-      confidence: data.confidence,
+      confidence: data.confidence ? Math.round(data.confidence * 100) : undefined,
       eligibility_class: data.cap_type !== 'none' ? data.cap_type : undefined,
       eligibility_action: data.cap_type !== 'none' ? ('condition' as const) : null,
       last_publish_date: extractPublishDate(scrapeResult),
