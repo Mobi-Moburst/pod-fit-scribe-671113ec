@@ -544,7 +544,7 @@ export async function processSingleUrl(
       cache_timestamp: Date.now(),
       show_title: showTitle || data.show_title,
       verdict: mapVerdict(data.verdict),
-      overall_score: data.overall_score,
+      overall_score: data.overall_score ? Math.round(data.overall_score) : undefined,
       confidence: data.confidence ? Math.round(data.confidence * 100) : undefined,
       eligibility_class: data.cap_type !== 'none' ? data.cap_type : undefined,
       eligibility_action: data.cap_type !== 'none' ? ('condition' as const) : null,

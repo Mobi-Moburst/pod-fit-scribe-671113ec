@@ -620,7 +620,7 @@ const Batch = () => {
         client_id: state.client_id,
         url: row.podcast_url,
         show_title: row.show_title,
-        overall_score: row.overall_score,
+        overall_score: row.overall_score ? Math.round(row.overall_score) : null,
         confidence: row.confidence ? Math.round(row.confidence * 100) : null,
         rubric_json: row.evaluation_data || {},
         citations: row.evaluation_data?.citations || [],

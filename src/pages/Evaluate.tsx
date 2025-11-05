@@ -137,7 +137,7 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
         client_id: clientId,
         url: url || 'manual',
         show_title: result.show_title || null,
-        overall_score: (result as any).overall_score ?? null,
+        overall_score: (result as any).overall_score ? Math.round((result as any).overall_score) : null,
         confidence: (result as any).confidence ? Math.round((result as any).confidence * 100) : null,
         rubric_json: result as any,
         citations: (result as any).citations ?? null,
