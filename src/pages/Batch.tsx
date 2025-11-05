@@ -621,7 +621,7 @@ const Batch = () => {
         url: row.podcast_url,
         show_title: row.show_title,
         overall_score: row.overall_score,
-        confidence: row.confidence,
+        confidence: row.confidence ? Math.round(row.confidence * 100) : null,
         rubric_json: row.evaluation_data || {},
         citations: row.evaluation_data?.citations || [],
         org_id: TEAM_ORG_ID
