@@ -1,6 +1,16 @@
 import Papa from 'papaparse';
 import { BatchCSVRow, AirtableCSVRow, SOVCSVRow } from '@/types/csv';
 
+// Normalize CSV header names to snake_case
+function normalizeHeaderName(header: string): string {
+  return header
+    .toLowerCase()
+    .replace(/\s*\/\s*/g, '_') // "Date / Time" → "date_time"
+    .replace(/\s+/g, '_') // Spaces to underscores
+    .replace(/[^a-z0-9_]/g, '') // Remove other special chars
+    .trim();
+}
+
 // Normalize podcast title for matching
 export function normalizeTitle(title: string): string {
   return title
@@ -15,6 +25,7 @@ export function parseBatchCSV(csvText: string): BatchCSVRow[] {
   const result = Papa.parse<BatchCSVRow>(csvText, {
     header: true,
     skipEmptyLines: true,
+    transformHeader: normalizeHeaderName,
   });
   return result.data;
 }
@@ -28,6 +39,7 @@ export function parseAirtableCSV(
   const result = Papa.parse<AirtableCSVRow>(csvText, {
     header: true,
     skipEmptyLines: true,
+    transformHeader: normalizeHeaderName,
   });
   
   // Filter by scheduled_date_time (recording date)
@@ -48,6 +60,7 @@ export function parseSOVCSV(csvText: string): SOVCSVRow[] {
   const result = Papa.parse<SOVCSVRow>(csvText, {
     header: true,
     skipEmptyLines: true,
+    transformHeader: normalizeHeaderName,
   });
   return result.data;
 }
