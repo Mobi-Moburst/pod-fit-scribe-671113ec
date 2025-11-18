@@ -240,6 +240,14 @@ function calculateEnhancedKPIs(
   batchRows: BatchCSVRow[],
   airtableRows: AirtableCSVRow[]
 ): ReportData['kpis'] {
+  console.log('[calculateEnhancedKPIs] Airtable summary', {
+    totalRows: airtableRows.length,
+    interviewActions: airtableRows.filter(r => r.action?.toLowerCase().includes('podcast recording')).length,
+    booked: airtableRows.filter(r => r.date_booked && r.date_booked.trim() !== '').length,
+    published: airtableRows.filter(r => r.date_published && r.date_published.trim() !== '').length,
+    sample: airtableRows.slice(0, 3),
+  });
+
   const successfulBatch = batchRows.filter(row => 
     row.status === 'success' && row.verdict && row.overall_score
   );
