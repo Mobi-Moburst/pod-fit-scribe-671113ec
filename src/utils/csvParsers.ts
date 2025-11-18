@@ -6,9 +6,44 @@ function normalizeHeaderName(header: string): string {
   return header
     .toLowerCase()
     .replace(/\s*\/\s*/g, '_') // "Date / Time" → "date_time"
-    .replace(/\s+/g, '_') // Spaces to underscores
+    .replace(/\s+/g, '_') // Spaces to underscases
     .replace(/[^a-z0-9_]/g, '') // Remove other special chars
     .trim();
+}
+
+// Parse Airtable date format: "4/10/2025 9:30am" or "3/27/2025"
+function parseAirtableDate(dateStr: string): Date | null {
+  if (!dateStr || dateStr.trim() === '') return null;
+  
+  try {
+    // Try standard date parsing first (for simple dates like "3/27/2025")
+    const standardParse = new Date(dateStr);
+    if (!isNaN(standardParse.getTime())) {
+      return standardParse;
+    }
+    
+    // Handle format: "M/D/YYYY H:MMam/pm"
+    const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(am|pm))?/i);
+    if (!match) return null;
+    
+    const [, month, day, year, hourStr, minuteStr, ampm] = match;
+    let hours = hourStr ? parseInt(hourStr, 10) : 0;
+    const minutes = minuteStr ? parseInt(minuteStr, 10) : 0;
+    
+    // Convert to 24-hour format if needed
+    if (ampm && hourStr) {
+      if (ampm.toLowerCase() === 'pm' && hours !== 12) {
+        hours += 12;
+      } else if (ampm.toLowerCase() === 'am' && hours === 12) {
+        hours = 0;
+      }
+    }
+    
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), hours, minutes);
+  } catch (error) {
+    console.error('[parseAirtableDate] Error parsing:', dateStr, error);
+    return null;
+  }
 }
 
 // Normalize podcast title for matching
@@ -59,24 +94,24 @@ export function parseAirtableCSV(
   const filtered = result.data.filter(row => {
     if (!row.scheduled_date_time) return false;
     
-    try {
-      const scheduledDate = new Date(row.scheduled_date_time);
-      const inRange = scheduledDate >= startDate && scheduledDate <= endDate;
-      
-      if (!inRange) {
-        console.log('[parseAirtableCSV] Filtered out:', {
-          podcast: row.podcast_name,
-          scheduled: row.scheduled_date_time,
-          parsedDate: scheduledDate.toISOString(),
-          reason: scheduledDate < startDate ? 'before range' : 'after range'
-        });
-      }
-      
-      return inRange;
-    } catch {
+    const scheduledDate = parseAirtableDate(row.scheduled_date_time);
+    if (!scheduledDate) {
       console.log('[parseAirtableCSV] Parse error:', row.scheduled_date_time);
       return false;
     }
+    
+    const inRange = scheduledDate >= startDate && scheduledDate <= endDate;
+    
+    if (!inRange) {
+      console.log('[parseAirtableCSV] Filtered out:', {
+        podcast: row.podcast_name,
+        scheduled: row.scheduled_date_time,
+        parsedDate: scheduledDate.toISOString(),
+        reason: scheduledDate < startDate ? 'before range' : 'after range'
+      });
+    }
+    
+    return inRange;
   });
   
   console.log('[parseAirtableCSV] After filtering:', {
