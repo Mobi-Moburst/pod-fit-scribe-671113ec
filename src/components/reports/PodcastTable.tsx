@@ -113,7 +113,7 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                     : '-'}
                 </TableCell>
                 <TableCell>
-                  {podcast.episode_link ? (
+                  {podcast.episode_link && podcast.episode_link.trim() !== '' ? (
                     <a 
                       href={podcast.episode_link} 
                       target="_blank" 
@@ -122,7 +122,9 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                     >
                       Listen
                     </a>
-                  ) : '-'}
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {podcast.episode_duration_minutes 
