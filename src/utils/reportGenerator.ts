@@ -201,20 +201,29 @@ function mergePodcastData(
     row.status === 'success' && row.verdict && row.overall_score
   );
   
-  // Create lookup map for Airtable data
+  // Create lookup maps
   const airtableMap = new Map<string, AirtableCSVRow>();
   airtableRows.forEach(row => {
     const normalized = normalizeTitle(row.podcast_name);
     airtableMap.set(normalized, row);
   });
   
-  // Merge data
-  return successfulBatch.map(batchRow => {
+  const batchMap = new Map<string, BatchCSVRow>();
+  successfulBatch.forEach(row => {
+    const normalized = normalizeTitle(row.show_title);
+    batchMap.set(normalized, row);
+  });
+  
+  const merged: PodcastReportEntry[] = [];
+  const processedTitles = new Set<string>();
+  
+  // First, process all batch rows with Airtable matches
+  successfulBatch.forEach(batchRow => {
     const normalizedTitle = normalizeTitle(batchRow.show_title);
     const airtableRow = airtableMap.get(normalizedTitle);
+    processedTitles.add(normalizedTitle);
     
-    const merged = {
-      // Batch data
+    merged.push({
       show_title: batchRow.show_title,
       verdict: batchRow.verdict,
       overall_score: parseFloat(String(batchRow.overall_score)) || 0,
@@ -222,8 +231,6 @@ function mergePodcastData(
       social_reach: batchRow.social_reach,
       categories: batchRow.categories,
       rationale_short: batchRow.rationale_short,
-      
-      // Airtable data (if matched)
       apple_podcast_link: airtableRow?.apple_podcast_link,
       action: airtableRow?.action,
       scheduled_date_time: airtableRow?.scheduled_date_time,
@@ -231,18 +238,34 @@ function mergePodcastData(
       date_booked: airtableRow?.date_booked,
       date_published: airtableRow?.date_published,
       episode_link: airtableRow?.link_to_episode,
-    };
-    
-    console.log('[mergePodcastData]', {
-      show: batchRow.show_title,
-      hasAirtableMatch: !!airtableRow,
-      airtableAction: airtableRow?.action,
-      episodeLink: merged.episode_link,
-      applePodcastLink: merged.apple_podcast_link
     });
-    
-    return merged;
   });
+  
+  // Then, add Airtable-only podcasts (not in batch)
+  airtableRows.forEach(airtableRow => {
+    const normalizedTitle = normalizeTitle(airtableRow.podcast_name);
+    
+    if (!processedTitles.has(normalizedTitle)) {
+      merged.push({
+        show_title: airtableRow.podcast_name,
+        verdict: 'Not' as const, // Default for non-evaluated
+        overall_score: 0,
+        listeners_per_episode: undefined,
+        social_reach: undefined,
+        categories: undefined,
+        rationale_short: 'Not evaluated in batch',
+        apple_podcast_link: airtableRow.apple_podcast_link,
+        action: airtableRow.action,
+        scheduled_date_time: airtableRow.scheduled_date_time,
+        show_notes: airtableRow.show_notes,
+        date_booked: airtableRow.date_booked,
+        date_published: airtableRow.date_published,
+        episode_link: airtableRow.link_to_episode,
+      });
+    }
+  });
+  
+  return merged;
 }
 
 // Calculate enhanced KPIs from Batch + Airtable
