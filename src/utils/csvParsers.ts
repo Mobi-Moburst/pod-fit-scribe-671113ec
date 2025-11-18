@@ -90,24 +90,32 @@ export function parseAirtableCSV(
     errors: result.errors,
   });
   
-  // Filter by scheduled_date_time (recording date)
+  // Filter by scheduled_date_time (recording date) OR date_published
   const filtered = result.data.filter(row => {
-    if (!row.scheduled_date_time) return false;
+    let inRange = false;
     
-    const scheduledDate = parseAirtableDate(row.scheduled_date_time);
-    if (!scheduledDate) {
-      console.log('[parseAirtableCSV] Parse error:', row.scheduled_date_time);
-      return false;
+    // Check recording date
+    if (row.scheduled_date_time) {
+      const scheduledDate = parseAirtableDate(row.scheduled_date_time);
+      if (scheduledDate && scheduledDate >= startDate && scheduledDate <= endDate) {
+        inRange = true;
+      }
     }
     
-    const inRange = scheduledDate >= startDate && scheduledDate <= endDate;
+    // Check publish date
+    if (!inRange && row.date_published) {
+      const publishedDate = parseAirtableDate(row.date_published);
+      if (publishedDate && publishedDate >= startDate && publishedDate <= endDate) {
+        inRange = true;
+      }
+    }
     
-    if (!inRange) {
+    if (!inRange && row.scheduled_date_time) {
       console.log('[parseAirtableCSV] Filtered out:', {
         podcast: row.podcast_name,
         scheduled: row.scheduled_date_time,
-        parsedDate: scheduledDate.toISOString(),
-        reason: scheduledDate < startDate ? 'before range' : 'after range'
+        published: row.date_published,
+        reason: 'outside date range'
       });
     }
     
