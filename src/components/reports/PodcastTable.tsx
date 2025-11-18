@@ -91,7 +91,11 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
               <TableRow key={idx}>
                 <TableCell className="font-medium">{podcast.show_title}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{podcast.overall_score.toFixed(1)}</Badge>
+                  {podcast.overall_score > 0 ? (
+                    <Badge variant="outline">{podcast.overall_score.toFixed(1)}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">-</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatNumber(podcast.listeners_per_episode)}
