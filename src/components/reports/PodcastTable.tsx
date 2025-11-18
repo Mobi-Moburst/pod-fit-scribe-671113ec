@@ -5,15 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { PodcastReportEntry } from "@/types/reports";
+
 interface PodcastTableProps {
-  podcasts: Array<{
-    show_title: string;
-    verdict: 'Fit' | 'Consider' | 'Not';
-    overall_score: number;
-    listeners_per_episode?: number;
-    categories?: string;
-    rationale_short?: string;
-  }>;
+  podcasts: PodcastReportEntry[];
 }
 
 export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
@@ -84,6 +79,10 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                   Reach <ArrowUpDown className="ml-1 h-3 w-3" />
                 </Button>
               </TableHead>
+              <TableHead>Action</TableHead>
+              <TableHead>Date Published</TableHead>
+              <TableHead>Episode Link</TableHead>
+              <TableHead>Duration</TableHead>
               <TableHead>Categories</TableHead>
             </TableRow>
           </TableHeader>
@@ -96,6 +95,41 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatNumber(podcast.listeners_per_episode)}
+                </TableCell>
+                <TableCell>
+                  {podcast.action ? (
+                    <Badge variant={
+                      podcast.action.toLowerCase().includes('podcast recording') 
+                        ? 'default' 
+                        : 'secondary'
+                    }>
+                      {podcast.action}
+                    </Badge>
+                  ) : '-'}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {podcast.date_published 
+                    ? new Date(podcast.date_published).toLocaleDateString() 
+                    : '-'}
+                </TableCell>
+                <TableCell>
+                  {podcast.episode_link ? (
+                    <a 
+                      href={podcast.episode_link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline text-sm"
+                    >
+                      Listen
+                    </a>
+                  ) : '-'}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {podcast.episode_duration_minutes ? (
+                    <span className="text-muted-foreground">{podcast.episode_duration_minutes} min</span>
+                  ) : podcast.episode_link ? (
+                    <Badge variant="outline" className="text-xs">No Duration</Badge>
+                  ) : '-'}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {podcast.categories || '-'}

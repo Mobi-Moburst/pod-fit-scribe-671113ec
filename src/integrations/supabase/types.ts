@@ -182,6 +182,63 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          batch_session_id: string | null
+          client_id: string
+          created_at: string | null
+          date_range_end: string
+          date_range_start: string
+          generated_at: string | null
+          id: string
+          org_id: string
+          quarter: string | null
+          report_data: Json
+          report_name: string
+        }
+        Insert: {
+          batch_session_id?: string | null
+          client_id: string
+          created_at?: string | null
+          date_range_end: string
+          date_range_start: string
+          generated_at?: string | null
+          id?: string
+          org_id: string
+          quarter?: string | null
+          report_data: Json
+          report_name: string
+        }
+        Update: {
+          batch_session_id?: string | null
+          client_id?: string
+          created_at?: string | null
+          date_range_end?: string
+          date_range_start?: string
+          generated_at?: string | null
+          id?: string
+          org_id?: string
+          quarter?: string | null
+          report_data?: Json
+          report_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_batch_session_id_fkey"
+            columns: ["batch_session_id"]
+            isOneToOne: false
+            referencedRelation: "batch_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
