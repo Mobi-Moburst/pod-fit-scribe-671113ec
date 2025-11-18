@@ -36,23 +36,55 @@ export function parseAirtableCSV(
   startDate: Date,
   endDate: Date
 ): AirtableCSVRow[] {
+  console.log('[parseAirtableCSV] Input params:', {
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
+    csvPreview: csvText.substring(0, 200)
+  });
+
   const result = Papa.parse<AirtableCSVRow>(csvText, {
     header: true,
     skipEmptyLines: true,
     transformHeader: normalizeHeaderName,
   });
   
+  console.log('[parseAirtableCSV] After parse:', {
+    totalRows: result.data.length,
+    headers: result.meta?.fields,
+    firstRow: result.data[0],
+    errors: result.errors,
+  });
+  
   // Filter by scheduled_date_time (recording date)
-  return result.data.filter(row => {
+  const filtered = result.data.filter(row => {
     if (!row.scheduled_date_time) return false;
     
     try {
       const scheduledDate = new Date(row.scheduled_date_time);
-      return scheduledDate >= startDate && scheduledDate <= endDate;
+      const inRange = scheduledDate >= startDate && scheduledDate <= endDate;
+      
+      if (!inRange) {
+        console.log('[parseAirtableCSV] Filtered out:', {
+          podcast: row.podcast_name,
+          scheduled: row.scheduled_date_time,
+          parsedDate: scheduledDate.toISOString(),
+          reason: scheduledDate < startDate ? 'before range' : 'after range'
+        });
+      }
+      
+      return inRange;
     } catch {
+      console.log('[parseAirtableCSV] Parse error:', row.scheduled_date_time);
       return false;
     }
   });
+  
+  console.log('[parseAirtableCSV] After filtering:', {
+    filteredCount: filtered.length,
+    samples: filtered.slice(0, 3)
+  });
+  
+  return filtered;
 }
 
 // Parse SOV CSV
