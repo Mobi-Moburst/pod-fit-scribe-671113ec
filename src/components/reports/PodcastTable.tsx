@@ -113,7 +113,11 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                     : '-'}
                 </TableCell>
                 <TableCell>
-                  {podcast.episode_link && podcast.episode_link.trim() !== '' ? (
+                  {podcast.episode_link && 
+                   podcast.episode_link.trim() !== '' && 
+                   podcast.episode_link.toLowerCase() !== 'n/f' &&
+                   podcast.episode_link.toLowerCase() !== 'na' &&
+                   podcast.episode_link.toLowerCase() !== 'n/a' ? (
                     <a 
                       href={podcast.episode_link} 
                       target="_blank" 
