@@ -241,11 +241,13 @@ function mergePodcastData(
     });
   });
   
-  // Then, add Airtable-only podcasts (not in batch)
+  // Then, add Airtable-only podcasts (not in batch) with "Podcast recording" action
   airtableRows.forEach(airtableRow => {
     const normalizedTitle = normalizeTitle(airtableRow.podcast_name);
     
-    if (!processedTitles.has(normalizedTitle)) {
+    // Only include if not already processed AND has "Podcast recording" action
+    if (!processedTitles.has(normalizedTitle) && 
+        airtableRow.action?.toLowerCase().includes('podcast recording')) {
       merged.push({
         show_title: airtableRow.podcast_name,
         verdict: 'Not' as const, // Default for non-evaluated
