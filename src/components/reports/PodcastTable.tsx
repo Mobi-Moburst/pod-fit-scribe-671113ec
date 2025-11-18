@@ -124,12 +124,10 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                     </a>
                   ) : '-'}
                 </TableCell>
-                <TableCell className="text-sm">
-                  {podcast.episode_duration_minutes ? (
-                    <span className="text-muted-foreground">{podcast.episode_duration_minutes} min</span>
-                  ) : podcast.episode_link ? (
-                    <Badge variant="outline" className="text-xs">No Duration</Badge>
-                  ) : '-'}
+                <TableCell className="text-sm text-muted-foreground">
+                  {podcast.episode_duration_minutes 
+                    ? `${podcast.episode_duration_minutes} min`
+                    : '-'}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {podcast.categories || '-'}
