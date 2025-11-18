@@ -213,7 +213,7 @@ function mergePodcastData(
     const normalizedTitle = normalizeTitle(batchRow.show_title);
     const airtableRow = airtableMap.get(normalizedTitle);
     
-    return {
+    const merged = {
       // Batch data
       show_title: batchRow.show_title,
       verdict: batchRow.verdict,
@@ -232,6 +232,16 @@ function mergePodcastData(
       date_published: airtableRow?.date_published,
       episode_link: airtableRow?.link_to_episode,
     };
+    
+    console.log('[mergePodcastData]', {
+      show: batchRow.show_title,
+      hasAirtableMatch: !!airtableRow,
+      airtableAction: airtableRow?.action,
+      episodeLink: merged.episode_link,
+      applePodcastLink: merged.apple_podcast_link
+    });
+    
+    return merged;
   });
 }
 
