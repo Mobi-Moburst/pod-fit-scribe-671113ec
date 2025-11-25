@@ -38,8 +38,6 @@ export default function Reports() {
   // Manual SOV inputs
   const [manualSOVMode, setManualSOVMode] = useState(false);
   const [competitorInterviews, setCompetitorInterviews] = useState<{ name: string; role: string; count: number }[]>([]);
-  const [scrapingStates, setScrapingStates] = useState<Record<string, boolean>>({});
-  const [scrapedEpisodesByCompetitor, setScrapedEpisodesByCompetitor] = useState<Record<string, any[]>>({});
   
   // Report metadata
   const [reportName, setReportName] = useState<string>('');
@@ -358,68 +356,6 @@ export default function Reports() {
     window.print();
   };
 
-  const handleAutoScrapeRephonic = async (competitorName: string, competitorIndex: number) => {
-    if (!dateRangeStart || !dateRangeEnd) {
-      toast({
-        title: "Date range required",
-        description: "Please set the report date range first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Set scraping state
-    setScrapingStates(prev => ({ ...prev, [competitorName]: true }));
-
-    try {
-      console.log('[Reports] Calling scrape-rephonic-sov for:', competitorName);
-      
-      const { data, error } = await supabase.functions.invoke('scrape-rephonic-sov', {
-        body: {
-          competitorName,
-          startDate: dateRangeStart,
-          endDate: dateRangeEnd
-        }
-      });
-
-      if (error) {
-        console.error('[Reports] Edge function error:', error);
-        throw error;
-      }
-
-      console.log('[Reports] Scrape result:', data);
-
-      if (data.success) {
-        // Store scraped episodes
-        setScrapedEpisodesByCompetitor(prev => ({
-          ...prev,
-          [competitorName]: data.episodes
-        }));
-
-        // Auto-populate interview count
-        const updated = [...competitorInterviews];
-        updated[competitorIndex].count = data.episode_count;
-        setCompetitorInterviews(updated);
-
-        toast({
-          title: "Scrape successful",
-          description: `Found ${data.episode_count} episodes for ${competitorName}${data.is_limited ? ' (limited to 6 results)' : ''}`,
-        });
-      } else {
-        throw new Error(data.error || 'Scraping failed');
-      }
-    } catch (error) {
-      console.error('[Reports] Scrape error:', error);
-      toast({
-        title: "Scrape failed",
-        description: error instanceof Error ? error.message : "Could not scrape Rephonic data",
-        variant: "destructive",
-      });
-    } finally {
-      setScrapingStates(prev => ({ ...prev, [competitorName]: false }));
-    }
-  };
-
   return (
     <div className="min-h-screen w-full">
       <BackgroundFX />
@@ -621,13 +557,34 @@ export default function Reports() {
                             </div>
                             <Button
                               type="button"
-                              variant="default"
+                              variant="outline"
                               size="sm"
-                              onClick={() => handleAutoScrapeRephonic(comp.name, idx)}
-                              disabled={scrapingStates[comp.name]}
+                              onClick={() => {
+                                if (!dateRangeStart || !dateRangeEnd) {
+                                  toast({
+                                    title: "Date range required",
+                                    description: "Please set the report date range first.",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                                
+                                // Convert date strings to Unix milliseconds
+                                const startTimestamp = new Date(dateRangeStart).getTime();
+                                const endTimestamp = new Date(dateRangeEnd).getTime();
+                                
+                                // Build comprehensive search URL with all filters
+                                const searchUrl = `https://www.listennotes.com/search/?q=${encodeURIComponent(comp.name)}&sort_by_date=1&scope=episode&offset=0&date_filter=custom&published_after=${startTimestamp}&published_before=${endTimestamp}&unique_podcasts=1&language=English&country=Any%20region&len_min=0&len_max=0`;
+                                
+                                navigator.clipboard.writeText(searchUrl);
+                                toast({
+                                  title: "Search URL copied!",
+                                  description: `Filtered for ${dateRangeStart} to ${dateRangeEnd}, unique podcasts only.`,
+                                });
+                              }}
                             >
-                              <Search className="h-4 w-4 mr-2" />
-                              {scrapingStates[comp.name] ? 'Scraping...' : 'Auto-Scrape Rephonic'}
+                              <Clipboard className="h-4 w-4 mr-2" />
+                              Copy Search URL
                             </Button>
                           </div>
                           <div>
