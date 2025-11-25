@@ -71,6 +71,29 @@ serve(async (req) => {
 
     const nextData = JSON.parse(nextDataMatch[1]);
     console.log('[scrape-rephonic-sov] Parsed __NEXT_DATA__');
+    
+    // Debug: Log top-level structure
+    console.log('[scrape-rephonic-sov] Top-level keys:', Object.keys(nextData));
+    console.log('[scrape-rephonic-sov] nextData.props keys:', nextData.props ? Object.keys(nextData.props) : 'props is undefined');
+    console.log('[scrape-rephonic-sov] nextData.props.pageProps keys:', nextData.props?.pageProps ? Object.keys(nextData.props.pageProps) : 'pageProps is undefined');
+    
+    // Debug: Log dehydratedState structure
+    if (nextData.props?.pageProps?.dehydratedState) {
+      console.log('[scrape-rephonic-sov] dehydratedState keys:', Object.keys(nextData.props.pageProps.dehydratedState));
+      if (nextData.props.pageProps.dehydratedState.queries) {
+        console.log('[scrape-rephonic-sov] queries length:', nextData.props.pageProps.dehydratedState.queries.length);
+        console.log('[scrape-rephonic-sov] queries[0] keys:', nextData.props.pageProps.dehydratedState.queries[0] ? Object.keys(nextData.props.pageProps.dehydratedState.queries[0]) : 'queries[0] is undefined');
+        console.log('[scrape-rephonic-sov] queries[0].state keys:', nextData.props.pageProps.dehydratedState.queries[0]?.state ? Object.keys(nextData.props.pageProps.dehydratedState.queries[0].state) : 'state is undefined');
+        console.log('[scrape-rephonic-sov] queries[0].state.data keys:', nextData.props.pageProps.dehydratedState.queries[0]?.state?.data ? Object.keys(nextData.props.pageProps.dehydratedState.queries[0].state.data) : 'data is undefined');
+        
+        // Log the full data object structure to see what's inside
+        if (nextData.props.pageProps.dehydratedState.queries[0]?.state?.data) {
+          console.log('[scrape-rephonic-sov] Full data object:', JSON.stringify(nextData.props.pageProps.dehydratedState.queries[0].state.data, null, 2));
+        }
+      }
+    } else {
+      console.log('[scrape-rephonic-sov] dehydratedState is undefined or missing');
+    }
 
     // Navigate the data structure to find episodes
     const episodesData = nextData?.props?.pageProps?.dehydratedState?.queries?.[0]?.state?.data?.episodes || [];
