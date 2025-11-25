@@ -53,6 +53,11 @@ export interface ReportData {
     total_interviews: number; // Count of 'podcast recording' actions in date range
     total_booked: number; // Count with date_booked
     total_published: number; // Count with date_published
+    
+    // Placeholder metrics for future implementation
+    total_emv?: number; // Earned Media Value (based on CPM formulas)
+    sov_percentage?: number; // Share of Voice percentage
+    geo_score?: number; // Generative Engine Optimization score (0-100)
   };
   
   campaign_overview: {

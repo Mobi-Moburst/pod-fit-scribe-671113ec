@@ -19,7 +19,7 @@ import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { PodcastTable } from "@/components/reports/PodcastTable";
 import { SOVChart } from "@/components/reports/SOVChart";
-import { Upload, FileText, TrendingUp, Users, Target, Printer, Mic, Calendar, Radio, Trash2, Eye } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
@@ -507,16 +507,22 @@ export default function Reports() {
               {/* KPI Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard
-                  title="Total Evaluated"
-                  value={reportData.kpis.total_evaluated}
-                  subtitle="Podcasts analyzed"
-                  icon={FileText}
+                  title="Earned Media Value"
+                  value={`$${reportData.kpis.total_emv?.toLocaleString() || '0'}`}
+                  subtitle="Total campaign EMV"
+                  icon={DollarSign}
                 />
                 <KPICard
-                  title="Fit Shows"
-                  value={reportData.kpis.fit_count}
-                  subtitle={`${reportData.kpis.consider_count} to consider`}
-                  icon={Target}
+                  title="Share of Voice"
+                  value={`${reportData.kpis.sov_percentage || reportData.sov_analysis?.client_percentage || 0}%`}
+                  subtitle="Market presence"
+                  icon={PieChart}
+                />
+                <KPICard
+                  title="GEO Score"
+                  value={`${reportData.kpis.geo_score || 0}/100`}
+                  subtitle="Generative Engine Optimization"
+                  icon={Sparkles}
                 />
                 <KPICard
                   title="Average Score"
@@ -529,12 +535,6 @@ export default function Reports() {
                   value={reportData.kpis.total_reach.toLocaleString()}
                   subtitle="Listeners per episode"
                   icon={Users}
-                />
-                <KPICard
-                  title="Interviews Recorded"
-                  value={reportData.kpis.total_interviews}
-                  subtitle="Podcast recordings completed"
-                  icon={Mic}
                 />
                 <KPICard
                   title="Total Booked"
