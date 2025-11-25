@@ -8,12 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import type { MinimalClient } from '@/types/clients';
+import type { MinimalClient, Competitor } from '@/types/clients';
 import { getClients, toList } from '@/data/clientStore';
 import { useToast } from '@/components/ui/use-toast';
 import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const empty: MinimalClient = {
@@ -34,6 +34,7 @@ const empty: MinimalClient = {
   gender: undefined,
   guest_identity_tags: [],
   professional_credentials: [],
+  competitors: [],
 };
 
 // Deterministic color classes for CM badge using design tokens
@@ -56,6 +57,7 @@ const Clients = () => {
   const [list, setList] = useState<MinimalClient[]>([]);
   const [editing, setEditing] = useState<MinimalClient | null>(null);
   const [managerFilter, setManagerFilter] = useState<string>('');
+  const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const { toast } = useToast();
 
   const managers = useMemo(() => Array.from(new Set((list || [])
@@ -89,6 +91,7 @@ const Clients = () => {
       gender: c.gender,
       guest_identity_tags: c.guest_identity_tags || [],
       professional_credentials: c.professional_credentials || [],
+      competitors: (c.competitors as any) || [],
     })));
   };
 
@@ -186,6 +189,7 @@ const Clients = () => {
       gender: editing.gender || null,
       guest_identity_tags: editing.guest_identity_tags || [],
       professional_credentials: editing.professional_credentials || [],
+      competitors: (editing.competitors || []) as any,
     };
 
     if (!exists) {
@@ -216,6 +220,69 @@ const Clients = () => {
       return;
     }
     await loadClients();
+  };
+
+  const suggestCompetitors = async () => {
+    if (!editing) return;
+    
+    setIsSuggestingCompetitors(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-competitors', {
+        body: { client: editing }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setEditing({
+          ...editing,
+          competitors: data.suggestions.map((s: any) => ({
+            name: s.name,
+            role: s.role,
+            peer_reason: s.peer_reason,
+          }))
+        });
+        toast({
+          title: 'Competitors suggested',
+          description: `AI identified ${data.suggestions.length} peer thought leaders.`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to suggest competitors:', error);
+      toast({
+        title: 'Failed to suggest competitors',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSuggestingCompetitors(false);
+    }
+  };
+
+  const addCompetitor = () => {
+    if (!editing) return;
+    setEditing({
+      ...editing,
+      competitors: [
+        ...(editing.competitors || []),
+        { name: '', role: '', peer_reason: '' }
+      ]
+    });
+  };
+
+  const updateCompetitor = (index: number, field: keyof Competitor, value: string) => {
+    if (!editing) return;
+    const updated = [...(editing.competitors || [])];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditing({ ...editing, competitors: updated });
+  };
+
+  const removeCompetitor = (index: number) => {
+    if (!editing) return;
+    setEditing({
+      ...editing,
+      competitors: (editing.competitors || []).filter((_, i) => i !== index)
+    });
   };
 
   return (
@@ -402,6 +469,96 @@ Would you be interested in having them on your show?`}
                 <p className="text-xs text-muted-foreground mt-1">
                   Use placeholders like [host_first_name], [podcast_name], [client_first_name], etc.
                 </p>
+              </div>
+              
+              {/* Competitors Section */}
+              <div className="md:col-span-2 border-t border-border pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <Label className="text-base">Competitors / Peer Thought Leaders</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Identify 2-3 peers who compete for share-of-voice in the same topics and audiences
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={suggestCompetitors}
+                    disabled={isSuggestingCompetitors || !editing.name}
+                  >
+                    {isSuggestingCompetitors ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Suggesting...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Suggest with AI
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {editing.competitors && editing.competitors.length > 0 && (
+                  <div className="space-y-4 mb-4">
+                    {editing.competitors.map((comp, idx) => (
+                      <Card key={idx} className="p-4 bg-muted/30">
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <span className="text-sm font-medium text-muted-foreground">
+                            Competitor {idx + 1}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeCompetitor(idx)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-xs">Name</Label>
+                            <Input
+                              placeholder="John Smith"
+                              value={comp.name}
+                              onChange={(e) => updateCompetitor(idx, 'name', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Role & Company</Label>
+                            <Input
+                              placeholder="CEO, Acme Corp"
+                              value={comp.role}
+                              onChange={(e) => updateCompetitor(idx, 'role', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Why are they a peer competitor?</Label>
+                            <Textarea
+                              rows={2}
+                              placeholder="Competes for share-of-voice in AI governance and targets same CISO audience..."
+                              value={comp.peer_reason}
+                              onChange={(e) => updateCompetitor(idx, 'peer_reason', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addCompetitor}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Competitor
+                </Button>
               </div>
             </div>
             <div className="flex justify-end gap-2">

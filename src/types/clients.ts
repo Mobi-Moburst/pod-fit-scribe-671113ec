@@ -1,3 +1,9 @@
+export interface Competitor {
+  name: string;
+  role: string;
+  peer_reason: string;
+  interview_count?: number;
+}
 
 export interface MinimalClient {
   id: string;
@@ -18,4 +24,5 @@ export interface MinimalClient {
   gender?: 'male' | 'female' | 'non_binary' | 'unspecified';
   guest_identity_tags?: string[];
   professional_credentials?: string[];
+  competitors?: Competitor[];
 }
