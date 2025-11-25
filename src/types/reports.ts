@@ -81,4 +81,26 @@ export interface ReportData {
     }>;
     client_percentage: number; // Client count / total count
   };
+  
+  // Optional GEO data (Generative Engine Optimization)
+  geo_analysis?: {
+    total_podcasts_indexed: number; // Count of podcasts.apple.com entries
+    unique_ai_engines: string[]; // ["perplexity", "gemini", ...]
+    ai_engine_counts: Array<{ engine: string; count: number }>;
+    top_prompts: Array<{ prompt: string; count: number }>;
+    topic_distribution: Array<{ topic: string; count: number }>;
+    geo_score: number; // 0-100 composite score
+    score_breakdown: {
+      ai_coverage: number; // 0-40 points
+      topic_relevance: number; // 0-30 points  
+      prompt_diversity: number; // 0-30 points
+    };
+    podcast_entries: Array<{
+      title: string;
+      uri: string;
+      llm: string;
+      prompt: string;
+      topic: string;
+    }>;
+  };
 }

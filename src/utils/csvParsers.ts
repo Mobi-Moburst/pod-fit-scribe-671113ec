@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { BatchCSVRow, AirtableCSVRow, SOVCSVRow } from '@/types/csv';
+import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow } from '@/types/csv';
 
 // Normalize CSV header names to snake_case
 function normalizeHeaderName(header: string): string {
@@ -159,4 +159,27 @@ export function extractCompetitorName(filename: string): string {
     .replace(/listennotes[-_]?/i, '')
     .replace(/listen[-_]?notes[-_]?/i, '')
     .trim();
+}
+
+// Parse GEO CSV (Spotlight AEO/GEO export)
+export function parseGEOCSV(csvText: string): GEOCSVRow[] {
+  const result = Papa.parse<GEOCSVRow>(csvText, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: normalizeHeaderName,
+  });
+  
+  // Filter for podcasts.apple.com domain only
+  const podcastEntries = result.data.filter(row => 
+    row.domain && row.domain.toLowerCase().includes('podcasts.apple')
+  );
+  
+  console.log('[parseGEOCSV] Parsed GEO CSV:', {
+    totalRows: result.data.length,
+    podcastEntries: podcastEntries.length,
+    uniqueEngines: [...new Set(podcastEntries.map(r => r.llm))],
+    sampleRows: podcastEntries.slice(0, 3),
+  });
+  
+  return podcastEntries;
 }

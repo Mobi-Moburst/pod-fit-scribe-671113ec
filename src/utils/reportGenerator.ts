@@ -1,7 +1,7 @@
 import { MinimalClient } from '@/types/clients';
 import { BatchRow } from '@/types/batch';
 import { ReportData, PodcastReportEntry } from '@/types/reports';
-import { BatchCSVRow, AirtableCSVRow, SOVCSVRow } from '@/types/csv';
+import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow } from '@/types/csv';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { normalizeTitle } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
@@ -480,12 +480,100 @@ function calculateSOVAnalysis(
   };
 }
 
+// Calculate GEO analysis from Spotlight export
+function calculateGEOAnalysis(geoRows: GEOCSVRow[]): ReportData['geo_analysis'] {
+  if (!geoRows || geoRows.length === 0) return undefined;
+
+  // Basic counts
+  const total_podcasts_indexed = geoRows.length;
+  
+  // Unique AI engines
+  const engineSet = new Set<string>();
+  geoRows.forEach(row => {
+    if (row.llm) engineSet.add(row.llm);
+  });
+  const unique_ai_engines = Array.from(engineSet);
+  
+  // AI engine counts
+  const engineCounts = new Map<string, number>();
+  geoRows.forEach(row => {
+    if (row.llm) {
+      engineCounts.set(row.llm, (engineCounts.get(row.llm) || 0) + 1);
+    }
+  });
+  const ai_engine_counts = Array.from(engineCounts.entries())
+    .map(([engine, count]) => ({ engine, count }))
+    .sort((a, b) => b.count - a.count);
+  
+  // Top prompts
+  const promptCounts = new Map<string, number>();
+  geoRows.forEach(row => {
+    if (row.prompt_text) {
+      promptCounts.set(row.prompt_text, (promptCounts.get(row.prompt_text) || 0) + 1);
+    }
+  });
+  const top_prompts = Array.from(promptCounts.entries())
+    .map(([prompt, count]) => ({ prompt, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15);
+  
+  // Topic distribution
+  const topicCounts = new Map<string, number>();
+  geoRows.forEach(row => {
+    if (row.topic_name) {
+      topicCounts.set(row.topic_name, (topicCounts.get(row.topic_name) || 0) + 1);
+    }
+  });
+  const topic_distribution = Array.from(topicCounts.entries())
+    .map(([topic, count]) => ({ topic, count }))
+    .sort((a, b) => b.count - a.count);
+  
+  // Calculate GEO score (0-100)
+  // AI Coverage: 0-40 points (5+ engines = max)
+  const ai_coverage = Math.min((unique_ai_engines.length / 5) * 40, 40);
+  
+  // Topic Relevance: 0-30 points (10+ unique topics = max)
+  const unique_topics = topic_distribution.length;
+  const topic_relevance = Math.min((unique_topics / 10) * 30, 30);
+  
+  // Prompt Diversity: 0-30 points (20+ unique prompts = max)
+  const unique_prompts = top_prompts.length;
+  const prompt_diversity = Math.min((unique_prompts / 20) * 30, 30);
+  
+  const geo_score = Math.round(ai_coverage + topic_relevance + prompt_diversity);
+  
+  // Podcast entries for detailed view
+  const podcast_entries = geoRows.map(row => ({
+    title: row.title,
+    uri: row.uri,
+    llm: row.llm,
+    prompt: row.prompt_text,
+    topic: row.topic_name
+  }));
+  
+  return {
+    total_podcasts_indexed,
+    unique_ai_engines,
+    ai_engine_counts,
+    top_prompts,
+    topic_distribution,
+    geo_score,
+    score_breakdown: {
+      ai_coverage: Math.round(ai_coverage),
+      topic_relevance: Math.round(topic_relevance),
+      prompt_diversity: Math.round(prompt_diversity)
+    },
+    podcast_entries
+  };
+}
+
 // New function for multi-CSV report generation
 export async function generateReportFromMultipleCSVs(
   batchRows: BatchCSVRow[],
   airtableRows: AirtableCSVRow[],
   sovRows: SOVCSVRow[] | null,
   sovCompetitorName: string | null,
+  geoRows: GEOCSVRow[],
   client: MinimalClient,
   reportName: string,
   quarter: string,
@@ -510,7 +598,12 @@ export async function generateReportFromMultipleCSVs(
     ? calculateSOVAnalysis(airtableRows, sovRows, sovCompetitorName)
     : undefined;
   
-  // Step 6: Sort podcasts by score
+  // Step 6: Calculate GEO if provided
+  const geo_analysis = geoRows && geoRows.length > 0
+    ? calculateGEOAnalysis(geoRows)
+    : undefined;
+  
+  // Step 7: Sort podcasts by score
   const sortedPodcasts = podcastsWithEMV.sort((a, b) => 
     b.overall_score - a.overall_score
   );
@@ -537,5 +630,6 @@ export async function generateReportFromMultipleCSVs(
     },
     podcasts: sortedPodcasts,
     sov_analysis,
+    geo_analysis,
   };
 }
