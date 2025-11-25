@@ -496,7 +496,7 @@ export default function Reports() {
                                 const endTimestamp = new Date(dateRangeEnd).getTime();
                                 
                                 // Build comprehensive search URL with all filters
-                                const searchUrl = `https://www.listennotes.com/search/?q=${encodeURIComponent(comp.name)}&sort_by_date=1&scope=episode&offset=0&date_filter=custom&published_after=${startTimestamp}&published_before=${endTimestamp}&unique_podcasts=1&language=Any%20language&country=Any%20region&len_min=0&len_max=0`;
+                                const searchUrl = `https://www.listennotes.com/search/?q=${encodeURIComponent(comp.name)}&sort_by_date=1&scope=episode&offset=0&date_filter=custom&published_after=${startTimestamp}&published_before=${endTimestamp}&unique_podcasts=1&language=English&country=Any%20region&len_min=0&len_max=0`;
                                 
                                 navigator.clipboard.writeText(searchUrl);
                                 toast({
