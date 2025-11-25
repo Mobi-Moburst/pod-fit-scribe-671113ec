@@ -14,94 +14,94 @@
 
     /* Light theme (used when .dark is not set) */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 5%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 5%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 5%;
 
-    --primary: 258 90% 65%; /* Violet */
-    --primary-foreground: 210 40% 98%;
+    --primary: 191 100% 55%; /* Cyan (darker for light bg) */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 189 92% 70%; /* Aqua */
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 51 100% 55%; /* Yellow (darker for light bg) */
+    --accent-foreground: 0 0% 5%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 355 100% 65%; /* Coral */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 258 90% 65%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 191 100% 55%;
 
     --radius: 1rem; /* rounded-2xl vibe */
 
     /* Sidebar (light) */
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-primary: 191 100% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 191 100% 55%;
 
     /* Extras */
-    --brand: 258 90% 65%; /* aligns with --primary */
-    --brand-glow: 258 90% 72%;
-    --aqua: 189 92% 70%;
+    --brand: 191 100% 62%; /* Moburst cyan */
+    --brand-glow: 191 100% 72%;
+    --yellow: 51 100% 61%; /* Moburst yellow */
 
-    --gradient-primary: linear-gradient(135deg, hsl(var(--brand)), hsl(var(--aqua)));
-    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(var(--brand)/0.12), transparent 60%);
-    --shadow-elevated: 0 10px 30px -10px hsl(var(--brand)/0.25);
+    --gradient-primary: linear-gradient(135deg, hsl(191 100% 62%), hsl(51 100% 61%));
+    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 100% 62% / 0.12), transparent 60%);
+    --shadow-elevated: 0 10px 30px -10px hsl(191 100% 62% / 0.25);
     --transition-smooth: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   /* Dark theme (default) */
   .dark {
-    --background: 220 25% 9%;  /* #0F1115 */
-    --foreground: 210 40% 96%;  /* #EAF0F6 */
+    --background: 0 0% 5%;  /* #0c0c0c Moburst black */
+    --foreground: 0 0% 100%;  /* #ffffff pure white */
 
-    --card: 220 20% 12%;       /* #161A22 */
-    --card-foreground: 210 40% 96%;
+    --card: 0 0% 8%;       /* slightly lighter than bg */
+    --card-foreground: 0 0% 100%;
 
-    --popover: 220 20% 10%;
-    --popover-foreground: 210 40% 96%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 258 90% 70%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 191 100% 62%; /* #3bd4ff Moburst cyan */
+    --primary-foreground: 0 0% 5%;
 
-    --secondary: 220 16% 18%;
-    --secondary-foreground: 210 40% 96%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 16% 18%;
-    --muted-foreground: 215 20.2% 75.1%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 189 92% 70%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 51 100% 61%; /* #ffe43a Moburst yellow */
+    --accent-foreground: 0 0% 5%;
 
-    --destructive: 0 72% 46%;
-    --destructive-foreground: 210 40% 96%;
+    --destructive: 355 100% 70%; /* #ff6671 Moburst coral */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 220 16% 18%;
-    --input: 220 16% 18%;
-    --ring: 258 90% 70%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 191 100% 62%;
 
-    --sidebar-background: 220 20% 12%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 258 90% 70%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 220 16% 18%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 220 16% 18%;
-    --sidebar-ring: 258 90% 70%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 191 100% 62%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 191 100% 62%;
   }
 }
 
