@@ -550,7 +550,10 @@ export default function Reports() {
 
               {/* SOV Chart */}
               {reportData.sov_analysis && (
-                <SOVChart sovAnalysis={reportData.sov_analysis} />
+                <SOVChart 
+                  sovAnalysis={reportData.sov_analysis} 
+                  clientName={clients.find(c => c.id === selectedClientId)?.name}
+                />
               )}
 
               {/* Campaign Overview */}
