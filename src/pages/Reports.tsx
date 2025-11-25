@@ -18,8 +18,8 @@ import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { PodcastTable } from "@/components/reports/PodcastTable";
-import { SOVChart } from "@/components/reports/SOVChart";
 import { EMVScatterDialog } from "@/components/reports/EMVScatterDialog";
+import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -44,6 +44,7 @@ export default function Reports() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
+  const [sovDialogOpen, setSOVDialogOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -507,8 +508,9 @@ export default function Reports() {
                 <KPICard
                   title="Share of Voice"
                   value={`${reportData.kpis.sov_percentage || reportData.sov_analysis?.client_percentage || 0}%`}
-                  subtitle="Market presence"
+                  subtitle="Market presence • Click to view analysis"
                   icon={PieChart}
+                  onClick={() => setSOVDialogOpen(true)}
                 />
                 <KPICard
                   title="GEO Score"
@@ -548,14 +550,6 @@ export default function Reports() {
                 />
               </div>
 
-              {/* SOV Chart */}
-              {reportData.sov_analysis && (
-                <SOVChart 
-                  sovAnalysis={reportData.sov_analysis} 
-                  clientName={clients.find(c => c.id === selectedClientId)?.name}
-                />
-              )}
-
               {/* Campaign Overview */}
               <CampaignOverview
                 strategy={reportData.campaign_overview.strategy}
@@ -589,6 +583,13 @@ export default function Reports() {
                 open={emvDialogOpen}
                 onOpenChange={setEmvDialogOpen}
                 podcasts={reportData.podcasts}
+              />
+              
+              <SOVChartDialog
+                open={sovDialogOpen}
+                onOpenChange={setSOVDialogOpen}
+                sovAnalysis={reportData.sov_analysis || null}
+                clientName={clients.find(c => c.id === selectedClientId)?.name}
               />
             </>
           )}
