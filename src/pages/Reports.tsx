@@ -482,11 +482,26 @@ export default function Reports() {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                const searchUrl = `https://www.listennotes.com/search/?q=${encodeURIComponent(comp.name)}&type=episode&sort_by_date=1`;
+                                if (!dateRangeStart || !dateRangeEnd) {
+                                  toast({
+                                    title: "Date range required",
+                                    description: "Please set the report date range first.",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                                
+                                // Convert date strings to Unix milliseconds
+                                const startTimestamp = new Date(dateRangeStart).getTime();
+                                const endTimestamp = new Date(dateRangeEnd).getTime();
+                                
+                                // Build comprehensive search URL with all filters
+                                const searchUrl = `https://www.listennotes.com/search/?q=${encodeURIComponent(comp.name)}&sort_by_date=1&scope=episode&offset=0&date_filter=custom&published_after=${startTimestamp}&published_before=${endTimestamp}&unique_podcasts=1&language=Any%20language&country=Any%20region&len_min=0&len_max=0`;
+                                
                                 navigator.clipboard.writeText(searchUrl);
                                 toast({
                                   title: "Search URL copied!",
-                                  description: "Paste in a new browser tab to count podcast appearances.",
+                                  description: `Filtered for ${dateRangeStart} to ${dateRangeEnd}, unique podcasts only.`,
                                 });
                               }}
                             >
