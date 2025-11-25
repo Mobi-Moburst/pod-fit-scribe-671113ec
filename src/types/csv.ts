@@ -34,3 +34,15 @@ export interface SOVCSVRow {
   pub_date: string; // Publication date
   peer: string; // Competitor/peer name
 }
+
+// GEO CSV (from Spotlight AEO/GEO export)
+export interface GEOCSVRow {
+  uri: string; // URL
+  title: string; // Page/podcast title
+  domain: string; // e.g., "podcasts.apple.com"
+  type: string; // e.g., "Homepage", "Article"
+  llm: string; // AI engine: "perplexity", "gemini", "chatgpt", etc.
+  prompt_text: string; // The query that surfaced this result
+  topic_name: string; // Category/topic
+  has_analysis: string; // "Yes" or "No"
+}

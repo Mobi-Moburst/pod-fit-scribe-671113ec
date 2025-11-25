@@ -12,7 +12,7 @@ import { MinimalClient } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs } from "@/utils/reportGenerator";
-import { parseBatchCSV, parseAirtableCSV, parseSOVCSV } from "@/utils/csvParsers";
+import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV } from "@/utils/csvParsers";
 import { ReportData } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
@@ -20,6 +20,7 @@ import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { PodcastTable } from "@/components/reports/PodcastTable";
 import { EMVScatterDialog } from "@/components/reports/EMVScatterDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
+import { GEODialog } from "@/components/reports/GEODialog";
 import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +32,7 @@ export default function Reports() {
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [airtableFile, setAirtableFile] = useState<File | null>(null);
   const [sovFile, setSOVFile] = useState<File | null>(null);
+  const [geoFile, setGeoFile] = useState<File | null>(null);
   
   // Report metadata
   const [reportName, setReportName] = useState<string>('');
@@ -45,6 +47,7 @@ export default function Reports() {
   const [isSaving, setIsSaving] = useState(false);
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
   const [sovDialogOpen, setSOVDialogOpen] = useState(false);
+  const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -138,6 +141,7 @@ export default function Reports() {
       const batchText = await batchFile.text();
       const airtableText = await airtableFile.text();
       const sovText = sovFile ? await sovFile.text() : null;
+      const geoText = geoFile ? await geoFile.text() : null;
       
       // Parse CSVs
       const startDate = new Date(dateRangeStart);
@@ -146,6 +150,7 @@ export default function Reports() {
       const batchRows = parseBatchCSV(batchText);
       const airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
+      const geoRows = geoText ? parseGEOCSV(geoText) : [];
       
       // Find selected client
       const client = clients.find(c => c.id === selectedClientId);
@@ -164,6 +169,7 @@ export default function Reports() {
         airtableRows,
         sovRows,
         null, // Competitor names now come from CSV peer column
+        geoRows,
         client,
         reportName || `${client.name} - ${quarter || 'Report'}`,
         quarter,
@@ -427,6 +433,32 @@ export default function Reports() {
                     </p>
                   )}
                 </div>
+
+                {/* GEO CSV - Optional */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Label>GEO CSV (Optional)</Label>
+                    <Badge variant={geoFile ? "default" : "outline"}>
+                      {geoFile ? "Uploaded" : "Optional"}
+                    </Badge>
+                  </div>
+                  <Input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setGeoFile(file);
+                    }}
+                  />
+                  {geoFile && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {geoFile.name}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Upload Spotlight GEO export - will filter for podcasts.apple.com domain entries only
+                  </p>
+                </div>
               </div>
 
               {/* Generate Button */}
@@ -514,9 +546,14 @@ export default function Reports() {
                 />
                 <KPICard
                   title="GEO Score"
-                  value={`${reportData.kpis.geo_score || 0}/100`}
-                  subtitle="Generative Engine Optimization"
+                  value={reportData.geo_analysis ? `${reportData.geo_analysis.geo_score}/100` : '0/100'}
+                  subtitle={
+                    reportData.geo_analysis 
+                      ? `${reportData.geo_analysis.total_podcasts_indexed} podcasts • ${reportData.geo_analysis.unique_ai_engines.length} AI engines • Click for details`
+                      : "Upload GEO CSV to analyze"
+                  }
                   icon={Sparkles}
+                  onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
                 />
                 <KPICard
                   title="Average Score"
@@ -590,6 +627,12 @@ export default function Reports() {
                 onOpenChange={setSOVDialogOpen}
                 sovAnalysis={reportData.sov_analysis || null}
                 clientName={clients.find(c => c.id === selectedClientId)?.name}
+              />
+              
+              <GEODialog
+                open={geoDialogOpen}
+                onOpenChange={setGeoDialogOpen}
+                geoAnalysis={reportData.geo_analysis || null}
               />
             </>
           )}
