@@ -99,7 +99,7 @@ export const EMVScatterDialog = ({ open, onOpenChange, podcasts }: EMVScatterDia
                   type="number"
                   dataKey="score"
                   name="Fit Score"
-                  domain={[0, 100]}
+                  domain={[0, 10]}
                   label={{ value: 'Fit Score', position: 'insideBottom', offset: -10 }}
                   className="text-muted-foreground"
                 />
