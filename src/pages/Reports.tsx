@@ -19,6 +19,7 @@ import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { PodcastTable } from "@/components/reports/PodcastTable";
 import { SOVChart } from "@/components/reports/SOVChart";
+import { EMVScatterDialog } from "@/components/reports/EMVScatterDialog";
 import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,6 +44,7 @@ export default function Reports() {
   const [savedReports, setSavedReports] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [emvDialogOpen, setEmvDialogOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -509,8 +511,9 @@ export default function Reports() {
                 <KPICard
                   title="Earned Media Value"
                   value={`$${reportData.kpis.total_emv?.toLocaleString() || '0'}`}
-                  subtitle="Total campaign EMV"
+                  subtitle="Total campaign EMV • Click to view analysis"
                   icon={DollarSign}
+                  onClick={() => setEmvDialogOpen(true)}
                 />
                 <KPICard
                   title="Share of Voice"
@@ -588,6 +591,13 @@ export default function Reports() {
 
               {/* Podcast Table */}
               <PodcastTable podcasts={reportData.podcasts} />
+              
+              {/* EMV Scatter Dialog */}
+              <EMVScatterDialog
+                open={emvDialogOpen}
+                onOpenChange={setEmvDialogOpen}
+                podcasts={reportData.podcasts}
+              />
             </>
           )}
         </div>
