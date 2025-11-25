@@ -21,7 +21,7 @@ import { PodcastTable } from "@/components/reports/PodcastTable";
 import { EMVScatterDialog } from "@/components/reports/EMVScatterDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
@@ -33,6 +33,10 @@ export default function Reports() {
   const [airtableFile, setAirtableFile] = useState<File | null>(null);
   const [sovFile, setSOVFile] = useState<File | null>(null);
   const [geoFile, setGeoFile] = useState<File | null>(null);
+  
+  // Manual SOV inputs
+  const [manualSOVMode, setManualSOVMode] = useState(false);
+  const [competitorInterviews, setCompetitorInterviews] = useState<{ name: string; role: string; count: number }[]>([]);
   
   // Report metadata
   const [reportName, setReportName] = useState<string>('');
@@ -68,7 +72,27 @@ export default function Reports() {
         return;
       }
       
-      setClients((data || []) as MinimalClient[]);
+      // Map and cast competitors properly
+      const mappedClients: MinimalClient[] = (data || []).map(c => ({
+        id: c.id,
+        name: c.name,
+        company: c.company || '',
+        company_url: c.company_url || '',
+        media_kit_url: c.media_kit_url || '',
+        target_audiences: c.target_audiences || [],
+        talking_points: c.talking_points || [],
+        avoid: c.avoid || [],
+        notes: c.notes || '',
+        campaign_strategy: c.campaign_strategy || '',
+        campaign_manager: c.campaign_manager || '',
+        pitch_template: c.pitch_template || '',
+        title: c.title || '',
+        gender: c.gender as any,
+        guest_identity_tags: c.guest_identity_tags || [],
+        professional_credentials: c.professional_credentials || [],
+        competitors: (c.competitors as any) || []
+      }));
+      setClients(mappedClients);
     };
     
     loadClients();
@@ -77,10 +101,27 @@ export default function Reports() {
   useEffect(() => {
     if (selectedClientId) {
       loadSavedReports();
+      // Load competitors for manual SOV mode
+      const client = clients.find(c => c.id === selectedClientId);
+      if (client?.competitors && client.competitors.length > 0) {
+        setManualSOVMode(true);
+        setCompetitorInterviews(
+          client.competitors.map(comp => ({
+            name: comp.name,
+            role: comp.role,
+            count: 0
+          }))
+        );
+      } else {
+        setManualSOVMode(false);
+        setCompetitorInterviews([]);
+      }
     } else {
       setSavedReports([]);
+      setManualSOVMode(false);
+      setCompetitorInterviews([]);
     }
-  }, [selectedClientId]);
+  }, [selectedClientId, clients]);
 
   const loadSavedReports = async () => {
     if (!selectedClientId) return;
@@ -152,6 +193,11 @@ export default function Reports() {
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
       
+      // Prepare manual SOV data if in manual mode
+      const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
+        ? competitorInterviews.filter(c => c.count > 0)
+        : null;
+      
       // Find selected client
       const client = clients.find(c => c.id === selectedClientId);
       if (!client) {
@@ -168,12 +214,13 @@ export default function Reports() {
         batchRows,
         airtableRows,
         sovRows,
-        null, // Competitor names now come from CSV peer column
+        null, // Competitor names now come from CSV peer column or manual input
         geoRows,
         client,
         reportName || `${client.name} - ${quarter || 'Report'}`,
         quarter,
-        { start: startDate, end: endDate }
+        { start: startDate, end: endDate },
+        manualSOVCompetitors // Pass manual SOV data
       );
       
       setReportData(report);
@@ -414,23 +461,86 @@ export default function Reports() {
                 {/* SOV CSV - Optional */}
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <Label>Share of Voice CSV (Optional)</Label>
-                    <Badge variant={sovFile ? "default" : "outline"}>
-                      {sovFile ? "Uploaded" : "Optional"}
-                    </Badge>
+                    <Label>Share of Voice Data</Label>
                   </div>
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      setSOVFile(file);
-                    }}
-                  />
-                  {sovFile && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {sovFile.name} - Competitor names will be read from the "peer" column
-                    </p>
+                  
+                  {manualSOVMode && competitorInterviews.length > 0 ? (
+                    <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Quick Search: Click to search ListenNotes for each competitor's podcast appearances, then enter interview counts below.
+                      </p>
+                      
+                      {competitorInterviews.map((comp, idx) => (
+                        <div key={idx} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-sm">{comp.name}</p>
+                              <p className="text-xs text-muted-foreground">{comp.role}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const searchQuery = encodeURIComponent(`"${comp.name}"`);
+                                window.open(
+                                  `https://www.listennotes.com/search/?q=${searchQuery}&type=episode&sort_by_date=1`,
+                                  '_blank'
+                                );
+                              }}
+                            >
+                              🔍 Search ListenNotes
+                            </Button>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Interview Count</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={comp.count || ''}
+                              onChange={(e) => {
+                                const updated = [...competitorInterviews];
+                                updated[idx].count = parseInt(e.target.value) || 0;
+                                setCompetitorInterviews(updated);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="pt-3 border-t">
+                        <p className="text-sm text-muted-foreground mb-2">Or upload CSV instead:</p>
+                        <Input
+                          type="file"
+                          accept=".csv"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setSOVFile(file);
+                            if (file) setManualSOVMode(false);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Badge variant={sovFile ? "default" : "outline"} className="mb-2">
+                        {sovFile ? "Uploaded" : "Optional"}
+                      </Badge>
+                      <Input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setSOVFile(file);
+                        }}
+                      />
+                      {sovFile && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {sovFile.name} - Competitor names will be read from the "peer" column
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
 

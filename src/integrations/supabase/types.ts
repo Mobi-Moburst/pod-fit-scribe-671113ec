@@ -57,6 +57,7 @@ export type Database = {
           campaign_strategy: string | null
           company: string
           company_url: string | null
+          competitors: Json | null
           created_at: string | null
           gender: string | null
           guest_identity_tags: string[] | null
@@ -81,6 +82,7 @@ export type Database = {
           campaign_strategy?: string | null
           company: string
           company_url?: string | null
+          competitors?: Json | null
           created_at?: string | null
           gender?: string | null
           guest_identity_tags?: string[] | null
@@ -105,6 +107,7 @@ export type Database = {
           campaign_strategy?: string | null
           company?: string
           company_url?: string | null
+          competitors?: Json | null
           created_at?: string | null
           gender?: string | null
           guest_identity_tags?: string[] | null

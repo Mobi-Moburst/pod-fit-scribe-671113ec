@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.scrape-episode-duration]
 verify_jwt = false
+
+[functions.suggest-competitors]
+verify_jwt = false

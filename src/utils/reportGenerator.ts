@@ -440,31 +440,45 @@ function calculateEnhancedKPIs(
   };
 }
 
-// Calculate SOV analysis with multi-peer support
+// Calculate SOV analysis with multi-peer support or manual input
 function calculateSOVAnalysis(
   airtableRows: AirtableCSVRow[],
-  sovRows: SOVCSVRow[],
-  competitorName: string | null
+  sovRows: SOVCSVRow[] | null,
+  competitorName: string | null,
+  manualCompetitors?: { name: string; role: string; count: number }[] | null
 ): ReportData['sov_analysis'] {
-  if (!sovRows || sovRows.length === 0) return null;
-
   // Count client interviews from Airtable (only "podcast recording")
   const clientCount = airtableRows.filter(
     row => row.action.toLowerCase() === 'podcast recording'
   ).length;
 
-  // Group SOV rows by peer to count interviews per competitor
-  const peerCounts = new Map<string, number>();
-  sovRows.forEach(row => {
-    const peerName = row.peer || 'Unknown Competitor';
-    peerCounts.set(peerName, (peerCounts.get(peerName) || 0) + 1);
-  });
+  let competitors: { name: string; interview_count: number }[] = [];
 
-  // Convert to competitors array
-  const competitors = Array.from(peerCounts.entries()).map(([name, count]) => ({
-    name,
-    interview_count: count
-  }));
+  // Use manual input if provided
+  if (manualCompetitors && manualCompetitors.length > 0) {
+    competitors = manualCompetitors.map(c => ({
+      name: c.name,
+      interview_count: c.count
+    }));
+  }
+  // Otherwise use CSV data
+  else if (sovRows && sovRows.length > 0) {
+    // Group SOV rows by peer to count interviews per competitor
+    const peerCounts = new Map<string, number>();
+    sovRows.forEach(row => {
+      const peerName = row.peer || 'Unknown Competitor';
+      peerCounts.set(peerName, (peerCounts.get(peerName) || 0) + 1);
+    });
+
+    // Convert to competitors array
+    competitors = Array.from(peerCounts.entries()).map(([name, count]) => ({
+      name,
+      interview_count: count
+    }));
+  }
+  
+  // Return null if no competitor data
+  if (competitors.length === 0) return null;
 
   // Calculate totals
   const competitorTotalCount = competitors.reduce((sum, comp) => sum + comp.interview_count, 0);
@@ -578,6 +592,7 @@ export async function generateReportFromMultipleCSVs(
   reportName: string,
   quarter: string,
   dateRange: { start: Date; end: Date },
+  manualSOVCompetitors?: { name: string; role: string; count: number }[] | null,
   cpm: number = 50
 ): Promise<ReportData> {
   
@@ -593,9 +608,9 @@ export async function generateReportFromMultipleCSVs(
   // Step 4: Calculate enhanced KPIs (now includes total EMV)
   const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV);
   
-  // Step 5: Calculate SOV if provided
-  const sov_analysis = sovRows 
-    ? calculateSOVAnalysis(airtableRows, sovRows, sovCompetitorName)
+  // Step 5: Calculate SOV if provided (either CSV or manual)
+  const sov_analysis = (sovRows || manualSOVCompetitors)
+    ? calculateSOVAnalysis(airtableRows, sovRows, sovCompetitorName, manualSOVCompetitors)
     : undefined;
   
   // Step 6: Calculate GEO if provided
