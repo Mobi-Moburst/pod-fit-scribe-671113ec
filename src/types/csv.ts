@@ -32,4 +32,5 @@ export interface SOVCSVRow {
   description: string;
   audio: string; // Audio URL
   pub_date: string; // Publication date
+  peer: string; // Competitor/peer name
 }

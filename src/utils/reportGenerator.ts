@@ -440,30 +440,43 @@ function calculateEnhancedKPIs(
   };
 }
 
-// Calculate SOV analysis
+// Calculate SOV analysis with multi-peer support
 function calculateSOVAnalysis(
   airtableRows: AirtableCSVRow[],
   sovRows: SOVCSVRow[],
   competitorName: string | null
 ): ReportData['sov_analysis'] {
-  const clientCount = airtableRows.filter(r => 
-    r.action?.toLowerCase().includes('podcast recording')
+  if (!sovRows || sovRows.length === 0) return null;
+
+  // Count client interviews from Airtable (only "podcast recording")
+  const clientCount = airtableRows.filter(
+    row => row.action.toLowerCase() === 'podcast recording'
   ).length;
-  
-  const competitorCount = sovRows.length;
-  const totalCount = clientCount + competitorCount;
-  
+
+  // Group SOV rows by peer to count interviews per competitor
+  const peerCounts = new Map<string, number>();
+  sovRows.forEach(row => {
+    const peerName = row.peer || 'Unknown Competitor';
+    peerCounts.set(peerName, (peerCounts.get(peerName) || 0) + 1);
+  });
+
+  // Convert to competitors array
+  const competitors = Array.from(peerCounts.entries()).map(([name, count]) => ({
+    name,
+    interview_count: count
+  }));
+
+  // Calculate totals
+  const competitorTotalCount = competitors.reduce((sum, comp) => sum + comp.interview_count, 0);
+  const totalInterviews = clientCount + competitorTotalCount;
+  const clientPercentage = totalInterviews > 0 
+    ? Math.round((clientCount / totalInterviews) * 100)
+    : 0;
+
   return {
     client_interview_count: clientCount,
-    competitors: [
-      {
-        name: competitorName || 'Industry Average',
-        interview_count: competitorCount,
-      }
-    ],
-    client_percentage: totalCount > 0 
-      ? Math.round((clientCount / totalCount) * 100) 
-      : 0,
+    client_percentage: clientPercentage,
+    competitors
   };
 }
 
