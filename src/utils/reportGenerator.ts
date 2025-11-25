@@ -260,9 +260,24 @@ function mergePodcastData(
   batchRows: BatchCSVRow[],
   airtableRows: AirtableCSVRow[]
 ): PodcastReportEntry[] {
+  // Filter for successful batch rows - treat missing status as valid
   const successfulBatch = batchRows.filter(row => 
-    row.status === 'success' && row.verdict && row.overall_score
+    (!row.status || row.status === 'success') && row.verdict && row.overall_score
   );
+  
+  // Debug logging
+  const uniqueStatuses = new Set(batchRows.map(row => row.status));
+  console.log('[mergePodcastData] Filtering batch rows:', {
+    totalBatchRows: batchRows.length,
+    successfulBatchRows: successfulBatch.length,
+    uniqueStatuses: Array.from(uniqueStatuses),
+    sampleSuccessful: successfulBatch.slice(0, 3).map(r => ({
+      title: r.show_title,
+      status: r.status,
+      verdict: r.verdict,
+      score: r.overall_score,
+    })),
+  });
   
   // Create lookup maps
   const airtableMap = new Map<string, AirtableCSVRow>();
@@ -347,8 +362,9 @@ function calculateEnhancedKPIs(
     sample: airtableRows.slice(0, 3),
   });
 
+  // Filter for successful batch rows - treat missing status as valid
   const successfulBatch = batchRows.filter(row => 
-    row.status === 'success' && row.verdict && row.overall_score
+    (!row.status || row.status === 'success') && row.verdict && row.overall_score
   );
   
   // Existing batch KPIs

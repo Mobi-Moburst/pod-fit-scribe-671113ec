@@ -62,6 +62,16 @@ export function parseBatchCSV(csvText: string): BatchCSVRow[] {
     skipEmptyLines: true,
     transformHeader: normalizeHeaderName,
   });
+  
+  // Debug logging
+  const uniqueStatuses = new Set(result.data.map(row => row.status));
+  console.log('[parseBatchCSV] Parsed batch CSV:', {
+    totalRows: result.data.length,
+    headers: result.meta?.fields,
+    uniqueStatuses: Array.from(uniqueStatuses),
+    sampleRows: result.data.slice(0, 3),
+  });
+  
   return result.data;
 }
 
