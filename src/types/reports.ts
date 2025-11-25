@@ -23,9 +23,12 @@ export interface PodcastReportEntry {
   episode_duration_minutes?: number;
   duration_scraped?: boolean; // Flag to indicate if scraping was attempted
   
-  // Future Phase 2: CPM calculations
+  // EMV calculations
   base_emv?: number;
+  speaking_minutes?: number;
+  ad_units?: number;
   true_emv?: number;
+  value_per_minute?: number;
 }
 
 export interface ReportData {
@@ -37,6 +40,7 @@ export interface ReportData {
     start: string; // ISO date
     end: string; // ISO date
   };
+  cpm: number; // Default 50
   
   kpis: {
     // Existing from Batch CSV

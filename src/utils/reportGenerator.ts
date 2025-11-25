@@ -65,6 +65,7 @@ export function generateReportFromCSV(
     client,
     generated_at: new Date().toISOString(),
     batch_name: batchName,
+    cpm: 50,
     kpis,
     campaign_overview: {
       strategy: generateStrategyParagraph(client),
@@ -146,6 +147,68 @@ function isValidUrl(str: string): boolean {
   } catch {
     return false;
   }
+}
+
+// Calculate EMV for a single podcast
+function calculateEMV(
+  podcast: PodcastReportEntry,
+  cpm: number = 50
+): {
+  base_emv: number;
+  speaking_minutes: number;
+  ad_units: number;
+  true_emv: number;
+  value_per_minute: number;
+} | null {
+  // Require both listeners and duration
+  if (!podcast.listeners_per_episode || !podcast.episode_duration_minutes) {
+    return null;
+  }
+
+  const listeners = podcast.listeners_per_episode;
+  const duration = podcast.episode_duration_minutes;
+
+  // Formula: Base EMV = (listeners / 1000) * CPM
+  const base_emv = (listeners / 1000) * cpm;
+  
+  // Speaking time: 40% of episode duration
+  const speaking_minutes = duration * 0.40;
+  
+  // Ad units: one ad per minute of speaking time
+  const ad_units = speaking_minutes;
+  
+  // True EMV: Base EMV × Ad Units
+  const true_emv = base_emv * ad_units;
+  
+  // Value per minute: Base EMV
+  const value_per_minute = base_emv;
+
+  return {
+    base_emv,
+    speaking_minutes,
+    ad_units,
+    true_emv,
+    value_per_minute
+  };
+}
+
+// Apply EMV calculations to all podcasts
+function applyEMVCalculations(
+  podcasts: PodcastReportEntry[],
+  cpm: number = 50
+): PodcastReportEntry[] {
+  return podcasts.map(podcast => {
+    const emvData = calculateEMV(podcast, cpm);
+    
+    if (emvData) {
+      return {
+        ...podcast,
+        ...emvData
+      };
+    }
+    
+    return podcast;
+  });
 }
 
 // Batch scrape episode durations
@@ -273,7 +336,8 @@ function mergePodcastData(
 // Calculate enhanced KPIs from Batch + Airtable
 function calculateEnhancedKPIs(
   batchRows: BatchCSVRow[],
-  airtableRows: AirtableCSVRow[]
+  airtableRows: AirtableCSVRow[],
+  podcasts: PodcastReportEntry[]
 ): ReportData['kpis'] {
   console.log('[calculateEnhancedKPIs] Airtable summary', {
     totalRows: airtableRows.length,
@@ -338,6 +402,9 @@ function calculateEnhancedKPIs(
     r.date_published && r.date_published.trim() !== ''
   ).length;
   
+  // Calculate total EMV from podcasts
+  const total_emv = podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
+  
   return {
     total_evaluated: successfulBatch.length,
     fit_count,
@@ -350,8 +417,8 @@ function calculateEnhancedKPIs(
     total_interviews,
     total_booked,
     total_published,
-    // Placeholder metrics (to be implemented)
-    total_emv: 0,
+    // Calculated metrics
+    total_emv,
     sov_percentage: 0,
     geo_score: 0,
   };
@@ -393,7 +460,8 @@ export async function generateReportFromMultipleCSVs(
   client: MinimalClient,
   reportName: string,
   quarter: string,
-  dateRange: { start: Date; end: Date }
+  dateRange: { start: Date; end: Date },
+  cpm: number = 50
 ): Promise<ReportData> {
   
   // Step 1: Merge Batch + Airtable data by podcast title
@@ -402,16 +470,19 @@ export async function generateReportFromMultipleCSVs(
   // Step 2: Batch scrape episode durations
   const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
   
-  // Step 3: Calculate enhanced KPIs
-  const kpis = calculateEnhancedKPIs(batchRows, airtableRows);
+  // Step 3: Apply EMV calculations
+  const podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
   
-  // Step 4: Calculate SOV if provided
+  // Step 4: Calculate enhanced KPIs (now includes total EMV)
+  const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV);
+  
+  // Step 5: Calculate SOV if provided
   const sov_analysis = sovRows 
     ? calculateSOVAnalysis(airtableRows, sovRows, sovCompetitorName)
     : undefined;
   
-  // Step 5: Sort podcasts by score
-  const sortedPodcasts = podcastsWithDuration.sort((a, b) => 
+  // Step 6: Sort podcasts by score
+  const sortedPodcasts = podcastsWithEMV.sort((a, b) => 
     b.overall_score - a.overall_score
   );
   
@@ -424,6 +495,7 @@ export async function generateReportFromMultipleCSVs(
       start: dateRange.start.toISOString(),
       end: dateRange.end.toISOString(),
     },
+    cpm,
     kpis,
     campaign_overview: {
       strategy: generateStrategyParagraph(client),
