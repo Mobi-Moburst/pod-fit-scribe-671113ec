@@ -62,8 +62,6 @@ export function parseBatchCSV(csvText: string): BatchCSVRow[] {
     skipEmptyLines: true,
     transformHeader: normalizeHeaderName,
   });
-  
-  // Return data as-is, preserving the original status column from CSV
   return result.data;
 }
 

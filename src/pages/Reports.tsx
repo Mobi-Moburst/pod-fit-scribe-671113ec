@@ -31,6 +31,7 @@ export default function Reports() {
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [airtableFile, setAirtableFile] = useState<File | null>(null);
   const [sovFile, setSOVFile] = useState<File | null>(null);
+  const [sovCompetitorName, setSOVCompetitorName] = useState<string>('');
   
   // Report metadata
   const [reportName, setReportName] = useState<string>('');
@@ -162,6 +163,7 @@ export default function Reports() {
         batchRows,
         airtableRows,
         sovRows,
+        sovCompetitorName || null,
         client,
         reportName || `${client.name} - ${quarter || 'Report'}`,
         quarter,
@@ -414,10 +416,25 @@ export default function Reports() {
                   <Input
                     type="file"
                     accept=".csv"
-                    onChange={(e) => setSOVFile(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setSOVFile(file);
+                      if (file) {
+                        const name = extractCompetitorName(file.name);
+                        setSOVCompetitorName(name);
+                      }
+                    }}
                   />
                   {sovFile && (
-                    <p className="text-xs text-muted-foreground mt-1">{sovFile.name}</p>
+                    <>
+                      <p className="text-xs text-muted-foreground mt-1">{sovFile.name}</p>
+                      <Input
+                        placeholder="Competitor Name"
+                        value={sovCompetitorName}
+                        onChange={(e) => setSOVCompetitorName(e.target.value)}
+                        className="mt-2"
+                      />
+                    </>
                   )}
                 </div>
               </div>

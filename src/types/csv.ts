@@ -26,7 +26,6 @@ export interface AirtableCSVRow {
 
 // SOV CSV (from ListenNotes)
 export interface SOVCSVRow {
-  peer: string; // Guest name / competitor identifier
   title: string; // Episode title
   podcast_title: string; // Podcast name
   publisher: string; // Publisher/host
