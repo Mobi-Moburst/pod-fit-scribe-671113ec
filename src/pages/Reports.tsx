@@ -12,7 +12,7 @@ import { MinimalClient } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs } from "@/utils/reportGenerator";
-import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, extractCompetitorName } from "@/utils/csvParsers";
+import { parseBatchCSV, parseAirtableCSV, parseSOVCSV } from "@/utils/csvParsers";
 import { ReportData } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
@@ -31,7 +31,6 @@ export default function Reports() {
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [airtableFile, setAirtableFile] = useState<File | null>(null);
   const [sovFile, setSOVFile] = useState<File | null>(null);
-  const [sovCompetitorName, setSOVCompetitorName] = useState<string>('');
   
   // Report metadata
   const [reportName, setReportName] = useState<string>('');
@@ -163,7 +162,7 @@ export default function Reports() {
         batchRows,
         airtableRows,
         sovRows,
-        sovCompetitorName || null,
+        null, // Competitor names now come from CSV peer column
         client,
         reportName || `${client.name} - ${quarter || 'Report'}`,
         quarter,
@@ -419,22 +418,12 @@ export default function Reports() {
                     onChange={(e) => {
                       const file = e.target.files?.[0] || null;
                       setSOVFile(file);
-                      if (file) {
-                        const name = extractCompetitorName(file.name);
-                        setSOVCompetitorName(name);
-                      }
                     }}
                   />
                   {sovFile && (
-                    <>
-                      <p className="text-xs text-muted-foreground mt-1">{sovFile.name}</p>
-                      <Input
-                        placeholder="Competitor Name"
-                        value={sovCompetitorName}
-                        onChange={(e) => setSOVCompetitorName(e.target.value)}
-                        className="mt-2"
-                      />
-                    </>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {sovFile.name} - Competitor names will be read from the "peer" column
+                    </p>
                   )}
                 </div>
               </div>

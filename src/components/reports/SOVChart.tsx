@@ -9,16 +9,26 @@ interface SOVChartProps {
 export const SOVChart = ({ sovAnalysis }: SOVChartProps) => {
   if (!sovAnalysis) return null;
   
+  // Generate colors for multiple competitors
+  const competitorColors = [
+    'hsl(var(--secondary))',
+    'hsl(var(--accent))',
+    'hsl(var(--muted))',
+    'hsl(220 70% 60%)',
+    'hsl(280 70% 60%)',
+    'hsl(340 70% 60%)',
+  ];
+  
   const data = [
     { 
       name: 'Your Client', 
       value: sovAnalysis.client_interview_count,
       color: 'hsl(var(--primary))'
     },
-    ...sovAnalysis.competitors.map(comp => ({
+    ...sovAnalysis.competitors.map((comp, index) => ({
       name: comp.name,
       value: comp.interview_count,
-      color: 'hsl(var(--secondary))'
+      color: competitorColors[index % competitorColors.length]
     }))
   ];
   
