@@ -350,6 +350,10 @@ function calculateEnhancedKPIs(
     total_interviews,
     total_booked,
     total_published,
+    // Placeholder metrics (to be implemented)
+    total_emv: 0,
+    sov_percentage: 0,
+    geo_score: 0,
   };
 }
 
