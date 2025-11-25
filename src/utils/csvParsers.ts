@@ -57,12 +57,17 @@ export function normalizeTitle(title: string): string {
 
 // Parse Batch Results CSV
 export function parseBatchCSV(csvText: string): BatchCSVRow[] {
-  const result = Papa.parse<BatchCSVRow>(csvText, {
+  const result = Papa.parse<any>(csvText, {
     header: true,
     skipEmptyLines: true,
     transformHeader: normalizeHeaderName,
   });
-  return result.data;
+  
+  // Add status field for all rows (assume success if verdict exists)
+  return result.data.map(row => ({
+    ...row,
+    status: row.verdict ? 'success' : 'failed'
+  })) as BatchCSVRow[];
 }
 
 // Parse Airtable CSV with date filtering
