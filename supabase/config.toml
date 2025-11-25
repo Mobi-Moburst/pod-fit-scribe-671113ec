@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.suggest-competitors]
 verify_jwt = false
+
+[functions.scrape-rephonic-sov]
+verify_jwt = false

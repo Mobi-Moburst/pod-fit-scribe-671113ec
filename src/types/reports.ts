@@ -1,5 +1,16 @@
 import { MinimalClient } from './clients';
 
+export interface ScrapedEpisode {
+  title: string;
+  podcast_name: string;
+  publisher: string;
+  publish_date: string;
+  episode_url: string;
+  apple_podcast_url?: string;
+  listeners?: number;
+  categories?: string[];
+}
+
 export interface PodcastReportEntry {
   // From Batch CSV
   show_title: string;
