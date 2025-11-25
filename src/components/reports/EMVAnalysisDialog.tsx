@@ -15,16 +15,35 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PodcastReportEntry } from "@/types/reports";
 
-interface EMVScatterDialogProps {
+interface EMVAnalysisDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   podcasts: PodcastReportEntry[];
 }
 
-export const EMVScatterDialog = ({ open, onOpenChange, podcasts }: EMVScatterDialogProps) => {
-  // Filter podcasts that have both score and EMV data
+export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts }: EMVAnalysisDialogProps) => {
+  // Filter podcasts that have EMV data
+  const podcastsWithEMV = podcasts.filter(p => p.true_emv && p.true_emv > 0);
+
+  // Calculate summary metrics
+  const totalAdUnits = podcastsWithEMV.reduce((sum, p) => sum + (p.ad_units || 0), 0);
+  
+  const avgValuePerMinute = podcastsWithEMV.length > 0
+    ? podcastsWithEMV.reduce((sum, p) => sum + (p.value_per_minute || 0), 0) / podcastsWithEMV.length
+    : 0;
+  
+  const totalEMV = podcastsWithEMV.reduce((sum, p) => sum + (p.true_emv || 0), 0);
+  const avgEMVPerAppearance = podcastsWithEMV.length > 0 ? totalEMV / podcastsWithEMV.length : 0;
+  
+  const highestValuePodcast = podcastsWithEMV.reduce((max, p) => 
+    (p.true_emv || 0) > (max?.true_emv || 0) ? p : max, 
+    podcastsWithEMV[0]
+  );
+
+  // Filter podcasts that have both score and EMV data for the scatter plot
   const validPodcasts = podcasts.filter(
     p => p.overall_score > 0 && p.true_emv && p.true_emv > 0
   );
@@ -80,15 +99,90 @@ export const EMVScatterDialog = ({ open, onOpenChange, podcasts }: EMVScatterDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Fit Score vs EMV Analysis</DialogTitle>
+          <DialogTitle>EMV Analysis</DialogTitle>
           <DialogDescription>
-            Correlation between podcast fit scores and earned media value. Each point represents a podcast episode.
+            Detailed breakdown of earned media value for this campaign period.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="w-full h-[500px] mt-4">
+        {/* Summary Metrics Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Ad Units
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {totalAdUnits.toFixed(1)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Speaking minutes earned
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Avg Value/Minute
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${avgValuePerMinute.toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Per speaking minute
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Avg EMV/Appearance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${avgEMVPerAppearance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Across {podcastsWithEMV.length} shows
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Highest-Value Show
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${(highestValuePodcast?.true_emv || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 truncate" title={highestValuePodcast?.show_title}>
+                {highestValuePodcast?.show_title || 'N/A'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Scatter Chart Section */}
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-2">Fit Score vs EMV Correlation</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Each point represents a podcast episode, showing the relationship between fit score and earned media value.
+          </p>
+        </div>
+        
+        <div className="w-full h-[500px]">
           {validPodcasts.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart

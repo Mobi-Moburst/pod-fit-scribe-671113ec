@@ -18,7 +18,7 @@ import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { PodcastTable } from "@/components/reports/PodcastTable";
-import { EMVScatterDialog } from "@/components/reports/EMVScatterDialog";
+import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard } from "lucide-react";
@@ -743,7 +743,7 @@ export default function Reports() {
               <PodcastTable podcasts={reportData.podcasts} />
               
               {/* EMV Scatter Dialog */}
-              <EMVScatterDialog
+              <EMVAnalysisDialog
                 open={emvDialogOpen}
                 onOpenChange={setEmvDialogOpen}
                 podcasts={reportData.podcasts}
