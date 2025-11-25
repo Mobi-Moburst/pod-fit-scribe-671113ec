@@ -427,24 +427,45 @@ function calculateEnhancedKPIs(
 // Calculate SOV analysis
 function calculateSOVAnalysis(
   airtableRows: AirtableCSVRow[],
-  sovRows: SOVCSVRow[],
-  competitorName: string | null
+  sovRows: SOVCSVRow[] | null,
+  clientName: string
 ): ReportData['sov_analysis'] {
   const clientCount = airtableRows.filter(r => 
     r.action?.toLowerCase().includes('podcast recording')
   ).length;
   
-  const competitorCount = sovRows.length;
-  const totalCount = clientCount + competitorCount;
+  if (!sovRows || sovRows.length === 0) {
+    return {
+      client_name: clientName,
+      client_interview_count: clientCount,
+      competitors: [],
+      client_percentage: 100,
+    };
+  }
+  
+  // Group by peer and count interviews per peer
+  const peerCounts = new Map<string, number>();
+  sovRows.forEach(row => {
+    const peer = row.peer?.trim();
+    if (peer) {
+      peerCounts.set(peer, (peerCounts.get(peer) || 0) + 1);
+    }
+  });
+  
+  // Convert to competitors array
+  const competitors = Array.from(peerCounts.entries()).map(([name, count]) => ({
+    name,
+    interview_count: count,
+  }));
+  
+  // Calculate total including client
+  const competitorTotal = competitors.reduce((sum, c) => sum + c.interview_count, 0);
+  const totalCount = clientCount + competitorTotal;
   
   return {
+    client_name: clientName,
     client_interview_count: clientCount,
-    competitors: [
-      {
-        name: competitorName || 'Industry Average',
-        interview_count: competitorCount,
-      }
-    ],
+    competitors,
     client_percentage: totalCount > 0 
       ? Math.round((clientCount / totalCount) * 100) 
       : 0,
@@ -456,7 +477,6 @@ export async function generateReportFromMultipleCSVs(
   batchRows: BatchCSVRow[],
   airtableRows: AirtableCSVRow[],
   sovRows: SOVCSVRow[] | null,
-  sovCompetitorName: string | null,
   client: MinimalClient,
   reportName: string,
   quarter: string,
@@ -477,9 +497,7 @@ export async function generateReportFromMultipleCSVs(
   const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV);
   
   // Step 5: Calculate SOV if provided
-  const sov_analysis = sovRows 
-    ? calculateSOVAnalysis(airtableRows, sovRows, sovCompetitorName)
-    : undefined;
+  const sov_analysis = calculateSOVAnalysis(airtableRows, sovRows, client.name);
   
   // Step 6: Sort podcasts by score
   const sortedPodcasts = podcastsWithEMV.sort((a, b) => 
