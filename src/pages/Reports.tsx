@@ -21,7 +21,7 @@ import { PodcastTable } from "@/components/reports/PodcastTable";
 import { EMVScatterDialog } from "@/components/reports/EMVScatterDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
@@ -482,14 +482,16 @@ export default function Reports() {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                const searchQuery = encodeURIComponent(`"${comp.name}"`);
-                                window.open(
-                                  `https://www.listennotes.com/search/?q=${searchQuery}&type=episode&sort_by_date=1`,
-                                  '_blank'
-                                );
+                                const searchUrl = `https://www.listennotes.com/search/?q=${encodeURIComponent(comp.name)}&type=episode&sort_by_date=1`;
+                                navigator.clipboard.writeText(searchUrl);
+                                toast({
+                                  title: "Search URL copied!",
+                                  description: "Paste in a new browser tab to count podcast appearances.",
+                                });
                               }}
                             >
-                              🔍 Search ListenNotes
+                              <Clipboard className="h-4 w-4 mr-2" />
+                              Copy Search URL
                             </Button>
                           </div>
                           <div>
