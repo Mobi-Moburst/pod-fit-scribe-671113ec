@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientCombobox } from "@/components/ClientCombobox";
 import { MinimalClient } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,8 @@ export default function Reports() {
   const [quarter, setQuarter] = useState<string>('');
   const [dateRangeStart, setDateRangeStart] = useState<string>('');
   const [dateRangeEnd, setDateRangeEnd] = useState<string>('');
+  const [selectedQuarter, setSelectedQuarter] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   
   // State
   const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -54,6 +57,41 @@ export default function Reports() {
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   
   const { toast } = useToast();
+
+  const getQuarterDates = (quarterValue: string, year: number) => {
+    const quarters: Record<string, { start: string; end: string }> = {
+      'Q1': { start: `${year}-01-01`, end: `${year}-03-31` },
+      'Q2': { start: `${year}-04-01`, end: `${year}-06-30` },
+      'Q3': { start: `${year}-07-01`, end: `${year}-09-30` },
+      'Q4': { start: `${year}-10-01`, end: `${year}-12-31` },
+    };
+    return quarters[quarterValue];
+  };
+
+  const handleQuarterChange = (value: string) => {
+    setSelectedQuarter(value);
+    if (value !== 'custom') {
+      const dates = getQuarterDates(value, selectedYear);
+      setDateRangeStart(dates.start);
+      setDateRangeEnd(dates.end);
+      setQuarter(`${value} ${selectedYear}`);
+    } else {
+      setDateRangeStart('');
+      setDateRangeEnd('');
+      setQuarter('');
+    }
+  };
+
+  const handleYearChange = (value: string) => {
+    const year = parseInt(value);
+    setSelectedYear(year);
+    if (selectedQuarter && selectedQuarter !== 'custom') {
+      const dates = getQuarterDates(selectedQuarter, year);
+      setDateRangeStart(dates.start);
+      setDateRangeEnd(dates.end);
+      setQuarter(`${selectedQuarter} ${year}`);
+    }
+  };
 
   useEffect(() => {
     const loadClients = async () => {
@@ -401,23 +439,63 @@ export default function Reports() {
               </div>
 
               {/* Date Range */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Start Date *</Label>
-                  <Input
-                    type="date"
-                    value={dateRangeStart}
-                    onChange={(e) => setDateRangeStart(e.target.value)}
-                  />
+              <div className="space-y-4">
+                <Label>Report Period *</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Year Selector */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Year</Label>
+                    <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[selectedYear - 1, selectedYear, selectedYear + 1].map(year => (
+                          <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Quarter Selector */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Quarter</Label>
+                    <Select value={selectedQuarter} onValueChange={handleQuarterChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Quarter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Q1">Q1 (Jan - Mar)</SelectItem>
+                        <SelectItem value="Q2">Q2 (Apr - Jun)</SelectItem>
+                        <SelectItem value="Q3">Q3 (Jul - Sep)</SelectItem>
+                        <SelectItem value="Q4">Q4 (Oct - Dec)</SelectItem>
+                        <SelectItem value="custom">Custom Date Range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label>End Date *</Label>
-                  <Input
-                    type="date"
-                    value={dateRangeEnd}
-                    onChange={(e) => setDateRangeEnd(e.target.value)}
-                  />
-                </div>
+                
+                {/* Custom Date Pickers - Only shown when "custom" selected */}
+                {selectedQuarter === 'custom' && (
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <Label>Start Date</Label>
+                      <Input
+                        type="date"
+                        value={dateRangeStart}
+                        onChange={(e) => setDateRangeStart(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>End Date</Label>
+                      <Input
+                        type="date"
+                        value={dateRangeEnd}
+                        onChange={(e) => setDateRangeEnd(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* CSV Uploads */}
