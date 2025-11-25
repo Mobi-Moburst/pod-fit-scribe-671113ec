@@ -74,6 +74,7 @@ export interface ReportData {
   
   // Optional SOV data
   sov_analysis?: {
+    client_name: string; // Client name for display
     client_interview_count: number; // From Airtable
     competitors: Array<{
       name: string; // Extracted from CSV filename or metadata
