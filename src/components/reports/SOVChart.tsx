@@ -4,9 +4,10 @@ import { ReportData } from '@/types/reports';
 
 interface SOVChartProps {
   sovAnalysis: ReportData['sov_analysis'];
+  clientName?: string;
 }
 
-export const SOVChart = ({ sovAnalysis }: SOVChartProps) => {
+export const SOVChart = ({ sovAnalysis, clientName }: SOVChartProps) => {
   if (!sovAnalysis) return null;
   
   // Generate colors for multiple competitors
@@ -21,7 +22,7 @@ export const SOVChart = ({ sovAnalysis }: SOVChartProps) => {
   
   const data = [
     { 
-      name: 'Your Client', 
+      name: clientName || 'Your Client', 
       value: sovAnalysis.client_interview_count,
       color: 'hsl(var(--primary))'
     },
