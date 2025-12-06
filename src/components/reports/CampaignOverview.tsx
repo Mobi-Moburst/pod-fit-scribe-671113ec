@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { X, Pencil } from "lucide-react";
 
 interface CampaignOverviewProps {
   strategy: string;
@@ -8,6 +9,8 @@ interface CampaignOverviewProps {
   target_audiences: string[];
   talking_points: string[];
   onHide?: () => void;
+  onStrategyChange?: (value: string) => void;
+  onExecutiveSummaryChange?: (value: string) => void;
 }
 
 export const CampaignOverview = ({ 
@@ -15,7 +18,9 @@ export const CampaignOverview = ({
   executive_summary,
   target_audiences, 
   talking_points,
-  onHide
+  onHide,
+  onStrategyChange,
+  onExecutiveSummaryChange
 }: CampaignOverviewProps) => {
   return (
     <Card className="group relative">
@@ -32,16 +37,39 @@ export const CampaignOverview = ({
         <CardTitle>Campaign Overview</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {strategy && (
-          <div>
-            <h4 className="text-sm font-medium mb-2">Campaign Strategy</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">{strategy}</p>
+        {(strategy || onStrategyChange) && (
+          <div className="group/edit relative">
+            <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+              Campaign Strategy
+              {onStrategyChange && <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/edit:opacity-100 transition-opacity print:hidden" />}
+            </h4>
+            {onStrategyChange ? (
+              <Textarea
+                value={strategy}
+                onChange={(e) => onStrategyChange(e.target.value)}
+                className="min-h-[80px] text-sm text-muted-foreground leading-relaxed resize-none bg-transparent border-muted/50 focus:border-primary/50 print:border-none print:p-0"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground leading-relaxed">{strategy}</p>
+            )}
           </div>
         )}
         
-        {executive_summary && (
-          <div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{executive_summary}</p>
+        {(executive_summary || onExecutiveSummaryChange) && (
+          <div className="group/edit relative">
+            <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+              Executive Summary
+              {onExecutiveSummaryChange && <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/edit:opacity-100 transition-opacity print:hidden" />}
+            </h4>
+            {onExecutiveSummaryChange ? (
+              <Textarea
+                value={executive_summary || ''}
+                onChange={(e) => onExecutiveSummaryChange(e.target.value)}
+                className="min-h-[120px] text-sm text-muted-foreground leading-relaxed resize-none bg-transparent border-muted/50 focus:border-primary/50 print:border-none print:p-0"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground leading-relaxed">{executive_summary}</p>
+            )}
           </div>
         )}
         
