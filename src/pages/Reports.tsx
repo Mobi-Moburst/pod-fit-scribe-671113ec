@@ -733,63 +733,79 @@ export default function Reports() {
                 batch_name={reportData.batch_name}
               />
 
-              {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KPICard
-                  title="Earned Media Value"
-                  value={`$${reportData.kpis.total_emv?.toLocaleString() || '0'}`}
-                  subtitle="Total campaign EMV • Click to view analysis"
-                  icon={DollarSign}
-                  onClick={() => setEmvDialogOpen(true)}
-                />
-                <KPICard
-                  title="Share of Voice"
-                  value={`${reportData.kpis.sov_percentage || reportData.sov_analysis?.client_percentage || 0}%`}
-                  subtitle="Market presence • Click to view analysis"
-                  icon={PieChart}
-                  onClick={() => setSOVDialogOpen(true)}
-                />
-                <KPICard
-                  title="GEO Score"
-                  value={reportData.geo_analysis ? `${reportData.geo_analysis.geo_score}/100` : '0/100'}
-                  subtitle={
-                    reportData.geo_analysis 
-                      ? `${reportData.geo_analysis.total_podcasts_indexed} podcasts • ${reportData.geo_analysis.unique_ai_engines.length} AI engines • Click for details`
-                      : "Upload GEO CSV to analyze"
-                  }
-                  icon={Sparkles}
-                  onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
-                />
-                <KPICard
-                  title="Average Score"
-                  value={reportData.kpis.avg_score.toFixed(1)}
-                  subtitle="Overall fit rating"
-                  icon={TrendingUp}
-                />
-                <KPICard
-                  title="Total Reach"
-                  value={reportData.kpis.total_reach.toLocaleString()}
-                  subtitle="Listeners per episode"
-                  icon={Users}
-                />
-                <KPICard
-                  title="Total Booked"
-                  value={reportData.kpis.total_booked}
-                  subtitle="Confirmed bookings"
-                  icon={Calendar}
-                />
-                <KPICard
-                  title="Total Published"
-                  value={reportData.kpis.total_published}
-                  subtitle="Episodes live"
-                  icon={Radio}
-                />
-                <KPICard
-                  title="Social Reach"
-                  value={reportData.kpis.total_social_reach.toLocaleString()}
-                  subtitle="Combined social following"
-                  icon={Users}
-                />
+              {/* Core KPIs Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Core KPIs
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <KPICard
+                    title="Total Booked"
+                    value={reportData.kpis.total_booked}
+                    subtitle="Confirmed bookings"
+                    icon={Calendar}
+                  />
+                  <KPICard
+                    title="Total Published"
+                    value={reportData.kpis.total_published}
+                    subtitle="Episodes live"
+                    icon={Radio}
+                  />
+                  <KPICard
+                    title="Social Reach"
+                    value={reportData.kpis.total_social_reach.toLocaleString()}
+                    subtitle="Combined social following"
+                    icon={Users}
+                  />
+                  <KPICard
+                    title="Total Reach"
+                    value={reportData.kpis.total_reach.toLocaleString()}
+                    subtitle="Listeners per episode"
+                    icon={Users}
+                  />
+                  <KPICard
+                    title="Average Score"
+                    value={reportData.kpis.avg_score.toFixed(1)}
+                    subtitle="Overall fit rating"
+                    icon={TrendingUp}
+                  />
+                </div>
+              </div>
+
+              {/* Additional Value Metrics Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
+                  <Sparkles className="h-5 w-5 text-accent" />
+                  Additional Value Metrics
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <KPICard
+                    title="Earned Media Value"
+                    value={`$${reportData.kpis.total_emv?.toLocaleString() || '0'}`}
+                    subtitle="Total campaign EMV • Click to view analysis"
+                    icon={DollarSign}
+                    onClick={() => setEmvDialogOpen(true)}
+                  />
+                  <KPICard
+                    title="Share of Voice"
+                    value={`${reportData.kpis.sov_percentage || reportData.sov_analysis?.client_percentage || 0}%`}
+                    subtitle="Market presence • Click to view analysis"
+                    icon={PieChart}
+                    onClick={() => setSOVDialogOpen(true)}
+                  />
+                  <KPICard
+                    title="GEO Score"
+                    value={reportData.geo_analysis ? `${reportData.geo_analysis.geo_score}/100` : '0/100'}
+                    subtitle={
+                      reportData.geo_analysis 
+                        ? `${reportData.geo_analysis.total_podcasts_indexed} podcasts • ${reportData.geo_analysis.unique_ai_engines.length} AI engines • Click for details`
+                        : "Upload GEO CSV to analyze"
+                    }
+                    icon={Sparkles}
+                    onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
+                  />
+                </div>
               </div>
 
               {/* Campaign Overview */}
