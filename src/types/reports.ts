@@ -104,4 +104,19 @@ export interface ReportData {
       topic: string;
     }>;
   };
+  
+  // Next Quarter Strategy (Looking Ahead)
+  next_quarter_strategy?: {
+    quarter: string;
+    intro_paragraph: string;
+    strategic_focus_areas: Array<{
+      title: string;
+      description: string;
+    }>;
+    talking_points_spotlight: Array<{
+      title: string;
+      description: string;
+    }>;
+    closing_paragraph: string;
+  };
 }
