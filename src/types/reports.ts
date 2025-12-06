@@ -66,6 +66,7 @@ export interface ReportData {
   
   campaign_overview: {
     strategy: string;
+    executive_summary: string;
     target_audiences: string[];
     talking_points: string[];
   };

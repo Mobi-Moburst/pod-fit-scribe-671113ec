@@ -40,6 +40,80 @@ function generateStrategyParagraph(client: MinimalClient): string {
   return paragraph;
 }
 
+// Format numbers with K/M suffix for readability
+function formatNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return n.toString();
+}
+
+// Get topic space from client profile
+function getTopicSpace(client: MinimalClient): string {
+  const audiences = client.target_audiences || [];
+  const strategy = client.campaign_strategy || '';
+  
+  // Extract key topic words from audiences and strategy
+  const combined = [...audiences, strategy].join(' ').toLowerCase();
+  
+  if (combined.includes('ai') || combined.includes('artificial intelligence')) return 'AI and technology';
+  if (combined.includes('founder') || combined.includes('entrepreneur')) return 'entrepreneurship and startups';
+  if (combined.includes('sales') || combined.includes('revenue')) return 'sales and growth';
+  if (combined.includes('marketing')) return 'marketing and brand';
+  if (combined.includes('health') || combined.includes('wellness')) return 'health and wellness';
+  if (combined.includes('finance') || combined.includes('investment')) return 'finance and investing';
+  if (combined.includes('leadership') || combined.includes('management')) return 'leadership and management';
+  if (combined.includes('tech') || combined.includes('software')) return 'technology and innovation';
+  
+  return 'industry thought leadership';
+}
+
+// Generate executive summary with KPI references
+function generateExecutiveSummary(
+  client: MinimalClient,
+  kpis: ReportData['kpis'],
+  quarter: string
+): string {
+  const { total_booked, total_published, total_reach, total_social_reach, avg_score } = kpis;
+  const pronoun = client.gender === 'female' ? 'her' : client.gender === 'male' ? 'his' : 'their';
+  const topicSpace = getTopicSpace(client);
+  
+  let summary = `In ${quarter}, our podcast campaign for ${client.name}`;
+  if (client.company && client.company !== client.name) {
+    summary += ` and ${client.company}`;
+  }
+  summary += ` focused on elevating ${pronoun} presence on prominent podcasts in the ${topicSpace} space. `;
+  
+  // Bookings/Published sentence
+  if (total_booked > 0 || total_published > 0) {
+    summary += `We secured ${total_booked} podcast booking${total_booked !== 1 ? 's' : ''} this quarter`;
+    
+    if (total_published > 0) {
+      summary += ` with ${total_published} episode${total_published !== 1 ? 's' : ''} now live`;
+    }
+    
+    if (total_reach > 0) {
+      summary += `, collectively reaching an estimated ${formatNumber(total_reach)} monthly listeners`;
+    }
+    
+    if (total_social_reach > 0) {
+      summary += ` with potential amplification to ~${formatNumber(total_social_reach)} through host and show social platforms`;
+    }
+    
+    summary += '. ';
+  }
+  
+  // Score insight
+  if (avg_score >= 7.5) {
+    summary += `These placements achieved a strong average fit score of ${avg_score.toFixed(1)}, ensuring both audience alignment and meaningful brand visibility.`;
+  } else if (avg_score >= 6.0) {
+    summary += `These placements reflected strategic targeting to reach the right audiences and maximize brand visibility.`;
+  } else if (total_booked > 0) {
+    summary += `Importantly, these placements ensure meaningful brand visibility in ${pronoun} target market.`;
+  }
+  
+  return summary;
+}
+
 export function generateReportFromCSV(
   csvData: any[],
   client: MinimalClient,
@@ -69,6 +143,7 @@ export function generateReportFromCSV(
     kpis,
     campaign_overview: {
       strategy: generateStrategyParagraph(client),
+      executive_summary: '', // Not available for single CSV reports
       target_audiences: pickTopAudienceTags({
         strategyText: client.campaign_strategy,
         audiences: client.target_audiences,
@@ -623,6 +698,9 @@ export async function generateReportFromMultipleCSVs(
     b.overall_score - a.overall_score
   );
   
+  // Generate executive summary with KPI references
+  const executiveSummary = generateExecutiveSummary(client, kpis, quarter);
+  
   return {
     client,
     generated_at: new Date().toISOString(),
@@ -636,6 +714,7 @@ export async function generateReportFromMultipleCSVs(
     kpis,
     campaign_overview: {
       strategy: generateStrategyParagraph(client),
+      executive_summary: executiveSummary,
       target_audiences: pickTopAudienceTags({
         strategyText: client.campaign_strategy,
         audiences: client.target_audiences,

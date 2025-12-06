@@ -902,20 +902,13 @@ export default function Reports() {
 
               {/* Campaign Overview */}
               {visibleSections.campaignOverview && (
-                <div className="relative group">
-                  <button
-                    onClick={() => toggleSection('campaignOverview')}
-                    className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
-                    title="Hide this section"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <CampaignOverview
-                    strategy={reportData.campaign_overview.strategy}
-                    target_audiences={reportData.campaign_overview.target_audiences}
-                    talking_points={reportData.campaign_overview.talking_points}
-                  />
-                </div>
+                <CampaignOverview
+                  strategy={reportData.campaign_overview.strategy}
+                  executive_summary={reportData.campaign_overview.executive_summary}
+                  target_audiences={reportData.campaign_overview.target_audiences}
+                  talking_points={reportData.campaign_overview.talking_points}
+                  onHide={() => toggleSection('campaignOverview')}
+                />
               )}
 
               {/* Top Categories */}
