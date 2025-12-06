@@ -911,6 +911,14 @@ export default function Reports() {
                   target_audiences={reportData.campaign_overview.target_audiences}
                   talking_points={reportData.campaign_overview.talking_points}
                   onHide={() => toggleSection('campaignOverview')}
+                  onStrategyChange={(value) => setReportData(prev => prev ? {
+                    ...prev,
+                    campaign_overview: { ...prev.campaign_overview, strategy: value }
+                  } : null)}
+                  onExecutiveSummaryChange={(value) => setReportData(prev => prev ? {
+                    ...prev,
+                    campaign_overview: { ...prev.campaign_overview, executive_summary: value }
+                  } : null)}
                 />
               )}
 
@@ -948,6 +956,22 @@ export default function Reports() {
                   talking_points_spotlight={reportData.next_quarter_strategy.talking_points_spotlight}
                   closing_paragraph={reportData.next_quarter_strategy.closing_paragraph}
                   onHide={() => toggleSection('nextQuarterStrategy')}
+                  onIntroParagraphChange={(value) => setReportData(prev => prev?.next_quarter_strategy ? {
+                    ...prev,
+                    next_quarter_strategy: { ...prev.next_quarter_strategy, intro_paragraph: value }
+                  } : prev)}
+                  onStrategicFocusAreasChange={(areas) => setReportData(prev => prev?.next_quarter_strategy ? {
+                    ...prev,
+                    next_quarter_strategy: { ...prev.next_quarter_strategy, strategic_focus_areas: areas }
+                  } : prev)}
+                  onTalkingPointsSpotlightChange={(points) => setReportData(prev => prev?.next_quarter_strategy ? {
+                    ...prev,
+                    next_quarter_strategy: { ...prev.next_quarter_strategy, talking_points_spotlight: points }
+                  } : prev)}
+                  onClosingParagraphChange={(value) => setReportData(prev => prev?.next_quarter_strategy ? {
+                    ...prev,
+                    next_quarter_strategy: { ...prev.next_quarter_strategy, closing_paragraph: value }
+                  } : prev)}
                 />
               )}
               {/* EMV Scatter Dialog */}
