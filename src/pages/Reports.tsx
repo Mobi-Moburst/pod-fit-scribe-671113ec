@@ -23,9 +23,7 @@ import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, Settings, ChevronDown, ChevronUp } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
@@ -58,7 +56,7 @@ export default function Reports() {
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
   const [sovDialogOpen, setSOVDialogOpen] = useState(false);
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
-  const [displaySettingsOpen, setDisplaySettingsOpen] = useState(false);
+  
   
   // Visibility state for report sections
   const [visibleSections, setVisibleSections] = useState({
@@ -747,87 +745,6 @@ export default function Reports() {
                 </CardContent>
               </Card>
 
-              {/* Display Settings */}
-              <Collapsible open={displaySettingsOpen} onOpenChange={setDisplaySettingsOpen} className="print:hidden">
-                <Card>
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                      <CardTitle className="flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          <Settings className="h-5 w-5" />
-                          Display Settings
-                        </span>
-                        {displaySettingsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </CardTitle>
-                      <CardDescription>Toggle which metrics appear in the report</CardDescription>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="space-y-6">
-                      {/* Core KPIs toggles */}
-                      <div className="space-y-3">
-                        <h4 className="font-medium text-sm text-muted-foreground">Core KPIs</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-booked" className="text-sm">Total Booked</Label>
-                            <Switch id="toggle-booked" checked={visibleSections.totalBooked} onCheckedChange={() => toggleSection('totalBooked')} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-published" className="text-sm">Total Published</Label>
-                            <Switch id="toggle-published" checked={visibleSections.totalPublished} onCheckedChange={() => toggleSection('totalPublished')} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-social" className="text-sm">Social Reach</Label>
-                            <Switch id="toggle-social" checked={visibleSections.socialReach} onCheckedChange={() => toggleSection('socialReach')} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-reach" className="text-sm">Total Reach</Label>
-                            <Switch id="toggle-reach" checked={visibleSections.totalReach} onCheckedChange={() => toggleSection('totalReach')} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-score" className="text-sm">Average Score</Label>
-                            <Switch id="toggle-score" checked={visibleSections.averageScore} onCheckedChange={() => toggleSection('averageScore')} />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Additional Value Metrics toggles */}
-                      <div className="space-y-3">
-                        <h4 className="font-medium text-sm text-muted-foreground">Additional Value Metrics</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-emv" className="text-sm">Earned Media Value</Label>
-                            <Switch id="toggle-emv" checked={visibleSections.emv} onCheckedChange={() => toggleSection('emv')} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-sov" className="text-sm">Share of Voice</Label>
-                            <Switch id="toggle-sov" checked={visibleSections.sov} onCheckedChange={() => toggleSection('sov')} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-geo" className="text-sm">GEO Score</Label>
-                            <Switch id="toggle-geo" checked={visibleSections.geoScore} onCheckedChange={() => toggleSection('geoScore')} />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Sections toggles */}
-                      <div className="space-y-3">
-                        <h4 className="font-medium text-sm text-muted-foreground">Sections</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-overview" className="text-sm">Campaign Overview</Label>
-                            <Switch id="toggle-overview" checked={visibleSections.campaignOverview} onCheckedChange={() => toggleSection('campaignOverview')} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="toggle-categories" className="text-sm">Top Categories</Label>
-                            <Switch id="toggle-categories" checked={visibleSections.topCategories} onCheckedChange={() => toggleSection('topCategories')} />
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
 
               {/* Print Button */}
               <div className="flex justify-end print:hidden">
@@ -844,6 +761,42 @@ export default function Reports() {
                 batch_name={reportData.batch_name}
               />
 
+              {/* Hidden Items Restore Bar */}
+              {(() => {
+                const hiddenItems = [
+                  { key: 'totalBooked', label: 'Total Booked', visible: visibleSections.totalBooked },
+                  { key: 'totalPublished', label: 'Total Published', visible: visibleSections.totalPublished },
+                  { key: 'socialReach', label: 'Social Reach', visible: visibleSections.socialReach },
+                  { key: 'totalReach', label: 'Total Reach', visible: visibleSections.totalReach },
+                  { key: 'averageScore', label: 'Avg Score', visible: visibleSections.averageScore },
+                  { key: 'emv', label: 'EMV', visible: visibleSections.emv },
+                  { key: 'sov', label: 'SOV', visible: visibleSections.sov },
+                  { key: 'geoScore', label: 'GEO', visible: visibleSections.geoScore },
+                  { key: 'campaignOverview', label: 'Campaign Overview', visible: visibleSections.campaignOverview },
+                  { key: 'topCategories', label: 'Top Categories', visible: visibleSections.topCategories },
+                ].filter(item => !item.visible);
+                
+                if (hiddenItems.length === 0) return null;
+                
+                return (
+                  <div className="flex flex-wrap items-center gap-2 text-sm print:hidden">
+                    <span className="text-muted-foreground">Hidden:</span>
+                    {hiddenItems.map(item => (
+                      <Button
+                        key={item.key}
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => toggleSection(item.key as keyof typeof visibleSections)}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        {item.label}
+                      </Button>
+                    ))}
+                  </div>
+                );
+              })()}
+
               {/* Core KPIs Section */}
               {coreKPIsVisible && (
                 <div className="space-y-4">
@@ -858,6 +811,7 @@ export default function Reports() {
                         value={reportData.kpis.total_booked}
                         subtitle="Confirmed bookings"
                         icon={Calendar}
+                        onHide={() => toggleSection('totalBooked')}
                       />
                     )}
                     {visibleSections.totalPublished && (
@@ -866,6 +820,7 @@ export default function Reports() {
                         value={reportData.kpis.total_published}
                         subtitle="Episodes live"
                         icon={Radio}
+                        onHide={() => toggleSection('totalPublished')}
                       />
                     )}
                     {visibleSections.socialReach && (
@@ -874,6 +829,7 @@ export default function Reports() {
                         value={reportData.kpis.total_social_reach.toLocaleString()}
                         subtitle="Combined social following"
                         icon={Users}
+                        onHide={() => toggleSection('socialReach')}
                       />
                     )}
                     {visibleSections.totalReach && (
@@ -882,6 +838,7 @@ export default function Reports() {
                         value={reportData.kpis.total_reach.toLocaleString()}
                         subtitle="Listeners per episode"
                         icon={Users}
+                        onHide={() => toggleSection('totalReach')}
                       />
                     )}
                     {visibleSections.averageScore && (
@@ -890,6 +847,7 @@ export default function Reports() {
                         value={reportData.kpis.avg_score.toFixed(1)}
                         subtitle="Overall fit rating"
                         icon={TrendingUp}
+                        onHide={() => toggleSection('averageScore')}
                       />
                     )}
                   </div>
@@ -911,6 +869,7 @@ export default function Reports() {
                         subtitle="Total campaign EMV • Click to view analysis"
                         icon={DollarSign}
                         onClick={() => setEmvDialogOpen(true)}
+                        onHide={() => toggleSection('emv')}
                       />
                     )}
                     {visibleSections.sov && (
@@ -920,6 +879,7 @@ export default function Reports() {
                         subtitle="Market presence • Click to view analysis"
                         icon={PieChart}
                         onClick={() => setSOVDialogOpen(true)}
+                        onHide={() => toggleSection('sov')}
                       />
                     )}
                     {visibleSections.geoScore && (
@@ -933,6 +893,7 @@ export default function Reports() {
                         }
                         icon={Sparkles}
                         onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
+                        onHide={() => toggleSection('geoScore')}
                       />
                     )}
                   </div>
@@ -941,16 +902,32 @@ export default function Reports() {
 
               {/* Campaign Overview */}
               {visibleSections.campaignOverview && (
-                <CampaignOverview
-                  strategy={reportData.campaign_overview.strategy}
-                  target_audiences={reportData.campaign_overview.target_audiences}
-                  talking_points={reportData.campaign_overview.talking_points}
-                />
+                <div className="relative group">
+                  <button
+                    onClick={() => toggleSection('campaignOverview')}
+                    className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
+                    title="Hide this section"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  <CampaignOverview
+                    strategy={reportData.campaign_overview.strategy}
+                    target_audiences={reportData.campaign_overview.target_audiences}
+                    talking_points={reportData.campaign_overview.talking_points}
+                  />
+                </div>
               )}
 
               {/* Top Categories */}
               {visibleSections.topCategories && reportData.kpis.top_categories.length > 0 && (
-                <Card>
+                <Card className="relative group">
+                  <button
+                    onClick={() => toggleSection('topCategories')}
+                    className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
+                    title="Hide this section"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                   <CardHeader>
                     <CardTitle>Top Categories</CardTitle>
                   </CardHeader>
