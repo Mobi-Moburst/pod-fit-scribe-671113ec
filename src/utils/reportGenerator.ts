@@ -47,24 +47,29 @@ function formatNumber(n: number): string {
   return n.toString();
 }
 
-// Get topic space from client profile
-function getTopicSpace(client: MinimalClient): string {
-  const audiences = client.target_audiences || [];
-  const strategy = client.campaign_strategy || '';
+// Derive topic space from actual podcast categories (from batch CSV)
+function deriveTopicSpaceFromCategories(kpis: ReportData['kpis']): string {
+  const topCategories = kpis.top_categories || [];
   
-  // Extract key topic words from audiences and strategy
-  const combined = [...audiences, strategy].join(' ').toLowerCase();
+  if (topCategories.length === 0) {
+    return 'industry thought leadership';
+  }
   
-  if (combined.includes('ai') || combined.includes('artificial intelligence')) return 'AI and technology';
-  if (combined.includes('founder') || combined.includes('entrepreneur')) return 'entrepreneurship and startups';
-  if (combined.includes('sales') || combined.includes('revenue')) return 'sales and growth';
-  if (combined.includes('marketing')) return 'marketing and brand';
-  if (combined.includes('health') || combined.includes('wellness')) return 'health and wellness';
-  if (combined.includes('finance') || combined.includes('investment')) return 'finance and investing';
-  if (combined.includes('leadership') || combined.includes('management')) return 'leadership and management';
-  if (combined.includes('tech') || combined.includes('software')) return 'technology and innovation';
+  // Get top 1-2 categories and format them naturally
+  const topNames = topCategories
+    .slice(0, 2)
+    .map(c => c.name.toLowerCase().replace(/\s*podcasts?\s*/gi, '').trim());
   
-  return 'industry thought leadership';
+  if (topNames.length === 0) {
+    return 'industry thought leadership';
+  }
+  
+  // Join with "and" for natural phrasing
+  if (topNames.length === 1) {
+    return topNames[0];
+  }
+  
+  return `${topNames[0]} and ${topNames[1]}`;
 }
 
 // Generate executive summary with KPI references
@@ -75,7 +80,7 @@ function generateExecutiveSummary(
 ): string {
   const { total_booked, total_published, total_reach, total_social_reach, avg_score } = kpis;
   const pronoun = client.gender === 'female' ? 'her' : client.gender === 'male' ? 'his' : 'their';
-  const topicSpace = getTopicSpace(client);
+  const topicSpace = deriveTopicSpaceFromCategories(kpis);
   
   let summary = `In ${quarter}, our podcast campaign for ${client.name}`;
   if (client.company && client.company !== client.name) {
