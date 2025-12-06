@@ -1,0 +1,93 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowRight, X } from "lucide-react";
+
+interface NextQuarterStrategyProps {
+  quarter: string;
+  intro_paragraph: string;
+  strategic_focus_areas: Array<{
+    title: string;
+    description: string;
+  }>;
+  talking_points_spotlight: Array<{
+    title: string;
+    description: string;
+  }>;
+  closing_paragraph: string;
+  onHide?: () => void;
+}
+
+export function NextQuarterStrategy({
+  quarter,
+  intro_paragraph,
+  strategic_focus_areas,
+  talking_points_spotlight,
+  closing_paragraph,
+  onHide
+}: NextQuarterStrategyProps) {
+  return (
+    <Card className="relative group">
+      {onHide && (
+        <button
+          onClick={onHide}
+          className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
+          title="Hide this section"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ArrowRight className="h-5 w-5 text-primary" />
+          Looking Ahead: {quarter}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Intro Paragraph */}
+        <p className="text-muted-foreground leading-relaxed">
+          {intro_paragraph}
+        </p>
+
+        {/* Strategic Focus Areas */}
+        {strategic_focus_areas.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-semibold text-foreground">Strategic Focus Areas</h4>
+            <ul className="space-y-3">
+              {strategic_focus_areas.map((area, idx) => (
+                <li key={idx} className="flex gap-2">
+                  <span className="text-primary font-bold">•</span>
+                  <div>
+                    <span className="font-semibold text-foreground">{area.title}:</span>{' '}
+                    <span className="text-muted-foreground">{area.description}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Talking Points to Spotlight */}
+        {talking_points_spotlight.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-semibold text-foreground">Talking Points to Spotlight</h4>
+            <ul className="space-y-3">
+              {talking_points_spotlight.map((point, idx) => (
+                <li key={idx} className="flex gap-2">
+                  <span className="text-accent font-bold">•</span>
+                  <div>
+                    <span className="font-semibold text-foreground">{point.title}:</span>{' '}
+                    <span className="text-muted-foreground">{point.description}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Closing Paragraph */}
+        <p className="text-muted-foreground leading-relaxed italic border-l-2 border-primary/30 pl-4">
+          {closing_paragraph}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}

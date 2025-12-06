@@ -119,6 +119,138 @@ function generateExecutiveSummary(
   return summary;
 }
 
+// Calculate next quarter from current quarter string (e.g., "Q3 2025" -> "Q4 2025")
+function getNextQuarter(currentQuarter: string): string {
+  const match = currentQuarter.match(/Q(\d)\s*(\d{4})/);
+  if (!match) {
+    // Default to next quarter from current date
+    const now = new Date();
+    const currentQ = Math.floor(now.getMonth() / 3) + 1;
+    const nextQ = currentQ === 4 ? 1 : currentQ + 1;
+    const nextYear = currentQ === 4 ? now.getFullYear() + 1 : now.getFullYear();
+    return `Q${nextQ} ${nextYear}`;
+  }
+  
+  const quarterNum = parseInt(match[1]);
+  const year = parseInt(match[2]);
+  
+  if (quarterNum === 4) {
+    return `Q1 ${year + 1}`;
+  }
+  return `Q${quarterNum + 1} ${year}`;
+}
+
+// Generate strategic focus area description based on audience type
+function generateFocusDescription(audience: string, clientName: string): string {
+  const audienceLower = audience.toLowerCase();
+  
+  if (audienceLower.includes('founder') || audienceLower.includes('entrepreneur')) {
+    return `Double down on securing placements with high-visibility founder shows that expand ${clientName}'s reach into the broader startup and business leadership space.`;
+  }
+  if (audienceLower.includes('ai') || audienceLower.includes('tech')) {
+    return `Target shows focused on applied AI and technology innovation, especially as organizations seek practical frameworks for leveraging AI effectively.`;
+  }
+  if (audienceLower.includes('sales') || audienceLower.includes('revenue')) {
+    return `Pursue sales and revenue-focused podcasts to position ${clientName} as a go-to voice on growth strategies and business development.`;
+  }
+  if (audienceLower.includes('marketing') || audienceLower.includes('brand')) {
+    return `Secure placements on marketing and brand strategy podcasts to amplify ${clientName}'s expertise in audience engagement and brand building.`;
+  }
+  if (audienceLower.includes('leadership') || audienceLower.includes('executive')) {
+    return `Continue to leverage ${clientName}'s leadership perspective to secure high-profile executive and management podcasts.`;
+  }
+  if (audienceLower.includes('small business') || audienceLower.includes('smb')) {
+    return `Expand presence on small business podcasts serving operators seeking efficiency, growth, and operational excellence.`;
+  }
+  if (audienceLower.includes('health') || audienceLower.includes('wellness')) {
+    return `Target health and wellness shows to position ${clientName} as an authority in the wellness and lifestyle space.`;
+  }
+  
+  // Default
+  return `Continue building presence on ${audience.toLowerCase()} podcasts to expand ${clientName}'s thought leadership reach.`;
+}
+
+// Generate talking point spotlight description
+function generateTalkingPointDescription(talkingPoint: string): string {
+  // Extract key themes and create a strategic framing
+  const pointLower = talkingPoint.toLowerCase();
+  
+  if (pointLower.includes('ai') || pointLower.includes('automation')) {
+    return `Emphasize practical AI applications and automation strategies that give hosts actionable insights to share with their audiences.`;
+  }
+  if (pointLower.includes('growth') || pointLower.includes('scale')) {
+    return `Highlight growth frameworks and scaling strategies that resonate with ambitious audiences seeking proven playbooks.`;
+  }
+  if (pointLower.includes('leadership') || pointLower.includes('team')) {
+    return `Position leadership insights as a bridge between team challenges and organizational success.`;
+  }
+  if (pointLower.includes('product') || pointLower.includes('launch')) {
+    return `Frame product updates and launches as timely news hooks that create urgency for podcast hosts.`;
+  }
+  
+  // Default - create a generic but useful description
+  return `Emphasize this topic to give hosts practical, shareable insights that resonate with their audience.`;
+}
+
+// Generate next quarter strategy section
+function generateNextQuarterStrategy(
+  client: MinimalClient,
+  kpis: ReportData['kpis'],
+  currentQuarter: string
+): ReportData['next_quarter_strategy'] {
+  const nextQuarter = getNextQuarter(currentQuarter);
+  const topicSpace = deriveTopicSpaceFromCategories(kpis);
+  const pronoun = client.gender === 'female' ? 'her' : client.gender === 'male' ? 'his' : 'their';
+  const firstName = client.name.split(' ')[0];
+  
+  // Generate intro paragraph
+  const intro_paragraph = `As we move into ${nextQuarter}, our focus is on building on the momentum of ${currentQuarter} by targeting larger, more prominent podcasts in the ${topicSpace} space — continuing to position ${firstName} as a go-to voice on ${client.talking_points?.[0]?.toLowerCase() || 'industry thought leadership'}.`;
+  
+  // Generate strategic focus areas from target audiences (top 3)
+  const audiences = client.target_audiences?.slice(0, 3) || [];
+  const strategic_focus_areas = audiences.map(audience => ({
+    title: audience.replace(/podcasts?/gi, '').trim() || audience,
+    description: generateFocusDescription(audience, firstName)
+  }));
+  
+  // If no audiences, create default focus areas
+  if (strategic_focus_areas.length === 0) {
+    strategic_focus_areas.push({
+      title: 'Industry Podcasts',
+      description: `Continue securing placements on high-visibility shows that expand ${firstName}'s reach into ${pronoun} target market.`
+    });
+  }
+  
+  // Generate talking points spotlight from client talking points (top 3)
+  const talkingPoints = client.talking_points?.slice(0, 3) || [];
+  const talking_points_spotlight = talkingPoints.map(point => ({
+    title: point.length > 40 ? point.substring(0, 40) + '...' : point,
+    description: generateTalkingPointDescription(point)
+  }));
+  
+  // If no talking points, create default
+  if (talking_points_spotlight.length === 0) {
+    talking_points_spotlight.push({
+      title: 'Core Expertise',
+      description: `Emphasize ${firstName}'s unique perspective and expertise to create compelling conversations.`
+    });
+  }
+  
+  // Generate closing paragraph
+  const companyMention = client.company && client.company !== client.name 
+    ? ` while keeping ${client.company}'s mission front and center`
+    : '';
+  const closing_paragraph = `By amplifying these themes on ${topicSpace} podcasts, we'll continue to increase ${firstName}'s visibility with the right audiences${companyMention} in the broader conversation about ${topicSpace}.`;
+  
+  return {
+    quarter: nextQuarter,
+    intro_paragraph,
+    strategic_focus_areas,
+    talking_points_spotlight,
+    closing_paragraph
+  };
+}
+
 export function generateReportFromCSV(
   csvData: any[],
   client: MinimalClient,
@@ -706,6 +838,9 @@ export async function generateReportFromMultipleCSVs(
   // Generate executive summary with KPI references
   const executiveSummary = generateExecutiveSummary(client, kpis, quarter);
   
+  // Generate next quarter strategy
+  const next_quarter_strategy = generateNextQuarterStrategy(client, kpis, quarter);
+  
   return {
     client,
     generated_at: new Date().toISOString(),
@@ -730,5 +865,6 @@ export async function generateReportFromMultipleCSVs(
     podcasts: sortedPodcasts,
     sov_analysis,
     geo_analysis,
+    next_quarter_strategy,
   };
 }

@@ -18,6 +18,7 @@ import { ReportData } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
+import { NextQuarterStrategy } from "@/components/reports/NextQuarterStrategy";
 // PodcastTable hidden - will be replaced by embedded Airtables
 // import { PodcastTable } from "@/components/reports/PodcastTable";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
@@ -73,6 +74,7 @@ export default function Reports() {
     // Other Sections
     campaignOverview: true,
     topCategories: true,
+    nextQuarterStrategy: true,
   });
   
   const toggleSection = (key: keyof typeof visibleSections) => {
@@ -774,6 +776,7 @@ export default function Reports() {
                   { key: 'geoScore', label: 'GEO', visible: visibleSections.geoScore },
                   { key: 'campaignOverview', label: 'Campaign Overview', visible: visibleSections.campaignOverview },
                   { key: 'topCategories', label: 'Top Categories', visible: visibleSections.topCategories },
+                  { key: 'nextQuarterStrategy', label: 'Looking Ahead', visible: visibleSections.nextQuarterStrategy },
                 ].filter(item => !item.visible);
                 
                 if (hiddenItems.length === 0) return null;
@@ -935,7 +938,18 @@ export default function Reports() {
                   </CardContent>
                 </Card>
               )}
-              
+
+              {/* Next Quarter Strategy */}
+              {visibleSections.nextQuarterStrategy && reportData.next_quarter_strategy && (
+                <NextQuarterStrategy
+                  quarter={reportData.next_quarter_strategy.quarter}
+                  intro_paragraph={reportData.next_quarter_strategy.intro_paragraph}
+                  strategic_focus_areas={reportData.next_quarter_strategy.strategic_focus_areas}
+                  talking_points_spotlight={reportData.next_quarter_strategy.talking_points_spotlight}
+                  closing_paragraph={reportData.next_quarter_strategy.closing_paragraph}
+                  onHide={() => toggleSection('nextQuarterStrategy')}
+                />
+              )}
               {/* EMV Scatter Dialog */}
               <EMVAnalysisDialog
                 open={emvDialogOpen}
