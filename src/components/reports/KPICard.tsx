@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface KPICardProps {
@@ -8,16 +8,30 @@ interface KPICardProps {
   subtitle?: string;
   icon?: LucideIcon;
   onClick?: () => void;
+  onHide?: () => void;
 }
 
-export const KPICard = ({ title, value, subtitle, icon: Icon, onClick }: KPICardProps) => {
+export const KPICard = ({ title, value, subtitle, icon: Icon, onClick, onHide }: KPICardProps) => {
   return (
     <Card 
       className={cn(
+        "group relative",
         onClick && "cursor-pointer transition-all hover:shadow-md hover:scale-[1.02]"
       )}
       onClick={onClick}
     >
+      {onHide && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onHide();
+          }}
+          className="absolute top-2 right-2 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
+          title="Hide this metric"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
