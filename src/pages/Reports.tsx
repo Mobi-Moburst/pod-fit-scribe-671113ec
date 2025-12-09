@@ -24,6 +24,7 @@ import { NextQuarterStrategy } from "@/components/reports/NextQuarterStrategy";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
+import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -73,6 +74,7 @@ export default function Reports() {
     geoScore: true,
     // Other Sections
     campaignOverview: true,
+    airtableEmbed: true,
     topCategories: true,
     nextQuarterStrategy: true,
   });
@@ -157,7 +159,8 @@ export default function Reports() {
         gender: c.gender as any,
         guest_identity_tags: c.guest_identity_tags || [],
         professional_credentials: c.professional_credentials || [],
-        competitors: (c.competitors as any) || []
+        competitors: (c.competitors as any) || [],
+        airtable_embed_url: c.airtable_embed_url || ''
       }));
       setClients(mappedClients);
     };
@@ -775,6 +778,7 @@ export default function Reports() {
                   { key: 'sov', label: 'SOV', visible: visibleSections.sov },
                   { key: 'geoScore', label: 'GEO', visible: visibleSections.geoScore },
                   { key: 'campaignOverview', label: 'Campaign Overview', visible: visibleSections.campaignOverview },
+                  { key: 'airtableEmbed', label: 'Activity Tracking', visible: visibleSections.airtableEmbed },
                   { key: 'topCategories', label: 'Top Categories', visible: visibleSections.topCategories },
                   { key: 'nextQuarterStrategy', label: 'Looking Ahead', visible: visibleSections.nextQuarterStrategy },
                 ].filter(item => !item.visible);
@@ -911,6 +915,14 @@ export default function Reports() {
                   target_audiences={reportData.campaign_overview.target_audiences}
                   talking_points={reportData.campaign_overview.talking_points}
                   onHide={() => toggleSection('campaignOverview')}
+                />
+              )}
+
+              {/* Airtable Embed */}
+              {visibleSections.airtableEmbed && (
+                <AirtableEmbed
+                  embedUrl={clients.find(c => c.id === selectedClientId)?.airtable_embed_url}
+                  onHide={() => toggleSection('airtableEmbed')}
                 />
               )}
 
