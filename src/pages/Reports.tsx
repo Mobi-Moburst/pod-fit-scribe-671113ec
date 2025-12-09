@@ -775,7 +775,7 @@ export default function Reports() {
                   { key: 'totalReach', label: 'Total Reach', visible: visibleSections.totalReach },
                   { key: 'averageScore', label: 'Avg Score', visible: visibleSections.averageScore },
                   { key: 'emv', label: 'EMV', visible: visibleSections.emv },
-                  { key: 'sov', label: 'SOV', visible: visibleSections.sov },
+                  { key: 'sov', label: 'Peer Comparison', visible: visibleSections.sov },
                   { key: 'geoScore', label: 'GEO', visible: visibleSections.geoScore },
                   { key: 'campaignOverview', label: 'Campaign Overview', visible: visibleSections.campaignOverview },
                   { key: 'airtableEmbed', label: 'Activity Tracking', visible: visibleSections.airtableEmbed },
@@ -881,9 +881,9 @@ export default function Reports() {
                     )}
                     {visibleSections.sov && (
                       <KPICard
-                        title="Share of Voice"
+                        title="Peer Comparison"
                         value={`${reportData.kpis.sov_percentage || reportData.sov_analysis?.client_percentage || 0}%`}
-                        subtitle="Market presence • Click to view analysis"
+                        subtitle="vs. selected peers • Click to view analysis"
                         icon={PieChart}
                         onClick={() => setSOVDialogOpen(true)}
                         onHide={() => toggleSection('sov')}

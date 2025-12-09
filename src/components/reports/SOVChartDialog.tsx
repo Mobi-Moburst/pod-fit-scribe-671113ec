@@ -45,10 +45,10 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Share of Voice Analysis</DialogTitle>
+          <DialogTitle>Peer Comparison Analysis</DialogTitle>
           <DialogDescription>
             {clientName || 'Your client'} represents <strong>{sovAnalysis.client_percentage}%</strong> of 
-            total podcast interviews in this competitive analysis.
+            podcast interviews compared to selected peers.
           </DialogDescription>
         </DialogHeader>
         

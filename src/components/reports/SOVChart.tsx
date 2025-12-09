@@ -36,13 +36,13 @@ export const SOVChart = ({ sovAnalysis, clientName }: SOVChartProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Share of Voice</CardTitle>
+        <CardTitle>Peer Comparison</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="mb-4">
           <p className="text-sm text-muted-foreground">
-            Your client represents <strong className="text-foreground">{sovAnalysis.client_percentage}%</strong> of 
-            total podcast interviews in this analysis.
+            {clientName || 'Your client'} represents <strong className="text-foreground">{sovAnalysis.client_percentage}%</strong> of 
+            podcast interviews compared to selected peers.
           </p>
         </div>
         <ResponsiveContainer width="100%" height={300}>
