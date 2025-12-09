@@ -1,0 +1,1 @@
+ALTER TABLE public.clients ADD COLUMN airtable_embed_url text DEFAULT NULL;

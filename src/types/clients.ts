@@ -25,4 +25,5 @@ export interface MinimalClient {
   guest_identity_tags?: string[];
   professional_credentials?: string[];
   competitors?: Competitor[];
+  airtable_embed_url?: string; // Shared Airtable view URL for embedding in reports
 }

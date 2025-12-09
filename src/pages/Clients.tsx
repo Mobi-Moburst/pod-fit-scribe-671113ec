@@ -92,6 +92,7 @@ const Clients = () => {
       guest_identity_tags: c.guest_identity_tags || [],
       professional_credentials: c.professional_credentials || [],
       competitors: (c.competitors as any) || [],
+      airtable_embed_url: c.airtable_embed_url || '',
     })));
   };
 
@@ -190,6 +191,7 @@ const Clients = () => {
       guest_identity_tags: editing.guest_identity_tags || [],
       professional_credentials: editing.professional_credentials || [],
       competitors: (editing.competitors || []) as any,
+      airtable_embed_url: editing.airtable_embed_url?.trim() || null,
     };
 
     if (!exists) {
@@ -369,6 +371,21 @@ const Clients = () => {
                 {!editing.media_kit_url.trim() && (
                   <p className="text-xs text-red-500 mt-1">Media kit URL is required</p>
                 )}
+              </div>
+              <div className="md:col-span-2">
+                <Label>Airtable View URL</Label>
+                <Input 
+                  placeholder="https://airtable.com/app.../shr... (shared view URL)"
+                  value={editing.airtable_embed_url || ''} 
+                  onChange={(e) => setEditing({ ...editing, airtable_embed_url: e.target.value })}
+                  className={editing.airtable_embed_url && /^https:\/\/airtable\.com\/.+/.test(editing.airtable_embed_url.trim()) ? 'border-green-500/50' : ''}
+                />
+                {editing.airtable_embed_url && !/^https:\/\/airtable\.com\/.+/.test(editing.airtable_embed_url.trim()) && (
+                  <p className="text-xs text-red-500 mt-1">Must be a valid Airtable URL (e.g., https://airtable.com/...)</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Paste a shared Airtable view URL to embed activity tracking in reports
+                </p>
               </div>
               <div>
                 <Label>Gender</Label>
