@@ -213,7 +213,7 @@ export function parseContentGapCSV(csvText: string): ContentGapCSVRow[] {
     // Normalize keys for access
     const normalizedRow: Record<string, string> = {};
     Object.entries(row).forEach(([key, value]) => {
-      normalizedRow[key.toLowerCase().trim()] = value;
+      normalizedRow[key.toLowerCase().trim()] = String(value ?? '');
     });
     
     // Extract engine data

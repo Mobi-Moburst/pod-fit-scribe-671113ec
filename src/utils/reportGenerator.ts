@@ -886,6 +886,7 @@ export async function generateReportFromMultipleCSVs(
   sovRows: SOVCSVRow[] | null,
   sovCompetitorName: string | null,
   geoRows: GEOCSVRow[],
+  contentGapRows: ContentGapCSVRow[],
   client: MinimalClient,
   reportName: string,
   quarter: string,
@@ -916,7 +917,12 @@ export async function generateReportFromMultipleCSVs(
     ? calculateGEOAnalysis(geoRows)
     : undefined;
   
-  // Step 7: Sort podcasts by score
+  // Step 7: Calculate Content Gap if provided
+  const content_gap_analysis = contentGapRows && contentGapRows.length > 0
+    ? calculateContentGapAnalysis(contentGapRows)
+    : undefined;
+  
+  // Step 8: Sort podcasts by score
   const sortedPodcasts = podcastsWithEMV.sort((a, b) => 
     b.overall_score - a.overall_score
   );
@@ -951,6 +957,7 @@ export async function generateReportFromMultipleCSVs(
     podcasts: sortedPodcasts,
     sov_analysis,
     geo_analysis,
+    content_gap_analysis,
     next_quarter_strategy,
   };
 }

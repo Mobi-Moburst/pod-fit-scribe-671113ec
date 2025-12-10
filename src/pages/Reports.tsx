@@ -13,19 +13,19 @@ import { MinimalClient } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs } from "@/utils/reportGenerator";
-import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV } from "@/utils/csvParsers";
+import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV } from "@/utils/csvParsers";
 import { ReportData } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { NextQuarterStrategy } from "@/components/reports/NextQuarterStrategy";
-// PodcastTable hidden - will be replaced by embedded Airtables
-// import { PodcastTable } from "@/components/reports/PodcastTable";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
+import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
+import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
@@ -37,6 +37,7 @@ export default function Reports() {
   const [airtableFile, setAirtableFile] = useState<File | null>(null);
   const [sovFile, setSOVFile] = useState<File | null>(null);
   const [geoFile, setGeoFile] = useState<File | null>(null);
+  const [contentGapFile, setContentGapFile] = useState<File | null>(null);
   
   // Manual SOV inputs
   const [manualSOVMode, setManualSOVMode] = useState(false);
@@ -58,6 +59,7 @@ export default function Reports() {
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
   const [sovDialogOpen, setSOVDialogOpen] = useState(false);
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
+  const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
   
   
   // Visibility state for report sections
@@ -72,11 +74,13 @@ export default function Reports() {
     emv: true,
     sov: true,
     geoScore: true,
+    contentGap: true,
     // Other Sections
     campaignOverview: true,
     airtableEmbed: true,
     topCategories: true,
     nextQuarterStrategy: true,
+    contentGapRecommendations: true,
   });
   
   const toggleSection = (key: keyof typeof visibleSections) => {
@@ -85,7 +89,7 @@ export default function Reports() {
   
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || 
     visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
-  const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || visibleSections.geoScore;
+  const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || visibleSections.geoScore || visibleSections.contentGap;
   
   const { toast } = useToast();
 
@@ -253,6 +257,7 @@ export default function Reports() {
       const airtableText = await airtableFile.text();
       const sovText = sovFile ? await sovFile.text() : null;
       const geoText = geoFile ? await geoFile.text() : null;
+      const contentGapText = contentGapFile ? await contentGapFile.text() : null;
       
       // Parse CSVs
       const startDate = new Date(dateRangeStart);
@@ -262,6 +267,7 @@ export default function Reports() {
       const airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
+      const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
       
       // Prepare manual SOV data if in manual mode
       const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -286,6 +292,7 @@ export default function Reports() {
         sovRows,
         null, // Competitor names now come from CSV peer column or manual input
         geoRows,
+        contentGapRows,
         client,
         reportName || `${client.name} - ${quarter || 'Report'}`,
         quarter,
@@ -386,6 +393,17 @@ export default function Reports() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleContentGapRecommendationsUpdate = (recommendations: ReportData['content_gap_analysis']['ai_recommendations']) => {
+    if (!reportData || !reportData.content_gap_analysis) return;
+    setReportData({
+      ...reportData,
+      content_gap_analysis: {
+        ...reportData.content_gap_analysis,
+        ai_recommendations: recommendations
+      }
+    });
   };
 
   return (
@@ -696,6 +714,32 @@ export default function Reports() {
                     Upload Spotlight GEO export - will filter for podcasts.apple.com domain entries only
                   </p>
                 </div>
+
+                {/* Content Gap CSV - Optional */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Label>Content Gap Analysis CSV (Optional)</Label>
+                    <Badge variant={contentGapFile ? "default" : "outline"}>
+                      {contentGapFile ? "Uploaded" : "Optional"}
+                    </Badge>
+                  </div>
+                  <Input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setContentGapFile(file);
+                    }}
+                  />
+                  {contentGapFile && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {contentGapFile.name}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Upload Spotlight Content Gap Analysis export - analyzes AI visibility gaps
+                  </p>
+                </div>
               </div>
 
               {/* Generate Button */}
@@ -777,10 +821,12 @@ export default function Reports() {
                   { key: 'emv', label: 'EMV', visible: visibleSections.emv },
                   { key: 'sov', label: 'Peer Comparison', visible: visibleSections.sov },
                   { key: 'geoScore', label: 'GEO', visible: visibleSections.geoScore },
+                  { key: 'contentGap', label: 'Content Gap', visible: visibleSections.contentGap },
                   { key: 'campaignOverview', label: 'Campaign Overview', visible: visibleSections.campaignOverview },
                   { key: 'airtableEmbed', label: 'Activity Tracking', visible: visibleSections.airtableEmbed },
                   { key: 'topCategories', label: 'Top Categories', visible: visibleSections.topCategories },
                   { key: 'nextQuarterStrategy', label: 'Looking Ahead', visible: visibleSections.nextQuarterStrategy },
+                  { key: 'contentGapRecommendations', label: 'Gap Recommendations', visible: visibleSections.contentGapRecommendations },
                 ].filter(item => !item.visible);
                 
                 if (hiddenItems.length === 0) return null;
@@ -868,7 +914,7 @@ export default function Reports() {
                     <Sparkles className="h-5 w-5 text-accent" />
                     Additional Value Metrics
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {visibleSections.emv && (
                       <KPICard
                         title="Earned Media Value"
@@ -901,6 +947,20 @@ export default function Reports() {
                         icon={Sparkles}
                         onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
                         onHide={() => toggleSection('geoScore')}
+                      />
+                    )}
+                    {visibleSections.contentGap && (
+                      <KPICard
+                        title="Content Gap"
+                        value={reportData.content_gap_analysis ? `${reportData.content_gap_analysis.coverage_percentage}%` : '—'}
+                        subtitle={
+                          reportData.content_gap_analysis 
+                            ? `${reportData.content_gap_analysis.total_gaps} gaps • ${reportData.content_gap_analysis.total_prompts} prompts • Click for details`
+                            : "Upload Content Gap CSV to analyze"
+                        }
+                        icon={AlertTriangle}
+                        onClick={reportData.content_gap_analysis ? () => setContentGapDialogOpen(true) : undefined}
+                        onHide={() => toggleSection('contentGap')}
                       />
                     )}
                   </div>
@@ -962,7 +1022,18 @@ export default function Reports() {
                   onHide={() => toggleSection('nextQuarterStrategy')}
                 />
               )}
-              {/* EMV Scatter Dialog */}
+
+              {/* Content Gap Recommendations */}
+              {visibleSections.contentGapRecommendations && reportData.content_gap_analysis && (
+                <ContentGapRecommendations
+                  gapAnalysis={reportData.content_gap_analysis}
+                  client={reportData.client}
+                  onUpdate={handleContentGapRecommendationsUpdate}
+                  onHide={() => toggleSection('contentGapRecommendations')}
+                />
+              )}
+
+              {/* Dialogs */}
               <EMVAnalysisDialog
                 open={emvDialogOpen}
                 onOpenChange={setEmvDialogOpen}
@@ -980,6 +1051,12 @@ export default function Reports() {
                 open={geoDialogOpen}
                 onOpenChange={setGeoDialogOpen}
                 geoAnalysis={reportData.geo_analysis || null}
+              />
+
+              <ContentGapDialog
+                open={contentGapDialogOpen}
+                onOpenChange={setContentGapDialogOpen}
+                gapAnalysis={reportData.content_gap_analysis || null}
               />
             </>
           )}
