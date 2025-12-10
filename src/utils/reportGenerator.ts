@@ -1,7 +1,7 @@
 import { MinimalClient } from '@/types/clients';
 import { BatchRow } from '@/types/batch';
-import { ReportData, PodcastReportEntry } from '@/types/reports';
-import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow } from '@/types/csv';
+import { ReportData, PodcastReportEntry, ContentGapAnalysis } from '@/types/reports';
+import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow } from '@/types/csv';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { normalizeTitle } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
@@ -790,6 +790,92 @@ function calculateGEOAnalysis(geoRows: GEOCSVRow[]): ReportData['geo_analysis'] 
       prompt_diversity: Math.round(prompt_diversity)
     },
     podcast_entries
+  };
+}
+
+// Calculate Content Gap Analysis from Spotlight export
+export function calculateContentGapAnalysis(rows: ContentGapCSVRow[]): ContentGapAnalysis | undefined {
+  if (!rows || rows.length === 0) return undefined;
+
+  const total_prompts = rows.length;
+  
+  // Count gaps (prompts where client is NOT present in ANY engine)
+  const gapRows = rows.filter(row => 
+    row.engines.every(e => !e.present)
+  );
+  const total_gaps = gapRows.length;
+  const coverage_percentage = Math.round(((total_prompts - total_gaps) / total_prompts) * 100);
+
+  // Gaps by stage
+  const stageMap = new Map<string, { gap_count: number; total: number }>();
+  rows.forEach(row => {
+    const stage = row.customer_journey || 'unknown';
+    const current = stageMap.get(stage) || { gap_count: 0, total: 0 };
+    current.total++;
+    if (row.engines.every(e => !e.present)) {
+      current.gap_count++;
+    }
+    stageMap.set(stage, current);
+  });
+  const gaps_by_stage = Array.from(stageMap.entries())
+    .map(([stage, data]) => ({ stage, ...data }));
+
+  // Gaps by topic
+  const topicMap = new Map<string, { gap_count: number; total: number }>();
+  rows.forEach(row => {
+    const topic = row.topic || 'unknown';
+    const current = topicMap.get(topic) || { gap_count: 0, total: 0 };
+    current.total++;
+    if (row.engines.every(e => !e.present)) {
+      current.gap_count++;
+    }
+    topicMap.set(topic, current);
+  });
+  const gaps_by_topic = Array.from(topicMap.entries())
+    .map(([topic, data]) => ({ topic, ...data }))
+    .sort((a, b) => b.gap_count - a.gap_count);
+
+  // Top competitors (from mentioned brands across all gap rows)
+  const competitorCounts = new Map<string, number>();
+  gapRows.forEach(row => {
+    row.engines.forEach(engine => {
+      engine.mentioned_brands.forEach(brand => {
+        if (brand) {
+          competitorCounts.set(brand, (competitorCounts.get(brand) || 0) + 1);
+        }
+      });
+    });
+  });
+  const top_competitors = Array.from(competitorCounts.entries())
+    .map(([name, mention_count]) => ({ name, mention_count }))
+    .sort((a, b) => b.mention_count - a.mention_count)
+    .slice(0, 20);
+
+  // Priority prompts (gaps with most competitors present)
+  const priority_prompts = gapRows
+    .map(row => {
+      const engines_missing = row.engines.filter(e => !e.present).map(e => e.name);
+      const allBrands = new Set<string>();
+      row.engines.forEach(e => e.mentioned_brands.forEach(b => allBrands.add(b)));
+      return {
+        prompt: row.prompt,
+        topic: row.topic,
+        stage: row.customer_journey,
+        engines_missing,
+        competitors_present: Array.from(allBrands),
+      };
+    })
+    .sort((a, b) => b.competitors_present.length - a.competitors_present.length)
+    .slice(0, 20);
+
+  return {
+    total_gaps,
+    total_prompts,
+    coverage_percentage,
+    gaps_by_stage,
+    gaps_by_topic,
+    top_competitors,
+    priority_prompts,
   };
 }
 
