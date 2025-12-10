@@ -586,10 +586,10 @@ export default function Reports() {
                   )}
                 </div>
 
-                {/* SOV CSV - Optional */}
+                {/* Peer Comparison Data - Optional */}
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <Label>Share of Voice Data</Label>
+                    <Label>Peer Comparison Data</Label>
                   </div>
                   
                   {manualSOVMode && competitorInterviews.length > 0 ? (
@@ -669,6 +669,11 @@ export default function Reports() {
                     </div>
                   ) : (
                     <>
+                      {selectedClientId && competitorInterviews.length === 0 && !sovFile && (
+                        <p className="text-sm text-muted-foreground mb-3 p-3 border border-dashed rounded-md bg-muted/20">
+                          No peers defined for this client. <a href="/clients" className="text-primary underline hover:no-underline">Define peers in Clients tab</a> or upload a CSV below.
+                        </p>
+                      )}
                       <Badge variant={sovFile ? "default" : "outline"} className="mb-2">
                         {sovFile ? "Uploaded" : "Optional"}
                       </Badge>
