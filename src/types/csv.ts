@@ -46,3 +46,20 @@ export interface GEOCSVRow {
   topic_name: string; // Category/topic
   has_analysis: string; // "Yes" or "No"
 }
+
+// Content Gap CSV (from Spotlight Content Gap Analysis)
+export interface ContentGapEngineData {
+  name: string; // 'gemini', 'chatgpt', 'grok', 'copilot'
+  present: boolean;
+  rank?: number;
+  sentiment?: string;
+  mentioned_brands: string[];
+}
+
+export interface ContentGapCSVRow {
+  topic: string;
+  customer_journey: string; // 'awareness', 'consideration', 'decision', 'post-purchase'
+  prompt: string;
+  run_date: string;
+  engines: ContentGapEngineData[];
+}

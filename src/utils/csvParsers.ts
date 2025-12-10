@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow } from '@/types/csv';
+import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow, ContentGapEngineData } from '@/types/csv';
 
 // Normalize CSV header names to snake_case
 function normalizeHeaderName(header: string): string {
@@ -182,4 +182,93 @@ export function parseGEOCSV(csvText: string): GEOCSVRow[] {
   });
   
   return podcastEntries;
+}
+
+// Parse Content Gap CSV (Spotlight Content Gap Analysis export)
+export function parseContentGapCSV(csvText: string): ContentGapCSVRow[] {
+  const result = Papa.parse<Record<string, string>>(csvText, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  
+  if (result.data.length === 0) return [];
+  
+  // Detect AI engines from column headers
+  // Headers like "gemini - Present", "chatgpt - Rank", etc.
+  const headers = result.meta?.fields || [];
+  const engineNames = new Set<string>();
+  
+  headers.forEach(header => {
+    const match = header.match(/^(.+?)\s*-\s*(Present|Rank|Sentiment|Mentioned Brands)$/i);
+    if (match) {
+      engineNames.add(match[1].toLowerCase().trim());
+    }
+  });
+  
+  const engines = Array.from(engineNames);
+  console.log('[parseContentGapCSV] Detected engines:', engines);
+  
+  // Parse each row
+  const parsed: ContentGapCSVRow[] = result.data.map(row => {
+    // Normalize keys for access
+    const normalizedRow: Record<string, string> = {};
+    Object.entries(row).forEach(([key, value]) => {
+      normalizedRow[key.toLowerCase().trim()] = value;
+    });
+    
+    // Extract engine data
+    const engineData: ContentGapEngineData[] = engines.map(engine => {
+      // Try different header variations
+      const presentKey = Object.keys(row).find(k => 
+        k.toLowerCase().includes(engine) && k.toLowerCase().includes('present')
+      );
+      const rankKey = Object.keys(row).find(k => 
+        k.toLowerCase().includes(engine) && k.toLowerCase().includes('rank')
+      );
+      const sentimentKey = Object.keys(row).find(k => 
+        k.toLowerCase().includes(engine) && k.toLowerCase().includes('sentiment')
+      );
+      const brandsKey = Object.keys(row).find(k => 
+        k.toLowerCase().includes(engine) && k.toLowerCase().includes('mentioned brands')
+      );
+      
+      const presentValue = presentKey ? row[presentKey] : '';
+      const isPresent = presentValue?.toLowerCase() === 'yes';
+      
+      const brandsValue = brandsKey ? row[brandsKey] : '';
+      const brands = brandsValue 
+        ? brandsValue.split(',').map(b => b.trim()).filter(Boolean)
+        : [];
+      
+      return {
+        name: engine,
+        present: isPresent,
+        rank: rankKey && row[rankKey] ? parseInt(row[rankKey]) || undefined : undefined,
+        sentiment: sentimentKey ? row[sentimentKey] || undefined : undefined,
+        mentioned_brands: brands,
+      };
+    });
+    
+    // Get base fields
+    const topicKey = Object.keys(row).find(k => k.toLowerCase() === 'topic');
+    const journeyKey = Object.keys(row).find(k => k.toLowerCase().includes('customer journey'));
+    const promptKey = Object.keys(row).find(k => k.toLowerCase() === 'prompt');
+    const dateKey = Object.keys(row).find(k => k.toLowerCase().includes('run date'));
+    
+    return {
+      topic: topicKey ? row[topicKey] || '' : '',
+      customer_journey: journeyKey ? row[journeyKey] || '' : '',
+      prompt: promptKey ? row[promptKey] || '' : '',
+      run_date: dateKey ? row[dateKey] || '' : '',
+      engines: engineData,
+    };
+  }).filter(row => row.prompt); // Filter out empty rows
+  
+  console.log('[parseContentGapCSV] Parsed content gap CSV:', {
+    totalRows: parsed.length,
+    engines,
+    sampleRows: parsed.slice(0, 3),
+  });
+  
+  return parsed;
 }

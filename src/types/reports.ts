@@ -1,5 +1,38 @@
 import { MinimalClient } from './clients';
 
+// Content Gap Analysis types
+export interface ContentGapAnalysis {
+  total_gaps: number; // Total prompts where client is absent in all engines
+  total_prompts: number;
+  coverage_percentage: number; // Prompts where present in at least one engine / total
+  
+  // By journey stage
+  gaps_by_stage: Array<{ stage: string; gap_count: number; total: number }>;
+  
+  // By topic
+  gaps_by_topic: Array<{ topic: string; gap_count: number; total: number }>;
+  
+  // Competitor frequency (who's showing up most)
+  top_competitors: Array<{ name: string; mention_count: number }>;
+  
+  // Priority gaps (most engines missing + competitors present)
+  priority_prompts: Array<{
+    prompt: string;
+    topic: string;
+    stage: string;
+    engines_missing: string[];
+    competitors_present: string[];
+  }>;
+  
+  // AI-generated recommendations (populated on-demand)
+  ai_recommendations?: Array<{
+    title: string;
+    description: string;
+    priority: 'high' | 'medium' | 'low';
+    related_topics: string[];
+  }>;
+}
+
 export interface PodcastReportEntry {
   // From Batch CSV
   show_title: string;
@@ -119,4 +152,7 @@ export interface ReportData {
     }>;
     closing_paragraph: string;
   };
+  
+  // Content Gap Analysis (from Spotlight)
+  content_gap_analysis?: ContentGapAnalysis;
 }
