@@ -11,11 +11,11 @@ import { Progress } from '@/components/ui/progress';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { ClientCombobox } from '@/components/ClientCombobox';
+import { CompanySpeakerSelector } from '@/components/CompanySpeakerSelector';
 import { ResultsTable } from '@/components/batch/ResultsTable';
 import { EvaluationPanel } from '@/components/batch/EvaluationPanel';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { MinimalClient } from '@/types/clients';
+import { Company, Speaker, SpeakerWithCompany } from '@/types/clients';
 import { BatchRow, BatchState, PreflightResult } from '@/types/batch';
 import { 
   parseCSV, 
@@ -46,8 +46,11 @@ const ROWS_PER_PAGE = 25;
 const Batch = () => {
   useEffect(() => { document.title = 'Batch — Podcast Fit Rater'; }, []);
   
-  const [clients, setClients] = useState<MinimalClient[]>([]);
-  const [clientsLoading, setClientsLoading] = useState(true);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [speakers, setSpeakers] = useState<Speaker[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedSpeakerId, setSelectedSpeakerId] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
   const [detectedFormat, setDetectedFormat] = useState<CSVFormat>('unknown');
@@ -58,47 +61,68 @@ const Batch = () => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load clients from Supabase
+  // Build speaker with company for processing
+  const selectedSpeaker = useMemo(() => speakers.find(s => s.id === selectedSpeakerId), [speakers, selectedSpeakerId]);
+  const selectedCompany = useMemo(() => companies.find(c => c.id === selectedCompanyId), [companies, selectedCompanyId]);
+  
+  const speakerWithCompany: SpeakerWithCompany | null = useMemo(() => {
+    if (!selectedSpeaker || !selectedCompany) return null;
+    return { ...selectedSpeaker, company: selectedCompany };
+  }, [selectedSpeaker, selectedCompany]);
+
+  // Load companies and speakers from Supabase
   useEffect(() => {
-    const loadClients = async () => {
+    const loadData = async () => {
       try {
-        setClientsLoading(true);
-        const { data, error } = await supabase
-          .from('clients')
-          .select('*')
-          .order('created_at', { ascending: false });
+        setDataLoading(true);
+        const [companiesRes, speakersRes] = await Promise.all([
+          supabase.from('companies').select('*').order('name', { ascending: true }),
+          supabase.from('speakers').select('*').order('name', { ascending: true }),
+        ]);
         
-        if (error) throw error;
+        if (companiesRes.error) throw companiesRes.error;
+        if (speakersRes.error) throw speakersRes.error;
         
-        const mappedClients: MinimalClient[] = (data || []).map(client => ({
-          id: client.id,
-          name: client.name,
-          company: client.company || undefined,
-          company_url: client.company_url || undefined,
-          media_kit_url: client.media_kit_url,
-          target_audiences: client.target_audiences || [],
-          talking_points: client.talking_points || [],
-          avoid: client.avoid || [],
-          notes: client.notes || undefined,
-          campaign_manager: client.campaign_manager || undefined,
-          campaign_strategy: client.campaign_strategy,
-          pitch_template: client.pitch_template || undefined,
-          title: client.title || undefined
-        }));
+        setCompanies((companiesRes.data || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          company_url: c.company_url || '',
+          logo_url: c.logo_url || '',
+          campaign_manager: c.campaign_manager || '',
+          airtable_embed_url: c.airtable_embed_url || '',
+          product_type: c.product_type || '',
+          tags: c.tags || [],
+          notes: c.notes || '',
+        })));
         
-        setClients(mappedClients);
+        setSpeakers((speakersRes.data || []).map((s: any) => ({
+          id: s.id,
+          company_id: s.company_id,
+          name: s.name,
+          title: s.title || '',
+          media_kit_url: s.media_kit_url || '',
+          gender: s.gender,
+          target_audiences: s.target_audiences || [],
+          talking_points: s.talking_points || [],
+          avoid: s.avoid || [],
+          guest_identity_tags: s.guest_identity_tags || [],
+          professional_credentials: s.professional_credentials || [],
+          campaign_strategy: s.campaign_strategy || '',
+          pitch_template: s.pitch_template || '',
+          competitors: s.competitors || [],
+        })));
       } catch (error) {
-        console.error('Failed to load clients:', error);
+        console.error('Failed to load data:', error);
         toast({
-          description: 'Failed to load clients. Please refresh the page.',
+          description: 'Failed to load companies. Please refresh the page.',
           variant: 'destructive'
         });
       } finally {
-        setClientsLoading(false);
+        setDataLoading(false);
       }
     };
 
-    loadClients();
+    loadData();
   }, [toast]);
   
   const [state, setState] = useState<BatchState>({
@@ -245,16 +269,36 @@ const Batch = () => {
     }
   }, [handleFileUpload, toast]);
   
+  // Helper to build legacy client object for API compatibility
+  const buildLegacyClient = useCallback(() => {
+    if (!speakerWithCompany) return null;
+    return {
+      id: speakerWithCompany.id,
+      name: speakerWithCompany.name,
+      company: speakerWithCompany.company.name,
+      company_url: speakerWithCompany.company.company_url || '',
+      media_kit_url: speakerWithCompany.media_kit_url || '',
+      target_audiences: speakerWithCompany.target_audiences || [],
+      talking_points: speakerWithCompany.talking_points || [],
+      avoid: speakerWithCompany.avoid || [],
+      notes: speakerWithCompany.company.notes || '',
+      campaign_strategy: speakerWithCompany.campaign_strategy || '',
+      campaign_manager: speakerWithCompany.company.campaign_manager || '',
+      pitch_template: speakerWithCompany.pitch_template || '',
+      title: speakerWithCompany.title || '',
+    };
+  }, [speakerWithCompany]);
+
   // Process URLs concurrently
   const startProcessing = useCallback(async () => {
-    if (!state.client_id) {
-      toast({ description: 'Please select a client first', variant: 'destructive' });
+    if (!selectedSpeakerId) {
+      toast({ description: 'Please select a speaker first', variant: 'destructive' });
       return;
     }
     
-    const client = clients.find(c => c.id === state.client_id);
+    const client = buildLegacyClient();
     if (!client) {
-      toast({ description: 'Selected client not found', variant: 'destructive' });
+      toast({ description: 'Selected speaker not found', variant: 'destructive' });
       return;
     }
     
@@ -305,13 +349,13 @@ const Batch = () => {
     
     setState(prev => ({ ...prev, processing: false }));
     toast({ description: 'Batch processing completed' });
-  }, [state.client_id, state.rows, clients, toast, detectedFormat]);
+  }, [selectedSpeakerId, state.rows, buildLegacyClient, toast, detectedFormat]);
   
   // Retry failed row
   const retryRow = useCallback(async (row: BatchRow) => {
-    if (!state.client_id) return;
+    if (!selectedSpeakerId) return;
     
-    const client = clients.find(c => c.id === state.client_id);
+    const client = buildLegacyClient();
     if (!client) return;
     
     // Determine if we should skip scraping based on format
@@ -334,7 +378,7 @@ const Batch = () => {
         rows: prev.rows.map(r => r.id === row.id ? { ...r, status: 'error', error: 'Retry failed' } : r)
       }));
     }
-  }, [state.client_id, clients, detectedFormat]);
+  }, [selectedSpeakerId, buildLegacyClient, detectedFormat]);
   
   // Extract unique categories from all rows
   const availableCategories = useMemo(() => {
@@ -526,7 +570,7 @@ const Batch = () => {
       return;
     }
     
-    const client = clients.find(c => c.id === state.client_id);
+    const client = buildLegacyClient();
     
     if (format === 'tickets') {
       if (detectedFormat === 'hubspot') {
@@ -549,7 +593,7 @@ const Batch = () => {
       exportToCSV(selectedRows, `batch-selected-${Date.now()}.csv`);
       toast({ description: `Exported ${selectedRows.length} rows` });
     }
-  }, [state.rows, state.selected_rows, state.client_id, detectedFormat, clients, toast]);
+  }, [state.rows, state.selected_rows, buildLegacyClient, detectedFormat, toast]);
   
   const exportAll = useCallback((format: 'raw' | 'tickets' = 'raw') => {
     const completedRows = state.rows.filter(row => row.status === 'success');
@@ -558,7 +602,7 @@ const Batch = () => {
       return;
     }
     
-    const client = clients.find(c => c.id === state.client_id);
+    const client = buildLegacyClient();
     
     if (format === 'tickets') {
       if (detectedFormat === 'hubspot') {
@@ -581,11 +625,11 @@ const Batch = () => {
       exportToCSV(completedRows, `batch-all-${Date.now()}.csv`);
       toast({ description: `Exported ${completedRows.length} rows` });
     }
-  }, [state.rows, state.client_id, detectedFormat, clients, toast]);
+  }, [state.rows, buildLegacyClient, detectedFormat, toast]);
 
   const saveBatchToHistory = useCallback(async () => {
-    if (!state.client_id) {
-      toast({ description: 'No client selected', variant: 'destructive' });
+    if (!selectedSpeakerId) {
+      toast({ description: 'No speaker selected', variant: 'destructive' });
       return;
     }
 
@@ -603,7 +647,8 @@ const Batch = () => {
       const { data: batchSession, error: batchError } = await supabase
         .from('batch_sessions')
         .insert({
-          client_id: state.client_id,
+          client_id: selectedSpeakerId, // Keep for backward compat
+          speaker_id: selectedSpeakerId,
           name: batchName,
           total_count: successfulRows.length,
           success_count: successfulRows.length,
@@ -617,7 +662,8 @@ const Batch = () => {
       // Insert all evaluations with batch_session_id
       const evaluationsToInsert = successfulRows.map(row => ({
         batch_session_id: batchSession.id,
-        client_id: state.client_id,
+        client_id: selectedSpeakerId, // Keep for backward compat
+        speaker_id: selectedSpeakerId,
         url: row.podcast_url,
         show_title: row.show_title,
         overall_score: row.overall_score ? Math.round(row.overall_score) : null,
@@ -643,7 +689,7 @@ const Batch = () => {
         variant: 'destructive'
       });
     }
-  }, [state.client_id, state.rows, uploadedFileName, toast]);
+  }, [selectedSpeakerId, state.rows, uploadedFileName, toast]);
 
   return (
     <div className="flex h-screen">
@@ -664,20 +710,22 @@ const Batch = () => {
             {/* Setup Section */}
             <Card className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Client Selection */}
+                {/* Company/Speaker Selection */}
                 <div className="space-y-2">
-                  <Label>Select Client</Label>
-                  {clientsLoading ? (
+                  <Label>Select Speaker</Label>
+                  {dataLoading ? (
                     <div className="flex items-center gap-2 p-2 border rounded">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-muted-foreground">Loading clients...</span>
+                      <span className="text-muted-foreground">Loading...</span>
                     </div>
                   ) : (
-                    <ClientCombobox
-                      clients={clients}
-                      value={state.client_id || ''}
-                      onChange={(clientId) => setState(prev => ({ ...prev, client_id: clientId }))}
-                      placeholder="Choose a client for evaluation..."
+                    <CompanySpeakerSelector
+                      companies={companies}
+                      speakers={speakers}
+                      selectedCompanyId={selectedCompanyId}
+                      selectedSpeakerId={selectedSpeakerId}
+                      onCompanyChange={setSelectedCompanyId}
+                      onSpeakerChange={setSelectedSpeakerId}
                     />
                   )}
                 </div>
@@ -697,7 +745,7 @@ const Batch = () => {
                       isDragging 
                         ? "border-primary bg-primary/5" 
                         : "border-muted-foreground/25 hover:border-primary/50",
-                      (!state.client_id || clientsLoading) && "opacity-50 cursor-not-allowed"
+                      (!selectedSpeakerId || dataLoading) && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <input
@@ -705,7 +753,7 @@ const Batch = () => {
                       type="file"
                       accept=".csv"
                       onChange={handleFileUpload}
-                      disabled={!state.client_id || clientsLoading}
+                      disabled={!selectedSpeakerId || dataLoading}
                       className="hidden"
                       id="csv-upload"
                     />
@@ -746,7 +794,7 @@ const Batch = () => {
                     </p>
                     <Button
                       onClick={startProcessing}
-                      disabled={!state.client_id || state.rows.length === 0 || state.processing || clientsLoading}
+                      disabled={!selectedSpeakerId || state.rows.length === 0 || state.processing || dataLoading}
                       className="shrink-0"
                     >
                       {state.processing ? (
@@ -1139,7 +1187,7 @@ const Batch = () => {
               setSelectedRow(null);
               setAutoGenerate(false);
             }}
-            client={clients.find(c => c.id === state.client_id) || null}
+            client={buildLegacyClient()}
             autoGeneratePitch={autoGenerate}
           />
         </div>
