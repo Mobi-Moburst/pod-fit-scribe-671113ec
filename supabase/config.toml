@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.content-gap-recommendations]
 verify_jwt = false
+
+[functions.fetch-company-brand]
+verify_jwt = false

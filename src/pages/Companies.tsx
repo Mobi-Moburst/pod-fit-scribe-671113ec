@@ -12,7 +12,7 @@ import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 // Deterministic color classes for CM badge using design tokens
@@ -68,7 +68,37 @@ const Companies = () => {
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
+  const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const { toast } = useToast();
+
+  const fetchCompanyBrand = async () => {
+    if (!editingCompany?.company_url) {
+      toast({ title: 'Enter a company URL first', variant: 'destructive' });
+      return;
+    }
+    setIsFetchingBrand(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-company-brand', {
+        body: { url: editingCompany.company_url }
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch brand');
+      
+      let updated = { ...editingCompany };
+      if (data.logo_url) {
+        updated.logo_url = data.logo_url;
+        toast({ title: 'Brand fetched', description: `Logo found: ${data.logo_url.substring(0, 50)}...` });
+      } else {
+        toast({ title: 'No logo found', description: 'Could not extract a logo from this URL.', variant: 'destructive' });
+      }
+      setEditingCompany(updated);
+    } catch (error) {
+      console.error('Failed to fetch brand:', error);
+      toast({ title: 'Failed to fetch brand', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsFetchingBrand(false);
+    }
+  };
 
   const managers = useMemo(() => Array.from(new Set(
     companies.map((c) => (c.campaign_manager || '').trim()).filter(Boolean)
@@ -359,11 +389,24 @@ const Companies = () => {
               </div>
               <div>
                 <Label>Company URL</Label>
-                <Input 
-                  placeholder="https://acme.com"
-                  value={editingCompany.company_url || ''} 
-                  onChange={(e) => setEditingCompany({ ...editingCompany, company_url: e.target.value })}
-                />
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="https://acme.com"
+                    value={editingCompany.company_url || ''} 
+                    onChange={(e) => setEditingCompany({ ...editingCompany, company_url: e.target.value })}
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="icon"
+                    onClick={fetchCompanyBrand}
+                    disabled={isFetchingBrand || !editingCompany.company_url?.trim()}
+                    title="Fetch logo from website"
+                  >
+                    {isFetchingBrand ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
               <div>
                 <Label>Logo URL</Label>
