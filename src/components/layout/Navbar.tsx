@@ -21,7 +21,7 @@ export const Navbar = () => {
           <img 
             src={kitcasterLogo} 
             alt="Kitcaster by Moburst" 
-            className="h-8 w-auto"
+            className="h-8 w-auto dark:brightness-0 dark:invert"
           />
           <span className="font-semibold">Podcast Qualifying Engine</span>
         </Link>
