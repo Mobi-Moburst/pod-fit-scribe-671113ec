@@ -5,12 +5,23 @@ export interface Competitor {
   interview_count?: number;
 }
 
+// Brand colors structure from Firecrawl
+export interface BrandColors {
+  primary?: string;
+  secondary?: string;
+  accent?: string;
+  background?: string;
+  textPrimary?: string;
+  textSecondary?: string;
+}
+
 // New Company type (company-level fields)
 export interface Company {
   id: string;
   name: string;
   company_url?: string;
   logo_url?: string;
+  brand_colors?: BrandColors;
   campaign_manager?: string;
   airtable_embed_url?: string;
   product_type?: string;
@@ -49,6 +60,8 @@ export interface MinimalClient {
   name: string;
   company?: string;
   company_url?: string;
+  logo_url?: string;
+  brand_colors?: BrandColors;
   media_kit_url: string;
   target_audiences?: string[];
   talking_points?: string[];

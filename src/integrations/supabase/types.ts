@@ -145,6 +145,7 @@ export type Database = {
       companies: {
         Row: {
           airtable_embed_url: string | null
+          brand_colors: Json | null
           campaign_manager: string | null
           company_url: string | null
           created_at: string | null
@@ -159,6 +160,7 @@ export type Database = {
         }
         Insert: {
           airtable_embed_url?: string | null
+          brand_colors?: Json | null
           campaign_manager?: string | null
           company_url?: string | null
           created_at?: string | null
@@ -173,6 +175,7 @@ export type Database = {
         }
         Update: {
           airtable_embed_url?: string | null
+          brand_colors?: Json | null
           campaign_manager?: string | null
           company_url?: string | null
           created_at?: string | null

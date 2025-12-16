@@ -165,6 +165,8 @@ export default function Reports() {
       name: selectedSpeaker.name,
       company: selectedCompany.name,
       company_url: selectedCompany.company_url || '',
+      logo_url: (selectedCompany as any).logo_url || '',
+      brand_colors: (selectedCompany as any).brand_colors || undefined,
       media_kit_url: selectedSpeaker.media_kit_url || '',
       target_audiences: selectedSpeaker.target_audiences || [],
       talking_points: selectedSpeaker.talking_points || [],
