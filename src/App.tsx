@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./components/ThemeProvider";
 import Index from "./pages/Evaluate";
 import Batch from "./pages/Batch";
-import Clients from "./pages/Clients";
+import Companies from "./pages/Companies";
 import History from "./pages/History";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
@@ -39,7 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/batch" element={<Batch />} />
-            <Route path="/clients" element={<Clients />} />
+            <Route path="/companies" element={<Companies />} />
             <Route path="/history" element={<History />} />
             <Route path="/reports" element={<Reports />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
