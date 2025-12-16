@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClientCombobox } from "@/components/ClientCombobox";
-import { MinimalClient } from "@/types/clients";
+import { CompanySpeakerSelector } from "@/components/CompanySpeakerSelector";
+import type { Company, Speaker, MinimalClient } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs } from "@/utils/reportGenerator";
@@ -29,8 +29,10 @@ import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, 
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
-  const [clients, setClients] = useState<MinimalClient[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [speakers, setSpeakers] = useState<Speaker[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedSpeakerId, setSelectedSpeakerId] = useState<string | null>(null);
   
   // File uploads
   const [batchFile, setBatchFile] = useState<File | null>(null);
@@ -129,58 +131,65 @@ export default function Reports() {
   };
 
   useEffect(() => {
-    const loadClients = async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name', { ascending: true });
+    const loadData = async () => {
+      const [companiesRes, speakersRes] = await Promise.all([
+        supabase.from('companies').select('*').order('name', { ascending: true }),
+        supabase.from('speakers').select('*').order('name', { ascending: true }),
+      ]);
       
-      if (error) {
-        console.error('Error loading clients:', error);
+      if (companiesRes.error) {
+        console.error('Error loading companies:', companiesRes.error);
         toast({
-          title: "Error loading clients",
-          description: "Failed to load client list from database.",
+          title: "Error loading companies",
+          description: "Failed to load company list from database.",
           variant: "destructive",
         });
         return;
       }
       
-      // Map and cast competitors properly
-      const mappedClients: MinimalClient[] = (data || []).map(c => ({
-        id: c.id,
-        name: c.name,
-        company: c.company || '',
-        company_url: c.company_url || '',
-        media_kit_url: c.media_kit_url || '',
-        target_audiences: c.target_audiences || [],
-        talking_points: c.talking_points || [],
-        avoid: c.avoid || [],
-        notes: c.notes || '',
-        campaign_strategy: c.campaign_strategy || '',
-        campaign_manager: c.campaign_manager || '',
-        pitch_template: c.pitch_template || '',
-        title: c.title || '',
-        gender: c.gender as any,
-        guest_identity_tags: c.guest_identity_tags || [],
-        professional_credentials: c.professional_credentials || [],
-        competitors: (c.competitors as any) || [],
-        airtable_embed_url: c.airtable_embed_url || ''
-      }));
-      setClients(mappedClients);
+      setCompanies(companiesRes.data as unknown as Company[]);
+      setSpeakers(speakersRes.data as unknown as Speaker[]);
     };
     
-    loadClients();
+    loadData();
   }, [toast]);
 
+  // Build legacy-compatible client object from selected speaker
+  const selectedSpeaker = useMemo(() => speakers.find(s => s.id === selectedSpeakerId), [speakers, selectedSpeakerId]);
+  const selectedCompany = useMemo(() => companies.find(c => c.id === selectedCompanyId), [companies, selectedCompanyId]);
+  
+  const speakerAsClient: MinimalClient | null = useMemo(() => {
+    if (!selectedSpeaker || !selectedCompany) return null;
+    return {
+      id: selectedSpeaker.id,
+      name: selectedSpeaker.name,
+      company: selectedCompany.name,
+      company_url: selectedCompany.company_url || '',
+      media_kit_url: selectedSpeaker.media_kit_url || '',
+      target_audiences: selectedSpeaker.target_audiences || [],
+      talking_points: selectedSpeaker.talking_points || [],
+      avoid: selectedSpeaker.avoid || [],
+      notes: selectedCompany.notes || '',
+      campaign_strategy: selectedSpeaker.campaign_strategy || '',
+      campaign_manager: selectedCompany.campaign_manager || '',
+      pitch_template: selectedSpeaker.pitch_template || '',
+      title: selectedSpeaker.title || '',
+      gender: selectedSpeaker.gender as any,
+      guest_identity_tags: selectedSpeaker.guest_identity_tags || [],
+      professional_credentials: selectedSpeaker.professional_credentials || [],
+      competitors: (selectedSpeaker.competitors as any) || [],
+      airtable_embed_url: selectedCompany.airtable_embed_url || ''
+    };
+  }, [selectedSpeaker, selectedCompany]);
+
   useEffect(() => {
-    if (selectedClientId) {
+    if (selectedSpeakerId) {
       loadSavedReports();
       // Load competitors for manual SOV mode
-      const client = clients.find(c => c.id === selectedClientId);
-      if (client?.competitors && client.competitors.length > 0) {
+      if (speakerAsClient?.competitors && speakerAsClient.competitors.length > 0) {
         setManualSOVMode(true);
         setCompetitorInterviews(
-          client.competitors.map(comp => ({
+          speakerAsClient.competitors.map(comp => ({
             name: comp.name,
             role: comp.role,
             count: 0
@@ -195,15 +204,15 @@ export default function Reports() {
       setManualSOVMode(false);
       setCompetitorInterviews([]);
     }
-  }, [selectedClientId, clients]);
+  }, [selectedSpeakerId, speakerAsClient]);
 
   const loadSavedReports = async () => {
-    if (!selectedClientId) return;
+    if (!selectedSpeakerId) return;
     
     const { data, error } = await supabase
       .from('reports')
       .select('*')
-      .eq('client_id', selectedClientId)
+      .eq('speaker_id', selectedSpeakerId)
       .order('generated_at', { ascending: false });
     
     if (error) {
@@ -216,10 +225,10 @@ export default function Reports() {
 
   const handleGenerateReport = async () => {
     // Validation
-    if (!selectedClientId) {
+    if (!selectedSpeakerId || !speakerAsClient) {
       toast({
-        title: "Select a client first",
-        description: "Please select a client before generating a report.",
+        title: "Select a speaker first",
+        description: "Please select a company and speaker before generating a report.",
         variant: "destructive",
       });
       return;
@@ -274,12 +283,11 @@ export default function Reports() {
         ? competitorInterviews.filter(c => c.count > 0)
         : null;
       
-      // Find selected client
-      const client = clients.find(c => c.id === selectedClientId);
-      if (!client) {
+      // Use speakerAsClient for report generation
+      if (!speakerAsClient) {
         toast({
-          title: "Client not found",
-          description: "Selected client could not be found.",
+          title: "Speaker not found",
+          description: "Selected speaker could not be found.",
           variant: "destructive",
         });
         return;
@@ -293,8 +301,8 @@ export default function Reports() {
         null, // Competitor names now come from CSV peer column or manual input
         geoRows,
         contentGapRows,
-        client,
-        reportName || `${client.name} - ${quarter || 'Report'}`,
+        speakerAsClient,
+        reportName || `${speakerAsClient.name} - ${quarter || 'Report'}`,
         quarter,
         { start: startDate, end: endDate },
         manualSOVCompetitors // Pass manual SOV data
@@ -318,10 +326,10 @@ export default function Reports() {
   };
 
   const handleSaveReport = async () => {
-    if (!reportData || !reportName || !selectedClientId) {
+    if (!reportData || !reportName || !selectedSpeakerId || !selectedCompanyId) {
       toast({
         title: "Missing information",
-        description: "Report name and client are required to save.",
+        description: "Report name and speaker are required to save.",
         variant: "destructive",
       });
       return;
@@ -332,7 +340,9 @@ export default function Reports() {
     try {
       const { error } = await supabase.from('reports').insert({
         org_id: TEAM_ORG_ID,
-        client_id: selectedClientId,
+        client_id: selectedSpeakerId, // Use speaker_id as client_id for backward compatibility
+        speaker_id: selectedSpeakerId,
+        company_id: selectedCompanyId,
         report_name: reportName,
         quarter: quarter || null,
         date_range_start: reportData.date_range?.start.split('T')[0] || new Date().toISOString().split('T')[0],
@@ -414,11 +424,11 @@ export default function Reports() {
       <main className="container mx-auto px-4 py-8 relative z-10">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Saved Reports Section */}
-          {selectedClientId && savedReports.length > 0 && (
+          {selectedSpeakerId && savedReports.length > 0 && (
             <Card className="print:hidden">
               <CardHeader>
                 <CardTitle>Saved Reports</CardTitle>
-                <CardDescription>Previously generated reports for this client</CardDescription>
+                <CardDescription>Previously generated reports for this speaker</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -478,13 +488,16 @@ export default function Reports() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Client Selection */}
+              {/* Company/Speaker Selection */}
               <div>
-                <Label className="mb-2 block">Select Client *</Label>
-                <ClientCombobox
-                  clients={clients}
-                  value={selectedClientId || ''}
-                  onChange={(id) => setSelectedClientId(id)}
+                <Label className="mb-2 block">Select Company & Speaker *</Label>
+                <CompanySpeakerSelector
+                  companies={companies}
+                  speakers={speakers}
+                  selectedCompanyId={selectedCompanyId}
+                  selectedSpeakerId={selectedSpeakerId}
+                  onCompanyChange={setSelectedCompanyId}
+                  onSpeakerChange={setSelectedSpeakerId}
                 />
               </div>
 
@@ -669,9 +682,9 @@ export default function Reports() {
                     </div>
                   ) : (
                     <>
-                      {selectedClientId && competitorInterviews.length === 0 && !sovFile && (
+                      {selectedSpeakerId && competitorInterviews.length === 0 && !sovFile && (
                         <p className="text-sm text-muted-foreground mb-3 p-3 border border-dashed rounded-md bg-muted/20">
-                          No peers defined for this client. <a href="/clients" className="text-primary underline hover:no-underline">Define peers in Clients tab</a> or upload a CSV below.
+                          No peers defined for this speaker. <a href="/companies" className="text-primary underline hover:no-underline">Define peers in Companies tab</a> or upload a CSV below.
                         </p>
                       )}
                       <Badge variant={sovFile ? "default" : "outline"} className="mb-2">
@@ -750,7 +763,7 @@ export default function Reports() {
               {/* Generate Button */}
               <Button
                 onClick={handleGenerateReport}
-                disabled={isProcessing || !selectedClientId || !batchFile || !airtableFile || !dateRangeStart || !dateRangeEnd}
+                disabled={isProcessing || !selectedSpeakerId || !batchFile || !airtableFile || !dateRangeStart || !dateRangeEnd}
                 className="w-full"
                 size="lg"
               >
@@ -986,7 +999,7 @@ export default function Reports() {
               {/* Airtable Embed */}
               {visibleSections.airtableEmbed && (
                 <AirtableEmbed
-                  embedUrl={clients.find(c => c.id === selectedClientId)?.airtable_embed_url}
+                  embedUrl={speakerAsClient?.airtable_embed_url}
                   onHide={() => toggleSection('airtableEmbed')}
                 />
               )}
@@ -1049,7 +1062,7 @@ export default function Reports() {
                 open={sovDialogOpen}
                 onOpenChange={setSOVDialogOpen}
                 sovAnalysis={reportData.sov_analysis || null}
-                clientName={clients.find(c => c.id === selectedClientId)?.name}
+                clientName={speakerAsClient?.name}
               />
               
               <GEODialog

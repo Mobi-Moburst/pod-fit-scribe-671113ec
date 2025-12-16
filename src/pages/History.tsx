@@ -11,16 +11,26 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { Company, Speaker } from '@/types/clients';
 
 const History = () => {
   useEffect(() => { document.title = 'History — Podcast Fit Rater'; }, []);
-  const [clientFilter, setClientFilter] = useState('');
+  const [speakerFilter, setSpeakerFilter] = useState('');
   const [minScore, setMinScore] = useState<number | ''>('');
   const [list, setList] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<string>('');
-  const clientNameById = useMemo(() => Object.fromEntries(clients.map((c: any) => [c.id, c.name])), [clients]);
+  
+  // Map speaker IDs to display names (speaker name + company)
+  const speakerDisplayById = useMemo(() => {
+    const companyMap = new Map(companies.map(c => [c.id, c.name]));
+    return Object.fromEntries(speakers.map(s => [
+      s.id, 
+      `${s.name}${companyMap.get(s.company_id) ? ` (${companyMap.get(s.company_id)})` : ''}`
+    ]));
+  }, [speakers, companies]);
 
   useEffect(() => {
     const load = async () => {
@@ -34,7 +44,9 @@ const History = () => {
       }
 
       const { data: evals } = await supabase.from('evaluations').select('*').order('created_at', { ascending: false });
-      const { data: cls } = await supabase.from('clients').select('id,name').order('name', { ascending: true });
+      const { data: companyData } = await supabase.from('companies').select('*').order('name', { ascending: true });
+      const { data: speakerData } = await supabase.from('speakers').select('*').order('name', { ascending: true });
+      
       if (Array.isArray(evals)) {
         setList(evals.map((r: any) => ({
           id: r.id,
@@ -42,25 +54,26 @@ const History = () => {
           url: r.url,
           show_title: r.show_title,
           overall_score: r.overall_score,
-          clientId: r.client_id,
+          speakerId: r.speaker_id,
           batch_session_id: r.batch_session_id,
           date: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
         })));
       }
-      if (Array.isArray(cls)) setClients(cls);
+      if (Array.isArray(companyData)) setCompanies(companyData as unknown as Company[]);
+      if (Array.isArray(speakerData)) setSpeakers(speakerData as unknown as Speaker[]);
     };
     load();
   }, []);
 
   const filtered = useMemo(() => {
     return list.filter(r => {
-      if (clientFilter && r.clientId !== clientFilter) return false;
+      if (speakerFilter && r.speakerId !== speakerFilter) return false;
       if (minScore !== '' && (r.overall_score ?? 0) < (minScore as number)) return false;
       if (selectedBatch === '__individual__' && r.batch_session_id) return false;
       if (selectedBatch && selectedBatch !== '__individual__' && r.batch_session_id !== selectedBatch) return false;
       return true;
     });
-  }, [list, clientFilter, minScore, selectedBatch]);
+  }, [list, speakerFilter, minScore, selectedBatch]);
 
   const groupedData = useMemo(() => {
     const individual: any[] = [];
@@ -137,7 +150,7 @@ const History = () => {
     batchId, 
     evaluations, 
     metadata,
-    clientNameById,
+    speakerDisplayById,
     getDisplayTitle,
     onDeleteBatch
   }: any) => {
@@ -149,7 +162,7 @@ const History = () => {
     const batchInfo = metadata.get(batchId);
     const batchName = batchInfo?.name || `Batch`;
     const batchDate = evaluations[0]?.date || Date.now();
-    const clientId = evaluations[0]?.clientId;
+    const speakerId = evaluations[0]?.speakerId;
     
     return (
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -163,7 +176,7 @@ const History = () => {
               </span>
             </div>
             <div className="col-span-3 text-sm text-muted-foreground truncate">
-              {clientNameById[clientId] || clientId}
+              {speakerDisplayById[speakerId] || speakerId}
             </div>
             <div className="col-span-2 font-semibold">
               Avg: {avgScore.toFixed(1)}
@@ -276,10 +289,10 @@ const History = () => {
       <main className="container mx-auto px-3 py-6 grid gap-6">
         <Card className="p-4 card-surface grid md:grid-cols-5 gap-3 items-end">
           <div>
-            <label className="text-sm">Client</label>
-            <select className="h-10 rounded-md border bg-background px-3 w-full" value={clientFilter} onChange={(e)=>setClientFilter(e.target.value)}>
+            <label className="text-sm">Speaker</label>
+            <select className="h-10 rounded-md border bg-background px-3 w-full" value={speakerFilter} onChange={(e)=>setSpeakerFilter(e.target.value)}>
               <option value="">All</option>
-              {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+              {speakers.map(s => (<option key={s.id} value={s.id}>{speakerDisplayById[s.id]}</option>))}
             </select>
           </div>
           <div>
@@ -313,7 +326,7 @@ const History = () => {
                   batchId={batchId}
                   evaluations={evals}
                   metadata={batchMetadata}
-                  clientNameById={clientNameById}
+                  speakerDisplayById={speakerDisplayById}
                   getDisplayTitle={getDisplayTitle}
                   onDeleteBatch={deleteBatch}
                 />
@@ -326,7 +339,7 @@ const History = () => {
                   <div className="col-span-5 truncate">
                     {r.url ? <a className="underline" href={r.url} target="_blank" rel="noreferrer" title={r.url}>{getDisplayTitle(r)}</a> : <span>{getDisplayTitle(r)}</span>}
                   </div>
-                  <div className="col-span-3 text-sm text-muted-foreground truncate">{clientNameById[r.clientId] || r.clientId}</div>
+                  <div className="col-span-3 text-sm text-muted-foreground truncate">{speakerDisplayById[r.speakerId] || r.speakerId}</div>
                   <div className="col-span-2">
                     <Dialog>
                       <DialogTrigger asChild>
