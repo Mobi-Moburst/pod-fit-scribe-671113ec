@@ -2,9 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
 import kitcasterLogo from "@/assets/kitcaster-logo.png";
-import kitcasterLogoDark from "@/assets/kitcaster-logo-dark.png";
 
 const tabs = [
   { to: "/", label: "Evaluate" },
@@ -16,14 +14,12 @@ const tabs = [
 
 export const Navbar = () => {
   const { pathname } = useLocation();
-  const { resolvedTheme } = useTheme();
-  
   return (
     <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-14 px-3">
         <Link to="/" className="flex items-center gap-2">
           <img 
-            src={resolvedTheme === "dark" ? kitcasterLogoDark : kitcasterLogo} 
+            src={kitcasterLogo} 
             alt="Kitcaster by Moburst" 
             className="h-8 w-auto"
           />
