@@ -7,7 +7,7 @@ import kitcasterLogo from "@/assets/kitcaster-logo.png";
 const tabs = [
   { to: "/", label: "Evaluate" },
   { to: "/batch", label: "Batch" },
-  { to: "/clients", label: "Clients" },
+  { to: "/companies", label: "Companies" },
   { to: "/history", label: "History" },
   { to: "/reports", label: "Reports" },
 ];
