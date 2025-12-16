@@ -12,7 +12,7 @@ import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe, ImageIcon, Pencil, Check } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 // Deterministic color classes for CM badge using design tokens
@@ -69,6 +69,8 @@ const Companies = () => {
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
+  const [showManualLogoInput, setShowManualLogoInput] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const { toast } = useToast();
 
   const fetchCompanyBrand = async () => {
@@ -87,7 +89,9 @@ const Companies = () => {
       let updated = { ...editingCompany };
       if (data.logo_url) {
         updated.logo_url = data.logo_url;
-        toast({ title: 'Brand fetched', description: `Logo found: ${data.logo_url.substring(0, 50)}...` });
+        setShowManualLogoInput(false);
+        setLogoError(false);
+        toast({ title: 'Brand fetched', description: 'Logo found and loaded.' });
       } else {
         toast({ title: 'No logo found', description: 'Could not extract a logo from this URL.', variant: 'destructive' });
       }
@@ -169,8 +173,16 @@ const Companies = () => {
   };
 
   // Company CRUD
-  const startNewCompany = () => setEditingCompany({ ...emptyCompany, id: crypto.randomUUID(), isNew: true });
-  const startEditCompany = (c: Company) => setEditingCompany({ ...c });
+  const startNewCompany = () => {
+    setEditingCompany({ ...emptyCompany, id: crypto.randomUUID(), isNew: true });
+    setShowManualLogoInput(false);
+    setLogoError(false);
+  };
+  const startEditCompany = (c: Company) => {
+    setEditingCompany({ ...c });
+    setShowManualLogoInput(false);
+    setLogoError(false);
+  };
   const cancelCompany = () => setEditingCompany(null);
 
   const canSaveCompany = useMemo(() => {
@@ -409,12 +421,99 @@ const Companies = () => {
                 </div>
               </div>
               <div>
-                <Label>Logo URL</Label>
-                <Input 
-                  placeholder="https://acme.com/logo.png"
-                  value={editingCompany.logo_url || ''} 
-                  onChange={(e) => setEditingCompany({ ...editingCompany, logo_url: e.target.value })}
-                />
+                <Label>Company Logo</Label>
+                {editingCompany.logo_url && !logoError ? (
+                  <div className="flex items-center gap-3 p-3 rounded-md border border-border bg-muted/30">
+                    <img 
+                      src={editingCompany.logo_url} 
+                      alt="Company logo" 
+                      className="w-10 h-10 rounded object-contain bg-background"
+                      onError={() => setLogoError(true)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Check className="h-3 w-3 text-green-500" /> Logo loaded
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setShowManualLogoInput(!showManualLogoInput)}
+                        title="Edit URL"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setEditingCompany({ ...editingCompany, logo_url: '' });
+                          setLogoError(false);
+                        }}
+                        title="Remove logo"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 p-3 rounded-md border border-dashed border-border bg-muted/20">
+                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                      <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      {logoError ? (
+                        <p className="text-sm text-destructive">Failed to load logo</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No logo</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={fetchCompanyBrand}
+                        disabled={isFetchingBrand || !editingCompany.company_url?.trim()}
+                      >
+                        {isFetchingBrand ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Globe className="h-3 w-3 mr-1" />}
+                        Fetch
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setShowManualLogoInput(true)}
+                      >
+                        Enter URL
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {showManualLogoInput && (
+                  <div className="flex gap-2 mt-2">
+                    <Input 
+                      placeholder="https://acme.com/logo.png"
+                      value={editingCompany.logo_url || ''} 
+                      onChange={(e) => {
+                        setEditingCompany({ ...editingCompany, logo_url: e.target.value });
+                        setLogoError(false);
+                      }}
+                      className="flex-1"
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowManualLogoInput(false)}
+                    >
+                      Done
+                    </Button>
+                  </div>
+                )}
               </div>
               <div className="md:col-span-2">
                 <Label>Airtable View URL</Label>
