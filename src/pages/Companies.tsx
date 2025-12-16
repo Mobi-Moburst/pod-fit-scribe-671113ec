@@ -34,6 +34,7 @@ const emptyCompany: Omit<Company, 'id'> = {
   name: '',
   company_url: '',
   logo_url: '',
+  brand_colors: undefined,
   campaign_manager: '',
   airtable_embed_url: '',
   product_type: '',
@@ -91,9 +92,14 @@ const Companies = () => {
         updated.logo_url = data.logo_url;
         setShowManualLogoInput(false);
         setLogoError(false);
-        toast({ title: 'Brand fetched', description: 'Logo found and loaded.' });
+      }
+      if (data.brand_colors) {
+        updated.brand_colors = data.brand_colors;
+      }
+      if (data.logo_url || data.brand_colors) {
+        toast({ title: 'Brand fetched', description: data.logo_url ? 'Logo and colors loaded.' : 'Brand colors loaded.' });
       } else {
-        toast({ title: 'No logo found', description: 'Could not extract a logo from this URL.', variant: 'destructive' });
+        toast({ title: 'No branding found', description: 'Could not extract branding from this URL.', variant: 'destructive' });
       }
       setEditingCompany(updated);
     } catch (error) {
@@ -152,6 +158,7 @@ const Companies = () => {
       name: c.name,
       company_url: c.company_url || '',
       logo_url: c.logo_url || '',
+      brand_colors: c.brand_colors || undefined,
       campaign_manager: c.campaign_manager || '',
       airtable_embed_url: c.airtable_embed_url || '',
       product_type: c.product_type || '',
@@ -197,6 +204,7 @@ const Companies = () => {
       name: editingCompany.name.trim(),
       company_url: editingCompany.company_url?.trim() || null,
       logo_url: editingCompany.logo_url?.trim() || null,
+      brand_colors: (editingCompany.brand_colors || null) as any,
       campaign_manager: editingCompany.campaign_manager?.trim() || null,
       airtable_embed_url: editingCompany.airtable_embed_url?.trim() || null,
       product_type: editingCompany.product_type?.trim() || '',
