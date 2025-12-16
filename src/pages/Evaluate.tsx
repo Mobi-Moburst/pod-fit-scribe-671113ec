@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { BackgroundFX } from '@/components/BackgroundFX';
@@ -13,46 +12,77 @@ import { useToast } from '@/hooks/use-toast';
 import { callAnalyze, callScrape, AnalyzeResult } from '@/utils/api';
 import { sampleUrls } from '@/data/sampleUrls';
 import { ResultsPanel } from '@/components/evaluate/ResultsPanel';
-import type { MinimalClient } from '@/types/clients';
+import type { Company, Speaker, SpeakerWithCompany } from '@/types/clients';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { ClientCombobox } from '@/components/ClientCombobox';
+import { CompanySpeakerSelector } from '@/components/CompanySpeakerSelector';
+
 const Evaluate = () => {
   useEffect(() => { document.title = 'Evaluate — Podcast Fit Rater'; }, []);
   const { toast } = useToast();
 
   const [url, setUrl] = useState('');
   const [paste, setPaste] = useState('');
-  const [clients, setClients] = useState<MinimalClient[]>([]);
-  const [clientId, setClientId] = useState('');
-  const client = useMemo(() => clients.find(c => c.id === clientId)!, [clients, clientId]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [speakers, setSpeakers] = useState<Speaker[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedSpeakerId, setSelectedSpeakerId] = useState<string | null>(null);
+  
+  const selectedSpeaker = useMemo(() => speakers.find(s => s.id === selectedSpeakerId), [speakers, selectedSpeakerId]);
+  const selectedCompany = useMemo(() => companies.find(c => c.id === selectedCompanyId), [companies, selectedCompanyId]);
+  
+  // Build a speaker-with-company object for the API
+  const speakerWithCompany: SpeakerWithCompany | null = useMemo(() => {
+    if (!selectedSpeaker || !selectedCompany) return null;
+    return { ...selectedSpeaker, company: selectedCompany };
+  }, [selectedSpeaker, selectedCompany]);
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
-      if (!error) {
-        const mapped = (data || []).map((c: any) => ({
+      const [companiesRes, speakersRes] = await Promise.all([
+        supabase.from('companies').select('*').order('name', { ascending: true }),
+        supabase.from('speakers').select('*').order('name', { ascending: true }),
+      ]);
+      
+      if (!companiesRes.error && companiesRes.data) {
+        setCompanies(companiesRes.data.map((c: any) => ({
           id: c.id,
           name: c.name,
-          company: c.company || '',
-          media_kit_url: c.media_kit_url || '',
-          target_audiences: c.target_audiences || [],
-          talking_points: c.talking_points || [],
-          avoid: c.avoid || [],
-          avoid_text: Array.isArray(c.avoid) ? c.avoid.join(', ') : '',
-          notes: c.notes || '',
-          campaign_strategy: c.campaign_strategy || '',
+          company_url: c.company_url || '',
+          logo_url: c.logo_url || '',
           campaign_manager: c.campaign_manager || '',
-        }));
-        setClients(mapped);
+          airtable_embed_url: c.airtable_embed_url || '',
+          product_type: c.product_type || '',
+          tags: c.tags || [],
+          notes: c.notes || '',
+        })));
+      }
+      
+      if (!speakersRes.error && speakersRes.data) {
+        setSpeakers(speakersRes.data.map((s: any) => ({
+          id: s.id,
+          company_id: s.company_id,
+          name: s.name,
+          title: s.title || '',
+          media_kit_url: s.media_kit_url || '',
+          gender: s.gender,
+          target_audiences: s.target_audiences || [],
+          talking_points: s.talking_points || [],
+          avoid: s.avoid || [],
+          guest_identity_tags: s.guest_identity_tags || [],
+          professional_credentials: s.professional_credentials || [],
+          campaign_strategy: s.campaign_strategy || '',
+          pitch_template: s.pitch_template || '',
+          competitors: s.competitors || [],
+        })));
       }
     })();
   }, []);
 
   const [loading, setLoading] = useState(false);
-const [result, setResult] = useState<(AnalyzeResult & { show_title?: string; last_publish_date?: string }) | null>(null);
-const [showNotesOpen, setShowNotesOpen] = useState(false);
+  const [result, setResult] = useState<(AnalyzeResult & { show_title?: string; last_publish_date?: string }) | null>(null);
+  const [showNotesOpen, setShowNotesOpen] = useState(false);
 
-   const handleAnalyze = async () => {
+  const handleAnalyze = async () => {
     setLoading(true); setResult(null);
     try {
       let notes = paste.trim();
@@ -70,50 +100,55 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
         }
         const s = await callScrape(url);
         if (!s?.success || !s?.show_notes) {
-          toast({ title: 'Couldn’t fetch show notes', description: 'Paste the notes manually and try again.' , variant: 'destructive'});
+          toast({ title: "Couldn't fetch show notes", description: 'Paste the notes manually and try again.' , variant: 'destructive'});
           return;
         }
         notes = s.show_notes as string;
         title = s.title;
         publishDate = s.publish_date;
-        // Warn if the scraped content looks like bot-protection or a captcha page
-        if (/(captcha|are you a robot|verify you(?:'|’)re a human|access denied|cloudflare|just a moment|attention required)/i.test(notes)) {
+        if (/(captcha|are you a robot|verify you(?:'|')re a human|access denied|cloudflare|just a moment|attention required)/i.test(notes)) {
           toast({ title: 'Site blocked scraping', description: 'Try pasting notes manually or use Apple/Spotify/ListenNotes.', variant: 'default' });
         }
       }
 
-      if (!client) {
-        toast({ title: 'Select a client', description: 'Choose a client before analyzing.', variant: 'destructive' });
+      if (!speakerWithCompany) {
+        toast({ title: 'Select a speaker', description: 'Choose a company and speaker before analyzing.', variant: 'destructive' });
         return;
       }
 
-      const resp = await callAnalyze({ client, show_notes: notes });
+      // Convert to legacy format for API compatibility
+      const clientForApi = {
+        id: speakerWithCompany.id,
+        name: speakerWithCompany.name,
+        company: speakerWithCompany.company.name,
+        company_url: speakerWithCompany.company.company_url,
+        media_kit_url: speakerWithCompany.media_kit_url || '',
+        target_audiences: speakerWithCompany.target_audiences || [],
+        talking_points: speakerWithCompany.talking_points || [],
+        avoid: speakerWithCompany.avoid || [],
+        notes: speakerWithCompany.company.notes || '',
+        campaign_strategy: speakerWithCompany.campaign_strategy || '',
+        campaign_manager: speakerWithCompany.company.campaign_manager || '',
+        pitch_template: speakerWithCompany.pitch_template || '',
+        title: speakerWithCompany.title || '',
+        gender: speakerWithCompany.gender,
+        guest_identity_tags: speakerWithCompany.guest_identity_tags || [],
+        professional_credentials: speakerWithCompany.professional_credentials || [],
+        competitors: speakerWithCompany.competitors || [],
+      };
+
+      const resp = await callAnalyze({ client: clientForApi, show_notes: notes });
       if (!resp.success) {
-        // Handle specific timeout and API errors with retry options
         if (resp.error === 'timeout') {
-          toast({
-            title: 'Analysis timed out',
-            description: 'AI analysis took too long. Click Analyze again to retry.',
-            variant: 'destructive'
-          });
+          toast({ title: 'Analysis timed out', description: 'AI analysis took too long. Click Analyze again to retry.', variant: 'destructive' });
           return;
         } else if (resp.error === 'rate_limit') {
-          toast({
-            title: 'Rate limit reached',
-            description: 'API limit reached. Try again in a few minutes.',
-            variant: 'destructive'
-          });
+          toast({ title: 'Rate limit reached', description: 'API limit reached. Try again in a few minutes.', variant: 'destructive' });
           return;
         } else if (resp.error === 'missing_api_key') {
-          toast({
-            title: 'Missing API key',
-            description: 'Add your OpenAI API key in Supabase Edge Function secrets.',
-            variant: 'destructive'
-          });
+          toast({ title: 'Missing API key', description: 'Add your OpenAI API key in Supabase Edge Function secrets.', variant: 'destructive' });
           return;
         }
-        
-        // Generic error handling
         const rawStr = resp.raw ? String(resp.raw) : '';
         const snippet = rawStr ? rawStr.slice(0, 200) + (rawStr.length > 200 ? '…' : '') : '';
         const desc = resp.error ? `${resp.error}${snippet ? ' — ' + snippet : ''}` : 'Analysis failed. Please try again.';
@@ -130,11 +165,12 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
   };
 
   const handleSave = async () => {
-    if (!result) return;
+    if (!result || !selectedSpeakerId) return;
     const { error } = await supabase.from('evaluations').insert([
       {
         org_id: TEAM_ORG_ID,
-        client_id: clientId,
+        client_id: selectedSpeakerId, // Keep for backward compatibility
+        speaker_id: selectedSpeakerId,
         url: url || 'manual',
         show_title: result.show_title || null,
         overall_score: (result as any).overall_score ? Math.round((result as any).overall_score) : null,
@@ -160,35 +196,26 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
   };
 
   const handleCopySummary = async () => {
-    if (!result) return;
+    if (!result || !speakerWithCompany) return;
 
-    const clean = (s: string) => (s || '')
-      .replace(/[“”]/g, '')
-      .replace(/^[\s\-•–—]+/, '')
-      .trim()
-      .replace(/[\s]*[.,;:!?]+$/, '');
-
+    const clean = (s: string) => (s || '').replace(/[""]/g, '').replace(/^[\s\-•–—]+/, '').trim().replace(/[\s]*[.,;:!?]+$/, '');
     const verdictWord = result.verdict === 'recommend' ? 'Fit' : result.verdict === 'consider' ? 'Consider' : 'Not a fit';
-    const clientName = (client?.name || 'the client').trim();
+    const clientName = (speakerWithCompany.name || 'the speaker').trim();
     const showName = (result.show_title || 'this show').trim();
 
-    // Audience-first: prefer model-derived segments, fallback to client targets
     const inferredSegments = (result as any).audience_segments as string[] | undefined;
-    const targetSegs = client?.target_audiences || [];
+    const targetSegs = speakerWithCompany.target_audiences || [];
     const segs = (inferredSegments && inferredSegments.length ? inferredSegments : targetSegs).map(clean).filter(Boolean).slice(0, 2);
     const audiencePhrase = segs.length ? segs.join(' and ') : 'relevant decision makers';
 
-    // Campaign themes / topics
     const pitchTopics = (result.recommended_talking_points || (result as any).talking_points_to_pitch || []).map(clean).filter(Boolean);
     const themeClaims = (result.why_fit_structured || []).map(i => clean(i.claim)).filter(Boolean);
     const topicItems = (themeClaims.length ? themeClaims : pitchTopics).slice(0, 2);
     const themes = topicItems.length === 2 ? `${topicItems[0]} and ${topicItems[1]}` : (topicItems[0] || 'practical themes that support the campaign');
 
-    // Risks: include only material (Critical) if present
     const criticalRiskRaw = (result.risk_flags_structured || []).find(r => r.severity === 'Critical')?.flag || '';
     const criticalRisk = clean(criticalRiskRaw).toLowerCase();
 
-    // Next step depends on verdict
     const pitchAngle = clean(pitchTopics[0] || topicItems[0] || '');
     let nextStep = '';
     if (result.verdict === 'recommend') {
@@ -199,7 +226,6 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
       nextStep = 'Suggest an adjacent show with stronger role alignment.';
     }
 
-    // Compose paragraph (aim 110–160 words)
     const sentences: string[] = [];
     sentences.push(`${verdictWord} for ${clientName} on ${showName}.`);
     sentences.push(`This show reaches ${audiencePhrase}, and that matters because it directly serves the campaign goals by getting in front of likely buyers and influencers.`);
@@ -222,7 +248,6 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
       paragraph = words.slice(0, 160).join(' ').replace(/[,;:]?$/, '.');
     }
     
-    // Tidy punctuation and spacing to avoid stray commas/periods
     paragraph = paragraph
       .replace(/([,;:])\./g, '$1')
       .replace(/([.,;:!?])\s*([.,;:!?])/g, '$1 ')
@@ -230,7 +255,7 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
       .replace(/([.,;:!?])([^\s])/g, '$1 $2')
       .replace(/\s{2,}/g, ' ')
       .trim();
-    // Bullets: 3 concise lines (<= 12 words each)
+
     const limitWords = (s: string) => s.split(/\s+/).slice(0, 12).join(' ').trim();
     const bullet1 = limitWords(`Audience: ${audiencePhrase}`);
     const bullet2 = limitWords(pitchAngle ? `Pitch: ${pitchAngle}` : 'Pitch: practical education topic');
@@ -241,6 +266,7 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
     await navigator.clipboard.writeText(text);
     toast({ title: 'Copied', description: 'Summary copied to clipboard.' });
   };
+
   return (
     <div>
       <BackgroundFX />
@@ -251,32 +277,38 @@ const [showNotesOpen, setShowNotesOpen] = useState(false);
             <div className="grid gap-3">
               <Label htmlFor="url">Podcast URL</Label>
               <Input id="url" placeholder="Apple Podcasts, Spotify, or Rephonic URL" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleAnalyze(); }} />
-<Collapsible open={showNotesOpen} onOpenChange={setShowNotesOpen}>
-  <CollapsibleTrigger asChild>
-    <Button type="button" variant="outline" className="mt-2">
-      Optional: Paste show notes (fallback)
-    </Button>
-  </CollapsibleTrigger>
-  <CollapsibleContent className="mt-2 space-y-2">
-    <Label htmlFor="paste" className="sr-only">Optional: Paste show notes (fallback)</Label>
-    <Textarea id="paste" rows={6} placeholder="Paste raw show notes if fetching fails" value={paste} onChange={(e) => setPaste(e.target.value)} />
-  </CollapsibleContent>
-</Collapsible>
+              <Collapsible open={showNotesOpen} onOpenChange={setShowNotesOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="outline" className="mt-2">
+                    Optional: Paste show notes (fallback)
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 space-y-2">
+                  <Label htmlFor="paste" className="sr-only">Optional: Paste show notes (fallback)</Label>
+                  <Textarea id="paste" rows={6} placeholder="Paste raw show notes if fetching fails" value={paste} onChange={(e) => setPaste(e.target.value)} />
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </Card>
           <Card className="p-4 card-surface">
             <div className="grid gap-3">
-              <Label htmlFor="client">Client</Label>
-              <ClientCombobox clients={clients} value={clientId} onChange={setClientId} />
-              <div className="text-xs text-muted-foreground">Seeded from saved Clients. Manage in Clients tab.</div>
+              <CompanySpeakerSelector
+                companies={companies}
+                speakers={speakers}
+                selectedCompanyId={selectedCompanyId}
+                selectedSpeakerId={selectedSpeakerId}
+                onCompanyChange={setSelectedCompanyId}
+                onSpeakerChange={setSelectedSpeakerId}
+              />
+              <div className="text-xs text-muted-foreground">Select company then speaker. Manage in Companies tab.</div>
               <div className="flex gap-2 mt-2">
-                <Button variant="hero" className="flex-1" onClick={handleAnalyze} disabled={!clientId}>Analyze</Button>
+                <Button variant="hero" className="flex-1" onClick={handleAnalyze} disabled={!selectedSpeakerId}>Analyze</Button>
                 <Button
                   variant="outline"
                   type="button"
-                  disabled={!clientId}
+                  disabled={!selectedSpeakerId}
                   onClick={() => {
-                    const list = (sampleUrls as Record<string, string[]>)[clientId] || [];
+                    const list = (sampleUrls as Record<string, string[]>)[selectedSpeakerId || ''] || [];
                     setUrl(list[Math.floor(Math.random()*list.length)] || '');
                   }}
                 >
