@@ -5,6 +5,45 @@ export interface Competitor {
   interview_count?: number;
 }
 
+// New Company type (company-level fields)
+export interface Company {
+  id: string;
+  name: string;
+  company_url?: string;
+  logo_url?: string;
+  campaign_manager?: string;
+  airtable_embed_url?: string;
+  product_type?: string;
+  tags?: string[];
+  notes?: string;
+}
+
+// New Speaker type (speaker-level fields)
+export interface Speaker {
+  id: string;
+  company_id: string;
+  name: string;
+  title?: string;
+  media_kit_url?: string;
+  gender?: 'male' | 'female' | 'non_binary' | 'unspecified';
+  target_audiences?: string[];
+  talking_points?: string[];
+  avoid?: string[];
+  guest_identity_tags?: string[];
+  professional_credentials?: string[];
+  campaign_strategy?: string;
+  pitch_template?: string;
+  competitors?: Competitor[];
+}
+
+// Combined view for reports and UI convenience
+export interface SpeakerWithCompany extends Speaker {
+  company: Company;
+}
+
+/**
+ * @deprecated Use Company and Speaker types instead. Will be removed after Phase E migration.
+ */
 export interface MinimalClient {
   id: string;
   name: string;
@@ -18,12 +57,11 @@ export interface MinimalClient {
   notes?: string;
   campaign_manager?: string;
   campaign_strategy?: string;
-  pitch_template?: string; // Optional custom pitch template
-  title?: string; // Guest's professional title (e.g., "CEO & Founder")
-  // New eligibility fields
+  pitch_template?: string;
+  title?: string;
   gender?: 'male' | 'female' | 'non_binary' | 'unspecified';
   guest_identity_tags?: string[];
   professional_credentials?: string[];
   competitors?: Competitor[];
-  airtable_embed_url?: string; // Shared Airtable view URL for embedding in reports
+  airtable_embed_url?: string;
 }

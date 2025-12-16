@@ -22,6 +22,7 @@ export type Database = {
           id: string
           name: string | null
           org_id: string
+          speaker_id: string | null
           success_count: number | null
           total_count: number | null
           updated_at: string | null
@@ -33,6 +34,7 @@ export type Database = {
           id?: string
           name?: string | null
           org_id: string
+          speaker_id?: string | null
           success_count?: number | null
           total_count?: number | null
           updated_at?: string | null
@@ -44,11 +46,20 @@ export type Database = {
           id?: string
           name?: string | null
           org_id?: string
+          speaker_id?: string | null
           success_count?: number | null
           total_count?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "batch_sessions_speaker_id_fkey"
+            columns: ["speaker_id"]
+            isOneToOne: false
+            referencedRelation: "speakers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clients: {
         Row: {
@@ -131,6 +142,51 @@ export type Database = {
         }
         Relationships: []
       }
+      companies: {
+        Row: {
+          airtable_embed_url: string | null
+          campaign_manager: string | null
+          company_url: string | null
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          notes: string | null
+          org_id: string
+          product_type: string | null
+          tags: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          airtable_embed_url?: string | null
+          campaign_manager?: string | null
+          company_url?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          notes?: string | null
+          org_id: string
+          product_type?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          airtable_embed_url?: string | null
+          campaign_manager?: string | null
+          company_url?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          notes?: string | null
+          org_id?: string
+          product_type?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       evaluations: {
         Row: {
           batch_session_id: string | null
@@ -148,6 +204,7 @@ export type Database = {
           rubric_json: Json | null
           show_description: string | null
           show_title: string | null
+          speaker_id: string | null
           url: string
         }
         Insert: {
@@ -166,6 +223,7 @@ export type Database = {
           rubric_json?: Json | null
           show_description?: string | null
           show_title?: string | null
+          speaker_id?: string | null
           url: string
         }
         Update: {
@@ -184,14 +242,24 @@ export type Database = {
           rubric_json?: Json | null
           show_description?: string | null
           show_title?: string | null
+          speaker_id?: string | null
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_speaker_id_fkey"
+            columns: ["speaker_id"]
+            isOneToOne: false
+            referencedRelation: "speakers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {
           batch_session_id: string | null
           client_id: string
+          company_id: string | null
           created_at: string | null
           date_range_end: string
           date_range_start: string
@@ -201,10 +269,12 @@ export type Database = {
           quarter: string | null
           report_data: Json
           report_name: string
+          speaker_id: string | null
         }
         Insert: {
           batch_session_id?: string | null
           client_id: string
+          company_id?: string | null
           created_at?: string | null
           date_range_end: string
           date_range_start: string
@@ -214,10 +284,12 @@ export type Database = {
           quarter?: string | null
           report_data: Json
           report_name: string
+          speaker_id?: string | null
         }
         Update: {
           batch_session_id?: string | null
           client_id?: string
+          company_id?: string | null
           created_at?: string | null
           date_range_end?: string
           date_range_start?: string
@@ -227,6 +299,7 @@ export type Database = {
           quarter?: string | null
           report_data?: Json
           report_name?: string
+          speaker_id?: string | null
         }
         Relationships: [
           {
@@ -241,6 +314,88 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_speaker_id_fkey"
+            columns: ["speaker_id"]
+            isOneToOne: false
+            referencedRelation: "speakers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      speakers: {
+        Row: {
+          avoid: string[] | null
+          campaign_strategy: string | null
+          company_id: string
+          competitors: Json | null
+          created_at: string | null
+          gender: string | null
+          guest_identity_tags: string[] | null
+          id: string
+          media_kit_url: string | null
+          name: string
+          org_id: string
+          pitch_template: string | null
+          professional_credentials: string[] | null
+          talking_points: string[] | null
+          target_audiences: string[] | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avoid?: string[] | null
+          campaign_strategy?: string | null
+          company_id: string
+          competitors?: Json | null
+          created_at?: string | null
+          gender?: string | null
+          guest_identity_tags?: string[] | null
+          id?: string
+          media_kit_url?: string | null
+          name: string
+          org_id: string
+          pitch_template?: string | null
+          professional_credentials?: string[] | null
+          talking_points?: string[] | null
+          target_audiences?: string[] | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avoid?: string[] | null
+          campaign_strategy?: string | null
+          company_id?: string
+          competitors?: Json | null
+          created_at?: string | null
+          gender?: string | null
+          guest_identity_tags?: string[] | null
+          id?: string
+          media_kit_url?: string | null
+          name?: string
+          org_id?: string
+          pitch_template?: string | null
+          professional_credentials?: string[] | null
+          talking_points?: string[] | null
+          target_audiences?: string[] | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "speakers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
