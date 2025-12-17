@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KPICard } from "./KPICard";
 import { AirtableEmbed } from "./AirtableEmbed";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Calendar, Radio, Users, TrendingUp, DollarSign, User } from "lucide-react";
+import { Calendar, Radio, Users, TrendingUp, User } from "lucide-react";
 
 interface SpeakerAccordionProps {
   speakerBreakdowns: SpeakerBreakdown[];
@@ -57,9 +57,6 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen }: SpeakerAcco
                 <div className="ml-auto flex items-center gap-4 mr-4 text-sm text-muted-foreground">
                   <span>{speaker.kpis.total_booked} booked</span>
                   <span>{speaker.kpis.total_published} published</span>
-                  {speaker.kpis.total_emv && speaker.kpis.total_emv > 0 && (
-                    <span className="text-primary font-medium">{formatCurrency(speaker.kpis.total_emv)} EMV</span>
-                  )}
                 </div>
               </div>
             </AccordionTrigger>
@@ -118,17 +115,6 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen }: SpeakerAcco
                     </CardContent>
                   </Card>
                   
-                  {speaker.kpis.total_emv !== undefined && speaker.kpis.total_emv > 0 && (
-                    <Card className="bg-muted/30">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                          <DollarSign className="h-3 w-3" />
-                          EMV
-                        </div>
-                        <p className="text-2xl font-bold text-primary">{formatCurrency(speaker.kpis.total_emv)}</p>
-                      </CardContent>
-                    </Card>
-                  )}
                 </div>
                 
                 {/* Speaker Airtable Embed */}
