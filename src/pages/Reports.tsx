@@ -550,7 +550,6 @@ export default function Reports() {
     try {
       const { error } = await supabase.from('reports').insert({
         org_id: TEAM_ORG_ID,
-        client_id: isMultiSpeakerMode ? selectedSpeakerIds[0] : selectedSpeakerId, // First speaker for backward compat
         speaker_id: isMultiSpeakerMode ? null : selectedSpeakerId, // null for multi-speaker
         company_id: selectedCompanyId,
         report_name: reportName,
