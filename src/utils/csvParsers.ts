@@ -12,7 +12,7 @@ function normalizeHeaderName(header: string): string {
 }
 
 // Parse Airtable date format: "4/10/2025 9:30am" or "3/27/2025"
-function parseAirtableDate(dateStr: string): Date | null {
+export function parseAirtableDate(dateStr: string): Date | null {
   if (!dateStr || dateStr.trim() === '') return null;
   
   try {
