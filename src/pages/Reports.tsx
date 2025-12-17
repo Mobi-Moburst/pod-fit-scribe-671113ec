@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CompanySpeakerSelector } from "@/components/CompanySpeakerSelector";
-import type { Company, Speaker, MinimalClient } from "@/types/clients";
+import type { Company, Speaker, MinimalClient, Competitor } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput } from "@/utils/reportGenerator";
@@ -208,9 +208,37 @@ export default function Reports() {
   }, [selectedSpeaker, selectedCompany]);
 
   useEffect(() => {
-    if (selectedSpeakerId) {
+    if (isMultiSpeakerMode && selectedSpeakerIds.length > 0) {
+      // Multi-speaker mode: merge competitors from all selected speakers
+      const allCompetitors: { name: string; role: string; count: number }[] = [];
+      const seenNames = new Set<string>();
+      
+      for (const speakerId of selectedSpeakerIds) {
+        const speaker = speakers.find(s => s.id === speakerId);
+        const competitors = (speaker?.competitors as Competitor[]) || [];
+        
+        for (const comp of competitors) {
+          if (!seenNames.has(comp.name.toLowerCase())) {
+            seenNames.add(comp.name.toLowerCase());
+            allCompetitors.push({
+              name: comp.name,
+              role: comp.role,
+              count: 0
+            });
+          }
+        }
+      }
+      
+      if (allCompetitors.length > 0) {
+        setManualSOVMode(true);
+        setCompetitorInterviews(allCompetitors);
+      } else {
+        setManualSOVMode(false);
+        setCompetitorInterviews([]);
+      }
+    } else if (selectedSpeakerId) {
       loadSavedReports();
-      // Load competitors for manual SOV mode
+      // Single-speaker mode: load competitors from selected speaker
       if (speakerAsClient?.competitors && speakerAsClient.competitors.length > 0) {
         setManualSOVMode(true);
         setCompetitorInterviews(
@@ -229,7 +257,49 @@ export default function Reports() {
       setManualSOVMode(false);
       setCompetitorInterviews([]);
     }
-  }, [selectedSpeakerId, speakerAsClient]);
+  }, [selectedSpeakerId, speakerAsClient, isMultiSpeakerMode, selectedSpeakerIds, speakers]);
+
+  // Helper functions for ListenNotes search
+  const generateListenNotesURL = (competitorName: string) => {
+    const startTimestamp = new Date(dateRangeStart).getTime();
+    const endTimestamp = new Date(dateRangeEnd).getTime();
+    
+    const params = new URLSearchParams({
+      q: `"${competitorName}"`,
+      scope: 'episode',
+      sort_by_date: '1',
+      language: 'English',
+      unique_podcasts: '1',
+      date_filter: 'custom',
+      published_after: startTimestamp.toString(),
+      published_before: endTimestamp.toString(),
+    });
+    
+    return `https://www.listennotes.com/search/?${params.toString()}`;
+  };
+
+  const copyListenNotesURL = (competitorName: string) => {
+    if (!dateRangeStart || !dateRangeEnd) {
+      toast({
+        title: "Select date range first",
+        description: "Please set the report date range before searching.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const url = generateListenNotesURL(competitorName);
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Copied!",
+      description: `ListenNotes search URL for ${competitorName} copied to clipboard.`,
+    });
+  };
+
+  const updateCompetitorCount = (index: number, count: number) => {
+    setCompetitorInterviews(prev => 
+      prev.map((comp, i) => i === index ? { ...comp, count } : comp)
+    );
+  };
 
   const loadSavedReports = async () => {
     if (!selectedSpeakerId) return;
@@ -868,9 +938,86 @@ export default function Reports() {
                   
                   {/* SOV/Peer Comparison */}
                   <div className="mb-4">
-                    <Label className="text-sm">Peer Comparison Data</Label>
-                    <Badge variant={sovFile ? "default" : "outline"} className="ml-2 mb-2">{sovFile ? "Uploaded" : "Optional"}</Badge>
-                    <Input type="file" accept=".csv" onChange={(e) => setSOVFile(e.target.files?.[0] || null)} />
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm font-medium">Peer Comparison</Label>
+                        <Badge variant={manualSOVMode && competitorInterviews.some(c => c.count > 0) ? "default" : sovFile ? "default" : "outline"}>
+                          {manualSOVMode && competitorInterviews.some(c => c.count > 0) 
+                            ? "Manual Entry" 
+                            : sovFile 
+                              ? "CSV Uploaded" 
+                              : "Optional"}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    {manualSOVMode && competitorInterviews.length > 0 ? (
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                          Enter podcast appearance counts for each competitor in this period. 
+                          Click search to open ListenNotes or clipboard to copy URL.
+                        </p>
+                        
+                        {competitorInterviews.map((comp, index) => (
+                          <div key={index} className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg border">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{comp.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{comp.role}</p>
+                            </div>
+                            <Input
+                              type="number"
+                              min="0"
+                              className="w-20"
+                              placeholder="0"
+                              value={comp.count || ''}
+                              onChange={(e) => updateCompetitorCount(index, parseInt(e.target.value) || 0)}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyListenNotesURL(comp.name)}
+                              title="Copy ListenNotes search URL"
+                            >
+                              <Clipboard className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (dateRangeStart && dateRangeEnd) {
+                                  window.open(generateListenNotesURL(comp.name), '_blank');
+                                } else {
+                                  toast({
+                                    title: "Select date range first",
+                                    description: "Please set the report date range before searching.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              title="Open ListenNotes search"
+                            >
+                              <Search className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        
+                        {/* CSV upload fallback */}
+                        <div className="pt-2 border-t mt-3">
+                          <p className="text-xs text-muted-foreground mb-2">Or upload CSV instead:</p>
+                          <Input type="file" accept=".csv" onChange={(e) => setSOVFile(e.target.files?.[0] || null)} />
+                          {sovFile && <p className="text-xs text-muted-foreground mt-1">{sovFile.name}</p>}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          No competitors defined for {isMultiSpeakerMode ? 'selected speakers' : 'this speaker'}. 
+                          Upload a SOV CSV or add competitors to the speaker profile.
+                        </p>
+                        <Input type="file" accept=".csv" onChange={(e) => setSOVFile(e.target.files?.[0] || null)} />
+                        {sovFile && <p className="text-xs text-muted-foreground mt-1">{sovFile.name}</p>}
+                      </>
+                    )}
                   </div>
                   
                   {/* GEO */}
