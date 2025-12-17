@@ -180,7 +180,7 @@ export default function Reports() {
       guest_identity_tags: selectedSpeaker.guest_identity_tags || [],
       professional_credentials: selectedSpeaker.professional_credentials || [],
       competitors: (selectedSpeaker.competitors as any) || [],
-      airtable_embed_url: selectedCompany.airtable_embed_url || ''
+      airtable_embed_url: selectedSpeaker.airtable_embed_url || selectedCompany.airtable_embed_url || ''
     };
   }, [selectedSpeaker, selectedCompany]);
 

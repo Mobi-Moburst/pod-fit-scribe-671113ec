@@ -337,6 +337,7 @@ export type Database = {
       }
       speakers: {
         Row: {
+          airtable_embed_url: string | null
           avoid: string[] | null
           campaign_strategy: string | null
           company_id: string
@@ -356,6 +357,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          airtable_embed_url?: string | null
           avoid?: string[] | null
           campaign_strategy?: string | null
           company_id: string
@@ -375,6 +377,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          airtable_embed_url?: string | null
           avoid?: string[] | null
           campaign_strategy?: string | null
           company_id?: string

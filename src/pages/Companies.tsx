@@ -46,6 +46,7 @@ const emptySpeaker: Omit<Speaker, 'id' | 'company_id'> = {
   name: '',
   title: '',
   media_kit_url: '',
+  airtable_embed_url: '',
   gender: undefined,
   target_audiences: [],
   talking_points: [],
@@ -138,6 +139,7 @@ const Companies = () => {
         name: s.name,
         title: s.title || '',
         media_kit_url: s.media_kit_url || '',
+        airtable_embed_url: s.airtable_embed_url || '',
         gender: s.gender,
         target_audiences: s.target_audiences || [],
         talking_points: s.talking_points || [],
@@ -271,6 +273,7 @@ const Companies = () => {
       name: editingSpeaker.name.trim(),
       title: editingSpeaker.title?.trim() || null,
       media_kit_url: editingSpeaker.media_kit_url?.trim() || '',
+      airtable_embed_url: editingSpeaker.airtable_embed_url?.trim() || null,
       gender: editingSpeaker.gender || null,
       target_audiences: editingSpeaker.target_audiences || [],
       talking_points: editingSpeaker.talking_points || [],
@@ -595,6 +598,15 @@ const Companies = () => {
                   onChange={(e) => setEditingSpeaker({ ...editingSpeaker, media_kit_url: e.target.value })}
                   className={editingSpeaker.media_kit_url && /^https?:\/\/.+/.test(editingSpeaker.media_kit_url.trim()) ? 'border-green-500/50' : ''}
                 />
+              </div>
+              <div>
+                <Label>Airtable Embed URL</Label>
+                <Input 
+                  placeholder="https://airtable.com/..."
+                  value={editingSpeaker.airtable_embed_url || ''} 
+                  onChange={(e) => setEditingSpeaker({ ...editingSpeaker, airtable_embed_url: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Speaker-specific Airtable (optional, falls back to company Airtable)</p>
               </div>
               <div className="md:col-span-2">
                 <Label className="flex items-center gap-1">Campaign Strategy <span className="text-red-500">*</span></Label>
