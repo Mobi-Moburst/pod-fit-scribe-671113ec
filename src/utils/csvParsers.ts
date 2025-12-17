@@ -100,7 +100,7 @@ export function parseAirtableCSV(
     errors: result.errors,
   });
   
-  // Filter by scheduled_date_time (recording date) OR date_published
+  // Filter by scheduled_date_time (recording date) OR date_published OR date_booked
   const filtered = result.data.filter(row => {
     let inRange = false;
     
@@ -120,13 +120,12 @@ export function parseAirtableCSV(
       }
     }
     
-    if (!inRange && row.scheduled_date_time) {
-      console.log('[parseAirtableCSV] Filtered out:', {
-        podcast: row.podcast_name,
-        scheduled: row.scheduled_date_time,
-        published: row.date_published,
-        reason: 'outside date range'
-      });
+    // Check booked date (for total_booked KPI - rows booked within quarter)
+    if (!inRange && row.date_booked) {
+      const bookedDate = parseAirtableDate(row.date_booked);
+      if (bookedDate && bookedDate >= startDate && bookedDate <= endDate) {
+        inRange = true;
+      }
     }
     
     return inRange;
