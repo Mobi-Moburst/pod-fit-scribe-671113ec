@@ -955,7 +955,7 @@ export default function Reports() {
                       <div className="space-y-3">
                         <p className="text-xs text-muted-foreground">
                           Enter podcast appearance counts for each competitor in this period. 
-                          Click search to open ListenNotes or clipboard to copy URL.
+                          Click the copy button to get a pre-filled ListenNotes search URL.
                         </p>
                         
                         {competitorInterviews.map((comp, index) => (
@@ -979,24 +979,6 @@ export default function Reports() {
                               title="Copy ListenNotes search URL"
                             >
                               <Clipboard className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (dateRangeStart && dateRangeEnd) {
-                                  window.open(generateListenNotesURL(comp.name), '_blank');
-                                } else {
-                                  toast({
-                                    title: "Select date range first",
-                                    description: "Please set the report date range before searching.",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                              title="Open ListenNotes search"
-                            >
-                              <Search className="h-4 w-4" />
                             </Button>
                           </div>
                         ))}
