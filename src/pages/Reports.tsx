@@ -209,7 +209,8 @@ export default function Reports() {
 
   useEffect(() => {
     if (isMultiSpeakerMode && selectedSpeakerIds.length > 0) {
-      // Multi-speaker mode: merge competitors from all selected speakers
+      // Multi-speaker mode: load saved reports and merge competitors from all selected speakers
+      loadSavedReports();
       const allCompetitors: { name: string; role: string; count: number }[] = [];
       const seenNames = new Set<string>();
       
@@ -257,7 +258,7 @@ export default function Reports() {
       setManualSOVMode(false);
       setCompetitorInterviews([]);
     }
-  }, [selectedSpeakerId, speakerAsClient, isMultiSpeakerMode, selectedSpeakerIds, speakers]);
+  }, [selectedSpeakerId, speakerAsClient, isMultiSpeakerMode, selectedSpeakerIds, speakers, selectedCompanyId]);
 
   // Helper functions for ListenNotes search
   const generateListenNotesURL = (competitorName: string) => {
@@ -302,13 +303,23 @@ export default function Reports() {
   };
 
   const loadSavedReports = async () => {
-    if (!selectedSpeakerId) return;
+    if (!selectedCompanyId) return;
     
-    const { data, error } = await supabase
+    let query = supabase
       .from('reports')
       .select('*')
-      .eq('speaker_id', selectedSpeakerId)
+      .eq('company_id', selectedCompanyId)
       .order('generated_at', { ascending: false });
+    
+    // For single-speaker mode, filter to that speaker's reports
+    // For multi-speaker mode, filter to reports where speaker_id is null
+    if (isMultiSpeakerMode) {
+      query = query.is('speaker_id', null);
+    } else if (selectedSpeakerId) {
+      query = query.eq('speaker_id', selectedSpeakerId);
+    }
+    
+    const { data, error } = await query;
     
     if (error) {
       console.error('Error loading reports:', error);
@@ -636,11 +647,15 @@ export default function Reports() {
       <main className="container mx-auto px-4 py-8 relative z-10">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Saved Reports Section */}
-          {selectedSpeakerId && savedReports.length > 0 && (
+          {selectedCompanyId && savedReports.length > 0 && (
             <Card className="print:hidden">
               <CardHeader>
                 <CardTitle>Saved Reports</CardTitle>
-                <CardDescription>Previously generated reports for this speaker</CardDescription>
+                <CardDescription>
+                  {isMultiSpeakerMode 
+                    ? 'Previously generated company-wide reports' 
+                    : 'Previously generated reports for this speaker'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -656,7 +671,12 @@ export default function Reports() {
                   <TableBody>
                     {savedReports.map(report => (
                       <TableRow key={report.id}>
-                        <TableCell className="font-medium">{report.report_name}</TableCell>
+                        <TableCell className="font-medium">
+                          {report.report_name}
+                          {report.speaker_id === null && (
+                            <Badge variant="secondary" className="ml-2">Multi-Speaker</Badge>
+                          )}
+                        </TableCell>
                         <TableCell>{report.quarter || '-'}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {new Date(report.date_range_start).toLocaleDateString()} - {new Date(report.date_range_end).toLocaleDateString()}
