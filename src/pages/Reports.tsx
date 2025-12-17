@@ -1259,11 +1259,21 @@ export default function Reports() {
                 />
               )}
 
-              {/* Airtable Embed */}
+              {/* Airtable Embed (Company-level for multi-speaker, or single speaker) */}
               {visibleSections.airtableEmbed && (
                 <AirtableEmbed
                   embedUrl={speakerAsClient?.airtable_embed_url}
                   onHide={() => toggleSection('airtableEmbed')}
+                />
+              )}
+
+              {/* Speaker Breakdowns (Multi-speaker reports only) */}
+              {reportData.report_type === 'multi' && 
+               reportData.speaker_breakdowns && 
+               reportData.speaker_breakdowns.length > 0 && (
+                <SpeakerAccordion 
+                  speakerBreakdowns={reportData.speaker_breakdowns}
+                  defaultOpen={[reportData.speaker_breakdowns[0]?.speaker_id]}
                 />
               )}
 
