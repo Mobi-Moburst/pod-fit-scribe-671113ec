@@ -3,7 +3,7 @@ import { BatchRow } from '@/types/batch';
 import { ReportData, PodcastReportEntry, ContentGapAnalysis, SpeakerBreakdown } from '@/types/reports';
 import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow } from '@/types/csv';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
-import { normalizeTitle } from './csvParsers';
+import { normalizeTitle, parseAirtableDate } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
 
 function generateStrategyParagraph(client: MinimalClient): string {
@@ -564,7 +564,8 @@ function mergePodcastData(
 function calculateEnhancedKPIs(
   batchRows: BatchCSVRow[],
   airtableRows: AirtableCSVRow[],
-  podcasts: PodcastReportEntry[]
+  podcasts: PodcastReportEntry[],
+  dateRange: { start: Date; end: Date }
 ): ReportData['kpis'] {
   console.log('[calculateEnhancedKPIs] Airtable summary', {
     totalRows: airtableRows.length,
@@ -622,9 +623,20 @@ function calculateEnhancedKPIs(
     r.action?.toLowerCase().includes('podcast recording')
   ).length;
   
-  const total_booked = airtableRows.filter(r => 
-    r.date_booked && r.date_booked.trim() !== ''
-  ).length;
+  const total_booked = airtableRows.filter(r => {
+    // Only count "podcast recording" actions
+    const isPodcastRecording = r.action?.toLowerCase().includes('podcast recording');
+    if (!isPodcastRecording) return false;
+    
+    // Must have a date_booked
+    if (!r.date_booked || r.date_booked.trim() === '') return false;
+    
+    // date_booked must be within the date range
+    const bookedDate = parseAirtableDate(r.date_booked);
+    if (!bookedDate) return false;
+    
+    return bookedDate >= dateRange.start && bookedDate <= dateRange.end;
+  }).length;
   
   const total_published = airtableRows.filter(r => 
     r.date_published && r.date_published.trim() !== ''
@@ -905,7 +917,7 @@ export async function generateReportFromMultipleCSVs(
   const podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
   
   // Step 4: Calculate enhanced KPIs (now includes total EMV)
-  const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV);
+  const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
   
   // Step 5: Calculate SOV if provided (either CSV or manual)
   const sov_analysis = (sovRows || manualSOVCompetitors)
@@ -967,7 +979,8 @@ export async function generateReportFromMultipleCSVs(
 function calculateSpeakerKPIs(
   batchRows: BatchCSVRow[],
   airtableRows: AirtableCSVRow[],
-  podcasts: PodcastReportEntry[]
+  podcasts: PodcastReportEntry[],
+  dateRange: { start: Date; end: Date }
 ): SpeakerBreakdown['kpis'] {
   // Filter for successful batch rows
   const successfulBatch = batchRows.filter(row => 
@@ -991,9 +1004,20 @@ function calculateSpeakerKPIs(
     return sum + (typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0);
   }, 0);
   
-  const total_booked = airtableRows.filter(r => 
-    r.date_booked && r.date_booked.trim() !== ''
-  ).length;
+  const total_booked = airtableRows.filter(r => {
+    // Only count "podcast recording" actions
+    const isPodcastRecording = r.action?.toLowerCase().includes('podcast recording');
+    if (!isPodcastRecording) return false;
+    
+    // Must have a date_booked
+    if (!r.date_booked || r.date_booked.trim() === '') return false;
+    
+    // date_booked must be within the date range
+    const bookedDate = parseAirtableDate(r.date_booked);
+    if (!bookedDate) return false;
+    
+    return bookedDate >= dateRange.start && bookedDate <= dateRange.end;
+  }).length;
   
   const total_published = airtableRows.filter(r => 
     r.date_published && r.date_published.trim() !== ''
@@ -1047,7 +1071,7 @@ export async function generateMultiSpeakerReport(
     const podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
     
     // Calculate per-speaker KPIs
-    const speakerKpis = calculateSpeakerKPIs(batchRows, airtableRows, podcastsWithEMV);
+    const speakerKpis = calculateSpeakerKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
     
     speakerBreakdowns.push({
       speaker_id: speaker.id,
