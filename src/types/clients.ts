@@ -36,6 +36,7 @@ export interface Speaker {
   name: string;
   title?: string;
   media_kit_url?: string;
+  airtable_embed_url?: string;
   gender?: 'male' | 'female' | 'non_binary' | 'unspecified';
   target_audiences?: string[];
   talking_points?: string[];
