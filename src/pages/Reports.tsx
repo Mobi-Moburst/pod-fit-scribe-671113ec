@@ -517,10 +517,29 @@ export default function Reports() {
   };
 
   const handleSaveReport = async () => {
-    if (!reportData || !reportName || !selectedSpeakerId || !selectedCompanyId) {
+    if (!reportData || !reportName || !selectedCompanyId) {
       toast({
         title: "Missing information",
-        description: "Report name and speaker are required to save.",
+        description: "Report name and company are required to save.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Mode-specific validation
+    if (!isMultiSpeakerMode && !selectedSpeakerId) {
+      toast({
+        title: "Missing information",
+        description: "Please select a speaker for single-speaker reports.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isMultiSpeakerMode && selectedSpeakerIds.length < 2) {
+      toast({
+        title: "Missing information",
+        description: "Please select at least 2 speakers for multi-speaker reports.",
         variant: "destructive",
       });
       return;
@@ -531,14 +550,17 @@ export default function Reports() {
     try {
       const { error } = await supabase.from('reports').insert({
         org_id: TEAM_ORG_ID,
-        client_id: selectedSpeakerId, // Use speaker_id as client_id for backward compatibility
-        speaker_id: selectedSpeakerId,
+        client_id: isMultiSpeakerMode ? selectedSpeakerIds[0] : selectedSpeakerId, // First speaker for backward compat
+        speaker_id: isMultiSpeakerMode ? null : selectedSpeakerId, // null for multi-speaker
         company_id: selectedCompanyId,
         report_name: reportName,
         quarter: quarter || null,
         date_range_start: reportData.date_range?.start.split('T')[0] || new Date().toISOString().split('T')[0],
         date_range_end: reportData.date_range?.end.split('T')[0] || new Date().toISOString().split('T')[0],
-        report_data: reportData as any,
+        report_data: {
+          ...reportData,
+          selected_speaker_ids: isMultiSpeakerMode ? selectedSpeakerIds : undefined,
+        } as any,
       });
       
       if (error) throw error;
