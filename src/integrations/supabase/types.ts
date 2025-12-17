@@ -261,7 +261,6 @@ export type Database = {
       reports: {
         Row: {
           batch_session_id: string | null
-          client_id: string
           company_id: string | null
           created_at: string | null
           date_range_end: string
@@ -276,7 +275,6 @@ export type Database = {
         }
         Insert: {
           batch_session_id?: string | null
-          client_id: string
           company_id?: string | null
           created_at?: string | null
           date_range_end: string
@@ -291,7 +289,6 @@ export type Database = {
         }
         Update: {
           batch_session_id?: string | null
-          client_id?: string
           company_id?: string | null
           created_at?: string | null
           date_range_end?: string
@@ -310,13 +307,6 @@ export type Database = {
             columns: ["batch_session_id"]
             isOneToOne: false
             referencedRelation: "batch_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reports_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
