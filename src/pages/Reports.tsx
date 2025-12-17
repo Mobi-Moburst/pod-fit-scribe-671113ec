@@ -8,11 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CompanySpeakerSelector } from "@/components/CompanySpeakerSelector";
 import type { Company, Speaker, MinimalClient } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
-import { generateReportFromMultipleCSVs } from "@/utils/reportGenerator";
+import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput } from "@/utils/reportGenerator";
 import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV } from "@/utils/csvParsers";
 import { ReportData } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
@@ -25,7 +28,8 @@ import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle } from "lucide-react";
+import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
@@ -34,9 +38,22 @@ export default function Reports() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedSpeakerId, setSelectedSpeakerId] = useState<string | null>(null);
   
-  // File uploads
+  // Multi-speaker mode state
+  const [isMultiSpeakerMode, setIsMultiSpeakerMode] = useState(false);
+  const [selectedSpeakerIds, setSelectedSpeakerIds] = useState<string[]>([]);
+  const [speakerFiles, setSpeakerFiles] = useState<{
+    [speakerId: string]: {
+      batchFile: File | null;
+      airtableFile: File | null;
+    };
+  }>({});
+  const [speakerFileExpanded, setSpeakerFileExpanded] = useState<{ [speakerId: string]: boolean }>({});
+  
+  // Single-speaker file uploads
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [airtableFile, setAirtableFile] = useState<File | null>(null);
+  
+  // Company-level file uploads (shared for multi-speaker)
   const [sovFile, setSOVFile] = useState<File | null>(null);
   const [geoFile, setGeoFile] = useState<File | null>(null);
   const [contentGapFile, setContentGapFile] = useState<File | null>(null);
@@ -158,6 +175,12 @@ export default function Reports() {
   const selectedSpeaker = useMemo(() => speakers.find(s => s.id === selectedSpeakerId), [speakers, selectedSpeakerId]);
   const selectedCompany = useMemo(() => companies.find(c => c.id === selectedCompanyId), [companies, selectedCompanyId]);
   
+  // Speakers for selected company
+  const companySpeakers = useMemo(() => 
+    speakers.filter(s => s.company_id === selectedCompanyId),
+    [speakers, selectedCompanyId]
+  );
+  
   const speakerAsClient: MinimalClient | null = useMemo(() => {
     if (!selectedSpeaker || !selectedCompany) return null;
     return {
@@ -226,7 +249,124 @@ export default function Reports() {
   };
 
   const handleGenerateReport = async () => {
-    // Validation
+    // Common validation
+    if (!dateRangeStart || !dateRangeEnd) {
+      toast({
+        title: "Missing date range",
+        description: "Please select start and end dates.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const startDate = new Date(dateRangeStart);
+    const endDate = new Date(dateRangeEnd);
+    
+    // Multi-speaker mode
+    if (isMultiSpeakerMode) {
+      if (selectedSpeakerIds.length < 2) {
+        toast({
+          title: "Select at least 2 speakers",
+          description: "Multi-speaker reports require at least 2 speakers.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate all speakers have both files
+      for (const speakerId of selectedSpeakerIds) {
+        const files = speakerFiles[speakerId];
+        if (!files?.batchFile || !files?.airtableFile) {
+          const speaker = speakers.find(s => s.id === speakerId);
+          toast({
+            title: "Missing CSV files",
+            description: `${speaker?.name || 'Speaker'} is missing required Batch or Airtable CSV.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
+      if (!selectedCompany) {
+        toast({
+          title: "Company not found",
+          description: "Selected company could not be found.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setIsProcessing(true);
+      
+      try {
+        // Prepare speaker data
+        const speakerDataInputs: SpeakerDataInput[] = [];
+        
+        for (const speakerId of selectedSpeakerIds) {
+          const speaker = speakers.find(s => s.id === speakerId);
+          const files = speakerFiles[speakerId];
+          
+          if (!speaker || !files?.batchFile || !files?.airtableFile) continue;
+          
+          const batchText = await files.batchFile.text();
+          const airtableText = await files.airtableFile.text();
+          
+          const batchRows = parseBatchCSV(batchText);
+          const airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
+          
+          speakerDataInputs.push({
+            speaker: speaker as Speaker,
+            batchRows,
+            airtableRows,
+          });
+        }
+        
+        // Parse company-level CSVs
+        const sovText = sovFile ? await sovFile.text() : null;
+        const geoText = geoFile ? await geoFile.text() : null;
+        const contentGapText = contentGapFile ? await contentGapFile.text() : null;
+        
+        const sovRows = sovText ? parseSOVCSV(sovText) : null;
+        const geoRows = geoText ? parseGEOCSV(geoText) : [];
+        const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
+        
+        // Prepare manual SOV data
+        const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
+          ? competitorInterviews.filter(c => c.count > 0)
+          : null;
+        
+        // Generate multi-speaker report
+        const report = await generateMultiSpeakerReport(
+          speakerDataInputs,
+          sovRows,
+          geoRows,
+          contentGapRows,
+          selectedCompany as Company,
+          reportName || `${selectedCompany.name} - ${quarter || 'Report'}`,
+          quarter,
+          { start: startDate, end: endDate },
+          manualSOVCompetitors
+        );
+        
+        setReportData(report);
+        toast({
+          title: "Multi-speaker report generated",
+          description: `Processed ${report.speaker_breakdowns?.length || 0} speakers with ${report.kpis.total_booked} total bookings.`,
+        });
+      } catch (error) {
+        console.error("Error generating multi-speaker report:", error);
+        toast({
+          title: "Error generating report",
+          description: error instanceof Error ? error.message : "Failed to process CSVs",
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+    
+    // Single-speaker mode (original logic)
     if (!selectedSpeakerId || !speakerAsClient) {
       toast({
         title: "Select a speaker first",
@@ -251,14 +391,6 @@ export default function Reports() {
       });
       return;
     }
-    if (!dateRangeStart || !dateRangeEnd) {
-      toast({
-        title: "Missing date range",
-        description: "Please select start and end dates.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setIsProcessing(true);
     
@@ -271,9 +403,6 @@ export default function Reports() {
       const contentGapText = contentGapFile ? await contentGapFile.text() : null;
       
       // Parse CSVs
-      const startDate = new Date(dateRangeStart);
-      const endDate = new Date(dateRangeEnd);
-      
       const batchRows = parseBatchCSV(batchText);
       const airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
@@ -285,29 +414,19 @@ export default function Reports() {
         ? competitorInterviews.filter(c => c.count > 0)
         : null;
       
-      // Use speakerAsClient for report generation
-      if (!speakerAsClient) {
-        toast({
-          title: "Speaker not found",
-          description: "Selected speaker could not be found.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       // Generate report
       const report = await generateReportFromMultipleCSVs(
         batchRows,
         airtableRows,
         sovRows,
-        null, // Competitor names now come from CSV peer column or manual input
+        null,
         geoRows,
         contentGapRows,
         speakerAsClient,
         reportName || `${speakerAsClient.name} - ${quarter || 'Report'}`,
         quarter,
         { start: startDate, end: endDate },
-        manualSOVCompetitors // Pass manual SOV data
+        manualSOVCompetitors
       );
       
       setReportData(report);
@@ -491,16 +610,108 @@ export default function Reports() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Company/Speaker Selection */}
-              <div>
-                <Label className="mb-2 block">Select Company & Speaker *</Label>
-                <CompanySpeakerSelector
-                  companies={companies}
-                  speakers={speakers}
-                  selectedCompanyId={selectedCompanyId}
-                  selectedSpeakerId={selectedSpeakerId}
-                  onCompanyChange={setSelectedCompanyId}
-                  onSpeakerChange={setSelectedSpeakerId}
-                />
+              <div className="space-y-4">
+                <Label className="mb-2 block">Select Company{!isMultiSpeakerMode && ' & Speaker'} *</Label>
+                
+                {!isMultiSpeakerMode ? (
+                  <CompanySpeakerSelector
+                    companies={companies}
+                    speakers={speakers}
+                    selectedCompanyId={selectedCompanyId}
+                    selectedSpeakerId={selectedSpeakerId}
+                    onCompanyChange={(id) => {
+                      setSelectedCompanyId(id);
+                      setSelectedSpeakerId(null);
+                    }}
+                    onSpeakerChange={setSelectedSpeakerId}
+                  />
+                ) : (
+                  <Select
+                    value={selectedCompanyId || ''}
+                    onValueChange={(id) => {
+                      setSelectedCompanyId(id);
+                      setSelectedSpeakerIds([]);
+                      setSpeakerFiles({});
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map(company => (
+                        <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {/* Multi-speaker toggle - only show when company has 2+ speakers */}
+                {selectedCompanyId && companySpeakers.length >= 2 && (
+                  <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Multi-Speaker Report</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Generate a single report combining multiple speakers
+                      </p>
+                    </div>
+                    <Switch
+                      checked={isMultiSpeakerMode}
+                      onCheckedChange={(checked) => {
+                        setIsMultiSpeakerMode(checked);
+                        if (checked) {
+                          setSelectedSpeakerId(null);
+                          setSelectedSpeakerIds([]);
+                          setSpeakerFiles({});
+                          setBatchFile(null);
+                          setAirtableFile(null);
+                        } else {
+                          setSelectedSpeakerIds([]);
+                          setSpeakerFiles({});
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+                
+                {/* Multi-speaker selection checkboxes */}
+                {isMultiSpeakerMode && selectedCompanyId && companySpeakers.length >= 2 && (
+                  <div className="space-y-3 border rounded-lg p-4">
+                    <Label className="text-sm">Select Speakers (minimum 2)</Label>
+                    <div className="space-y-2">
+                      {companySpeakers.map(speaker => (
+                        <div key={speaker.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`speaker-${speaker.id}`}
+                            checked={selectedSpeakerIds.includes(speaker.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedSpeakerIds(prev => [...prev, speaker.id]);
+                                setSpeakerFileExpanded(prev => ({ ...prev, [speaker.id]: true }));
+                              } else {
+                                setSelectedSpeakerIds(prev => prev.filter(id => id !== speaker.id));
+                                setSpeakerFiles(prev => {
+                                  const updated = { ...prev };
+                                  delete updated[speaker.id];
+                                  return updated;
+                                });
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`speaker-${speaker.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
+                            {speaker.name}
+                            {speaker.title && <span className="text-muted-foreground"> – {speaker.title}</span>}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedSpeakerIds.length > 0 && selectedSpeakerIds.length < 2 && (
+                      <p className="text-xs text-destructive">Select at least 2 speakers for a multi-speaker report</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Date Range */}
@@ -565,212 +776,133 @@ export default function Reports() {
 
               {/* CSV Uploads */}
               <div className="space-y-4">
-                {/* Batch CSV - Required */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Label>Batch Results CSV *</Label>
-                    <Badge variant={batchFile ? "default" : "secondary"}>
-                      {batchFile ? "Uploaded" : "Required"}
-                    </Badge>
+                {/* Multi-speaker per-speaker CSV uploads */}
+                {isMultiSpeakerMode && selectedSpeakerIds.length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="font-medium">Per-Speaker CSV Files</Label>
+                    {selectedSpeakerIds.map(speakerId => {
+                      const speaker = speakers.find(s => s.id === speakerId);
+                      const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
+                      const isExpanded = speakerFileExpanded[speakerId] ?? true;
+                      
+                      return (
+                        <Collapsible key={speakerId} open={isExpanded} onOpenChange={(open) => setSpeakerFileExpanded(prev => ({ ...prev, [speakerId]: open }))}>
+                          <div className="border rounded-lg">
+                            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50">
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                <span className="font-medium">{speaker?.name}</span>
+                                {files.batchFile && files.airtableFile && (
+                                  <Badge variant="default" className="ml-2">Ready</Badge>
+                                )}
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="px-4 pb-4 space-y-3">
+                              <div>
+                                <Label className="text-xs">Batch Results CSV *</Label>
+                                <Input
+                                  type="file"
+                                  accept=".csv"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0] || null;
+                                    setSpeakerFiles(prev => ({
+                                      ...prev,
+                                      [speakerId]: { ...prev[speakerId], batchFile: file }
+                                    }));
+                                  }}
+                                />
+                                {files.batchFile && <p className="text-xs text-muted-foreground mt-1">{files.batchFile.name}</p>}
+                              </div>
+                              <div>
+                                <Label className="text-xs">Airtable Report CSV *</Label>
+                                <Input
+                                  type="file"
+                                  accept=".csv"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0] || null;
+                                    setSpeakerFiles(prev => ({
+                                      ...prev,
+                                      [speakerId]: { ...prev[speakerId], airtableFile: file }
+                                    }));
+                                  }}
+                                />
+                                {files.airtableFile && <p className="text-xs text-muted-foreground mt-1">{files.airtableFile.name}</p>}
+                              </div>
+                            </CollapsibleContent>
+                          </div>
+                        </Collapsible>
+                      );
+                    })}
                   </div>
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={(e) => setBatchFile(e.target.files?.[0] || null)}
-                  />
-                  {batchFile && (
-                    <p className="text-xs text-muted-foreground mt-1">{batchFile.name}</p>
-                  )}
-                </div>
+                )}
+                
+                {/* Single-speaker CSV uploads */}
+                {!isMultiSpeakerMode && (
+                  <>
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Label>Batch Results CSV *</Label>
+                        <Badge variant={batchFile ? "default" : "secondary"}>
+                          {batchFile ? "Uploaded" : "Required"}
+                        </Badge>
+                      </div>
+                      <Input type="file" accept=".csv" onChange={(e) => setBatchFile(e.target.files?.[0] || null)} />
+                      {batchFile && <p className="text-xs text-muted-foreground mt-1">{batchFile.name}</p>}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Label>Airtable Report CSV *</Label>
+                        <Badge variant={airtableFile ? "default" : "secondary"}>
+                          {airtableFile ? "Uploaded" : "Required"}
+                        </Badge>
+                      </div>
+                      <Input type="file" accept=".csv" onChange={(e) => setAirtableFile(e.target.files?.[0] || null)} />
+                      {airtableFile && <p className="text-xs text-muted-foreground mt-1">{airtableFile.name}</p>}
+                    </div>
+                  </>
+                )}
 
-                {/* Airtable CSV - Required */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Label>Airtable Report CSV *</Label>
-                    <Badge variant={airtableFile ? "default" : "secondary"}>
-                      {airtableFile ? "Uploaded" : "Required"}
-                    </Badge>
-                  </div>
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={(e) => setAirtableFile(e.target.files?.[0] || null)}
-                  />
-                  {airtableFile && (
-                    <p className="text-xs text-muted-foreground mt-1">{airtableFile.name}</p>
-                  )}
-                </div>
-
-                {/* Peer Comparison Data - Optional */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Label>Peer Comparison Data</Label>
+                {/* Company-level CSVs (shared) */}
+                <div className="pt-4 border-t">
+                  <Label className="font-medium mb-3 block">{isMultiSpeakerMode ? 'Company-Level Data (Shared)' : 'Optional Data'}</Label>
+                  
+                  {/* SOV/Peer Comparison */}
+                  <div className="mb-4">
+                    <Label className="text-sm">Peer Comparison Data</Label>
+                    <Badge variant={sovFile ? "default" : "outline"} className="ml-2 mb-2">{sovFile ? "Uploaded" : "Optional"}</Badge>
+                    <Input type="file" accept=".csv" onChange={(e) => setSOVFile(e.target.files?.[0] || null)} />
                   </div>
                   
-                  {manualSOVMode && competitorInterviews.length > 0 ? (
-                    <div className="space-y-4 border rounded-md p-4 bg-muted/30">
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Quick Search: Click to search ListenNotes for each competitor's podcast appearances, then enter interview counts below.
-                      </p>
-                      
-                      {competitorInterviews.map((comp, idx) => (
-                        <div key={idx} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-sm">{comp.name}</p>
-                              <p className="text-xs text-muted-foreground">{comp.role}</p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (!dateRangeStart || !dateRangeEnd) {
-                                  toast({
-                                    title: "Date range required",
-                                    description: "Please set the report date range first.",
-                                    variant: "destructive",
-                                  });
-                                  return;
-                                }
-                                
-                                // Convert date strings to Unix milliseconds
-                                const startTimestamp = new Date(dateRangeStart).getTime();
-                                const endTimestamp = new Date(dateRangeEnd).getTime();
-                                
-                                // Build comprehensive search URL with all filters
-                                const searchUrl = `https://www.listennotes.com/search/?q=${encodeURIComponent(comp.name)}&sort_by_date=1&scope=episode&offset=0&date_filter=custom&published_after=${startTimestamp}&published_before=${endTimestamp}&unique_podcasts=1&language=English&country=Any%20region&len_min=0&len_max=0`;
-                                
-                                navigator.clipboard.writeText(searchUrl);
-                                toast({
-                                  title: "Search URL copied!",
-                                  description: `Filtered for ${dateRangeStart} to ${dateRangeEnd}, unique podcasts only.`,
-                                });
-                              }}
-                            >
-                              <Clipboard className="h-4 w-4 mr-2" />
-                              Copy Search URL
-                            </Button>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Interview Count</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              placeholder="0"
-                              value={comp.count || ''}
-                              onChange={(e) => {
-                                const updated = [...competitorInterviews];
-                                updated[idx].count = parseInt(e.target.value) || 0;
-                                setCompetitorInterviews(updated);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <div className="pt-3 border-t">
-                        <p className="text-sm text-muted-foreground mb-2">Or upload CSV instead:</p>
-                        <Input
-                          type="file"
-                          accept=".csv"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] || null;
-                            setSOVFile(file);
-                            if (file) setManualSOVMode(false);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {selectedSpeakerId && competitorInterviews.length === 0 && !sovFile && (
-                        <p className="text-sm text-muted-foreground mb-3 p-3 border border-dashed rounded-md bg-muted/20">
-                          No peers defined for this speaker. <a href="/companies" className="text-primary underline hover:no-underline">Define peers in Companies tab</a> or upload a CSV below.
-                        </p>
-                      )}
-                      <Badge variant={sovFile ? "default" : "outline"} className="mb-2">
-                        {sovFile ? "Uploaded" : "Optional"}
-                      </Badge>
-                      <Input
-                        type="file"
-                        accept=".csv"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          setSOVFile(file);
-                        }}
-                      />
-                      {sovFile && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {sovFile.name} - Competitor names will be read from the "peer" column
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* GEO CSV - Optional */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Label>GEO CSV (Optional)</Label>
-                    <Badge variant={geoFile ? "default" : "outline"}>
-                      {geoFile ? "Uploaded" : "Optional"}
-                    </Badge>
+                  {/* GEO */}
+                  <div className="mb-4">
+                    <Label className="text-sm">GEO CSV</Label>
+                    <Badge variant={geoFile ? "default" : "outline"} className="ml-2 mb-2">{geoFile ? "Uploaded" : "Optional"}</Badge>
+                    <Input type="file" accept=".csv" onChange={(e) => setGeoFile(e.target.files?.[0] || null)} />
                   </div>
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      setGeoFile(file);
-                    }}
-                  />
-                  {geoFile && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {geoFile.name}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Upload Spotlight GEO export - will filter for podcasts.apple.com domain entries only
-                  </p>
-                </div>
-
-                {/* Content Gap CSV - Optional */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Label>Content Gap Analysis CSV (Optional)</Label>
-                    <Badge variant={contentGapFile ? "default" : "outline"}>
-                      {contentGapFile ? "Uploaded" : "Optional"}
-                    </Badge>
+                  
+                  {/* Content Gap */}
+                  <div>
+                    <Label className="text-sm">Content Gap Analysis CSV</Label>
+                    <Badge variant={contentGapFile ? "default" : "outline"} className="ml-2 mb-2">{contentGapFile ? "Uploaded" : "Optional"}</Badge>
+                    <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
                   </div>
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      setContentGapFile(file);
-                    }}
-                  />
-                  {contentGapFile && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {contentGapFile.name}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Upload Spotlight Content Gap Analysis export - analyzes AI visibility gaps
-                  </p>
                 </div>
               </div>
 
               {/* Generate Button */}
               <Button
                 onClick={handleGenerateReport}
-                disabled={isProcessing || !selectedSpeakerId || !batchFile || !airtableFile || !dateRangeStart || !dateRangeEnd}
+                disabled={isProcessing || !dateRangeStart || !dateRangeEnd || 
+                  (isMultiSpeakerMode 
+                    ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => !speakerFiles[id]?.batchFile || !speakerFiles[id]?.airtableFile)
+                    : !selectedSpeakerId || !batchFile || !airtableFile
+                  )
+                }
                 className="w-full"
                 size="lg"
               >
                 <Upload className="mr-2 h-5 w-5" />
-                {isProcessing ? 'Processing...' : 'Generate Report'}
+                {isProcessing ? 'Processing...' : isMultiSpeakerMode ? 'Generate Multi-Speaker Report' : 'Generate Report'}
               </Button>
             </CardContent>
           </Card>

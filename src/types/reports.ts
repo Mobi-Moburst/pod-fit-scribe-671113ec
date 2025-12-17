@@ -33,6 +33,26 @@ export interface ContentGapAnalysis {
   }>;
 }
 
+// Per-speaker breakdown for multi-speaker reports
+export interface SpeakerBreakdown {
+  speaker_id: string;
+  speaker_name: string;
+  speaker_title?: string;
+  airtable_embed_url?: string;
+  
+  // Per-speaker KPIs (subset - individual counts/reach)
+  kpis: {
+    total_booked: number;
+    total_published: number;
+    total_reach: number;
+    total_social_reach: number;
+    avg_score: number;
+    total_emv?: number;
+  };
+  
+  podcasts: PodcastReportEntry[]; // Individual speaker podcasts
+}
+
 export interface PodcastReportEntry {
   // From Batch CSV
   show_title: string;
@@ -74,6 +94,12 @@ export interface ReportData {
     end: string; // ISO date
   };
   cpm: number; // Default 50
+  
+  // Multi-speaker report fields
+  report_type?: 'single' | 'multi';
+  company_name?: string; // For multi-speaker reports
+  selected_speaker_ids?: string[];
+  speaker_breakdowns?: SpeakerBreakdown[];
   
   kpis: {
     // Existing from Batch CSV

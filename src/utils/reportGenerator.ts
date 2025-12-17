@@ -1,6 +1,6 @@
-import { MinimalClient } from '@/types/clients';
+import { MinimalClient, Speaker, Company } from '@/types/clients';
 import { BatchRow } from '@/types/batch';
-import { ReportData, PodcastReportEntry, ContentGapAnalysis } from '@/types/reports';
+import { ReportData, PodcastReportEntry, ContentGapAnalysis, SpeakerBreakdown } from '@/types/reports';
 import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow } from '@/types/csv';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { normalizeTitle } from './csvParsers';
@@ -959,5 +959,319 @@ export async function generateReportFromMultipleCSVs(
     geo_analysis,
     content_gap_analysis,
     next_quarter_strategy,
+    report_type: 'single',
   };
+}
+
+// Per-speaker KPI calculation helper
+function calculateSpeakerKPIs(
+  batchRows: BatchCSVRow[],
+  airtableRows: AirtableCSVRow[],
+  podcasts: PodcastReportEntry[]
+): SpeakerBreakdown['kpis'] {
+  // Filter for successful batch rows
+  const successfulBatch = batchRows.filter(row => 
+    (!row.status || row.status === 'success') && row.verdict && row.overall_score
+  );
+  
+  const scores = successfulBatch.map(r => parseFloat(String(r.overall_score)) || 0);
+  const avg_score = scores.length > 0 
+    ? scores.reduce((a, b) => a + b, 0) / scores.length 
+    : 0;
+  
+  const total_reach = successfulBatch.reduce((sum, r) => {
+    const listeners = r.listeners_per_episode || 0;
+    const parsed = typeof listeners === 'string' ? parseFloat(listeners) : listeners;
+    return sum + (typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0);
+  }, 0);
+  
+  const total_social_reach = successfulBatch.reduce((sum, r) => {
+    const social = r.social_reach || 0;
+    const parsed = typeof social === 'string' ? parseFloat(social) : social;
+    return sum + (typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0);
+  }, 0);
+  
+  const total_booked = airtableRows.filter(r => 
+    r.date_booked && r.date_booked.trim() !== ''
+  ).length;
+  
+  const total_published = airtableRows.filter(r => 
+    r.date_published && r.date_published.trim() !== ''
+  ).length;
+  
+  const total_emv = podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
+  
+  return {
+    total_booked,
+    total_published,
+    total_reach,
+    total_social_reach,
+    avg_score: Math.round(avg_score * 10) / 10,
+    total_emv,
+  };
+}
+
+// Multi-speaker report generation
+export interface SpeakerDataInput {
+  speaker: Speaker;
+  batchRows: BatchCSVRow[];
+  airtableRows: AirtableCSVRow[];
+}
+
+export async function generateMultiSpeakerReport(
+  speakerData: SpeakerDataInput[],
+  // Company-level shared data
+  sovRows: SOVCSVRow[] | null,
+  geoRows: GEOCSVRow[],
+  contentGapRows: ContentGapCSVRow[],
+  company: Company,
+  reportName: string,
+  quarter: string,
+  dateRange: { start: Date; end: Date },
+  manualSOVCompetitors?: { name: string; role: string; count: number }[] | null,
+  cpm: number = 50
+): Promise<ReportData> {
+  
+  // Process each speaker's data
+  const speakerBreakdowns: SpeakerBreakdown[] = [];
+  let allPodcasts: PodcastReportEntry[] = [];
+  let allBatchRows: BatchCSVRow[] = [];
+  let allAirtableRows: AirtableCSVRow[] = [];
+  
+  for (const { speaker, batchRows, airtableRows } of speakerData) {
+    // Merge per-speaker batch + airtable data
+    const mergedPodcasts = mergePodcastData(batchRows, airtableRows);
+    
+    // Scrape durations and calculate EMV
+    const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
+    const podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
+    
+    // Calculate per-speaker KPIs
+    const speakerKpis = calculateSpeakerKPIs(batchRows, airtableRows, podcastsWithEMV);
+    
+    speakerBreakdowns.push({
+      speaker_id: speaker.id,
+      speaker_name: speaker.name,
+      speaker_title: speaker.title || undefined,
+      airtable_embed_url: speaker.airtable_embed_url || undefined,
+      kpis: speakerKpis,
+      podcasts: podcastsWithEMV,
+    });
+    
+    // Aggregate for company-level calculations
+    allPodcasts = [...allPodcasts, ...podcastsWithEMV];
+    allBatchRows = [...allBatchRows, ...batchRows];
+    allAirtableRows = [...allAirtableRows, ...airtableRows];
+  }
+  
+  // Calculate aggregated company KPIs
+  const aggregatedKpis = calculateAggregatedKPIs(speakerBreakdowns, allBatchRows, allAirtableRows, allPodcasts);
+  
+  // Calculate company-level SOV
+  const sov_analysis = (sovRows || manualSOVCompetitors)
+    ? calculateSOVAnalysis(allAirtableRows, sovRows, null, manualSOVCompetitors)
+    : undefined;
+  
+  // Calculate company-level GEO
+  const geo_analysis = geoRows && geoRows.length > 0
+    ? calculateGEOAnalysis(geoRows)
+    : undefined;
+  
+  // Calculate company-level Content Gap
+  const content_gap_analysis = contentGapRows && contentGapRows.length > 0
+    ? calculateContentGapAnalysis(contentGapRows)
+    : undefined;
+  
+  // Create company-level client for campaign overview
+  const companyClient: MinimalClient = {
+    id: company.id,
+    name: company.name,
+    company: company.name,
+    company_url: company.company_url || '',
+    logo_url: company.logo_url || '',
+    brand_colors: company.brand_colors as any || undefined,
+    media_kit_url: '',
+    // Aggregate target audiences and talking points from first speaker (for overview)
+    target_audiences: speakerData[0]?.speaker.target_audiences || [],
+    talking_points: speakerData[0]?.speaker.talking_points || [],
+    avoid: [],
+    notes: company.notes || '',
+    campaign_strategy: speakerData[0]?.speaker.campaign_strategy || '',
+    campaign_manager: company.campaign_manager || '',
+    pitch_template: '',
+    title: '',
+    gender: undefined,
+    guest_identity_tags: [],
+    professional_credentials: [],
+    competitors: [],
+    airtable_embed_url: company.airtable_embed_url || ''
+  };
+  
+  // Generate company-level executive summary
+  const executiveSummary = generateMultiSpeakerExecutiveSummary(
+    company.name,
+    speakerBreakdowns,
+    aggregatedKpis,
+    quarter
+  );
+  
+  // Generate next quarter strategy
+  const next_quarter_strategy = generateNextQuarterStrategy(companyClient, aggregatedKpis, quarter);
+  
+  return {
+    client: companyClient,
+    generated_at: new Date().toISOString(),
+    batch_name: reportName,
+    quarter,
+    date_range: {
+      start: dateRange.start.toISOString(),
+      end: dateRange.end.toISOString(),
+    },
+    cpm,
+    kpis: aggregatedKpis,
+    campaign_overview: {
+      strategy: generateCompanyStrategyParagraph(company.name, speakerBreakdowns),
+      executive_summary: executiveSummary,
+      target_audiences: speakerData[0]?.speaker.target_audiences?.slice(0, 3) || [],
+      talking_points: speakerData[0]?.speaker.talking_points?.slice(0, 3) || [],
+    },
+    podcasts: allPodcasts.sort((a, b) => b.overall_score - a.overall_score),
+    sov_analysis,
+    geo_analysis,
+    content_gap_analysis,
+    next_quarter_strategy,
+    report_type: 'multi',
+    company_name: company.name,
+    selected_speaker_ids: speakerData.map(s => s.speaker.id),
+    speaker_breakdowns: speakerBreakdowns,
+  };
+}
+
+// Calculate aggregated KPIs from speaker breakdowns
+function calculateAggregatedKPIs(
+  speakerBreakdowns: SpeakerBreakdown[],
+  allBatchRows: BatchCSVRow[],
+  allAirtableRows: AirtableCSVRow[],
+  allPodcasts: PodcastReportEntry[]
+): ReportData['kpis'] {
+  // Sum metrics
+  const total_booked = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_booked, 0);
+  const total_published = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_published, 0);
+  const total_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_reach, 0);
+  const total_social_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_social_reach, 0);
+  const total_emv = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_emv || 0), 0);
+  
+  // Average score
+  const allScores = speakerBreakdowns.map(s => s.kpis.avg_score).filter(s => s > 0);
+  const avg_score = allScores.length > 0
+    ? allScores.reduce((a, b) => a + b, 0) / allScores.length
+    : 0;
+  
+  // Calculate verdict counts from all batch rows
+  const successfulBatch = allBatchRows.filter(row => 
+    (!row.status || row.status === 'success') && row.verdict && row.overall_score
+  );
+  const fit_count = successfulBatch.filter(r => r.verdict === 'Fit').length;
+  const consider_count = successfulBatch.filter(r => r.verdict === 'Consider').length;
+  const not_fit_count = successfulBatch.filter(r => r.verdict === 'Not').length;
+  
+  // Calculate top categories
+  const categoryCount = new Map<string, number>();
+  successfulBatch.forEach(r => {
+    if (r.categories) {
+      const cats = r.categories.split(',').map(c => c.trim());
+      cats.forEach(cat => {
+        if (cat) categoryCount.set(cat, (categoryCount.get(cat) || 0) + 1);
+      });
+    }
+  });
+  
+  const top_categories = Array.from(categoryCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
+  
+  // Count total interviews
+  const total_interviews = allAirtableRows.filter(r => 
+    r.action?.toLowerCase().includes('podcast recording')
+  ).length;
+  
+  return {
+    total_evaluated: successfulBatch.length,
+    fit_count,
+    consider_count,
+    not_fit_count,
+    avg_score: Math.round(avg_score * 10) / 10,
+    total_reach,
+    total_social_reach,
+    top_categories,
+    total_interviews,
+    total_booked,
+    total_published,
+    total_emv,
+    sov_percentage: 0,
+    geo_score: 0,
+  };
+}
+
+// Generate company strategy paragraph for multi-speaker
+function generateCompanyStrategyParagraph(
+  companyName: string,
+  speakerBreakdowns: SpeakerBreakdown[]
+): string {
+  const speakerNames = speakerBreakdowns.map(s => s.speaker_name).join(', ');
+  const speakerCount = speakerBreakdowns.length;
+  
+  return `This multi-speaker campaign positions ${companyName} as an industry thought leader through ${speakerCount} speakers: ${speakerNames}. Each speaker brings unique expertise and perspectives to reach diverse podcast audiences, collectively building the company's visibility and authority in the space.`;
+}
+
+// Generate executive summary for multi-speaker
+function generateMultiSpeakerExecutiveSummary(
+  companyName: string,
+  speakerBreakdowns: SpeakerBreakdown[],
+  kpis: ReportData['kpis'],
+  quarter: string
+): string {
+  const { total_booked, total_published, total_reach, total_social_reach, total_emv } = kpis;
+  const speakerCount = speakerBreakdowns.length;
+  
+  let summary = `In ${quarter}, ${companyName}'s podcast campaign featured ${speakerCount} speakers across strategic podcast placements. `;
+  
+  if (total_booked > 0 || total_published > 0) {
+    summary += `Collectively, we secured ${total_booked} podcast booking${total_booked !== 1 ? 's' : ''} this quarter`;
+    
+    if (total_published > 0) {
+      summary += ` with ${total_published} episode${total_published !== 1 ? 's' : ''} now live`;
+    }
+    
+    if (total_reach > 0) {
+      summary += `, reaching an estimated ${formatNumber(total_reach)} monthly listeners`;
+    }
+    
+    if (total_social_reach > 0) {
+      summary += ` with potential amplification to ~${formatNumber(total_social_reach)} through host and show social platforms`;
+    }
+    
+    summary += '. ';
+  }
+  
+  // Add speaker breakdown summary
+  const speakerSummaries = speakerBreakdowns
+    .map(s => `${s.speaker_name.split(' ')[0]} (${s.kpis.total_booked} bookings)`)
+    .join(', ');
+  
+  summary += `Speaker breakdown: ${speakerSummaries}.`;
+  
+  if (total_emv && total_emv > 0) {
+    summary += ` The combined campaign generated an estimated ${formatCurrency(total_emv)} in earned media value.`;
+  }
+  
+  return summary;
+}
+
+// Helper: Format currency
+function formatCurrency(n: number): string {
+  if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `$${(n / 1000).toFixed(1)}K`;
+  return `$${n.toLocaleString()}`;
 }
