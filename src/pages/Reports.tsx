@@ -1211,7 +1211,7 @@ export default function Reports() {
                       <KPICard
                         title="Total Reach"
                         value={reportData.kpis.total_reach.toLocaleString()}
-                        subtitle="Listeners per episode"
+                        subtitle="Avg. monthly listeners per episode"
                         icon={Users}
                         onHide={() => toggleSection('totalReach')}
                       />
