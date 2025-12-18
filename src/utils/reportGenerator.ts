@@ -3,7 +3,7 @@ import { BatchRow } from '@/types/batch';
 import { ReportData, PodcastReportEntry, ContentGapAnalysis, SpeakerBreakdown } from '@/types/reports';
 import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow } from '@/types/csv';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
-import { normalizeTitle, parseAirtableDate } from './csvParsers';
+import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
 
 function generateStrategyParagraph(client: MinimalClient): string {
@@ -467,6 +467,32 @@ async function batchScrapeDurations(
   return Promise.all(scrapeTasks);
 }
 
+// Find matching Airtable row using exact or partial title matching
+function findAirtableMatch(
+  batchTitle: string,
+  airtableRows: AirtableCSVRow[]
+): AirtableCSVRow | undefined {
+  const normalizedBatch = normalizeTitle(batchTitle);
+  
+  // First try exact match
+  const exactMatch = airtableRows.find(row => 
+    normalizeTitle(row.podcast_name) === normalizedBatch
+  );
+  if (exactMatch) return exactMatch;
+  
+  // Then try partial/prefix match
+  const partialMatch = airtableRows.find(row => 
+    titlesMatch(batchTitle, row.podcast_name)
+  );
+  if (partialMatch) {
+    console.log('[findAirtableMatch] Partial match found:', {
+      batchTitle,
+      airtableName: partialMatch.podcast_name,
+    });
+  }
+  return partialMatch;
+}
+
 // Merge Batch + Airtable by podcast title
 function mergePodcastData(
   batchRows: BatchCSVRow[],
@@ -491,27 +517,21 @@ function mergePodcastData(
     })),
   });
   
-  // Create lookup maps
-  const airtableMap = new Map<string, AirtableCSVRow>();
-  airtableRows.forEach(row => {
-    const normalized = normalizeTitle(row.podcast_name);
-    airtableMap.set(normalized, row);
-  });
-  
-  const batchMap = new Map<string, BatchCSVRow>();
-  successfulBatch.forEach(row => {
-    const normalized = normalizeTitle(row.show_title);
-    batchMap.set(normalized, row);
-  });
-  
   const merged: PodcastReportEntry[] = [];
-  const processedTitles = new Set<string>();
+  const processedAirtableTitles = new Set<string>();
+  const processedBatchTitles = new Set<string>();
   
-  // First, process all batch rows with Airtable matches
+  // First, process all batch rows with Airtable matches (exact or partial)
   successfulBatch.forEach(batchRow => {
-    const normalizedTitle = normalizeTitle(batchRow.show_title);
-    const airtableRow = airtableMap.get(normalizedTitle);
-    processedTitles.add(normalizedTitle);
+    const normalizedBatchTitle = normalizeTitle(batchRow.show_title);
+    processedBatchTitles.add(normalizedBatchTitle);
+    
+    // Find matching Airtable row (exact or partial)
+    const airtableRow = findAirtableMatch(batchRow.show_title, airtableRows);
+    
+    if (airtableRow) {
+      processedAirtableTitles.add(normalizeTitle(airtableRow.podcast_name));
+    }
     
     merged.push({
       show_title: batchRow.show_title,
@@ -532,12 +552,18 @@ function mergePodcastData(
     });
   });
   
-  // Then, add Airtable-only podcasts (not in batch) with "Podcast recording" action
+  // Then, add Airtable-only podcasts (not matched to batch) with "Podcast recording" action
   airtableRows.forEach(airtableRow => {
-    const normalizedTitle = normalizeTitle(airtableRow.podcast_name);
+    const normalizedAirtableTitle = normalizeTitle(airtableRow.podcast_name);
+    
+    // Check if already processed via exact or partial match
+    const alreadyProcessed = processedAirtableTitles.has(normalizedAirtableTitle) ||
+      Array.from(processedBatchTitles).some(batchTitle => 
+        titlesMatch(airtableRow.podcast_name, batchTitle) || normalizedAirtableTitle === batchTitle
+      );
     
     // Only include if not already processed AND has "Podcast recording" action
-    if (!processedTitles.has(normalizedTitle) && 
+    if (!alreadyProcessed && 
         airtableRow.action?.toLowerCase().includes('podcast recording')) {
       merged.push({
         show_title: airtableRow.podcast_name,
