@@ -27,12 +27,21 @@ export const ReachAnalysisDialog = ({
   // Calculate Estimated Annual Listenership
   const estimatedAnnualListenership = totalListenersPerEpisode * 12;
 
-  // Find highest reach show (by monthly_listens)
+  // Find highest reach show (by monthly_listens) - parse to numbers for correct comparison
   const highestReachShow = podcasts.reduce((max, p) => {
-    const currentMonthly = p.monthly_listens || 0;
-    const maxMonthly = max?.monthly_listens || 0;
+    const currentMonthly = typeof p.monthly_listens === 'string' 
+      ? parseFloat(p.monthly_listens) || 0
+      : (p.monthly_listens || 0);
+    const maxMonthly = typeof max?.monthly_listens === 'string'
+      ? parseFloat(max.monthly_listens) || 0
+      : (max?.monthly_listens || 0);
     return currentMonthly > maxMonthly ? p : max;
   }, podcasts[0]);
+
+  // Parse the highest value for display
+  const highestMonthlyListens = typeof highestReachShow?.monthly_listens === 'string'
+    ? parseFloat(highestReachShow.monthly_listens) || 0
+    : (highestReachShow?.monthly_listens || 0);
 
   const formatNumber = (n: number): string => {
     if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
@@ -95,7 +104,7 @@ export const ReachAnalysisDialog = ({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatNumber(highestReachShow?.monthly_listens || 0)}
+                {formatNumber(highestMonthlyListens)}
               </div>
               <p className="text-xs text-muted-foreground mt-1 truncate" title={highestReachShow?.show_title}>
                 {highestReachShow?.show_title || 'N/A'}
