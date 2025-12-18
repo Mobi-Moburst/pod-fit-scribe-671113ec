@@ -1398,7 +1398,8 @@ export default function Reports() {
                 open={reachDialogOpen}
                 onOpenChange={setReachDialogOpen}
                 podcasts={reportData.podcasts}
-                avgListenersPerEpisode={reportData.kpis.avg_listeners_per_episode}
+                totalListenersPerEpisode={reportData.kpis.total_listeners_per_episode}
+                quarter={quarter}
               />
             </>
           )}

@@ -13,17 +13,19 @@ interface ReachAnalysisDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   podcasts: PodcastReportEntry[];
-  avgListenersPerEpisode?: number;
+  totalListenersPerEpisode?: number;
+  quarter?: string;
 }
 
 export const ReachAnalysisDialog = ({ 
   open, 
   onOpenChange, 
   podcasts,
-  avgListenersPerEpisode = 0 
+  totalListenersPerEpisode = 0,
+  quarter = ''
 }: ReachAnalysisDialogProps) => {
   // Calculate Estimated Annual Listenership
-  const estimatedAnnualListenership = avgListenersPerEpisode * 12;
+  const estimatedAnnualListenership = totalListenersPerEpisode * 12;
 
   // Find highest reach show (by monthly_listens)
   const highestReachShow = podcasts.reduce((max, p) => {
@@ -54,15 +56,15 @@ export const ReachAnalysisDialog = ({
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Avg. Monthly Listeners
+                Total Monthly Listeners Per Episode
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatNumber(avgListenersPerEpisode)}
+                {formatNumber(totalListenersPerEpisode)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Per episode average
+                Combined reach this quarter
               </p>
             </CardContent>
           </Card>
@@ -79,7 +81,7 @@ export const ReachAnalysisDialog = ({
                 {formatNumber(estimatedAnnualListenership)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Avg. monthly × 12
+                {quarter ? `Annual reach from podcasts booked in ${quarter}` : 'Annual reach projection'}
               </p>
             </CardContent>
           </Card>

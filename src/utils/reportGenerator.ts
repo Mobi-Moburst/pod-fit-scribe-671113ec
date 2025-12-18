@@ -598,7 +598,7 @@ function calculateEnhancedKPIs(
     return sum + (typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0);
   }, 0);
   
-  // Average listeners per episode
+  // Total listeners per episode (sum for the quarter)
   const listenersPerEpisodeValues = successfulBatch
     .map(r => {
       const listeners = r.listeners_per_episode || 0;
@@ -606,9 +606,7 @@ function calculateEnhancedKPIs(
     })
     .filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
   
-  const avg_listeners_per_episode = listenersPerEpisodeValues.length > 0
-    ? listenersPerEpisodeValues.reduce((a, b) => a + b, 0) / listenersPerEpisodeValues.length
-    : 0;
+  const total_listeners_per_episode = listenersPerEpisodeValues.reduce((a, b) => a + b, 0);
   
   const total_social_reach = successfulBatch.reduce((sum, r) => {
     const social = r.social_reach || 0;
@@ -666,7 +664,7 @@ function calculateEnhancedKPIs(
     not_fit_count,
     avg_score: Math.round(avg_score * 10) / 10,
     total_reach,
-    avg_listeners_per_episode: Math.round(avg_listeners_per_episode),
+    total_listeners_per_episode: Math.round(total_listeners_per_episode),
     total_social_reach,
     top_categories,
     total_interviews,
@@ -1236,7 +1234,7 @@ function calculateAggregatedKPIs(
     r.action?.toLowerCase().includes('podcast recording')
   ).length;
   
-  // Calculate avg_listeners_per_episode from all batch rows
+  // Calculate total_listeners_per_episode from all batch rows (sum for the quarter)
   const listenersPerEpisodeValues = successfulBatch
     .map(r => {
       const listeners = r.listeners_per_episode || 0;
@@ -1244,9 +1242,7 @@ function calculateAggregatedKPIs(
     })
     .filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
   
-  const avg_listeners_per_episode = listenersPerEpisodeValues.length > 0
-    ? listenersPerEpisodeValues.reduce((a, b) => a + b, 0) / listenersPerEpisodeValues.length
-    : 0;
+  const total_listeners_per_episode = listenersPerEpisodeValues.reduce((a, b) => a + b, 0);
 
   return {
     total_evaluated: successfulBatch.length,
@@ -1255,7 +1251,7 @@ function calculateAggregatedKPIs(
     not_fit_count,
     avg_score: Math.round(avg_score * 10) / 10,
     total_reach,
-    avg_listeners_per_episode: Math.round(avg_listeners_per_episode),
+    total_listeners_per_episode: Math.round(total_listeners_per_episode),
     total_social_reach,
     top_categories,
     total_interviews,

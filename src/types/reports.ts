@@ -110,7 +110,7 @@ export interface ReportData {
     not_fit_count: number;
     avg_score: number;
     total_reach: number; // Sum of monthly_listens (total show reach)
-    avg_listeners_per_episode?: number; // Average of listeners_per_episode
+    total_listeners_per_episode?: number; // Sum of listeners_per_episode for the quarter
     total_social_reach: number;
     top_categories: Array<{ name: string; count: number }>;
     
