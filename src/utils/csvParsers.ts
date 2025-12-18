@@ -55,6 +55,22 @@ export function normalizeTitle(title: string): string {
     .trim();
 }
 
+// Check if titles match (exact or partial prefix match)
+export function titlesMatch(title1: string, title2: string): boolean {
+  const norm1 = normalizeTitle(title1);
+  const norm2 = normalizeTitle(title2);
+  
+  // Exact match
+  if (norm1 === norm2) return true;
+  
+  // Partial match: shorter title is prefix of longer title
+  // e.g., "ai chat" matches "ai chat chatgpt ai news artificial intelligence"
+  const shorter = norm1.length < norm2.length ? norm1 : norm2;
+  const longer = norm1.length < norm2.length ? norm2 : norm1;
+  
+  return longer.startsWith(shorter);
+}
+
 // Parse Batch Results CSV
 export function parseBatchCSV(csvText: string): BatchCSVRow[] {
   const result = Papa.parse<BatchCSVRow>(csvText, {
