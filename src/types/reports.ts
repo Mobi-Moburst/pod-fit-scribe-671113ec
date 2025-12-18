@@ -59,6 +59,7 @@ export interface PodcastReportEntry {
   verdict: 'Fit' | 'Consider' | 'Not';
   overall_score: number;
   listeners_per_episode?: number;
+  monthly_listens?: number; // Total monthly listeners for the show
   social_reach?: number;
   categories?: string;
   rationale_short?: string;
@@ -108,7 +109,8 @@ export interface ReportData {
     consider_count: number;
     not_fit_count: number;
     avg_score: number;
-    total_reach: number;
+    total_reach: number; // Sum of monthly_listens (total show reach)
+    avg_listeners_per_episode?: number; // Average of listeners_per_episode
     total_social_reach: number;
     top_categories: Array<{ name: string; count: number }>;
     

@@ -92,7 +92,7 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen }: SpeakerAcco
                         Total Reach
                       </div>
                       <p className="text-2xl font-bold text-foreground">{formatNumber(speaker.kpis.total_reach)}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Avg. monthly listeners</p>
+                      <p className="text-xs text-muted-foreground mt-1">Total monthly listeners</p>
                     </CardContent>
                   </Card>
                   

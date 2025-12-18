@@ -23,6 +23,7 @@ import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { NextQuarterStrategy } from "@/components/reports/NextQuarterStrategy";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
+import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
@@ -76,6 +77,7 @@ export default function Reports() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
+  const [reachDialogOpen, setReachDialogOpen] = useState(false);
   const [sovDialogOpen, setSOVDialogOpen] = useState(false);
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
@@ -1211,8 +1213,9 @@ export default function Reports() {
                       <KPICard
                         title="Total Reach"
                         value={reportData.kpis.total_reach.toLocaleString()}
-                        subtitle="Avg. monthly listeners per episode"
+                        subtitle="Total monthly listeners • Click for details"
                         icon={Users}
+                        onClick={() => setReachDialogOpen(true)}
                         onHide={() => toggleSection('totalReach')}
                       />
                     )}
@@ -1389,6 +1392,13 @@ export default function Reports() {
                 open={contentGapDialogOpen}
                 onOpenChange={setContentGapDialogOpen}
                 gapAnalysis={reportData.content_gap_analysis || null}
+              />
+              
+              <ReachAnalysisDialog
+                open={reachDialogOpen}
+                onOpenChange={setReachDialogOpen}
+                podcasts={reportData.podcasts}
+                avgListenersPerEpisode={reportData.kpis.avg_listeners_per_episode}
               />
             </>
           )}
