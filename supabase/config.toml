@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.fetch-company-brand]
 verify_jwt = false
+
+[functions.scrape-podcast-cover-art]
+verify_jwt = false
