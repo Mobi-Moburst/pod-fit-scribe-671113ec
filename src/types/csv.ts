@@ -5,6 +5,7 @@ export interface BatchCSVRow {
   verdict: 'Fit' | 'Consider' | 'Not';
   overall_score: number;
   listeners_per_episode?: number;
+  monthly_listens?: number; // Total monthly listeners for the show
   social_reach?: number;
   categories?: string;
   rationale_short?: string;

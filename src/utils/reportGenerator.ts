@@ -518,6 +518,7 @@ function mergePodcastData(
       verdict: batchRow.verdict,
       overall_score: parseFloat(String(batchRow.overall_score)) || 0,
       listeners_per_episode: batchRow.listeners_per_episode,
+      monthly_listens: batchRow.monthly_listens,
       social_reach: batchRow.social_reach,
       categories: batchRow.categories,
       rationale_short: batchRow.rationale_short,
@@ -590,11 +591,24 @@ function calculateEnhancedKPIs(
     ? scores.reduce((a, b) => a + b, 0) / scores.length 
     : 0;
   
+  // Total reach is now sum of monthly_listens (total show reach)
   const total_reach = successfulBatch.reduce((sum, r) => {
-    const listeners = r.listeners_per_episode || 0;
-    const parsed = typeof listeners === 'string' ? parseFloat(listeners) : listeners;
+    const monthly = r.monthly_listens || 0;
+    const parsed = typeof monthly === 'string' ? parseFloat(monthly) : monthly;
     return sum + (typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0);
   }, 0);
+  
+  // Average listeners per episode
+  const listenersPerEpisodeValues = successfulBatch
+    .map(r => {
+      const listeners = r.listeners_per_episode || 0;
+      return typeof listeners === 'string' ? parseFloat(listeners) : listeners;
+    })
+    .filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
+  
+  const avg_listeners_per_episode = listenersPerEpisodeValues.length > 0
+    ? listenersPerEpisodeValues.reduce((a, b) => a + b, 0) / listenersPerEpisodeValues.length
+    : 0;
   
   const total_social_reach = successfulBatch.reduce((sum, r) => {
     const social = r.social_reach || 0;
@@ -652,6 +666,7 @@ function calculateEnhancedKPIs(
     not_fit_count,
     avg_score: Math.round(avg_score * 10) / 10,
     total_reach,
+    avg_listeners_per_episode: Math.round(avg_listeners_per_episode),
     total_social_reach,
     top_categories,
     total_interviews,
@@ -992,9 +1007,10 @@ function calculateSpeakerKPIs(
     ? scores.reduce((a, b) => a + b, 0) / scores.length 
     : 0;
   
+  // Total reach is now sum of monthly_listens
   const total_reach = successfulBatch.reduce((sum, r) => {
-    const listeners = r.listeners_per_episode || 0;
-    const parsed = typeof listeners === 'string' ? parseFloat(listeners) : listeners;
+    const monthly = r.monthly_listens || 0;
+    const parsed = typeof monthly === 'string' ? parseFloat(monthly) : monthly;
     return sum + (typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0);
   }, 0);
   
@@ -1220,6 +1236,18 @@ function calculateAggregatedKPIs(
     r.action?.toLowerCase().includes('podcast recording')
   ).length;
   
+  // Calculate avg_listeners_per_episode from all batch rows
+  const listenersPerEpisodeValues = successfulBatch
+    .map(r => {
+      const listeners = r.listeners_per_episode || 0;
+      return typeof listeners === 'string' ? parseFloat(listeners) : listeners;
+    })
+    .filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
+  
+  const avg_listeners_per_episode = listenersPerEpisodeValues.length > 0
+    ? listenersPerEpisodeValues.reduce((a, b) => a + b, 0) / listenersPerEpisodeValues.length
+    : 0;
+
   return {
     total_evaluated: successfulBatch.length,
     fit_count,
@@ -1227,6 +1255,7 @@ function calculateAggregatedKPIs(
     not_fit_count,
     avg_score: Math.round(avg_score * 10) / 10,
     total_reach,
+    avg_listeners_per_episode: Math.round(avg_listeners_per_episode),
     total_social_reach,
     top_categories,
     total_interviews,
