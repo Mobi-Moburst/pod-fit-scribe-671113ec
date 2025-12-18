@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,7 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PodcastReportEntry } from "@/types/reports";
-import { Users, TrendingUp, Trophy } from "lucide-react";
+import { Users, TrendingUp, Trophy, ExternalLink, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ReachAnalysisDialogProps {
   open: boolean;
@@ -24,6 +26,9 @@ export const ReachAnalysisDialog = ({
   totalListenersPerEpisode = 0,
   quarter = ''
 }: ReachAnalysisDialogProps) => {
+  const [coverArtUrl, setCoverArtUrl] = useState<string | null>(null);
+  const [isLoadingCoverArt, setIsLoadingCoverArt] = useState(false);
+
   // Calculate Estimated Annual Listenership
   const estimatedAnnualListenership = totalListenersPerEpisode * 12;
 
@@ -42,6 +47,39 @@ export const ReachAnalysisDialog = ({
   const highestMonthlyListens = typeof highestReachShow?.monthly_listens === 'string'
     ? parseFloat(highestReachShow.monthly_listens) || 0
     : (highestReachShow?.monthly_listens || 0);
+
+  // Fetch cover art when highest reach show changes
+  useEffect(() => {
+    const fetchCoverArt = async () => {
+      if (!highestReachShow?.apple_podcast_link) {
+        setCoverArtUrl(null);
+        return;
+      }
+
+      setIsLoadingCoverArt(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('scrape-podcast-cover-art', {
+          body: { apple_podcast_url: highestReachShow.apple_podcast_link }
+        });
+
+        if (error) {
+          console.error('Error fetching cover art:', error);
+          setCoverArtUrl(null);
+        } else {
+          setCoverArtUrl(data?.coverArtUrl || null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch cover art:', err);
+        setCoverArtUrl(null);
+      } finally {
+        setIsLoadingCoverArt(false);
+      }
+    };
+
+    if (open && highestReachShow?.apple_podcast_link) {
+      fetchCoverArt();
+    }
+  }, [open, highestReachShow?.apple_podcast_link]);
 
   const formatNumber = (n: number): string => {
     if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
@@ -103,12 +141,50 @@ export const ReachAnalysisDialog = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {formatNumber(highestMonthlyListens)}
+              <div className="flex gap-3">
+                {/* Cover Art */}
+                <div className="flex-shrink-0">
+                  {isLoadingCoverArt ? (
+                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : coverArtUrl ? (
+                    <img 
+                      src={coverArtUrl} 
+                      alt={highestReachShow?.show_title || 'Podcast cover'} 
+                      className="w-16 h-16 rounded-md object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
+                      <Trophy className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Show Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-2xl font-bold">
+                    {formatNumber(highestMonthlyListens)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">monthly listeners</p>
+                  {highestReachShow?.apple_podcast_link ? (
+                    <a 
+                      href={highestReachShow.apple_podcast_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline flex items-center gap-1 mt-1 truncate"
+                      title={highestReachShow?.show_title}
+                    >
+                      {highestReachShow?.show_title || 'N/A'}
+                      <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                    </a>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1 truncate" title={highestReachShow?.show_title}>
+                      {highestReachShow?.show_title || 'N/A'}
+                    </p>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-1 truncate" title={highestReachShow?.show_title}>
-                {highestReachShow?.show_title || 'N/A'}
-              </p>
             </CardContent>
           </Card>
         </div>
