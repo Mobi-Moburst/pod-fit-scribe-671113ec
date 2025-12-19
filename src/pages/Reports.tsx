@@ -22,6 +22,7 @@ import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { NextQuarterStrategy } from "@/components/reports/NextQuarterStrategy";
+import { TargetPodcastsSection } from "@/components/reports/TargetPodcastsSection";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
@@ -101,6 +102,7 @@ export default function Reports() {
     airtableEmbed: true,
     topCategories: true,
     nextQuarterStrategy: true,
+    targetPodcasts: true,
     contentGapRecommendations: true,
   });
   
@@ -1355,6 +1357,20 @@ export default function Reports() {
                   talking_points_spotlight={reportData.next_quarter_strategy.talking_points_spotlight}
                   closing_paragraph={reportData.next_quarter_strategy.closing_paragraph}
                   onHide={() => toggleSection('nextQuarterStrategy')}
+                />
+              )}
+
+              {/* Target Podcasts for Next Quarter */}
+              {visibleSections.targetPodcasts && reportData.next_quarter_strategy && speakerAsClient && (
+                <TargetPodcastsSection
+                  client={speakerAsClient}
+                  nextQuarterStrategy={reportData.next_quarter_strategy}
+                  topCategories={reportData.kpis.top_categories}
+                  initialPodcasts={reportData.target_podcasts}
+                  onPodcastsGenerated={(podcasts) => {
+                    setReportData(prev => prev ? { ...prev, target_podcasts: podcasts } : null);
+                  }}
+                  onHide={() => toggleSection('targetPodcasts')}
                 />
               )}
 

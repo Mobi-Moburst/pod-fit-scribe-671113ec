@@ -1,5 +1,16 @@
 import { MinimalClient } from './clients';
 
+// Target Podcast for next quarter recommendations
+export interface TargetPodcast {
+  podcast_name: string;
+  description: string;
+  pitch_angle: string;
+  talking_points: string[];
+  target_audience: string;
+  apple_podcast_url?: string;
+  cover_art_url?: string;
+}
+
 // Content Gap Analysis types
 export interface ContentGapAnalysis {
   total_gaps: number; // Total prompts where client is absent in all engines
@@ -183,4 +194,7 @@ export interface ReportData {
   
   // Content Gap Analysis (from Spotlight)
   content_gap_analysis?: ContentGapAnalysis;
+  
+  // Target Podcasts for Next Quarter
+  target_podcasts?: TargetPodcast[];
 }
