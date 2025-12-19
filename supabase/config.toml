@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.scrape-podcast-cover-art]
 verify_jwt = false
+
+[functions.suggest-target-podcasts]
+verify_jwt = false
