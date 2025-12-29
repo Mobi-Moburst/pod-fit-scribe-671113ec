@@ -119,15 +119,39 @@ export function TargetPodcastsSection({
         throw new Error(data?.error || 'Invalid response from AI');
       }
 
-      const newPodcasts: TargetPodcast[] = data.podcasts.map((p: any) => ({
-        podcast_name: p.podcast_name,
-        description: p.description,
-        pitch_angle: p.pitch_angle,
-        talking_points: p.talking_points || [],
-        target_audience: p.target_audience,
-        apple_podcast_url: p.apple_podcast_url || undefined,
-        cover_art_url: undefined, // Will be fetched separately
-      }));
+      const aiResponse = data.podcasts;
+      
+      // Look up real Apple Podcast URLs and cover art from iTunes for each podcast
+      const newPodcasts: TargetPodcast[] = await Promise.all(
+        aiResponse.map(async (p: any) => {
+          let verifiedAppleUrl: string | undefined;
+          let coverArtUrl: string | undefined;
+          
+          try {
+            const response = await fetch(
+              `https://itunes.apple.com/search?term=${encodeURIComponent(p.podcast_name)}&entity=podcast&limit=1`
+            );
+            const itunesData = await response.json();
+            
+            if (itunesData.results?.[0]) {
+              verifiedAppleUrl = itunesData.results[0].collectionViewUrl;
+              coverArtUrl = itunesData.results[0].artworkUrl600 || itunesData.results[0].artworkUrl100;
+            }
+          } catch (err) {
+            console.warn(`iTunes lookup failed for ${p.podcast_name}:`, err);
+          }
+          
+          return {
+            podcast_name: p.podcast_name,
+            description: p.description,
+            pitch_angle: p.pitch_angle,
+            talking_points: p.talking_points || [],
+            target_audience: p.target_audience,
+            apple_podcast_url: verifiedAppleUrl,
+            cover_art_url: coverArtUrl,
+          };
+        })
+      );
 
       setPodcasts(newPodcasts);
       setHasGenerated(true);

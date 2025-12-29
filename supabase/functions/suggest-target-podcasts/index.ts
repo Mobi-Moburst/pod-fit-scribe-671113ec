@@ -96,7 +96,6 @@ For each podcast:
 3. **pitch_angle**: A specific angle to pitch this speaker to this podcast (1-2 sentences)
 4. **talking_points**: 2-3 specific talking points from the client's expertise that would resonate with this show's audience
 5. **target_audience**: Which of the client's target audiences this podcast reaches
-6. **apple_podcast_url**: The Apple Podcasts URL if known (optional, can be empty string)
 7. **reach_tier**: Either "small" (under 10K downloads/episode) or "mid-tier" (10K-100K downloads/episode)
 
 ## CRITICAL REQUIREMENTS:
@@ -158,7 +157,6 @@ Return ONLY real podcasts that exist, are currently active, and would realistica
                           description: '2-3 talking points to emphasize'
                         },
                         target_audience: { type: 'string', description: 'Which target audience this reaches' },
-                        apple_podcast_url: { type: 'string', description: 'Apple Podcasts URL if known' },
                         reach_tier: { 
                           type: 'string', 
                           enum: ['small', 'mid-tier'],
