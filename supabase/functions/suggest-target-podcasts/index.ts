@@ -30,6 +30,8 @@ interface RequestBody {
     talking_points_spotlight: Array<{ title: string; description: string }>;
   };
   top_categories?: Array<{ name: string; count: number }>;
+  num_suggestions?: number;
+  exclude_podcasts?: string[];
 }
 
 serve(async (req) => {
@@ -39,7 +41,7 @@ serve(async (req) => {
   }
 
   try {
-    const { client, next_quarter_strategy, top_categories } = await req.json() as RequestBody;
+    const { client, next_quarter_strategy, top_categories, num_suggestions = 15, exclude_podcasts = [] } = await req.json() as RequestBody;
 
     if (!client || !next_quarter_strategy) {
       return new Response(
@@ -66,7 +68,11 @@ serve(async (req) => {
       ? `Top performing podcast categories so far: ${top_categories.map(c => c.name).join(', ')}`
       : '';
 
-    const prompt = `You are a podcast booking strategist specializing in securing realistic guest placements. Based on the following client profile and next quarter strategy, suggest 10 SMALL TO MID-TIER podcasts that would realistically book this speaker.
+    const excludeContext = exclude_podcasts.length > 0
+      ? `\n## DO NOT SUGGEST THESE PODCASTS (already suggested):\n${exclude_podcasts.map(name => `- ${name}`).join('\n')}\n`
+      : '';
+
+    const prompt = `You are a podcast booking strategist specializing in securing realistic guest placements. Based on the following client profile and next quarter strategy, suggest ${num_suggestions} SMALL TO MID-TIER podcasts that would realistically book this speaker.
 
 ## Client Profile
 - Name: ${client.name}
@@ -86,9 +92,9 @@ ${focusAreas}
 ${talkingPointsSpotlight}
 
 ${categoriesContext}
-
+${excludeContext}
 ## Instructions
-Suggest 10 REAL, ACCESSIBLE podcasts that would realistically book this speaker. Target SMALL TO MID-TIER shows, NOT top-tier or celebrity podcasts.
+Suggest ${num_suggestions} REAL, ACCESSIBLE podcasts that would realistically book this speaker. Target SMALL TO MID-TIER shows, NOT top-tier or celebrity podcasts.
 
 For each podcast:
 1. **podcast_name**: The exact name of a real, active podcast
@@ -141,7 +147,7 @@ Return ONLY real podcasts that exist, are currently active, and would realistica
             type: 'function',
             function: {
               name: 'suggest_target_podcasts',
-              description: 'Return 10 targeted podcast suggestions for the next quarter.',
+              description: `Return ${num_suggestions} targeted podcast suggestions for the next quarter.`,
               parameters: {
                 type: 'object',
                 properties: {

@@ -92,84 +92,107 @@ export function TargetPodcastsSection({
     }
   }, [podcasts]);
 
+  // Helper function to validate a single podcast via iTunes
+  const validatePodcast = async (p: any, twoMonthsAgo: Date): Promise<TargetPodcast | null> => {
+    try {
+      const response = await fetch(
+        `https://itunes.apple.com/search?term=${encodeURIComponent(p.podcast_name)}&entity=podcast&limit=1`
+      );
+      const itunesData = await response.json();
+      
+      if (itunesData.results?.[0]) {
+        const result = itunesData.results[0];
+        const releaseDate = new Date(result.releaseDate);
+        
+        // Skip podcasts that haven't published in the last 2 months
+        if (releaseDate < twoMonthsAgo) {
+          console.warn(`Skipping inactive podcast: ${p.podcast_name} (last episode: ${result.releaseDate})`);
+          return null;
+        }
+        
+        return {
+          podcast_name: p.podcast_name,
+          description: p.description,
+          pitch_angle: p.pitch_angle,
+          talking_points: p.talking_points || [],
+          target_audience: p.target_audience,
+          apple_podcast_url: result.collectionViewUrl,
+          cover_art_url: result.artworkUrl600 || result.artworkUrl100,
+        };
+      }
+    } catch (err) {
+      console.warn(`iTunes lookup failed for ${p.podcast_name}:`, err);
+    }
+    return null;
+  };
+
   const generateSuggestions = async () => {
     setIsLoading(true);
     
+    const MIN_PODCASTS = 10;
+    const MAX_ATTEMPTS = 3;
+    const allValidPodcasts: TargetPodcast[] = [];
+    const excludeNames: string[] = [];
+    
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    
     try {
-      const { data, error } = await supabase.functions.invoke('suggest-target-podcasts', {
-        body: {
-          client: {
-            name: client.name,
-            company: client.company,
-            title: client.title,
-            talking_points: client.talking_points,
-            target_audiences: client.target_audiences,
-            campaign_strategy: client.campaign_strategy,
-          },
-          next_quarter_strategy: nextQuarterStrategy,
-          top_categories: topCategories,
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to generate suggestions');
-      }
-
-      if (!data?.success || !data?.podcasts) {
-        throw new Error(data?.error || 'Invalid response from AI');
-      }
-
-      const aiResponse = data.podcasts;
-      
-      // Look up real Apple Podcast URLs, cover art, and check for recent activity
-      const twoMonthsAgo = new Date();
-      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-      
-      const validatedPodcasts = await Promise.all(
-        aiResponse.map(async (p: any) => {
-          try {
-            const response = await fetch(
-              `https://itunes.apple.com/search?term=${encodeURIComponent(p.podcast_name)}&entity=podcast&limit=1`
-            );
-            const itunesData = await response.json();
-            
-            if (itunesData.results?.[0]) {
-              const result = itunesData.results[0];
-              const releaseDate = new Date(result.releaseDate);
-              
-              // Skip podcasts that haven't published in the last 2 months
-              if (releaseDate < twoMonthsAgo) {
-                console.warn(`Skipping inactive podcast: ${p.podcast_name} (last episode: ${result.releaseDate})`);
-                return null;
-              }
-              
-              return {
-                podcast_name: p.podcast_name,
-                description: p.description,
-                pitch_angle: p.pitch_angle,
-                talking_points: p.talking_points || [],
-                target_audience: p.target_audience,
-                apple_podcast_url: result.collectionViewUrl,
-                cover_art_url: result.artworkUrl600 || result.artworkUrl100,
-              };
-            }
-          } catch (err) {
-            console.warn(`iTunes lookup failed for ${p.podcast_name}:`, err);
+      for (let attempt = 0; attempt < MAX_ATTEMPTS && allValidPodcasts.length < MIN_PODCASTS; attempt++) {
+        console.log(`[Target Podcasts] Attempt ${attempt + 1}/${MAX_ATTEMPTS}, have ${allValidPodcasts.length}/${MIN_PODCASTS} valid podcasts`);
+        
+        const { data, error } = await supabase.functions.invoke('suggest-target-podcasts', {
+          body: {
+            client: {
+              name: client.name,
+              company: client.company,
+              title: client.title,
+              talking_points: client.talking_points,
+              target_audiences: client.target_audiences,
+              campaign_strategy: client.campaign_strategy,
+            },
+            next_quarter_strategy: nextQuarterStrategy,
+            top_categories: topCategories,
+            num_suggestions: 15, // Request more to account for filtering
+            exclude_podcasts: excludeNames, // Avoid duplicates
           }
-          return null;
-        })
-      );
-      
-      // Filter out inactive or not-found podcasts
-      const newPodcasts = validatedPodcasts.filter(Boolean) as TargetPodcast[];
+        });
 
-      setPodcasts(newPodcasts);
+        if (error) {
+          throw new Error(error.message || 'Failed to generate suggestions');
+        }
+
+        if (!data?.success || !data?.podcasts) {
+          throw new Error(data?.error || 'Invalid response from AI');
+        }
+
+        const aiResponse = data.podcasts || [];
+        
+        // Validate each podcast via iTunes
+        for (const p of aiResponse) {
+          excludeNames.push(p.podcast_name); // Track to avoid re-suggesting
+          
+          const validatedPodcast = await validatePodcast(p, twoMonthsAgo);
+          if (validatedPodcast) {
+            allValidPodcasts.push(validatedPodcast);
+            if (allValidPodcasts.length >= MIN_PODCASTS) {
+              console.log(`[Target Podcasts] Reached ${MIN_PODCASTS} valid podcasts, stopping`);
+              break;
+            }
+          }
+        }
+      }
+      
+      console.log(`[Target Podcasts] Final count: ${allValidPodcasts.length} valid podcasts`);
+      
+      const finalPodcasts = allValidPodcasts.slice(0, MIN_PODCASTS);
+      setPodcasts(finalPodcasts);
       setHasGenerated(true);
-      onPodcastsGenerated?.(newPodcasts);
+      onPodcastsGenerated?.(finalPodcasts);
 
       toast({
         title: "Target podcasts generated",
-        description: `Found ${newPodcasts.length} podcast recommendations for ${nextQuarterStrategy.quarter}.`,
+        description: `Found ${finalPodcasts.length} podcast recommendations for ${nextQuarterStrategy.quarter}.`,
       });
 
     } catch (err) {
