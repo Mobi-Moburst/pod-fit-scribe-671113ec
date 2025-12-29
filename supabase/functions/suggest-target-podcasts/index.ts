@@ -66,7 +66,7 @@ serve(async (req) => {
       ? `Top performing podcast categories so far: ${top_categories.map(c => c.name).join(', ')}`
       : '';
 
-    const prompt = `You are a podcast booking strategist. Based on the following client profile and next quarter strategy, suggest 10 highly targeted real podcasts that would be excellent fits for this speaker.
+    const prompt = `You are a podcast booking strategist specializing in securing realistic guest placements. Based on the following client profile and next quarter strategy, suggest 10 SMALL TO MID-TIER podcasts that would realistically book this speaker.
 
 ## Client Profile
 - Name: ${client.name}
@@ -88,22 +88,38 @@ ${talkingPointsSpotlight}
 ${categoriesContext}
 
 ## Instructions
-Suggest 10 REAL, well-known podcasts that align with this speaker's expertise and the strategic focus for next quarter. For each podcast:
+Suggest 10 REAL, ACCESSIBLE podcasts that would realistically book this speaker. Target SMALL TO MID-TIER shows, NOT top-tier or celebrity podcasts.
 
+For each podcast:
 1. **podcast_name**: The exact name of a real, active podcast
 2. **description**: 2-3 sentences on what the podcast covers and why it's a fit for this speaker
 3. **pitch_angle**: A specific angle to pitch this speaker to this podcast (1-2 sentences)
 4. **talking_points**: 2-3 specific talking points from the client's expertise that would resonate with this show's audience
 5. **target_audience**: Which of the client's target audiences this podcast reaches
 6. **apple_podcast_url**: The Apple Podcasts URL if known (optional, can be empty string)
+7. **reach_tier**: Either "small" (under 10K downloads/episode) or "mid-tier" (10K-100K downloads/episode)
 
-Focus on:
-- High-visibility podcasts with engaged audiences
-- Shows that align with the strategic focus areas
-- A mix of categories (business, tech, leadership, industry-specific)
-- Podcasts known for featuring guest experts
+## CRITICAL REQUIREMENTS:
+- Target SMALL TO MID-TIER podcasts only (estimated 1K-100K downloads per episode)
+- Focus on niche, industry-specific podcasts that actively book guest experts
+- Prioritize shows with 50-500 episodes that regularly feature guests
+- Look for podcasts hosted by practitioners, consultants, or industry professionals (not celebrities)
 
-Return ONLY real podcasts that exist and are currently active.`;
+## DO NOT SUGGEST:
+- Top 100 business/tech/leadership podcasts
+- Celebrity-hosted shows (Tim Ferriss, Joe Rogan, Lex Fridman, etc.)
+- Major media company podcasts (NPR, HBR, TED, WSJ, Bloomberg, etc.)
+- Invite-only or rarely-take-guests shows
+- Podcasts with 1M+ total downloads
+
+## GOOD EXAMPLES of target podcast types:
+- Regional business podcasts (e.g., "Atlanta Business Radio", "Silicon Slopes")
+- Industry-specific niche shows (e.g., "The IT Service Management Podcast", "Cloud Architects Podcast")
+- Professional association podcasts
+- B2B-focused interview shows
+- Practitioner-hosted shows in relevant verticals
+
+Return ONLY real podcasts that exist, are currently active, and would realistically respond to a pitch.`;
 
     console.log('[suggest-target-podcasts] Calling AI with prompt length:', prompt.length);
 
@@ -142,9 +158,14 @@ Return ONLY real podcasts that exist and are currently active.`;
                           description: '2-3 talking points to emphasize'
                         },
                         target_audience: { type: 'string', description: 'Which target audience this reaches' },
-                        apple_podcast_url: { type: 'string', description: 'Apple Podcasts URL if known' }
+                        apple_podcast_url: { type: 'string', description: 'Apple Podcasts URL if known' },
+                        reach_tier: { 
+                          type: 'string', 
+                          enum: ['small', 'mid-tier'],
+                          description: 'small = under 10K downloads/ep, mid-tier = 10K-100K downloads/ep' 
+                        }
                       },
-                      required: ['podcast_name', 'description', 'pitch_angle', 'talking_points', 'target_audience'],
+                      required: ['podcast_name', 'description', 'pitch_angle', 'talking_points', 'target_audience', 'reach_tier'],
                       additionalProperties: false
                     }
                   }
