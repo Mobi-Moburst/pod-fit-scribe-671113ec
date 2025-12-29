@@ -42,21 +42,47 @@ export function TargetPodcastsSection({
   useEffect(() => {
     const fetchCoverArt = async () => {
       for (const podcast of podcasts) {
-        if (podcast.apple_podcast_url && !coverArtCache[podcast.podcast_name]) {
+        if (coverArtCache[podcast.podcast_name]) continue;
+        
+        let coverArtUrl: string | undefined;
+        
+        // Try 1: Use the edge function if we have an Apple Podcast URL
+        if (podcast.apple_podcast_url) {
           try {
             const { data, error } = await supabase.functions.invoke('scrape-podcast-cover-art', {
               body: { apple_podcast_url: podcast.apple_podcast_url }
             });
             
-            if (!error && data?.cover_art_url) {
-              setCoverArtCache(prev => ({
-                ...prev,
-                [podcast.podcast_name]: data.cover_art_url
-              }));
+            if (!error && data?.coverArtUrl) {
+              coverArtUrl = data.coverArtUrl;
             }
           } catch (err) {
-            console.warn(`Failed to fetch cover art for ${podcast.podcast_name}:`, err);
+            console.warn(`Edge function failed for ${podcast.podcast_name}:`, err);
           }
+        }
+        
+        // Try 2: Fallback - search iTunes by name
+        if (!coverArtUrl) {
+          try {
+            const response = await fetch(
+              `https://itunes.apple.com/search?term=${encodeURIComponent(podcast.podcast_name)}&entity=podcast&limit=1`
+            );
+            const data = await response.json();
+            
+            if (data.results?.[0]?.artworkUrl600) {
+              coverArtUrl = data.results[0].artworkUrl600;
+            }
+          } catch (err) {
+            console.warn(`iTunes search failed for ${podcast.podcast_name}:`, err);
+          }
+        }
+        
+        // Update cache if we found cover art
+        if (coverArtUrl) {
+          setCoverArtCache(prev => ({
+            ...prev,
+            [podcast.podcast_name]: coverArtUrl
+          }));
         }
       }
     };
