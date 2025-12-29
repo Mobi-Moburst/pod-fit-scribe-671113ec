@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput } from "@/utils/reportGenerator";
 import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV } from "@/utils/csvParsers";
-import { ReportData } from "@/types/reports";
+import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
 import { CampaignOverview } from "@/components/reports/CampaignOverview";
@@ -75,6 +75,7 @@ export default function Reports() {
   // State
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [savedReports, setSavedReports] = useState<any[]>([]);
+  const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
@@ -334,6 +335,9 @@ export default function Reports() {
   };
 
   const handleGenerateReport = async () => {
+    // Reset current report ID since we're generating a new report
+    setCurrentReportId(null);
+    
     // Common validation
     if (!dateRangeStart || !dateRangeEnd) {
       toast({
@@ -600,6 +604,7 @@ export default function Reports() {
     setReportData(report.report_data);
     setReportName(report.report_name);
     setQuarter(report.quarter || '');
+    setCurrentReportId(report.id);
     toast({
       title: "Report loaded",
       description: `Loaded ${report.report_name}`,
@@ -630,6 +635,35 @@ export default function Reports() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  // Update saved report with new target podcasts
+  const updateReportTargetPodcasts = async (podcasts: TargetPodcast[]) => {
+    if (!currentReportId || !reportData) return;
+    
+    const updatedReportData = { ...reportData, target_podcasts: podcasts };
+    setReportData(updatedReportData);
+    
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({ report_data: updatedReportData as any })
+        .eq('id', currentReportId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Report updated",
+        description: "Target podcasts saved to report.",
+      });
+    } catch (error) {
+      console.error('Error updating report:', error);
+      toast({
+        title: "Failed to save",
+        description: "Target podcasts generated but couldn't save to report.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleContentGapRecommendationsUpdate = (recommendations: ReportData['content_gap_analysis']['ai_recommendations']) => {
@@ -1369,7 +1403,11 @@ export default function Reports() {
                   topCategories={reportData.kpis.top_categories}
                   initialPodcasts={reportData.target_podcasts}
                   onPodcastsGenerated={(podcasts) => {
-                    setReportData(prev => prev ? { ...prev, target_podcasts: podcasts } : null);
+                    if (currentReportId) {
+                      updateReportTargetPodcasts(podcasts);
+                    } else {
+                      setReportData(prev => prev ? { ...prev, target_podcasts: podcasts } : null);
+                    }
                   }}
                   onHide={() => toggleSection('targetPodcasts')}
                 />
