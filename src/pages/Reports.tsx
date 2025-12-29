@@ -1152,6 +1152,7 @@ export default function Reports() {
                   { key: 'airtableEmbed', label: 'Activity Tracking', visible: visibleSections.airtableEmbed },
                   { key: 'topCategories', label: 'Top Categories', visible: visibleSections.topCategories },
                   { key: 'nextQuarterStrategy', label: 'Looking Ahead', visible: visibleSections.nextQuarterStrategy },
+                  { key: 'targetPodcasts', label: 'Target Podcasts', visible: visibleSections.targetPodcasts },
                   { key: 'contentGapRecommendations', label: 'Gap Recommendations', visible: visibleSections.contentGapRecommendations },
                 ].filter(item => !item.visible);
                 
@@ -1361,9 +1362,9 @@ export default function Reports() {
               )}
 
               {/* Target Podcasts for Next Quarter */}
-              {visibleSections.targetPodcasts && reportData.next_quarter_strategy && speakerAsClient && (
+              {visibleSections.targetPodcasts && reportData.next_quarter_strategy && reportData.client && (
                 <TargetPodcastsSection
-                  client={speakerAsClient}
+                  client={reportData.client}
                   nextQuarterStrategy={reportData.next_quarter_strategy}
                   topCategories={reportData.kpis.top_categories}
                   initialPodcasts={reportData.target_podcasts}
