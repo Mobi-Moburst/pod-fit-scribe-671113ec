@@ -99,6 +99,8 @@ For each podcast:
 7. **reach_tier**: Either "small" (under 10K downloads/episode) or "mid-tier" (10K-100K downloads/episode)
 
 ## CRITICAL REQUIREMENTS:
+- ONLY suggest podcasts that are ACTIVELY PUBLISHING (have released episodes in 2024-2025)
+- Do NOT suggest podcasts that appear to be dormant or discontinued
 - Target SMALL TO MID-TIER podcasts only (estimated 1K-100K downloads per episode)
 - Focus on niche, industry-specific podcasts that actively book guest experts
 - Prioritize shows with 50-500 episodes that regularly feature guests

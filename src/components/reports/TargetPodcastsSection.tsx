@@ -121,12 +121,12 @@ export function TargetPodcastsSection({
 
       const aiResponse = data.podcasts;
       
-      // Look up real Apple Podcast URLs and cover art from iTunes for each podcast
-      const newPodcasts: TargetPodcast[] = await Promise.all(
+      // Look up real Apple Podcast URLs, cover art, and check for recent activity
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+      
+      const validatedPodcasts = await Promise.all(
         aiResponse.map(async (p: any) => {
-          let verifiedAppleUrl: string | undefined;
-          let coverArtUrl: string | undefined;
-          
           try {
             const response = await fetch(
               `https://itunes.apple.com/search?term=${encodeURIComponent(p.podcast_name)}&entity=podcast&limit=1`
@@ -134,24 +134,34 @@ export function TargetPodcastsSection({
             const itunesData = await response.json();
             
             if (itunesData.results?.[0]) {
-              verifiedAppleUrl = itunesData.results[0].collectionViewUrl;
-              coverArtUrl = itunesData.results[0].artworkUrl600 || itunesData.results[0].artworkUrl100;
+              const result = itunesData.results[0];
+              const releaseDate = new Date(result.releaseDate);
+              
+              // Skip podcasts that haven't published in the last 2 months
+              if (releaseDate < twoMonthsAgo) {
+                console.warn(`Skipping inactive podcast: ${p.podcast_name} (last episode: ${result.releaseDate})`);
+                return null;
+              }
+              
+              return {
+                podcast_name: p.podcast_name,
+                description: p.description,
+                pitch_angle: p.pitch_angle,
+                talking_points: p.talking_points || [],
+                target_audience: p.target_audience,
+                apple_podcast_url: result.collectionViewUrl,
+                cover_art_url: result.artworkUrl600 || result.artworkUrl100,
+              };
             }
           } catch (err) {
             console.warn(`iTunes lookup failed for ${p.podcast_name}:`, err);
           }
-          
-          return {
-            podcast_name: p.podcast_name,
-            description: p.description,
-            pitch_angle: p.pitch_angle,
-            talking_points: p.talking_points || [],
-            target_audience: p.target_audience,
-            apple_podcast_url: verifiedAppleUrl,
-            cover_art_url: coverArtUrl,
-          };
+          return null;
         })
       );
+      
+      // Filter out inactive or not-found podcasts
+      const newPodcasts = validatedPodcasts.filter(Boolean) as TargetPodcast[];
 
       setPodcasts(newPodcasts);
       setHasGenerated(true);
