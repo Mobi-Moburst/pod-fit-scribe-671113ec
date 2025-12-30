@@ -8,11 +8,17 @@ import { Play, AlertCircle } from "lucide-react";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { ClientReportHeader } from "@/components/client-report/ClientReportHeader";
 import { ClientReportKPIs } from "@/components/client-report/ClientReportKPIs";
+import { ClientReportAdditionalMetrics } from "@/components/client-report/ClientReportAdditionalMetrics";
 import { ClientReportCampaignOverview } from "@/components/client-report/ClientReportCampaignOverview";
 import { ClientReportCategories } from "@/components/client-report/ClientReportCategories";
 import { ClientReportNextQuarter } from "@/components/client-report/ClientReportNextQuarter";
 import { ClientReportTargetPodcasts } from "@/components/client-report/ClientReportTargetPodcasts";
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
+import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
+import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
+import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
+import { GEODialog } from "@/components/reports/GEODialog";
+import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 
 interface VisibleSections {
   totalBooked?: boolean;
@@ -40,6 +46,13 @@ export default function PublicReport() {
   const [visibleSections, setVisibleSections] = useState<VisibleSections>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Dialog states
+  const [emvDialogOpen, setEmvDialogOpen] = useState(false);
+  const [reachDialogOpen, setReachDialogOpen] = useState(false);
+  const [sovDialogOpen, setSovDialogOpen] = useState(false);
+  const [geoDialogOpen, setGeoDialogOpen] = useState(false);
+  const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -128,6 +141,9 @@ export default function PublicReport() {
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || 
     visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
 
+  const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || 
+    visibleSections.geoScore || visibleSections.contentGap;
+
   return (
     <div className="min-h-screen bg-background relative">
       <BackgroundFX />
@@ -157,6 +173,19 @@ export default function PublicReport() {
           <ClientReportKPIs 
             kpis={reportData.kpis}
             visibleSections={visibleSections}
+            onReachClick={() => setReachDialogOpen(true)}
+          />
+        )}
+
+        {/* Additional Value Metrics */}
+        {additionalMetricsVisible && (
+          <ClientReportAdditionalMetrics
+            reportData={reportData}
+            visibleSections={visibleSections}
+            onEmvClick={() => setEmvDialogOpen(true)}
+            onSovClick={() => setSovDialogOpen(true)}
+            onGeoClick={() => setGeoDialogOpen(true)}
+            onContentGapClick={() => setContentGapDialogOpen(true)}
           />
         )}
 
@@ -191,6 +220,36 @@ export default function PublicReport() {
         {/* Footer */}
         <ClientReportFooter />
       </div>
+
+      {/* Analysis Dialogs */}
+      <EMVAnalysisDialog
+        open={emvDialogOpen}
+        onOpenChange={setEmvDialogOpen}
+        podcasts={reportData.podcasts || []}
+      />
+      <ReachAnalysisDialog
+        open={reachDialogOpen}
+        onOpenChange={setReachDialogOpen}
+        podcasts={reportData.podcasts || []}
+        totalListenersPerEpisode={reportData.kpis.total_reach || 0}
+        quarter={quarter}
+      />
+      <SOVChartDialog
+        open={sovDialogOpen}
+        onOpenChange={setSovDialogOpen}
+        sovAnalysis={reportData.sov_analysis}
+        clientName={reportData.client?.name}
+      />
+      <GEODialog
+        open={geoDialogOpen}
+        onOpenChange={setGeoDialogOpen}
+        geoAnalysis={reportData.geo_analysis}
+      />
+      <ContentGapDialog
+        open={contentGapDialogOpen}
+        onOpenChange={setContentGapDialogOpen}
+        gapAnalysis={reportData.content_gap_analysis}
+      />
     </div>
   );
 }
