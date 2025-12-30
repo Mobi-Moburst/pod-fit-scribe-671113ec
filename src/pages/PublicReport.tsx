@@ -5,6 +5,7 @@ import { ReportData } from "@/types/reports";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Play, AlertCircle } from "lucide-react";
+import { BackgroundFX } from "@/components/BackgroundFX";
 import { ClientReportHeader } from "@/components/client-report/ClientReportHeader";
 import { ClientReportKPIs } from "@/components/client-report/ClientReportKPIs";
 import { ClientReportCampaignOverview } from "@/components/client-report/ClientReportCampaignOverview";
@@ -126,7 +127,8 @@ export default function PublicReport() {
     visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      <BackgroundFX />
       {/* Fixed Present Button */}
       <div className="fixed top-6 right-6 z-50">
         <Button 
