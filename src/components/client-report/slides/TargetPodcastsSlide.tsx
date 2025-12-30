@@ -1,53 +1,95 @@
 import { TargetPodcast } from "@/types/reports";
-import { Mic } from "lucide-react";
+import { ExternalLink, Mic } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 interface TargetPodcastsSlideProps {
   podcasts: TargetPodcast[];
 }
 
 export const TargetPodcastsSlide = ({ podcasts }: TargetPodcastsSlideProps) => {
-  // Show up to 6 podcasts on this slide
-  const displayPodcasts = podcasts.slice(0, 6);
+  const handlePodcastClick = (url?: string) => {
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
-    <div className="w-full space-y-8 max-w-5xl mx-auto">
+    <div className="w-full space-y-6 max-w-5xl mx-auto">
       <h2 className="text-4xl md:text-5xl font-bold text-center">Recommended Podcasts</h2>
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {displayPodcasts.map((podcast, index) => (
-          <div 
-            key={index}
-            className="bg-card border border-border rounded-xl p-5 space-y-3"
-          >
-            <div className="flex items-center gap-3">
-              {podcast.cover_art_url ? (
-                <img 
-                  src={podcast.cover_art_url} 
-                  alt={podcast.podcast_name}
-                  className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                  <Mic className="h-6 w-6 text-muted-foreground" />
+      <ScrollArea className="h-[60vh] pr-4">
+        <div className="space-y-4">
+          {podcasts.map((podcast, index) => (
+            <div 
+              key={index}
+              className={`flex gap-4 p-4 bg-card border border-border rounded-xl transition-colors ${
+                podcast.apple_podcast_url ? 'hover:bg-muted/30 cursor-pointer' : ''
+              }`}
+              onClick={() => handlePodcastClick(podcast.apple_podcast_url)}
+            >
+              {/* Cover Art */}
+              <div className="flex-shrink-0">
+                {podcast.cover_art_url ? (
+                  <img 
+                    src={podcast.cover_art_url} 
+                    alt={podcast.podcast_name}
+                    className="h-24 w-24 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="h-24 w-24 rounded-lg bg-muted flex items-center justify-center">
+                    <Mic className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1 min-w-0 text-left space-y-2">
+                {/* Title with external link */}
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-lg">{podcast.podcast_name}</h3>
+                  {podcast.apple_podcast_url && (
+                    <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  )}
                 </div>
-              )}
-              <h3 className="font-semibold line-clamp-2">{podcast.podcast_name}</h3>
+                
+                {/* Description */}
+                {podcast.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {podcast.description}
+                  </p>
+                )}
+                
+                {/* Pitch Angle */}
+                {podcast.pitch_angle && (
+                  <div>
+                    <span className="font-medium text-sm">Pitch: </span>
+                    <span className="text-sm text-muted-foreground">{podcast.pitch_angle}</span>
+                  </div>
+                )}
+                
+                {/* Talking Points */}
+                {podcast.talking_points && podcast.talking_points.length > 0 && (
+                  <div>
+                    <span className="font-medium text-sm">Talking Points: </span>
+                    <span className="text-sm text-muted-foreground">
+                      {podcast.talking_points.join(', ')}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Target Audience */}
+                {podcast.target_audience && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">Audience:</span>
+                    <Badge variant="secondary">{podcast.target_audience}</Badge>
+                  </div>
+                )}
+              </div>
             </div>
-
-            {podcast.pitch_angle && (
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {podcast.pitch_angle}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {podcasts.length > 6 && (
-        <p className="text-center text-muted-foreground">
-          +{podcasts.length - 6} more recommendations
-        </p>
-      )}
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 };
