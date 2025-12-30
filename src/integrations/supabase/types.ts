@@ -267,7 +267,10 @@ export type Database = {
           date_range_start: string
           generated_at: string | null
           id: string
+          is_published: boolean | null
           org_id: string
+          public_slug: string | null
+          published_at: string | null
           quarter: string | null
           report_data: Json
           report_name: string
@@ -281,7 +284,10 @@ export type Database = {
           date_range_start: string
           generated_at?: string | null
           id?: string
+          is_published?: boolean | null
           org_id: string
+          public_slug?: string | null
+          published_at?: string | null
           quarter?: string | null
           report_data: Json
           report_name: string
@@ -295,7 +301,10 @@ export type Database = {
           date_range_start?: string
           generated_at?: string | null
           id?: string
+          is_published?: boolean | null
           org_id?: string
+          public_slug?: string | null
+          published_at?: string | null
           quarter?: string | null
           report_data?: Json
           report_name?: string
