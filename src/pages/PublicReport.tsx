@@ -79,22 +79,27 @@ export default function PublicReport() {
       setReportData(reportData);
       setReportName(data.report_name);
       setQuarter(data.quarter || "");
-      setVisibleSections(reportData.visibleSections || {
+      
+      // Build data-aware defaults for visible sections
+      const dataAwareDefaults: VisibleSections = {
         totalBooked: true,
         totalPublished: true,
         socialReach: true,
         totalReach: true,
         averageScore: true,
-        emv: true,
-        sov: true,
-        geoScore: true,
-        contentGap: true,
         campaignOverview: true,
         topCategories: true,
         nextQuarterStrategy: true,
         targetPodcasts: true,
         contentGapRecommendations: true,
-      });
+        // Auto-detect additional metrics based on data presence
+        emv: (reportData.podcasts?.some(p => p.true_emv && p.true_emv > 0)) || false,
+        sov: !!reportData.sov_analysis,
+        geoScore: !!reportData.geo_analysis,
+        contentGap: !!reportData.content_gap_analysis,
+      };
+      
+      setVisibleSections(reportData.visibleSections || dataAwareDefaults);
       setIsLoading(false);
     };
 
