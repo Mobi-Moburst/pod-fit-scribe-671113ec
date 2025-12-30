@@ -94,7 +94,8 @@ export default function PublicReport() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background relative">
+        <BackgroundFX />
         <div className="max-w-6xl mx-auto px-6 py-12 space-y-8">
           <Skeleton className="h-16 w-48" />
           <Skeleton className="h-1 w-full" />
@@ -111,7 +112,8 @@ export default function PublicReport() {
 
   if (error || !reportData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center relative">
+        <BackgroundFX />
         <div className="text-center space-y-4">
           <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto" />
           <h1 className="text-2xl font-semibold">{error || "Report not found"}</h1>
