@@ -51,6 +51,12 @@ export interface SpeakerBreakdown {
   speaker_title?: string;
   airtable_embed_url?: string;
   
+  // Strategy insights from speaker profile
+  campaign_strategy?: string;
+  target_audiences?: string[];
+  talking_points?: string[];
+  professional_credentials?: string[];
+  
   // Per-speaker KPIs (subset - individual counts/reach)
   kpis: {
     total_booked: number;

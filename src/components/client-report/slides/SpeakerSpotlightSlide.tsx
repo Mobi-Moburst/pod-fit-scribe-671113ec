@@ -1,0 +1,157 @@
+import { SpeakerBreakdown } from "@/types/reports";
+import { User, Calendar, Podcast, Users, TrendingUp, ExternalLink } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+
+interface SpeakerSpotlightSlideProps {
+  speaker: SpeakerBreakdown;
+  onAirtableClick?: () => void;
+}
+
+const formatNumber = (num: number): string => {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+  return num.toString();
+};
+
+export const SpeakerSpotlightSlide = ({ speaker, onAirtableClick }: SpeakerSpotlightSlideProps) => {
+  const initials = speaker.speaker_name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const kpiItems = [
+    {
+      label: "Booked",
+      value: speaker.kpis.total_booked,
+      icon: Calendar,
+      color: "hsl(var(--primary))",
+    },
+    {
+      label: "Published",
+      value: speaker.kpis.total_published,
+      icon: Podcast,
+      color: "hsl(var(--accent))",
+    },
+    {
+      label: "Reach",
+      value: formatNumber(speaker.kpis.total_reach),
+      icon: Users,
+      color: "hsl(191 100% 62%)",
+    },
+    {
+      label: "Avg Score",
+      value: speaker.kpis.avg_score.toFixed(1),
+      icon: TrendingUp,
+      color: "hsl(51 100% 61%)",
+    },
+  ];
+
+  const hasTargetAudiences = speaker.target_audiences && speaker.target_audiences.length > 0;
+  const hasTalkingPoints = speaker.talking_points && speaker.talking_points.length > 0;
+  const hasAirtable = !!speaker.airtable_embed_url;
+
+  return (
+    <div className="w-full max-w-5xl mx-auto space-y-8">
+      {/* Speaker Header */}
+      <div className="flex items-center gap-6">
+        <Avatar className="h-20 w-20 border-2 border-primary/20">
+          <AvatarFallback className="text-2xl font-semibold bg-primary/10 text-primary">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <h2 className="text-3xl md:text-4xl font-bold">{speaker.speaker_name}</h2>
+          {speaker.speaker_title && (
+            <p className="text-lg text-muted-foreground mt-1">{speaker.speaker_title}</p>
+          )}
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {kpiItems.map((kpi, index) => (
+          <div
+            key={index}
+            className="bg-card border border-border rounded-2xl p-5 space-y-2"
+          >
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: `${kpi.color}15` }}
+            >
+              <kpi.icon className="h-5 w-5" style={{ color: kpi.color }} />
+            </div>
+            <div>
+              <div className="text-2xl md:text-3xl font-bold">{kpi.value}</div>
+              <div className="text-sm text-muted-foreground">{kpi.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Strategy Section */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Target Audiences */}
+        {hasTargetAudiences && (
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Target Audiences
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {speaker.target_audiences?.slice(0, 5).map((audience, i) => (
+                <Badge
+                  key={i}
+                  variant="secondary"
+                  className="px-3 py-1.5 text-sm"
+                >
+                  {audience}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Talking Points */}
+        {hasTalkingPoints && (
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h3 className="text-lg font-semibold">Key Talking Points</h3>
+            <ol className="space-y-2 text-sm text-muted-foreground">
+              {speaker.talking_points?.slice(0, 4).map((point, i) => (
+                <li key={i} className="flex gap-3">
+                  <span className="font-semibold text-foreground shrink-0">{i + 1}.</span>
+                  <span className="line-clamp-2">{point}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </div>
+
+      {/* Airtable Link Card */}
+      {hasAirtable && (
+        <button
+          onClick={onAirtableClick}
+          className="w-full group bg-card border border-border rounded-2xl p-6 flex items-center justify-between hover:bg-accent/5 hover:border-primary/30 transition-all duration-200"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <ExternalLink className="h-6 w-6 text-primary" />
+            </div>
+            <div className="text-left">
+              <div className="font-semibold">Activity Tracking</div>
+              <div className="text-sm text-muted-foreground">
+                View detailed booking and interview activity
+              </div>
+            </div>
+          </div>
+          <div className="text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+            Click to open →
+          </div>
+        </button>
+      )}
+    </div>
+  );
+};
