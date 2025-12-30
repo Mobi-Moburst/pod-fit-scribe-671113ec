@@ -9,11 +9,17 @@ import { SlideContainer } from "@/components/client-report/SlideContainer";
 import { SlideNavigation } from "@/components/client-report/SlideNavigation";
 import { TitleSlide } from "@/components/client-report/slides/TitleSlide";
 import { KPIsSlide } from "@/components/client-report/slides/KPIsSlide";
+import { AdditionalMetricsSlide } from "@/components/client-report/slides/AdditionalMetricsSlide";
 import { CampaignOverviewSlide } from "@/components/client-report/slides/CampaignOverviewSlide";
 import { CategoriesSlide } from "@/components/client-report/slides/CategoriesSlide";
 import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterSlide";
 import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
+import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
+import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
+import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
+import { GEODialog } from "@/components/reports/GEODialog";
+import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 
 interface VisibleSections {
   totalBooked?: boolean;
@@ -47,6 +53,13 @@ export default function ReportPresentation() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Dialog states
+  const [reachDialogOpen, setReachDialogOpen] = useState(false);
+  const [emvDialogOpen, setEmvDialogOpen] = useState(false);
+  const [sovDialogOpen, setSovDialogOpen] = useState(false);
+  const [geoDialogOpen, setGeoDialogOpen] = useState(false);
+  const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -116,6 +129,26 @@ export default function ReportPresentation() {
           <KPIsSlide 
             kpis={reportData.kpis}
             visibleSections={visibleSections}
+            onReachClick={() => setReachDialogOpen(true)}
+          />
+        ),
+      });
+    }
+
+    // Additional Value Metrics slide
+    const hasAdditionalMetrics = visibleSections.emv || visibleSections.sov || 
+      visibleSections.geoScore || visibleSections.contentGap;
+    if (hasAdditionalMetrics) {
+      slides.push({
+        id: "additional-metrics",
+        component: (
+          <AdditionalMetricsSlide 
+            reportData={reportData}
+            visibleSections={visibleSections}
+            onEmvClick={() => setEmvDialogOpen(true)}
+            onSovClick={() => setSovDialogOpen(true)}
+            onGeoClick={() => setGeoDialogOpen(true)}
+            onContentGapClick={() => setContentGapDialogOpen(true)}
           />
         ),
       });
@@ -257,6 +290,36 @@ export default function ReportPresentation() {
         onPrev={prevSlide}
         onNext={nextSlide}
         onExit={exitPresentation}
+      />
+
+      {/* Analysis Dialogs */}
+      <ReachAnalysisDialog
+        open={reachDialogOpen}
+        onOpenChange={setReachDialogOpen}
+        podcasts={reportData?.podcasts || []}
+        totalListenersPerEpisode={reportData?.kpis?.total_reach || 0}
+        quarter={quarter}
+      />
+      <EMVAnalysisDialog
+        open={emvDialogOpen}
+        onOpenChange={setEmvDialogOpen}
+        podcasts={reportData?.podcasts || []}
+      />
+      <SOVChartDialog
+        open={sovDialogOpen}
+        onOpenChange={setSovDialogOpen}
+        sovAnalysis={reportData?.sov_analysis || null}
+        clientName={reportData?.client?.name}
+      />
+      <GEODialog
+        open={geoDialogOpen}
+        onOpenChange={setGeoDialogOpen}
+        geoAnalysis={reportData?.geo_analysis || null}
+      />
+      <ContentGapDialog
+        open={contentGapDialogOpen}
+        onOpenChange={setContentGapDialogOpen}
+        gapAnalysis={reportData?.content_gap_analysis || null}
       />
     </div>
   );
