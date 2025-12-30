@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ReportData } from "@/types/reports";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
+import { BackgroundFX } from "@/components/BackgroundFX";
 import { SlideContainer } from "@/components/client-report/SlideContainer";
 import { SlideNavigation } from "@/components/client-report/SlideNavigation";
 import { TitleSlide } from "@/components/client-report/slides/TitleSlide";
@@ -245,6 +246,7 @@ export default function ReportPresentation() {
 
   return (
     <div className="fixed inset-0 bg-background overflow-hidden">
+      <BackgroundFX />
       <SlideContainer>
         {slides[currentSlide].component}
       </SlideContainer>
