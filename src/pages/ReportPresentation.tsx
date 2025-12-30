@@ -10,6 +10,7 @@ import { SlideNavigation } from "@/components/client-report/SlideNavigation";
 import { TitleSlide } from "@/components/client-report/slides/TitleSlide";
 import { KPIsSlide } from "@/components/client-report/slides/KPIsSlide";
 import { AdditionalMetricsSlide } from "@/components/client-report/slides/AdditionalMetricsSlide";
+import { SpeakerSpotlightSlide } from "@/components/client-report/slides/SpeakerSpotlightSlide";
 import { CampaignOverviewSlide } from "@/components/client-report/slides/CampaignOverviewSlide";
 import { CategoriesSlide } from "@/components/client-report/slides/CategoriesSlide";
 import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterSlide";
@@ -20,6 +21,7 @@ import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
+import { AirtableDialog } from "@/components/client-report/AirtableDialog";
 
 interface VisibleSections {
   totalBooked?: boolean;
@@ -60,6 +62,11 @@ export default function ReportPresentation() {
   const [sovDialogOpen, setSovDialogOpen] = useState(false);
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
+  const [airtableDialogOpen, setAirtableDialogOpen] = useState(false);
+  const [selectedSpeakerAirtable, setSelectedSpeakerAirtable] = useState<{
+    url: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -159,6 +166,29 @@ export default function ReportPresentation() {
             onContentGapClick={() => setContentGapDialogOpen(true)}
           />
         ),
+      });
+    }
+
+    // Speaker Spotlight slides (for multi-speaker reports)
+    if (reportData.report_type === 'multi' && reportData.speaker_breakdowns) {
+      reportData.speaker_breakdowns.forEach((speaker) => {
+        slides.push({
+          id: `speaker-${speaker.speaker_id}`,
+          component: (
+            <SpeakerSpotlightSlide
+              speaker={speaker}
+              onAirtableClick={() => {
+                if (speaker.airtable_embed_url) {
+                  setSelectedSpeakerAirtable({
+                    url: speaker.airtable_embed_url,
+                    name: speaker.speaker_name,
+                  });
+                  setAirtableDialogOpen(true);
+                }
+              }}
+            />
+          ),
+        });
       });
     }
 
@@ -329,6 +359,14 @@ export default function ReportPresentation() {
         onOpenChange={setContentGapDialogOpen}
         gapAnalysis={reportData?.content_gap_analysis || null}
       />
+      {selectedSpeakerAirtable && (
+        <AirtableDialog
+          open={airtableDialogOpen}
+          onOpenChange={setAirtableDialogOpen}
+          embedUrl={selectedSpeakerAirtable.url}
+          speakerName={selectedSpeakerAirtable.name}
+        />
+      )}
     </div>
   );
 }
