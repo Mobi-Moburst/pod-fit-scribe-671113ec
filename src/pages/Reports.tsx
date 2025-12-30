@@ -31,8 +31,11 @@ import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { HighlightClip } from "@/types/reports";
+import HighlightUploadDialog from "@/components/reports/HighlightUploadDialog";
+import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
 
 export default function Reports() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -84,6 +87,7 @@ export default function Reports() {
   const [sovDialogOpen, setSOVDialogOpen] = useState(false);
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
+  const [highlightsDialogOpen, setHighlightsDialogOpen] = useState(false);
   
   
   // Visibility state for report sections
@@ -106,6 +110,7 @@ export default function Reports() {
     nextQuarterStrategy: true,
     targetPodcasts: true,
     contentGapRecommendations: true,
+    highlights: true,
   });
   
   const toggleSection = (key: keyof typeof visibleSections) => {
@@ -762,6 +767,35 @@ export default function Reports() {
     });
   };
 
+  // Update saved report with highlight clips
+  const updateReportHighlights = async (clips: HighlightClip[]) => {
+    if (!currentReportId || !reportData) return;
+    
+    const updatedReportData = { ...reportData, highlight_clips: clips };
+    setReportData(updatedReportData);
+    
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({ report_data: updatedReportData as any })
+        .eq('id', currentReportId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Highlights saved",
+        description: "Interview highlights updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating highlights:', error);
+      toast({
+        title: "Failed to save highlights",
+        description: "Highlights were added but couldn't save to report.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen w-full">
       <BackgroundFX />
@@ -842,6 +876,17 @@ export default function Reports() {
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               View
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                loadReport(report);
+                                setHighlightsDialogOpen(true);
+                              }}
+                            >
+                              <Video className="h-4 w-4 mr-1" />
+                              Highlights
                             </Button>
                             {report.is_published ? (
                               <Button
@@ -1475,6 +1520,14 @@ export default function Reports() {
                 </div>
               )}
 
+              {/* Interview Highlights */}
+              {visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
+                <ClientReportHighlights
+                  clips={reportData.highlight_clips}
+                  companyName={reportData.company_name || reportData.client?.company}
+                />
+              )}
+
               {/* Campaign Overview */}
               {visibleSections.campaignOverview && (
                 <CampaignOverview
@@ -1601,6 +1654,15 @@ export default function Reports() {
                 podcasts={reportData.podcasts}
                 totalListenersPerEpisode={reportData.kpis.total_listeners_per_episode}
                 quarter={quarter}
+              />
+
+              <HighlightUploadDialog
+                open={highlightsDialogOpen}
+                onOpenChange={setHighlightsDialogOpen}
+                existingClips={reportData.highlight_clips || []}
+                onSave={updateReportHighlights}
+                podcasts={reportData.podcasts?.map(p => p.show_title).filter(Boolean) as string[]}
+                speakers={reportData.speaker_breakdowns?.map(s => s.speaker_name) || []}
               />
             </>
           )}

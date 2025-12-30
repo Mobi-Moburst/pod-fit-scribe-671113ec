@@ -14,6 +14,7 @@ import { ClientReportCategories } from "@/components/client-report/ClientReportC
 import { ClientReportNextQuarter } from "@/components/client-report/ClientReportNextQuarter";
 import { ClientReportTargetPodcasts } from "@/components/client-report/ClientReportTargetPodcasts";
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
+import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
@@ -35,6 +36,7 @@ interface VisibleSections {
   nextQuarterStrategy?: boolean;
   targetPodcasts?: boolean;
   contentGapRecommendations?: boolean;
+  highlights?: boolean;
 }
 
 export default function PublicReport() {
@@ -92,6 +94,7 @@ export default function PublicReport() {
         nextQuarterStrategy: true,
         targetPodcasts: true,
         contentGapRecommendations: true,
+        highlights: !!(reportData.highlight_clips && reportData.highlight_clips.length > 0),
         // Auto-detect additional metrics based on data presence
         emv: (reportData.podcasts?.some(p => p.true_emv && p.true_emv > 0)) || false,
         sov: !!reportData.sov_analysis,
@@ -191,6 +194,14 @@ export default function PublicReport() {
             onSovClick={() => setSovDialogOpen(true)}
             onGeoClick={() => setGeoDialogOpen(true)}
             onContentGapClick={() => setContentGapDialogOpen(true)}
+          />
+        )}
+
+        {/* Interview Highlights */}
+        {visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
+          <ClientReportHighlights
+            clips={reportData.highlight_clips}
+            companyName={reportData.company_name || reportData.client?.company}
           />
         )}
 
