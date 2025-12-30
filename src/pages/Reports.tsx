@@ -16,7 +16,7 @@ import type { Company, Speaker, MinimalClient, Competitor } from "@/types/client
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput } from "@/utils/reportGenerator";
-import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV } from "@/utils/csvParsers";
+import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
@@ -59,6 +59,7 @@ export default function Reports() {
   const [sovFile, setSOVFile] = useState<File | null>(null);
   const [geoFile, setGeoFile] = useState<File | null>(null);
   const [contentGapFile, setContentGapFile] = useState<File | null>(null);
+  const [rephonicEmvFile, setRephonicEmvFile] = useState<File | null>(null);
   
   // Manual SOV inputs
   const [manualSOVMode, setManualSOVMode] = useState(false);
@@ -414,10 +415,12 @@ export default function Reports() {
         const sovText = sovFile ? await sovFile.text() : null;
         const geoText = geoFile ? await geoFile.text() : null;
         const contentGapText = contentGapFile ? await contentGapFile.text() : null;
+        const rephonicEmvText = rephonicEmvFile ? await rephonicEmvFile.text() : null;
         
         const sovRows = sovText ? parseSOVCSV(sovText) : null;
         const geoRows = geoText ? parseGEOCSV(geoText) : [];
         const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
+        const rephonicRows = rephonicEmvText ? parseRephonicCSV(rephonicEmvText) : undefined;
         
         // Prepare manual SOV data
         const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -434,7 +437,9 @@ export default function Reports() {
           reportName || `${selectedCompany.name} - ${quarter || 'Report'}`,
           quarter,
           { start: startDate, end: endDate },
-          manualSOVCompetitors
+          manualSOVCompetitors,
+          50, // CPM
+          rephonicRows
         );
         
         setReportData(report);
@@ -490,6 +495,7 @@ export default function Reports() {
       const sovText = sovFile ? await sovFile.text() : null;
       const geoText = geoFile ? await geoFile.text() : null;
       const contentGapText = contentGapFile ? await contentGapFile.text() : null;
+      const rephonicEmvText = rephonicEmvFile ? await rephonicEmvFile.text() : null;
       
       // Parse CSVs
       const batchRows = parseBatchCSV(batchText);
@@ -497,6 +503,7 @@ export default function Reports() {
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
       const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
+      const rephonicRows = rephonicEmvText ? parseRephonicCSV(rephonicEmvText) : undefined;
       
       // Prepare manual SOV data if in manual mode
       const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -515,7 +522,9 @@ export default function Reports() {
         reportName || `${speakerAsClient.name} - ${quarter || 'Report'}`,
         quarter,
         { start: startDate, end: endDate },
-        manualSOVCompetitors
+        manualSOVCompetitors,
+        50, // CPM
+        rephonicRows
       );
       
       setReportData(report);
@@ -1205,10 +1214,23 @@ export default function Reports() {
                   </div>
                   
                   {/* Content Gap */}
-                  <div>
+                  <div className="mb-4">
                     <Label className="text-sm">Content Gap Analysis CSV</Label>
                     <Badge variant={contentGapFile ? "default" : "outline"} className="ml-2 mb-2">{contentGapFile ? "Uploaded" : "Optional"}</Badge>
                     <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
+                  </div>
+                  
+                  {/* Rephonic EMV */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Label className="text-sm">Rephonic EMV CSV</Label>
+                      <Badge variant={rephonicEmvFile ? "default" : "outline"}>{rephonicEmvFile ? "Uploaded" : "Optional"}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Upload a Rephonic export with podcast EMV data. For multi-speaker reports, all EMV values will be combined.
+                    </p>
+                    <Input type="file" accept=".csv" onChange={(e) => setRephonicEmvFile(e.target.files?.[0] || null)} />
+                    {rephonicEmvFile && <p className="text-xs text-muted-foreground mt-1">{rephonicEmvFile.name}</p>}
                   </div>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import { MinimalClient, Speaker, Company } from '@/types/clients';
 import { BatchRow } from '@/types/batch';
 import { ReportData, PodcastReportEntry, ContentGapAnalysis, SpeakerBreakdown } from '@/types/reports';
-import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow } from '@/types/csv';
+import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow, RephonicCSVRow } from '@/types/csv';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
@@ -930,6 +930,73 @@ export function calculateContentGapAnalysis(rows: ContentGapCSVRow[]): ContentGa
   };
 }
 
+// Apply manual EMV data from Rephonic CSV
+function applyRephonicEMVData(
+  podcasts: PodcastReportEntry[],
+  rephonicRows: RephonicCSVRow[],
+  cpm: number = 50
+): PodcastReportEntry[] {
+  if (!rephonicRows || rephonicRows.length === 0) return podcasts;
+  
+  // Create a map of normalized podcast names to Rephonic data
+  const rephonicMap = new Map<string, RephonicCSVRow>();
+  rephonicRows.forEach(row => {
+    if (row.podcast_name) {
+      rephonicMap.set(normalizeTitle(row.podcast_name), row);
+    }
+  });
+  
+  return podcasts.map(podcast => {
+    // Try to find matching Rephonic data
+    const normalizedTitle = normalizeTitle(podcast.show_title);
+    const rephonicData = rephonicMap.get(normalizedTitle);
+    
+    if (!rephonicData) return podcast;
+    
+    // Apply Rephonic data
+    const updatedPodcast = { ...podcast };
+    
+    // Apply listeners if provided by Rephonic
+    if (rephonicData.listeners_per_episode && !podcast.listeners_per_episode) {
+      updatedPodcast.listeners_per_episode = rephonicData.listeners_per_episode;
+    }
+    
+    // Apply duration if provided by Rephonic
+    if (rephonicData.episode_duration_minutes && !podcast.episode_duration_minutes) {
+      updatedPodcast.episode_duration_minutes = rephonicData.episode_duration_minutes;
+    }
+    
+    // If Rephonic provides pre-calculated EMV, use it directly
+    if (rephonicData.emv && rephonicData.emv > 0) {
+      updatedPodcast.true_emv = rephonicData.emv;
+      // Estimate other EMV fields from the total
+      const listeners = updatedPodcast.listeners_per_episode || 5000;
+      updatedPodcast.base_emv = (listeners / 1000) * cpm;
+      updatedPodcast.ad_units = updatedPodcast.true_emv / updatedPodcast.base_emv;
+      updatedPodcast.speaking_minutes = updatedPodcast.ad_units;
+      updatedPodcast.value_per_minute = updatedPodcast.base_emv;
+    } 
+    // Otherwise recalculate EMV with the new data
+    else if (updatedPodcast.listeners_per_episode && updatedPodcast.episode_duration_minutes) {
+      const emvData = calculateEMV(updatedPodcast, cpm);
+      if (emvData) {
+        Object.assign(updatedPodcast, emvData);
+      }
+    }
+    
+    return updatedPodcast;
+  });
+}
+
+// Calculate total EMV from Rephonic CSV (for combined EMV without per-podcast matching)
+function calculateTotalRephonicEMV(rephonicRows: RephonicCSVRow[]): number {
+  if (!rephonicRows || rephonicRows.length === 0) return 0;
+  
+  return rephonicRows.reduce((sum, row) => {
+    return sum + (row.emv || 0);
+  }, 0);
+}
+
 // New function for multi-CSV report generation
 export async function generateReportFromMultipleCSVs(
   batchRows: BatchCSVRow[],
@@ -943,7 +1010,8 @@ export async function generateReportFromMultipleCSVs(
   quarter: string,
   dateRange: { start: Date; end: Date },
   manualSOVCompetitors?: { name: string; role: string; count: number }[] | null,
-  cpm: number = 50
+  cpm: number = 50,
+  rephonicRows?: RephonicCSVRow[]
 ): Promise<ReportData> {
   
   // Step 1: Merge Batch + Airtable data by podcast title
@@ -952,11 +1020,24 @@ export async function generateReportFromMultipleCSVs(
   // Step 2: Batch scrape episode durations
   const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
   
-  // Step 3: Apply EMV calculations
-  const podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
+  // Step 3: Apply EMV calculations (scraped data first)
+  let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
+  
+  // Step 3b: Apply Rephonic EMV data if provided (overrides/supplements scraped data)
+  if (rephonicRows && rephonicRows.length > 0) {
+    podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm);
+  }
   
   // Step 4: Calculate enhanced KPIs (now includes total EMV)
   const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
+  
+  // If Rephonic data provided with pre-calculated EMV totals, use that for total_emv
+  if (rephonicRows && rephonicRows.length > 0) {
+    const rephonicTotalEMV = calculateTotalRephonicEMV(rephonicRows);
+    if (rephonicTotalEMV > 0) {
+      kpis.total_emv = rephonicTotalEMV;
+    }
+  }
   
   // Step 5: Calculate SOV if provided (either CSV or manual)
   const sov_analysis = (sovRows || manualSOVCompetitors)
@@ -1093,7 +1174,8 @@ export async function generateMultiSpeakerReport(
   quarter: string,
   dateRange: { start: Date; end: Date },
   manualSOVCompetitors?: { name: string; role: string; count: number }[] | null,
-  cpm: number = 50
+  cpm: number = 50,
+  rephonicRows?: RephonicCSVRow[]
 ): Promise<ReportData> {
   
   // Process each speaker's data
@@ -1135,6 +1217,14 @@ export async function generateMultiSpeakerReport(
   
   // Calculate aggregated company KPIs
   const aggregatedKpis = calculateAggregatedKPIs(speakerBreakdowns, allBatchRows, allAirtableRows, allPodcasts);
+  
+  // If Rephonic data provided with pre-calculated EMV totals, use that for total_emv (combined for all speakers)
+  if (rephonicRows && rephonicRows.length > 0) {
+    const rephonicTotalEMV = calculateTotalRephonicEMV(rephonicRows);
+    if (rephonicTotalEMV > 0) {
+      aggregatedKpis.total_emv = rephonicTotalEMV;
+    }
+  }
   
   // Calculate company-level SOV
   const sov_analysis = (sovRows || manualSOVCompetitors)
