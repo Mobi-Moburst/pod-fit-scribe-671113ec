@@ -201,10 +201,28 @@ export interface ReportData {
   // Content Gap Analysis (from Spotlight)
   content_gap_analysis?: ContentGapAnalysis;
   
-  // Target Podcasts for Next Quarter
-  target_podcasts?: TargetPodcast[];
-  
-  // Flags to track if optional CSVs were provided (even if no results)
-  geo_csv_uploaded?: boolean;
-  content_gap_csv_uploaded?: boolean;
+// Target Podcasts for Next Quarter
+target_podcasts?: TargetPodcast[];
+
+// Flags to track if optional CSVs were provided (even if no results)
+geo_csv_uploaded?: boolean;
+content_gap_csv_uploaded?: boolean;
+
+// Interview Highlights (video/audio clips from published interviews)
+highlight_clips?: HighlightClip[];
+}
+
+// Highlight clip for interview showcase
+export interface HighlightClip {
+  id: string;
+  title: string;
+  podcast_name?: string;
+  speaker_name?: string;
+  description?: string;
+  media_type: 'video' | 'audio';
+  source_type: 'upload' | 'youtube' | 'vimeo' | 'descript' | 'external';
+  url: string;
+  thumbnail_url?: string;
+  duration_seconds?: number;
+  created_at: string;
 }

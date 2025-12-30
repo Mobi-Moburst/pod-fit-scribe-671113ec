@@ -16,6 +16,7 @@ import { CategoriesSlide } from "@/components/client-report/slides/CategoriesSli
 import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterSlide";
 import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
+import HighlightsSlide from "@/components/client-report/slides/HighlightsSlide";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
@@ -38,6 +39,7 @@ interface VisibleSections {
   nextQuarterStrategy?: boolean;
   targetPodcasts?: boolean;
   contentGapRecommendations?: boolean;
+  highlights?: boolean;
 }
 
 interface Slide {
@@ -104,6 +106,7 @@ export default function ReportPresentation() {
         topCategories: true,
         nextQuarterStrategy: true,
         targetPodcasts: true,
+        highlights: !!(reportData.highlight_clips && reportData.highlight_clips.length > 0),
         // Auto-detect additional metrics based on data presence
         emv: (reportData.podcasts?.some(p => p.true_emv && p.true_emv > 0)) || false,
         sov: !!reportData.sov_analysis,
@@ -164,6 +167,19 @@ export default function ReportPresentation() {
             onSovClick={() => setSovDialogOpen(true)}
             onGeoClick={() => setGeoDialogOpen(true)}
             onContentGapClick={() => setContentGapDialogOpen(true)}
+          />
+        ),
+      });
+    }
+
+    // Highlights slide (after additional metrics, before speaker spotlights)
+    if (visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0) {
+      slides.push({
+        id: "highlights",
+        component: (
+          <HighlightsSlide
+            clips={reportData.highlight_clips}
+            companyName={reportData.company_name || reportData.client?.company}
           />
         ),
       });
