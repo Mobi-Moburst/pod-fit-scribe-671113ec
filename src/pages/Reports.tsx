@@ -31,7 +31,7 @@ import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Reports() {
@@ -578,6 +578,7 @@ export default function Reports() {
         report_data: {
           ...reportData,
           selected_speaker_ids: isMultiSpeakerMode ? selectedSpeakerIds : undefined,
+          visibleSections, // Include visible sections for public view
         } as any,
       });
       
@@ -598,6 +599,77 @@ export default function Reports() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const generateSlug = () => {
+    return Math.random().toString(36).substring(2, 10);
+  };
+
+  const handlePublishReport = async (reportId: string) => {
+    const slug = generateSlug();
+    
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({
+          is_published: true,
+          public_slug: slug,
+          published_at: new Date().toISOString(),
+        })
+        .eq('id', reportId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Report published!",
+        description: "Your report is now publicly accessible.",
+      });
+      await loadSavedReports();
+    } catch (error) {
+      console.error('Error publishing report:', error);
+      toast({
+        title: "Error publishing report",
+        description: error instanceof Error ? error.message : "Failed to publish report",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUnpublishReport = async (reportId: string) => {
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({
+          is_published: false,
+          public_slug: null,
+          published_at: null,
+        })
+        .eq('id', reportId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Report unpublished",
+        description: "The report is no longer publicly accessible.",
+      });
+      await loadSavedReports();
+    } catch (error) {
+      console.error('Error unpublishing report:', error);
+      toast({
+        title: "Error unpublishing report",
+        description: error instanceof Error ? error.message : "Failed to unpublish report",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyPublicUrl = (slug: string) => {
+    const url = `${window.location.origin}/report/${slug}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Copied!",
+      description: "Public report URL copied to clipboard.",
+    });
   };
 
   const loadReport = (report: any) => {
@@ -701,7 +773,7 @@ export default function Reports() {
                     <TableRow>
                       <TableHead>Report Name</TableHead>
                       <TableHead>Quarter</TableHead>
-                      <TableHead>Date Range</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Generated</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -716,8 +788,34 @@ export default function Reports() {
                           )}
                         </TableCell>
                         <TableCell>{report.quarter || '-'}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(report.date_range_start).toLocaleDateString()} - {new Date(report.date_range_end).toLocaleDateString()}
+                        <TableCell>
+                          {report.is_published ? (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
+                                <Globe className="h-3 w-3 mr-1" />
+                                Published
+                              </Badge>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => copyPublicUrl(report.public_slug)}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                              <a
+                                href={`/report/${report.public_slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Button size="icon" variant="ghost" className="h-6 w-6">
+                                  <ExternalLink className="h-3 w-3" />
+                                </Button>
+                              </a>
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">Draft</Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {new Date(report.generated_at).toLocaleDateString()}
@@ -732,6 +830,24 @@ export default function Reports() {
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
+                            {report.is_published ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUnpublishReport(report.id)}
+                              >
+                                Unpublish
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handlePublishReport(report.id)}
+                              >
+                                <Globe className="h-4 w-4 mr-1" />
+                                Publish
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="destructive"
