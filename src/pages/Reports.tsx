@@ -439,7 +439,9 @@ export default function Reports() {
           { start: startDate, end: endDate },
           manualSOVCompetitors,
           50, // CPM
-          rephonicRows
+          rephonicRows,
+          !!geoFile, // geoCsvProvided
+          !!contentGapFile // contentGapCsvProvided
         );
         
         setReportData(report);
@@ -524,7 +526,9 @@ export default function Reports() {
         { start: startDate, end: endDate },
         manualSOVCompetitors,
         50, // CPM
-        rephonicRows
+        rephonicRows,
+        !!geoFile, // geoCsvProvided
+        !!contentGapFile // contentGapCsvProvided
       );
       
       setReportData(report);
@@ -1442,7 +1446,9 @@ export default function Reports() {
                         subtitle={
                           reportData.geo_analysis 
                             ? `${reportData.geo_analysis.total_podcasts_indexed} podcasts • ${reportData.geo_analysis.unique_ai_engines.length} AI engines • Click for details`
-                            : "Upload GEO CSV to analyze"
+                            : reportData.geo_csv_uploaded
+                              ? "No podcast visibility found in AI search"
+                              : "Upload GEO CSV to analyze"
                         }
                         icon={Sparkles}
                         onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
@@ -1456,7 +1462,9 @@ export default function Reports() {
                         subtitle={
                           reportData.content_gap_analysis 
                             ? `${reportData.content_gap_analysis.total_gaps} gaps • ${reportData.content_gap_analysis.total_prompts} prompts • Click for details`
-                            : "Upload Content Gap CSV to analyze"
+                            : reportData.content_gap_csv_uploaded
+                              ? "No content gap data found"
+                              : "Upload Content Gap CSV to analyze"
                         }
                         icon={AlertTriangle}
                         onClick={reportData.content_gap_analysis ? () => setContentGapDialogOpen(true) : undefined}

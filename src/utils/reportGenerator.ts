@@ -1011,7 +1011,9 @@ export async function generateReportFromMultipleCSVs(
   dateRange: { start: Date; end: Date },
   manualSOVCompetitors?: { name: string; role: string; count: number }[] | null,
   cpm: number = 50,
-  rephonicRows?: RephonicCSVRow[]
+  rephonicRows?: RephonicCSVRow[],
+  geoCsvProvided: boolean = false,
+  contentGapCsvProvided: boolean = false
 ): Promise<ReportData> {
   
   // Step 1: Merge Batch + Airtable data by podcast title
@@ -1092,6 +1094,8 @@ export async function generateReportFromMultipleCSVs(
     content_gap_analysis,
     next_quarter_strategy,
     report_type: 'single',
+    geo_csv_uploaded: geoCsvProvided,
+    content_gap_csv_uploaded: contentGapCsvProvided,
   };
 }
 
@@ -1175,7 +1179,9 @@ export async function generateMultiSpeakerReport(
   dateRange: { start: Date; end: Date },
   manualSOVCompetitors?: { name: string; role: string; count: number }[] | null,
   cpm: number = 50,
-  rephonicRows?: RephonicCSVRow[]
+  rephonicRows?: RephonicCSVRow[],
+  geoCsvProvided: boolean = false,
+  contentGapCsvProvided: boolean = false
 ): Promise<ReportData> {
   
   // Process each speaker's data
@@ -1303,6 +1309,8 @@ export async function generateMultiSpeakerReport(
     company_name: company.name,
     selected_speaker_ids: speakerData.map(s => s.speaker.id),
     speaker_breakdowns: speakerBreakdowns,
+    geo_csv_uploaded: geoCsvProvided,
+    content_gap_csv_uploaded: contentGapCsvProvided,
   };
 }
 

@@ -203,4 +203,8 @@ export interface ReportData {
   
   // Target Podcasts for Next Quarter
   target_podcasts?: TargetPodcast[];
+  
+  // Flags to track if optional CSVs were provided (even if no results)
+  geo_csv_uploaded?: boolean;
+  content_gap_csv_uploaded?: boolean;
 }
