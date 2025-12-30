@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow, ContentGapEngineData } from '@/types/csv';
+import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow, ContentGapEngineData, RephonicCSVRow } from '@/types/csv';
 
 // Normalize CSV header names to snake_case
 function normalizeHeaderName(header: string): string {
@@ -282,6 +282,54 @@ export function parseContentGapCSV(csvText: string): ContentGapCSVRow[] {
   console.log('[parseContentGapCSV] Parsed content gap CSV:', {
     totalRows: parsed.length,
     engines,
+    sampleRows: parsed.slice(0, 3),
+  });
+  
+  return parsed;
+}
+
+// Parse Rephonic EMV CSV
+export function parseRephonicCSV(csvText: string): RephonicCSVRow[] {
+  const result = Papa.parse<Record<string, string>>(csvText, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: normalizeHeaderName,
+  });
+  
+  // Map common Rephonic header variations to our standard format
+  const parsed: RephonicCSVRow[] = result.data.map(row => {
+    // Try different header variations for podcast name
+    const podcastName = row.podcast_name || row.show_name || row.name || row.title || row.podcast || '';
+    
+    // Try different header variations for listeners
+    const listenersRaw = row.listeners_per_episode || row.listeners || row.avg_listeners || 
+                         row.average_listeners || row.monthly_listeners || '';
+    const listeners = listenersRaw ? parseInt(String(listenersRaw).replace(/[^0-9]/g, '')) || 0 : 0;
+    
+    // Try different header variations for duration
+    const durationRaw = row.episode_duration_minutes || row.duration || row.avg_duration || 
+                        row.episode_length || row.length || '';
+    const duration = durationRaw ? parseFloat(String(durationRaw).replace(/[^0-9.]/g, '')) || 0 : 0;
+    
+    // Episode link
+    const episodeLink = row.episode_link || row.episode_url || row.url || row.link || '';
+    
+    // Pre-calculated EMV if provided
+    const emvRaw = row.emv || row.earned_media_value || row.value || '';
+    const emv = emvRaw ? parseFloat(String(emvRaw).replace(/[^0-9.]/g, '')) || 0 : 0;
+    
+    return {
+      podcast_name: podcastName,
+      listeners_per_episode: listeners > 0 ? listeners : undefined,
+      episode_duration_minutes: duration > 0 ? duration : undefined,
+      episode_link: episodeLink || undefined,
+      emv: emv > 0 ? emv : undefined,
+    };
+  }).filter(row => row.podcast_name); // Filter out empty rows
+  
+  console.log('[parseRephonicCSV] Parsed Rephonic EMV CSV:', {
+    totalRows: parsed.length,
+    headers: result.meta?.fields,
     sampleRows: parsed.slice(0, 3),
   });
   

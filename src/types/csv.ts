@@ -64,3 +64,12 @@ export interface ContentGapCSVRow {
   run_date: string;
   engines: ContentGapEngineData[];
 }
+
+// Rephonic EMV CSV (for manual EMV data entry)
+export interface RephonicCSVRow {
+  podcast_name: string;
+  listeners_per_episode?: number;
+  episode_duration_minutes?: number;
+  episode_link?: string;
+  emv?: number; // Pre-calculated EMV if provided
+}
