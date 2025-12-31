@@ -6,6 +6,54 @@ import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
 
+// Generate AI-powered pitch hooks for a speaker
+export async function generatePitchHooksForSpeaker(speaker: {
+  name: string;
+  title?: string | null;
+  company?: string;
+  target_audiences?: string[] | null;
+  talking_points?: string[] | null;
+  campaign_strategy?: string | null;
+  professional_credentials?: string[] | null;
+  guest_identity_tags?: string[] | null;
+}): Promise<string[]> {
+  try {
+    console.log('Generating AI pitch hooks for:', speaker.name);
+    
+    const { data, error } = await supabase.functions.invoke('generate-pitch-hooks', {
+      body: { 
+        speaker: {
+          name: speaker.name,
+          title: speaker.title || undefined,
+          company: speaker.company,
+          target_audiences: speaker.target_audiences || undefined,
+          talking_points: speaker.talking_points || undefined,
+          campaign_strategy: speaker.campaign_strategy || undefined,
+          professional_credentials: speaker.professional_credentials || undefined,
+          guest_identity_tags: speaker.guest_identity_tags || undefined,
+        }
+      }
+    });
+
+    if (error) {
+      console.error('Error generating pitch hooks:', error);
+      // Fallback to talking points if AI fails
+      return speaker.talking_points?.slice(0, 3) || [];
+    }
+
+    if (data?.hooks && Array.isArray(data.hooks) && data.hooks.length > 0) {
+      console.log('AI generated hooks:', data.hooks);
+      return data.hooks;
+    }
+
+    // Fallback to talking points
+    return speaker.talking_points?.slice(0, 3) || [];
+  } catch (err) {
+    console.error('Failed to generate pitch hooks:', err);
+    return speaker.talking_points?.slice(0, 3) || [];
+  }
+}
+
 function generateStrategyParagraph(client: MinimalClient): string {
   const audiences = pickTopAudienceTags({
     strategyText: client.campaign_strategy,
@@ -1067,6 +1115,18 @@ export async function generateReportFromMultipleCSVs(
   // Generate next quarter strategy
   const next_quarter_strategy = generateNextQuarterStrategy(client, kpis, quarter);
   
+  // Generate AI pitch hooks for the speaker
+  const aiHooks = await generatePitchHooksForSpeaker({
+    name: client.name,
+    title: client.title,
+    company: client.company,
+    target_audiences: client.target_audiences,
+    talking_points: client.talking_points,
+    campaign_strategy: client.campaign_strategy,
+    professional_credentials: client.professional_credentials,
+    guest_identity_tags: client.guest_identity_tags,
+  });
+
   return {
     client,
     generated_at: new Date().toISOString(),
@@ -1087,8 +1147,8 @@ export async function generateReportFromMultipleCSVs(
         max: 3
       }),
       talking_points: client.talking_points?.slice(0, 3) || [],
-      pitch_hooks: client.talking_points && client.talking_points.length > 0 
-        ? [{ speaker_name: client.name, hooks: client.talking_points.slice(0, 3) }]
+      pitch_hooks: aiHooks.length > 0 
+        ? [{ speaker_name: client.name, hooks: aiHooks }]
         : undefined,
     },
     podcasts: sortedPodcasts,
@@ -1286,6 +1346,24 @@ export async function generateMultiSpeakerReport(
   // Generate next quarter strategy
   const next_quarter_strategy = generateNextQuarterStrategy(companyClient, aggregatedKpis, quarter);
   
+  // Generate AI pitch hooks for each speaker
+  const pitchHooksPromises = speakerData.map(async (s) => {
+    const hooks = await generatePitchHooksForSpeaker({
+      name: s.speaker.name,
+      title: s.speaker.title,
+      company: company.name,
+      target_audiences: s.speaker.target_audiences,
+      talking_points: s.speaker.talking_points,
+      campaign_strategy: s.speaker.campaign_strategy,
+      professional_credentials: s.speaker.professional_credentials,
+      guest_identity_tags: s.speaker.guest_identity_tags,
+    });
+    return { speaker_name: s.speaker.name, hooks };
+  });
+  
+  const pitch_hooks = await Promise.all(pitchHooksPromises);
+  const validPitchHooks = pitch_hooks.filter(ph => ph.hooks.length > 0);
+
   return {
     client: companyClient,
     generated_at: new Date().toISOString(),
@@ -1302,12 +1380,7 @@ export async function generateMultiSpeakerReport(
       executive_summary: executiveSummary,
       target_audiences: speakerData[0]?.speaker.target_audiences?.slice(0, 3) || [],
       talking_points: speakerData[0]?.speaker.talking_points?.slice(0, 3) || [],
-      pitch_hooks: speakerData
-        .filter(s => s.speaker.talking_points && s.speaker.talking_points.length > 0)
-        .map(s => ({
-          speaker_name: s.speaker.name,
-          hooks: s.speaker.talking_points?.slice(0, 3) || []
-        })),
+      pitch_hooks: validPitchHooks.length > 0 ? validPitchHooks : undefined,
     },
     podcasts: allPodcasts.sort((a, b) => b.overall_score - a.overall_score),
     sov_analysis,
