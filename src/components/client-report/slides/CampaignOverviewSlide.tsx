@@ -8,46 +8,55 @@ interface CampaignOverviewSlideProps {
 export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlideProps) => {
   const hasTalkingPoints = campaignOverview.talking_points && campaignOverview.talking_points.length > 0;
   const hasPitchHooks = campaignOverview.pitch_hooks && campaignOverview.pitch_hooks.length > 0;
+  
+  const speakerCount = campaignOverview.pitch_hooks?.length || 0;
+  const hooksPerSpeaker = speakerCount > 2 ? 2 : 3;
 
   return (
-    <div className="w-full space-y-6 text-center max-w-4xl mx-auto">
-      <h2 className="text-3xl md:text-4xl font-bold">Campaign Strategy</h2>
+    <div className="w-full space-y-6 max-w-5xl mx-auto">
+      <h2 className="text-3xl md:text-4xl font-bold text-center">Campaign Strategy</h2>
 
-      {campaignOverview.strategy && (
-        <MarkdownRenderer 
-          content={campaignOverview.strategy} 
-          className="text-lg md:text-xl text-muted-foreground leading-relaxed" 
-        />
-      )}
-
-      {hasTalkingPoints && (
-        <div className="space-y-4 pt-4">
-          <h3 className="text-xl font-semibold">Key Talking Points</h3>
-          <div className="grid gap-3 text-left">
-            {campaignOverview.talking_points!.slice(0, 4).map((point, index) => (
-              <div key={index} className="flex items-start gap-3 bg-card border border-border rounded-lg p-4">
-                <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-medium">
-                  {index + 1}
-                </span>
-                <p className="text-base text-muted-foreground">{point}</p>
-              </div>
-            ))}
+      {/* Strategy and Talking Points side by side on larger screens */}
+      <div className={`grid gap-6 ${hasTalkingPoints ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
+        {campaignOverview.strategy && (
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-muted-foreground">Strategy</h3>
+            <MarkdownRenderer 
+              content={campaignOverview.strategy} 
+              className="text-base text-muted-foreground leading-relaxed" 
+            />
           </div>
-        </div>
-      )}
+        )}
+
+        {hasTalkingPoints && (
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-muted-foreground">Key Talking Points</h3>
+            <div className="space-y-2">
+              {campaignOverview.talking_points!.slice(0, 4).map((point, index) => (
+                <div key={index} className="flex items-start gap-2 bg-card border border-border rounded-lg p-3">
+                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-xs font-medium">
+                    {index + 1}
+                  </span>
+                  <p className="text-sm text-muted-foreground">{point}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {hasPitchHooks && (
-        <div className="space-y-4 pt-4">
-          <h3 className="text-xl font-semibold">Pitch Positioning &amp; Core Hooks</h3>
-          <div className="grid gap-3 text-left">
-            {campaignOverview.pitch_hooks!.slice(0, 2).map((speakerHooks, speakerIndex) => (
-              <div key={speakerIndex} className="bg-card border border-border rounded-lg p-4 space-y-2">
-                <p className="text-base font-semibold">{speakerHooks.speaker_name}</p>
-                <ul className="space-y-1.5">
-                  {speakerHooks.hooks.slice(0, 3).map((hook, hookIndex) => (
+        <div className="space-y-3 pt-2">
+          <h3 className="text-lg font-semibold text-muted-foreground text-center">Pitch Positioning & Core Hooks</h3>
+          <div className={`grid gap-3 ${speakerCount === 1 ? 'grid-cols-1 max-w-xl mx-auto' : speakerCount === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+            {campaignOverview.pitch_hooks!.map((speakerHooks, speakerIndex) => (
+              <div key={speakerIndex} className="bg-card border border-border rounded-lg p-3 space-y-2 h-full">
+                <p className="text-sm font-semibold">{speakerHooks.speaker_name}</p>
+                <ul className="space-y-1">
+                  {speakerHooks.hooks.slice(0, hooksPerSpeaker).map((hook, hookIndex) => (
                     <li key={hookIndex} className="flex items-start gap-2 text-muted-foreground">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/40 mt-2 flex-shrink-0" />
-                      <p className="text-sm">{hook}</p>
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/40 mt-1.5 flex-shrink-0" />
+                      <p className="text-xs leading-relaxed">{hook}</p>
                     </li>
                   ))}
                 </ul>
