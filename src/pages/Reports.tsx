@@ -83,6 +83,7 @@ export default function Reports() {
   const [savedReports, setSavedReports] = useState<any[]>([]);
   const [allReports, setAllReports] = useState<any[]>([]);
   const [allReportsSearchQuery, setAllReportsSearchQuery] = useState('');
+  const [allReportsExpanded, setAllReportsExpanded] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -889,161 +890,176 @@ export default function Reports() {
         <div className="max-w-7xl mx-auto space-y-8">
           {/* All Saved Reports Section */}
           {allReports.length > 0 && (
-            <Card className="print:hidden">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>All Saved Reports</CardTitle>
-                    <CardDescription>Browse and manage all reports across companies</CardDescription>
-                  </div>
-                  <div className="relative w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search reports..."
-                      value={allReportsSearchQuery}
-                      onChange={(e) => setAllReportsSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Speaker</TableHead>
-                      <TableHead>Report Name</TableHead>
-                      <TableHead>Quarter</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Generated</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allReports
-                      .filter(report => {
-                        const query = allReportsSearchQuery.toLowerCase();
-                        if (!query) return true;
-                        return (
-                          report.report_name?.toLowerCase().includes(query) ||
-                          report.companies?.name?.toLowerCase().includes(query) ||
-                          report.speakers?.name?.toLowerCase().includes(query) ||
-                          report.quarter?.toLowerCase().includes(query)
-                        );
-                      })
-                      .slice(0, 20)
-                      .map(report => (
-                        <TableRow key={report.id}>
-                          <TableCell className="font-medium">
-                            {report.companies?.name || '-'}
-                          </TableCell>
-                          <TableCell>
-                            {report.speaker_id === null ? (
-                              <Badge variant="secondary">Multi-Speaker</Badge>
-                            ) : (
-                              report.speakers?.name || '-'
-                            )}
-                          </TableCell>
-                          <TableCell>{report.report_name}</TableCell>
-                          <TableCell>{report.quarter || '-'}</TableCell>
-                          <TableCell>
-                            {report.is_published ? (
-                              <div className="flex items-center gap-2">
-                                <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
-                                  <Globe className="h-3 w-3 mr-1" />
-                                  Published
-                                </Badge>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6"
-                                  onClick={() => copyPublicUrl(report.public_slug)}
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                                <a
-                                  href={`/report/${report.public_slug}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <Button size="icon" variant="ghost" className="h-6 w-6">
-                                    <ExternalLink className="h-3 w-3" />
-                                  </Button>
-                                </a>
-                              </div>
-                            ) : (
-                              <Badge variant="outline" className="text-muted-foreground">Draft</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {new Date(report.generated_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  // Set company and speaker first
-                                  if (report.company_id) {
-                                    setSelectedCompanyId(report.company_id);
-                                  }
-                                  if (report.speaker_id) {
-                                    setIsMultiSpeakerMode(false);
-                                    setSelectedSpeakerId(report.speaker_id);
-                                  } else {
-                                    setIsMultiSpeakerMode(true);
-                                    setSelectedSpeakerId(null);
-                                  }
-                                  // Then load the report
-                                  loadReport(report);
-                                }}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                View
-                              </Button>
-                              {report.is_published ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleUnpublishReport(report.id)}
-                                >
-                                  Unpublish
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => handlePublishReport(report.id)}
-                                >
-                                  <Globe className="h-4 w-4 mr-1" />
-                                  Publish
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => {
-                                  deleteReport(report.id);
-                                  loadAllReports();
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+            <Collapsible open={allReportsExpanded} onOpenChange={setAllReportsExpanded}>
+              <Card className="print:hidden">
+                <CardHeader className="pb-3">
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center justify-between cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        {allReportsExpanded ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <div>
+                          <CardTitle className="text-base">All Saved Reports</CardTitle>
+                          <CardDescription className="text-sm">
+                            {allReports.length} reports across all companies
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardHeader className="pt-0 pb-4">
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search reports..."
+                        value={allReportsSearchQuery}
+                        onChange={(e) => setAllReportsSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Company</TableHead>
+                          <TableHead>Speaker</TableHead>
+                          <TableHead>Report Name</TableHead>
+                          <TableHead>Quarter</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Generated</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-                {allReports.length > 20 && !allReportsSearchQuery && (
-                  <p className="text-sm text-muted-foreground mt-4 text-center">
-                    Showing 20 most recent reports. Use search to find older reports.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {allReports
+                          .filter(report => {
+                            const query = allReportsSearchQuery.toLowerCase();
+                            if (!query) return true;
+                            return (
+                              report.report_name?.toLowerCase().includes(query) ||
+                              report.companies?.name?.toLowerCase().includes(query) ||
+                              report.speakers?.name?.toLowerCase().includes(query) ||
+                              report.quarter?.toLowerCase().includes(query)
+                            );
+                          })
+                          .slice(0, 20)
+                          .map(report => (
+                            <TableRow key={report.id}>
+                              <TableCell className="font-medium">
+                                {report.companies?.name || '-'}
+                              </TableCell>
+                              <TableCell>
+                                {report.speaker_id === null ? (
+                                  <Badge variant="secondary">Multi-Speaker</Badge>
+                                ) : (
+                                  report.speakers?.name || '-'
+                                )}
+                              </TableCell>
+                              <TableCell>{report.report_name}</TableCell>
+                              <TableCell>{report.quarter || '-'}</TableCell>
+                              <TableCell>
+                                {report.is_published ? (
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
+                                      <Globe className="h-3 w-3 mr-1" />
+                                      Published
+                                    </Badge>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6"
+                                      onClick={() => copyPublicUrl(report.public_slug)}
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </Button>
+                                    <a
+                                      href={`/report/${report.public_slug}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <Button size="icon" variant="ghost" className="h-6 w-6">
+                                        <ExternalLink className="h-3 w-3" />
+                                      </Button>
+                                    </a>
+                                  </div>
+                                ) : (
+                                  <Badge variant="outline" className="text-muted-foreground">Draft</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {new Date(report.generated_at).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (report.company_id) {
+                                        setSelectedCompanyId(report.company_id);
+                                      }
+                                      if (report.speaker_id) {
+                                        setIsMultiSpeakerMode(false);
+                                        setSelectedSpeakerId(report.speaker_id);
+                                      } else {
+                                        setIsMultiSpeakerMode(true);
+                                        setSelectedSpeakerId(null);
+                                      }
+                                      loadReport(report);
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    View
+                                  </Button>
+                                  {report.is_published ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleUnpublishReport(report.id)}
+                                    >
+                                      Unpublish
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      onClick={() => handlePublishReport(report.id)}
+                                    >
+                                      <Globe className="h-4 w-4 mr-1" />
+                                      Publish
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      deleteReport(report.id);
+                                      loadAllReports();
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                    {allReports.length > 20 && !allReportsSearchQuery && (
+                      <p className="text-sm text-muted-foreground mt-4 text-center">
+                        Showing 20 most recent reports. Use search to find older reports.
+                      </p>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
           )}
 
           {/* Saved Reports Section */}
