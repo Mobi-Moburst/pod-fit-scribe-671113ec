@@ -172,8 +172,12 @@ export default function ReportPresentation() {
       });
     }
 
-    // Highlights slide (after additional metrics, before speaker spotlights)
-    if (visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0) {
+    // For multi-speaker reports: add highlights to each speaker slide
+    // For single-speaker reports: keep dedicated highlights slide
+    const isMultiSpeaker = reportData.report_type === 'multi' && reportData.speaker_breakdowns && reportData.speaker_breakdowns.length > 0;
+
+    if (!isMultiSpeaker && visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0) {
+      // Single-speaker: dedicated highlights slide
       slides.push({
         id: "highlights",
         component: (
@@ -186,13 +190,19 @@ export default function ReportPresentation() {
     }
 
     // Speaker Spotlight slides (for multi-speaker reports)
-    if (reportData.report_type === 'multi' && reportData.speaker_breakdowns) {
+    if (isMultiSpeaker && reportData.speaker_breakdowns) {
       reportData.speaker_breakdowns.forEach((speaker) => {
+        // Filter highlight clips for this specific speaker
+        const speakerClips = reportData.highlight_clips?.filter(
+          clip => clip.speaker_name === speaker.speaker_name
+        ) || [];
+
         slides.push({
           id: `speaker-${speaker.speaker_id}`,
           component: (
             <SpeakerSpotlightSlide
               speaker={speaker}
+              highlightClips={speakerClips}
               onAirtableClick={() => {
                 if (speaker.airtable_embed_url) {
                   setSelectedSpeakerAirtable({
@@ -334,7 +344,7 @@ export default function ReportPresentation() {
   return (
     <div className="fixed inset-0 bg-background overflow-hidden">
       <BackgroundFX />
-      <SlideContainer>
+      <SlideContainer scrollable={slides[currentSlide].id.startsWith('speaker-')}>
         {slides[currentSlide].component}
       </SlideContainer>
       
