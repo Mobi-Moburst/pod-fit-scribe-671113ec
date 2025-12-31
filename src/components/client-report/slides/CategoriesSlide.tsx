@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface CategoryPodcast {
@@ -73,7 +73,18 @@ export const CategoriesSlide = ({ categories }: CategoriesSlideProps) => {
               
               {hasPodcasts && (
                 <CollapsibleContent className="pt-4 pb-2">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="relative">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenCategory(null);
+                      }}
+                      className="absolute -top-1 right-0 p-1.5 rounded-full bg-muted hover:bg-muted/80 transition-colors z-10"
+                      aria-label="Close"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4">
                     {category.podcasts!.map((podcast, pIndex) => (
                       <a 
                         key={pIndex}
@@ -103,6 +114,7 @@ export const CategoriesSlide = ({ categories }: CategoriesSlideProps) => {
                         </div>
                       </a>
                     ))}
+                    </div>
                   </div>
                 </CollapsibleContent>
               )}
