@@ -1,5 +1,6 @@
 import { ReportData } from "@/types/reports";
 import { Compass } from "lucide-react";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface NextQuarterSlideProps {
   strategy: NonNullable<ReportData["next_quarter_strategy"]>;
@@ -14,9 +15,7 @@ export const NextQuarterSlide = ({ strategy }: NextQuarterSlideProps) => {
       </div>
       
       {strategy.intro_paragraph && (
-        <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">
-          {strategy.intro_paragraph}
-        </p>
+        <MarkdownRenderer content={strategy.intro_paragraph} className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto" />
       )}
 
       {strategy.strategic_focus_areas && strategy.strategic_focus_areas.length > 0 && (
@@ -26,11 +25,11 @@ export const NextQuarterSlide = ({ strategy }: NextQuarterSlideProps) => {
               key={index}
               className="bg-card border border-border rounded-xl p-6 space-y-2"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 mb-2">
                 <Compass className="h-5 w-5 text-primary flex-shrink-0" />
                 <h3 className="font-semibold text-lg">{area.title}</h3>
               </div>
-              <p className="text-muted-foreground">{area.description}</p>
+              <MarkdownRenderer content={area.description} className="text-muted-foreground" />
             </div>
           ))}
         </div>

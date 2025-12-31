@@ -107,6 +107,7 @@ export function CampaignOverviewEditDialog({
               placeholder="Describe the campaign strategy..."
               rows={4}
             />
+            <p className="text-xs text-muted-foreground">Supports formatting: **bold**, *italic*, - bullet points</p>
           </div>
 
           <div className="space-y-2">
@@ -117,6 +118,7 @@ export function CampaignOverviewEditDialog({
               placeholder="Optional executive summary..."
               rows={3}
             />
+            <p className="text-xs text-muted-foreground">Supports formatting: **bold**, *italic*, - bullet points</p>
           </div>
 
           <div className="space-y-2">

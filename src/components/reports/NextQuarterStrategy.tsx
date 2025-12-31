@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, X, Pencil } from "lucide-react";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface NextQuarterStrategyProps {
   quarter: string;
@@ -56,9 +57,7 @@ export function NextQuarterStrategy({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Intro Paragraph */}
-        <p className="text-muted-foreground leading-relaxed">
-          {intro_paragraph}
-        </p>
+        <MarkdownRenderer content={intro_paragraph} className="text-muted-foreground leading-relaxed" />
 
         {/* Strategic Focus Areas */}
         {strategic_focus_areas.length > 0 && (
@@ -70,7 +69,7 @@ export function NextQuarterStrategy({
                   <span className="text-primary font-bold">•</span>
                   <div>
                     <span className="font-semibold text-foreground">{area.title}:</span>{' '}
-                    <span className="text-muted-foreground">{area.description}</span>
+                    <MarkdownRenderer content={area.description} className="text-muted-foreground inline" />
                   </div>
                 </li>
               ))}
@@ -88,7 +87,7 @@ export function NextQuarterStrategy({
                   <span className="text-accent font-bold">•</span>
                   <div>
                     <span className="font-semibold text-foreground">{point.title}:</span>{' '}
-                    <span className="text-muted-foreground">{point.description}</span>
+                    <MarkdownRenderer content={point.description} className="text-muted-foreground inline" />
                   </div>
                 </li>
               ))}
@@ -97,9 +96,9 @@ export function NextQuarterStrategy({
         )}
 
         {/* Closing Paragraph */}
-        <p className="text-muted-foreground leading-relaxed italic border-l-2 border-primary/30 pl-4">
-          {closing_paragraph}
-        </p>
+        <div className="italic border-l-2 border-primary/30 pl-4">
+          <MarkdownRenderer content={closing_paragraph} className="text-muted-foreground leading-relaxed" />
+        </div>
       </CardContent>
     </Card>
   );

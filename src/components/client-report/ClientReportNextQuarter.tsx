@@ -1,5 +1,6 @@
 import { ReportData } from "@/types/reports";
 import { Compass, Lightbulb } from "lucide-react";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface ClientReportNextQuarterProps {
   strategy: NonNullable<ReportData["next_quarter_strategy"]>;
@@ -13,9 +14,7 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
       <div className="bg-card border border-border rounded-2xl p-8 space-y-8">
         {/* Intro */}
         {strategy.intro_paragraph && (
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            {strategy.intro_paragraph}
-          </p>
+          <MarkdownRenderer content={strategy.intro_paragraph} className="text-lg text-muted-foreground leading-relaxed" />
         )}
 
         {/* Strategic Focus Areas */}
@@ -32,7 +31,7 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
                   className="bg-muted/50 rounded-xl p-4 space-y-2"
                 >
                   <h4 className="font-medium">{area.title}</h4>
-                  <p className="text-sm text-muted-foreground">{area.description}</p>
+                  <MarkdownRenderer content={area.description} className="text-sm text-muted-foreground" />
                 </div>
               ))}
             </div>
@@ -53,7 +52,7 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
                   className="bg-muted/50 rounded-xl p-4 space-y-2"
                 >
                   <h4 className="font-medium">{point.title}</h4>
-                  <p className="text-sm text-muted-foreground">{point.description}</p>
+                  <MarkdownRenderer content={point.description} className="text-sm text-muted-foreground" />
                 </div>
               ))}
             </div>
@@ -62,9 +61,9 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
 
         {/* Closing */}
         {strategy.closing_paragraph && (
-          <p className="text-muted-foreground leading-relaxed border-t border-border pt-6">
-            {strategy.closing_paragraph}
-          </p>
+          <div className="border-t border-border pt-6">
+            <MarkdownRenderer content={strategy.closing_paragraph} className="text-muted-foreground leading-relaxed" />
+          </div>
         )}
       </div>
     </section>

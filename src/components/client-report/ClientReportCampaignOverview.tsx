@@ -1,5 +1,6 @@
 import { ReportData } from "@/types/reports";
 import { Target, MessageSquare } from "lucide-react";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface ClientReportCampaignOverviewProps {
   campaignOverview: ReportData["campaign_overview"];
@@ -18,18 +19,14 @@ export const ClientReportCampaignOverview = ({ campaignOverview }: ClientReportC
               <Target className="h-5 w-5 text-primary" />
               Strategy
             </h3>
-            <p className="text-muted-foreground leading-relaxed">
-              {campaignOverview.strategy}
-            </p>
+            <MarkdownRenderer content={campaignOverview.strategy} className="text-muted-foreground leading-relaxed" />
           </div>
         )}
 
         {/* Executive Summary */}
         {campaignOverview.executive_summary && (
           <div className="space-y-2">
-            <p className="text-foreground leading-relaxed">
-              {campaignOverview.executive_summary}
-            </p>
+            <MarkdownRenderer content={campaignOverview.executive_summary} className="text-foreground leading-relaxed" />
           </div>
         )}
 
