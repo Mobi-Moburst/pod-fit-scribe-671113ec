@@ -1017,6 +1017,27 @@ export default function Reports() {
                                     <Eye className="h-4 w-4 mr-1" />
                                     View
                                   </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (report.company_id) {
+                                        setSelectedCompanyId(report.company_id);
+                                      }
+                                      if (report.speaker_id) {
+                                        setIsMultiSpeakerMode(false);
+                                        setSelectedSpeakerId(report.speaker_id);
+                                      } else {
+                                        setIsMultiSpeakerMode(true);
+                                        setSelectedSpeakerId(null);
+                                      }
+                                      loadReport(report);
+                                      setHighlightsDialogOpen(true);
+                                    }}
+                                  >
+                                    <Video className="h-4 w-4 mr-1" />
+                                    Highlights
+                                  </Button>
                                   {report.is_published ? (
                                     <Button
                                       size="sm"
@@ -1062,125 +1083,6 @@ export default function Reports() {
             </Collapsible>
           )}
 
-          {/* Saved Reports Section */}
-          {selectedCompanyId && savedReports.length > 0 && (
-            <Card className="print:hidden">
-              <CardHeader>
-                <CardTitle>Saved Reports</CardTitle>
-                <CardDescription>
-                  {isMultiSpeakerMode 
-                    ? 'Previously generated company-wide reports' 
-                    : 'Previously generated reports for this speaker'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Report Name</TableHead>
-                      <TableHead>Quarter</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Generated</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {savedReports.map(report => (
-                      <TableRow key={report.id}>
-                        <TableCell className="font-medium">
-                          {report.report_name}
-                          {report.speaker_id === null && (
-                            <Badge variant="secondary" className="ml-2">Multi-Speaker</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>{report.quarter || '-'}</TableCell>
-                        <TableCell>
-                          {report.is_published ? (
-                            <div className="flex items-center gap-2">
-                              <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
-                                <Globe className="h-3 w-3 mr-1" />
-                                Published
-                              </Badge>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6"
-                                onClick={() => copyPublicUrl(report.public_slug)}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                              <a
-                                href={`/report/${report.public_slug}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Button size="icon" variant="ghost" className="h-6 w-6">
-                                  <ExternalLink className="h-3 w-3" />
-                                </Button>
-                              </a>
-                            </div>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">Draft</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(report.generated_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => loadReport(report)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                loadReport(report);
-                                setHighlightsDialogOpen(true);
-                              }}
-                            >
-                              <Video className="h-4 w-4 mr-1" />
-                              Highlights
-                            </Button>
-                            {report.is_published ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleUnpublishReport(report.id)}
-                              >
-                                Unpublish
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => handlePublishReport(report.id)}
-                              >
-                                <Globe className="h-4 w-4 mr-1" />
-                                Publish
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => deleteReport(report.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Generate Report Section */}
           <Card className="print:hidden">
