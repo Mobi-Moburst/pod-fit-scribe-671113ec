@@ -445,23 +445,47 @@ export async function calculateCategoriesFromBookedPodcasts(
   airtableRows: AirtableCSVRow[],
   dateRange: { start: Date; end: Date }
 ): Promise<ReportData['kpis']['top_categories']> {
-  // Filter for booked podcasts with Apple Podcast links
-  const bookedPodcasts = airtableRows.filter(r => {
-    const isPodcastRecording = r.action?.toLowerCase().includes('podcast recording');
-    if (!isPodcastRecording) return false;
-    
+  // Filter for booked podcasts with Apple Podcast links (based on date_booked)
+  const canonicalizeApplePodcastUrl = (url: string) => {
+    try {
+      const u = new URL(url);
+      u.search = '';
+      u.hash = '';
+      return u.toString().replace(/\/$/, '');
+    } catch {
+      return url.split('?')[0].replace(/\/$/, '');
+    }
+  };
+
+  const bookedRows = airtableRows.filter(r => {
     if (!r.date_booked || r.date_booked.trim() === '') return false;
-    
+
     const bookedDate = parseAirtableDate(r.date_booked);
     if (!bookedDate) return false;
-    
+
     // Must be within date range and have Apple Podcast link
-    return bookedDate >= dateRange.start && bookedDate <= dateRange.end && 
-           r.apple_podcast_link && r.apple_podcast_link.trim() !== '';
+    return (
+      bookedDate >= dateRange.start &&
+      bookedDate <= dateRange.end &&
+      !!(r.apple_podcast_link && r.apple_podcast_link.trim() !== '')
+    );
   });
-  
-  console.log(`[calculateCategoriesFromBookedPodcasts] Found ${bookedPodcasts.length} booked podcasts with Apple links`);
-  
+
+  // Deduplicate: count unique podcasts (not rows/episodes)
+  const seen = new Set<string>();
+  const bookedPodcasts = bookedRows.filter(r => {
+    const key = r.apple_podcast_link
+      ? canonicalizeApplePodcastUrl(r.apple_podcast_link).toLowerCase()
+      : normalizeTitle(r.podcast_name || '').toLowerCase();
+
+    if (!key) return false;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  console.log(`[calculateCategoriesFromBookedPodcasts] Found ${bookedPodcasts.length} unique booked podcasts with Apple links`);
+
   if (bookedPodcasts.length === 0) {
     return [];
   }
