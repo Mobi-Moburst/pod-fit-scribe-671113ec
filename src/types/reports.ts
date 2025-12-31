@@ -147,6 +147,10 @@ export interface ReportData {
     executive_summary: string;
     target_audiences: string[];
     talking_points: string[];
+    pitch_hooks?: Array<{
+      speaker_name: string;
+      hooks: string[];
+    }>;
   };
   
   podcasts: PodcastReportEntry[];
