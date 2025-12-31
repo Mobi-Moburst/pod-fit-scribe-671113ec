@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.suggest-target-podcasts]
 verify_jwt = false
+
+[functions.generate-pitch-hooks]
+verify_jwt = false
