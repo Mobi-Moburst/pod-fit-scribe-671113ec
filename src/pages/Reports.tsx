@@ -823,60 +823,76 @@ export default function Reports() {
     }
   };
 
-  // Update saved report with campaign overview edits
+  // Update report with campaign overview edits (works for both saved and unsaved reports)
   const updateReportCampaignOverview = async (campaignOverview: ReportData["campaign_overview"]) => {
-    if (!currentReportId || !reportData) return;
+    if (!reportData) return;
     
     const updatedReportData = { ...reportData, campaign_overview: campaignOverview };
     setReportData(updatedReportData);
     
-    try {
-      const { error } = await supabase
-        .from('reports')
-        .update({ report_data: updatedReportData as any })
-        .eq('id', currentReportId);
-      
-      if (error) throw error;
-      
+    // Only save to database if report is already saved
+    if (currentReportId) {
+      try {
+        const { error } = await supabase
+          .from('reports')
+          .update({ report_data: updatedReportData as any })
+          .eq('id', currentReportId);
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Campaign overview saved",
+          description: "Campaign overview updated successfully.",
+        });
+      } catch (error) {
+        console.error('Error updating campaign overview:', error);
+        toast({
+          title: "Failed to save",
+          description: "Changes couldn't be saved to the report.",
+          variant: "destructive",
+        });
+      }
+    } else {
       toast({
-        title: "Campaign overview saved",
-        description: "Campaign overview updated successfully.",
-      });
-    } catch (error) {
-      console.error('Error updating campaign overview:', error);
-      toast({
-        title: "Failed to save",
-        description: "Changes couldn't be saved to the report.",
-        variant: "destructive",
+        title: "Campaign overview updated",
+        description: "Changes applied. Save report to persist.",
       });
     }
   };
 
-  // Update saved report with next quarter strategy edits
+  // Update report with next quarter strategy edits (works for both saved and unsaved reports)
   const updateReportNextQuarterStrategy = async (strategy: NonNullable<ReportData["next_quarter_strategy"]>) => {
-    if (!currentReportId || !reportData) return;
+    if (!reportData) return;
     
     const updatedReportData = { ...reportData, next_quarter_strategy: strategy };
     setReportData(updatedReportData);
     
-    try {
-      const { error } = await supabase
-        .from('reports')
-        .update({ report_data: updatedReportData as any })
-        .eq('id', currentReportId);
-      
-      if (error) throw error;
-      
+    // Only save to database if report is already saved
+    if (currentReportId) {
+      try {
+        const { error } = await supabase
+          .from('reports')
+          .update({ report_data: updatedReportData as any })
+          .eq('id', currentReportId);
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Looking ahead saved",
+          description: "Next quarter strategy updated successfully.",
+        });
+      } catch (error) {
+        console.error('Error updating next quarter strategy:', error);
+        toast({
+          title: "Failed to save",
+          description: "Changes couldn't be saved to the report.",
+          variant: "destructive",
+        });
+      }
+    } else {
       toast({
-        title: "Looking ahead saved",
-        description: "Next quarter strategy updated successfully.",
-      });
-    } catch (error) {
-      console.error('Error updating next quarter strategy:', error);
-      toast({
-        title: "Failed to save",
-        description: "Changes couldn't be saved to the report.",
-        variant: "destructive",
+        title: "Looking ahead updated",
+        description: "Changes applied. Save report to persist.",
       });
     }
   };
@@ -1698,7 +1714,7 @@ export default function Reports() {
                   talking_points={reportData.campaign_overview.talking_points}
                   pitch_hooks={reportData.campaign_overview.pitch_hooks}
                   onHide={() => toggleSection('campaignOverview')}
-                  onEdit={currentReportId ? () => setCampaignOverviewEditOpen(true) : undefined}
+                  onEdit={() => setCampaignOverviewEditOpen(true)}
                 />
               )}
 
@@ -1754,7 +1770,7 @@ export default function Reports() {
                   talking_points_spotlight={reportData.next_quarter_strategy.talking_points_spotlight}
                   closing_paragraph={reportData.next_quarter_strategy.closing_paragraph}
                   onHide={() => toggleSection('nextQuarterStrategy')}
-                  onEdit={currentReportId ? () => setNextQuarterEditOpen(true) : undefined}
+                  onEdit={() => setNextQuarterEditOpen(true)}
                 />
               )}
 
