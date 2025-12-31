@@ -1087,6 +1087,9 @@ export async function generateReportFromMultipleCSVs(
         max: 3
       }),
       talking_points: client.talking_points?.slice(0, 3) || [],
+      pitch_hooks: client.talking_points && client.talking_points.length > 0 
+        ? [{ speaker_name: client.name, hooks: client.talking_points.slice(0, 3) }]
+        : undefined,
     },
     podcasts: sortedPodcasts,
     sov_analysis,
@@ -1299,6 +1302,12 @@ export async function generateMultiSpeakerReport(
       executive_summary: executiveSummary,
       target_audiences: speakerData[0]?.speaker.target_audiences?.slice(0, 3) || [],
       talking_points: speakerData[0]?.speaker.talking_points?.slice(0, 3) || [],
+      pitch_hooks: speakerData
+        .filter(s => s.speaker.talking_points && s.speaker.talking_points.length > 0)
+        .map(s => ({
+          speaker_name: s.speaker.name,
+          hooks: s.speaker.talking_points?.slice(0, 3) || []
+        })),
     },
     podcasts: allPodcasts.sort((a, b) => b.overall_score - a.overall_score),
     sov_analysis,

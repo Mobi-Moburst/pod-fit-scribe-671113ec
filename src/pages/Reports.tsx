@@ -1794,6 +1794,7 @@ export default function Reports() {
                   executive_summary={reportData.campaign_overview.executive_summary}
                   target_audiences={reportData.campaign_overview.target_audiences}
                   talking_points={reportData.campaign_overview.talking_points}
+                  pitch_hooks={reportData.campaign_overview.pitch_hooks}
                   onHide={() => toggleSection('campaignOverview')}
                   onEdit={currentReportId ? () => setCampaignOverviewEditOpen(true) : undefined}
                 />

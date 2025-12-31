@@ -2,11 +2,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { X, Pencil } from "lucide-react";
 
+interface PitchHook {
+  speaker_name: string;
+  hooks: string[];
+}
+
 interface CampaignOverviewProps {
   strategy: string;
   executive_summary?: string;
   target_audiences: string[];
   talking_points: string[];
+  pitch_hooks?: PitchHook[];
   onHide?: () => void;
   onEdit?: () => void;
 }
@@ -16,6 +22,7 @@ export const CampaignOverview = ({
   executive_summary,
   target_audiences, 
   talking_points,
+  pitch_hooks,
   onHide,
   onEdit
 }: CampaignOverviewProps) => {
@@ -82,6 +89,30 @@ export const CampaignOverview = ({
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {pitch_hooks && pitch_hooks.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium mb-3">Pitch Positioning & Core Hooks</h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              Each campaign leaned into clearly defined, repeatable hooks designed to resonate with the target audience of each show:
+            </p>
+            <div className="space-y-4">
+              {pitch_hooks.map((speakerHooks, idx) => (
+                <div key={idx}>
+                  <p className="text-sm font-medium mb-2">{speakerHooks.speaker_name}:</p>
+                  <ul className="space-y-1 text-sm text-muted-foreground ml-4">
+                    {speakerHooks.hooks.map((hook, hookIdx) => (
+                      <li key={hookIdx} className="flex items-start">
+                        <span className="mr-2">•</span>
+                        <span>{hook}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </CardContent>
