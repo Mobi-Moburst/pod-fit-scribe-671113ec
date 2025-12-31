@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SlideContainerProps {
   children: ReactNode;
@@ -8,11 +9,13 @@ interface SlideContainerProps {
 export const SlideContainer = ({ children, scrollable = false }: SlideContainerProps) => {
   if (scrollable) {
     return (
-      <div className="h-full w-full overflow-y-auto p-8 md:p-16">
-        <div className="max-w-5xl w-full mx-auto pb-24">
-          {children}
+      <ScrollArea className="h-full w-full">
+        <div className="px-8 py-6 md:px-16 md:py-10">
+          <div className="max-w-5xl w-full mx-auto pb-24">
+            {children}
+          </div>
         </div>
-      </div>
+      </ScrollArea>
     );
   }
 
