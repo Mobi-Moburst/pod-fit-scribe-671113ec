@@ -60,13 +60,19 @@ serve(async (req) => {
 
     const podcast = itunesData.results[0];
     const coverArtUrl = podcast.artworkUrl600 || podcast.artworkUrl100 || null;
+    const primaryGenreName = podcast.primaryGenreName || null;
+    const genres = podcast.genres || [];
 
     console.log('Found cover art URL:', coverArtUrl);
+    console.log('Found genres:', genres);
 
     return new Response(JSON.stringify({ 
       coverArtUrl,
       podcastName: podcast.collectionName,
-      artistName: podcast.artistName
+      artistName: podcast.artistName,
+      primaryGenreName,
+      genres,
+      description: podcast.description || podcast.shortDescription || null
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -409,6 +409,138 @@ function isValidUrl(str: string): boolean {
   }
 }
 
+// Scrape podcast metadata from iTunes API via edge function
+async function scrapePodcastMetadata(applePodcastUrl: string): Promise<{
+  coverArtUrl?: string;
+  podcastName?: string;
+  description?: string;
+  primaryGenreName?: string;
+  genres?: string[];
+} | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('scrape-podcast-cover-art', {
+      body: { apple_podcast_url: applePodcastUrl }
+    });
+    
+    if (error) {
+      console.error('Error scraping podcast metadata:', error);
+      return null;
+    }
+    
+    return {
+      coverArtUrl: data?.coverArtUrl,
+      podcastName: data?.podcastName,
+      description: data?.description,
+      primaryGenreName: data?.primaryGenreName,
+      genres: data?.genres,
+    };
+  } catch (err) {
+    console.error('Failed to scrape podcast metadata:', err);
+    return null;
+  }
+}
+
+// Calculate categories from booked podcasts by scraping iTunes
+export async function calculateCategoriesFromBookedPodcasts(
+  airtableRows: AirtableCSVRow[],
+  dateRange: { start: Date; end: Date }
+): Promise<ReportData['kpis']['top_categories']> {
+  // Filter for booked podcasts with Apple Podcast links
+  const bookedPodcasts = airtableRows.filter(r => {
+    const isPodcastRecording = r.action?.toLowerCase().includes('podcast recording');
+    if (!isPodcastRecording) return false;
+    
+    if (!r.date_booked || r.date_booked.trim() === '') return false;
+    
+    const bookedDate = parseAirtableDate(r.date_booked);
+    if (!bookedDate) return false;
+    
+    // Must be within date range and have Apple Podcast link
+    return bookedDate >= dateRange.start && bookedDate <= dateRange.end && 
+           r.apple_podcast_link && r.apple_podcast_link.trim() !== '';
+  });
+  
+  console.log(`[calculateCategoriesFromBookedPodcasts] Found ${bookedPodcasts.length} booked podcasts with Apple links`);
+  
+  if (bookedPodcasts.length === 0) {
+    return [];
+  }
+  
+  // Scrape metadata for each booked podcast (with rate limiting)
+  const categoryMap = new Map<string, {
+    count: number;
+    podcasts: Array<{
+      show_title: string;
+      cover_art_url?: string;
+      description?: string;
+      apple_podcast_link?: string;
+    }>;
+  }>();
+  
+  // Process in batches of 5 to avoid rate limiting
+  const batchSize = 5;
+  for (let i = 0; i < bookedPodcasts.length; i += batchSize) {
+    const batch = bookedPodcasts.slice(i, i + batchSize);
+    
+    const results = await Promise.all(
+      batch.map(async (row) => {
+        const metadata = await scrapePodcastMetadata(row.apple_podcast_link!);
+        return {
+          row,
+          metadata,
+        };
+      })
+    );
+    
+    // Process results
+    results.forEach(({ row, metadata }) => {
+      if (!metadata) return;
+      
+      // Use primary genre, or fall back to first genre from array
+      const genre = metadata.primaryGenreName || (metadata.genres && metadata.genres[0]);
+      if (!genre) return;
+      
+      const podcastEntry = {
+        show_title: metadata.podcastName || row.podcast_name,
+        cover_art_url: metadata.coverArtUrl,
+        description: metadata.description,
+        apple_podcast_link: row.apple_podcast_link,
+      };
+      
+      // Add to primary genre
+      const existing = categoryMap.get(genre);
+      if (existing) {
+        existing.count++;
+        existing.podcasts.push(podcastEntry);
+      } else {
+        categoryMap.set(genre, {
+          count: 1,
+          podcasts: [podcastEntry],
+        });
+      }
+    });
+    
+    // Small delay between batches to avoid rate limiting
+    if (i + batchSize < bookedPodcasts.length) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+  
+  // Convert to sorted array
+  const topCategories = Array.from(categoryMap.entries())
+    .map(([name, data]) => ({
+      name,
+      count: data.count,
+      podcasts: data.podcasts,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+  
+  console.log(`[calculateCategoriesFromBookedPodcasts] Found ${topCategories.length} unique categories`);
+  
+  return topCategories;
+}
+
 // Calculate EMV for a single podcast
 function calculateEMV(
   podcast: PodcastReportEntry,
@@ -1081,6 +1213,14 @@ export async function generateReportFromMultipleCSVs(
   // Step 4: Calculate enhanced KPIs (now includes total EMV)
   const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
   
+  // Step 4b: Calculate accurate categories from booked podcasts via iTunes API
+  if (airtableRows.length > 0) {
+    const accurateCategories = await calculateCategoriesFromBookedPodcasts(airtableRows, dateRange);
+    if (accurateCategories.length > 0) {
+      kpis.top_categories = accurateCategories;
+    }
+  }
+  
   // If Rephonic data provided with pre-calculated EMV totals, use that for total_emv
   if (rephonicRows && rephonicRows.length > 0) {
     const rephonicTotalEMV = calculateTotalRephonicEMV(rephonicRows);
@@ -1286,6 +1426,14 @@ export async function generateMultiSpeakerReport(
   
   // Calculate aggregated company KPIs
   const aggregatedKpis = calculateAggregatedKPIs(speakerBreakdowns, allBatchRows, allAirtableRows, allPodcasts);
+  
+  // Calculate accurate categories from booked podcasts via iTunes API
+  if (allAirtableRows.length > 0) {
+    const accurateCategories = await calculateCategoriesFromBookedPodcasts(allAirtableRows, dateRange);
+    if (accurateCategories.length > 0) {
+      aggregatedKpis.top_categories = accurateCategories;
+    }
+  }
   
   // If Rephonic data provided with pre-calculated EMV totals, use that for total_emv (combined for all speakers)
   if (rephonicRows && rephonicRows.length > 0) {

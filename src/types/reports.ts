@@ -129,7 +129,16 @@ export interface ReportData {
     total_reach: number; // Sum of monthly_listens (total show reach)
     total_listeners_per_episode?: number; // Sum of listeners_per_episode for the quarter
     total_social_reach: number;
-    top_categories: Array<{ name: string; count: number }>;
+    top_categories: Array<{ 
+      name: string; 
+      count: number;
+      podcasts?: Array<{
+        show_title: string;
+        cover_art_url?: string;
+        description?: string;
+        apple_podcast_link?: string;
+      }>;
+    }>;
     
     // New from Airtable CSV
     total_interviews: number; // Count of 'podcast recording' actions in date range
