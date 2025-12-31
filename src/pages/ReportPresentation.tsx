@@ -137,6 +137,18 @@ export default function ReportPresentation() {
       ),
     });
 
+    // Campaign Overview (moved before metrics)
+    if (visibleSections.campaignOverview && reportData.campaign_overview) {
+      slides.push({
+        id: "campaign-overview",
+        component: (
+          <CampaignOverviewSlide 
+            campaignOverview={reportData.campaign_overview}
+          />
+        ),
+      });
+    }
+
     // KPIs slide
     const hasKPIs = visibleSections.totalBooked || visibleSections.totalPublished || 
       visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
@@ -215,18 +227,6 @@ export default function ReportPresentation() {
             />
           ),
         });
-      });
-    }
-
-    // Campaign Overview
-    if (visibleSections.campaignOverview && reportData.campaign_overview) {
-      slides.push({
-        id: "campaign-overview",
-        component: (
-          <CampaignOverviewSlide 
-            campaignOverview={reportData.campaign_overview}
-          />
-        ),
       });
     }
 
