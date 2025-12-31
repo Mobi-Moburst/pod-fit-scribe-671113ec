@@ -81,6 +81,8 @@ export default function Reports() {
   // State
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [savedReports, setSavedReports] = useState<any[]>([]);
+  const [allReports, setAllReports] = useState<any[]>([]);
+  const [allReportsSearchQuery, setAllReportsSearchQuery] = useState('');
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -162,6 +164,21 @@ export default function Reports() {
     }
   };
 
+  const loadAllReports = async () => {
+    const { data, error } = await supabase
+      .from('reports')
+      .select(`
+        *,
+        companies(name),
+        speakers(name)
+      `)
+      .order('generated_at', { ascending: false });
+    
+    if (!error) {
+      setAllReports(data || []);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       const [companiesRes, speakersRes] = await Promise.all([
@@ -184,6 +201,7 @@ export default function Reports() {
     };
     
     loadData();
+    loadAllReports();
   }, [toast]);
 
   // Build legacy-compatible client object from selected speaker
@@ -611,6 +629,7 @@ export default function Reports() {
         description: "Your report has been saved successfully.",
       });
       await loadSavedReports();
+      await loadAllReports();
     } catch (error) {
       console.error('Error saving report:', error);
       toast({
@@ -647,6 +666,7 @@ export default function Reports() {
         description: "Your report is now publicly accessible.",
       });
       await loadSavedReports();
+      await loadAllReports();
     } catch (error) {
       console.error('Error publishing report:', error);
       toast({
@@ -675,6 +695,7 @@ export default function Reports() {
         description: "The report is no longer publicly accessible.",
       });
       await loadSavedReports();
+      await loadAllReports();
     } catch (error) {
       console.error('Error unpublishing report:', error);
       toast({
@@ -725,6 +746,7 @@ export default function Reports() {
       description: "The report has been removed.",
     });
     await loadSavedReports();
+    await loadAllReports();
   };
 
   const handlePrint = () => {
@@ -865,6 +887,165 @@ export default function Reports() {
       
       <main className="container mx-auto px-4 py-8 relative z-10">
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* All Saved Reports Section */}
+          {allReports.length > 0 && (
+            <Card className="print:hidden">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>All Saved Reports</CardTitle>
+                    <CardDescription>Browse and manage all reports across companies</CardDescription>
+                  </div>
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search reports..."
+                      value={allReportsSearchQuery}
+                      onChange={(e) => setAllReportsSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Speaker</TableHead>
+                      <TableHead>Report Name</TableHead>
+                      <TableHead>Quarter</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Generated</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allReports
+                      .filter(report => {
+                        const query = allReportsSearchQuery.toLowerCase();
+                        if (!query) return true;
+                        return (
+                          report.report_name?.toLowerCase().includes(query) ||
+                          report.companies?.name?.toLowerCase().includes(query) ||
+                          report.speakers?.name?.toLowerCase().includes(query) ||
+                          report.quarter?.toLowerCase().includes(query)
+                        );
+                      })
+                      .slice(0, 20)
+                      .map(report => (
+                        <TableRow key={report.id}>
+                          <TableCell className="font-medium">
+                            {report.companies?.name || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {report.speaker_id === null ? (
+                              <Badge variant="secondary">Multi-Speaker</Badge>
+                            ) : (
+                              report.speakers?.name || '-'
+                            )}
+                          </TableCell>
+                          <TableCell>{report.report_name}</TableCell>
+                          <TableCell>{report.quarter || '-'}</TableCell>
+                          <TableCell>
+                            {report.is_published ? (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
+                                  <Globe className="h-3 w-3 mr-1" />
+                                  Published
+                                </Badge>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6"
+                                  onClick={() => copyPublicUrl(report.public_slug)}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                                <a
+                                  href={`/report/${report.public_slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <Button size="icon" variant="ghost" className="h-6 w-6">
+                                    <ExternalLink className="h-3 w-3" />
+                                  </Button>
+                                </a>
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="text-muted-foreground">Draft</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(report.generated_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  // Set company and speaker first
+                                  if (report.company_id) {
+                                    setSelectedCompanyId(report.company_id);
+                                  }
+                                  if (report.speaker_id) {
+                                    setIsMultiSpeakerMode(false);
+                                    setSelectedSpeakerId(report.speaker_id);
+                                  } else {
+                                    setIsMultiSpeakerMode(true);
+                                    setSelectedSpeakerId(null);
+                                  }
+                                  // Then load the report
+                                  loadReport(report);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                              {report.is_published ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleUnpublishReport(report.id)}
+                                >
+                                  Unpublish
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => handlePublishReport(report.id)}
+                                >
+                                  <Globe className="h-4 w-4 mr-1" />
+                                  Publish
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  deleteReport(report.id);
+                                  loadAllReports();
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+                {allReports.length > 20 && !allReportsSearchQuery && (
+                  <p className="text-sm text-muted-foreground mt-4 text-center">
+                    Showing 20 most recent reports. Use search to find older reports.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Saved Reports Section */}
           {selectedCompanyId && savedReports.length > 0 && (
             <Card className="print:hidden">
