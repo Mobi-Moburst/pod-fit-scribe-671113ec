@@ -36,6 +36,8 @@ import { useToast } from "@/hooks/use-toast";
 import { HighlightClip } from "@/types/reports";
 import HighlightUploadDialog from "@/components/reports/HighlightUploadDialog";
 import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
+import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOverviewEditDialog";
+import { NextQuarterEditDialog } from "@/components/reports/NextQuarterEditDialog";
 
 export default function Reports() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -88,6 +90,8 @@ export default function Reports() {
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
   const [highlightsDialogOpen, setHighlightsDialogOpen] = useState(false);
+  const [campaignOverviewEditOpen, setCampaignOverviewEditOpen] = useState(false);
+  const [nextQuarterEditOpen, setNextQuarterEditOpen] = useState(false);
   
   
   // Visibility state for report sections
@@ -791,6 +795,64 @@ export default function Reports() {
       toast({
         title: "Failed to save highlights",
         description: "Highlights were added but couldn't save to report.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Update saved report with campaign overview edits
+  const updateReportCampaignOverview = async (campaignOverview: ReportData["campaign_overview"]) => {
+    if (!currentReportId || !reportData) return;
+    
+    const updatedReportData = { ...reportData, campaign_overview: campaignOverview };
+    setReportData(updatedReportData);
+    
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({ report_data: updatedReportData as any })
+        .eq('id', currentReportId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Campaign overview saved",
+        description: "Campaign overview updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating campaign overview:', error);
+      toast({
+        title: "Failed to save",
+        description: "Changes couldn't be saved to the report.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Update saved report with next quarter strategy edits
+  const updateReportNextQuarterStrategy = async (strategy: NonNullable<ReportData["next_quarter_strategy"]>) => {
+    if (!currentReportId || !reportData) return;
+    
+    const updatedReportData = { ...reportData, next_quarter_strategy: strategy };
+    setReportData(updatedReportData);
+    
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({ report_data: updatedReportData as any })
+        .eq('id', currentReportId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Looking ahead saved",
+        description: "Next quarter strategy updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating next quarter strategy:', error);
+      toast({
+        title: "Failed to save",
+        description: "Changes couldn't be saved to the report.",
         variant: "destructive",
       });
     }
@@ -1536,6 +1598,7 @@ export default function Reports() {
                   target_audiences={reportData.campaign_overview.target_audiences}
                   talking_points={reportData.campaign_overview.talking_points}
                   onHide={() => toggleSection('campaignOverview')}
+                  onEdit={currentReportId ? () => setCampaignOverviewEditOpen(true) : undefined}
                 />
               )}
 
@@ -1591,6 +1654,7 @@ export default function Reports() {
                   talking_points_spotlight={reportData.next_quarter_strategy.talking_points_spotlight}
                   closing_paragraph={reportData.next_quarter_strategy.closing_paragraph}
                   onHide={() => toggleSection('nextQuarterStrategy')}
+                  onEdit={currentReportId ? () => setNextQuarterEditOpen(true) : undefined}
                 />
               )}
 
@@ -1664,6 +1728,22 @@ export default function Reports() {
                 podcasts={reportData.podcasts?.map(p => p.show_title).filter(Boolean) as string[]}
                 speakers={reportData.speaker_breakdowns?.map(s => s.speaker_name) || []}
               />
+
+              <CampaignOverviewEditDialog
+                open={campaignOverviewEditOpen}
+                onOpenChange={setCampaignOverviewEditOpen}
+                data={reportData.campaign_overview}
+                onSave={updateReportCampaignOverview}
+              />
+
+              {reportData.next_quarter_strategy && (
+                <NextQuarterEditDialog
+                  open={nextQuarterEditOpen}
+                  onOpenChange={setNextQuarterEditOpen}
+                  data={reportData.next_quarter_strategy}
+                  onSave={updateReportNextQuarterStrategy}
+                />
+              )}
             </>
           )}
         </div>
