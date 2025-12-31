@@ -1,7 +1,6 @@
 import { ReportData } from "@/types/reports";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
-import { Badge } from "@/components/ui/badge";
-import { Users } from "lucide-react";
+import { Target } from "lucide-react";
 
 interface CampaignOverviewSlideProps {
   campaignOverview: ReportData["campaign_overview"];
@@ -14,6 +13,8 @@ export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlid
   
   const speakerCount = campaignOverview.pitch_hooks?.length || 0;
   const hooksPerSpeaker = speakerCount > 2 ? 2 : 3;
+
+  const audienceCount = campaignOverview.target_audiences?.length || 0;
 
   return (
     <div className="w-full space-y-6 max-w-5xl mx-auto">
@@ -48,22 +49,21 @@ export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlid
         )}
       </div>
 
-      {/* Target Audience Breakdown */}
+      {/* Target Audience Breakdown - Card-based layout */}
       {hasTargetAudiences && (
         <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-center gap-2">
-            <Users className="w-5 h-5 text-muted-foreground" />
-            <h3 className="text-lg font-semibold text-muted-foreground">Target Audiences</h3>
-          </div>
-          <div className="flex flex-wrap justify-center gap-2">
+          <h3 className="text-lg font-semibold text-muted-foreground text-center">Target Audiences</h3>
+          <div className={`grid gap-3 ${audienceCount === 1 ? 'grid-cols-1 max-w-md mx-auto' : 'grid-cols-1 md:grid-cols-2'}`}>
             {campaignOverview.target_audiences!.map((audience, index) => (
-              <Badge 
+              <div 
                 key={index} 
-                variant="secondary"
-                className="text-sm px-3 py-1.5"
+                className="flex items-center gap-3 bg-card/50 backdrop-blur border border-border/50 rounded-xl p-4 hover:bg-card/70 transition-colors"
               >
-                {audience}
-              </Badge>
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Target className="w-5 h-5 text-primary" />
+                </div>
+                <p className="text-base font-medium">{audience}</p>
+              </div>
             ))}
           </div>
         </div>
