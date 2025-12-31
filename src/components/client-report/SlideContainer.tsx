@@ -10,8 +10,8 @@ interface SlideContainerProps {
 
 export const SlideContainer = ({ children, scrollable = false, showBranding = true }: SlideContainerProps) => {
   const brandingElement = showBranding && (
-    <div className="absolute bottom-4 left-6 z-10 opacity-60 hover:opacity-100 transition-opacity">
-      <KitcasterLogo className="h-6 w-auto" />
+    <div className="absolute bottom-4 left-6 z-10 opacity-70 hover:opacity-100 transition-opacity">
+      <KitcasterLogo className="h-10 w-auto" />
     </div>
   );
 
