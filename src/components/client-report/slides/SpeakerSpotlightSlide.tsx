@@ -15,6 +15,126 @@ const formatNumber = (num: number): string => {
   return num.toString();
 };
 
+const getYouTubeVideoId = (url: string): string | null => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
+
+const getVimeoVideoId = (url: string): string | null => {
+  const regExp = /vimeo\.com\/(?:video\/)?(\d+)/;
+  const match = url.match(regExp);
+  return match ? match[1] : null;
+};
+
+const ClipMediaPlayer = ({ clip }: { clip: HighlightClip }) => {
+  // YouTube
+  if (clip.source_type === 'youtube') {
+    const videoId = getYouTubeVideoId(clip.url);
+    if (videoId) {
+      return (
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}`}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title={clip.title}
+        />
+      );
+    }
+  }
+
+  // Vimeo
+  if (clip.source_type === 'vimeo') {
+    const videoId = getVimeoVideoId(clip.url);
+    if (videoId) {
+      return (
+        <iframe
+          src={`https://player.vimeo.com/video/${videoId}`}
+          className="w-full h-full"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          title={clip.title}
+        />
+      );
+    }
+  }
+
+  // Descript
+  if (clip.source_type === 'descript') {
+    return (
+      <iframe
+        src={clip.url}
+        className="w-full h-full"
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        title={clip.title}
+      />
+    );
+  }
+
+  // Direct upload - video
+  if (clip.source_type === 'upload' && clip.media_type === 'video') {
+    return (
+      <video
+        src={clip.url}
+        controls
+        poster={clip.thumbnail_url || undefined}
+        className="w-full h-full object-contain bg-black"
+      />
+    );
+  }
+
+  // Direct upload - audio
+  if (clip.source_type === 'upload' && clip.media_type === 'audio') {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 p-4">
+        {clip.thumbnail_url ? (
+          <img
+            src={clip.thumbnail_url}
+            alt={clip.title}
+            className="w-24 h-24 rounded-xl object-cover mb-4"
+          />
+        ) : (
+          <Headphones className="w-16 h-16 text-primary mb-4" />
+        )}
+        <audio src={clip.url} controls className="w-full max-w-xs" />
+      </div>
+    );
+  }
+
+  // Fallback - external link with thumbnail
+  return (
+    <a
+      href={clip.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="w-full h-full flex items-center justify-center relative group/play"
+    >
+      {clip.thumbnail_url ? (
+        <img
+          src={clip.thumbnail_url}
+          alt={clip.title}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          {clip.media_type === 'video' ? (
+            <Video className="h-12 w-12" />
+          ) : (
+            <Headphones className="h-12 w-12" />
+          )}
+        </div>
+      )}
+      <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/play:bg-black/30 transition-colors">
+        <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center group-hover/play:scale-110 transition-transform">
+          <Play className="h-6 w-6 text-primary-foreground ml-1" />
+        </div>
+      </div>
+    </a>
+  );
+};
+
 export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtableClick }: SpeakerSpotlightSlideProps) => {
   const initials = speaker.speaker_name
     .split(" ")
@@ -161,77 +281,27 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
             <Video className="h-5 w-5 text-primary" />
             Interview Highlights
           </h3>
-          <div className="grid gap-4">
+          <div className={`grid gap-4 ${
+            highlightClips.length === 1 
+              ? "grid-cols-1 max-w-2xl mx-auto" 
+              : "grid-cols-1 md:grid-cols-2"
+          }`}>
             {highlightClips.map((clip) => (
               <div
                 key={clip.id}
                 className="bg-card border border-border rounded-2xl overflow-hidden"
               >
                 {/* Video/Audio Embed */}
-                <div className="aspect-video bg-muted relative">
-                  {clip.source_type === 'youtube' ? (
-                    <iframe
-                      src={clip.url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
-                      className="w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      title={clip.title}
-                    />
-                  ) : clip.source_type === 'vimeo' ? (
-                    <iframe
-                      src={clip.url.replace('vimeo.com/', 'player.vimeo.com/video/')}
-                      className="w-full h-full"
-                      allow="autoplay; fullscreen; picture-in-picture"
-                      allowFullScreen
-                      title={clip.title}
-                    />
-                  ) : clip.source_type === 'descript' ? (
-                    <iframe
-                      src={clip.url}
-                      className="w-full h-full"
-                      allow="autoplay; fullscreen"
-                      allowFullScreen
-                      title={clip.title}
-                    />
-                  ) : (
-                    <a
-                      href={clip.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full h-full flex items-center justify-center group/play hover:bg-muted/80 transition-colors"
-                    >
-                      {clip.thumbnail_url ? (
-                        <img
-                          src={clip.thumbnail_url}
-                          alt={clip.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                          {clip.media_type === 'video' ? (
-                            <Video className="h-12 w-12" />
-                          ) : (
-                            <Headphones className="h-12 w-12" />
-                          )}
-                          <span className="text-sm">Click to play</span>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center group-hover/play:scale-110 transition-transform">
-                          <Play className="h-8 w-8 text-primary-foreground ml-1" />
-                        </div>
-                      </div>
-                    </a>
-                  )}
+                <div className={`bg-muted relative ${
+                  highlightClips.length === 1 ? "aspect-video" : "aspect-[16/10]"
+                }`}>
+                  <ClipMediaPlayer clip={clip} />
                 </div>
                 {/* Clip Info */}
                 <div className="p-4 space-y-1">
-                  <h4 className="font-semibold">{clip.title}</h4>
+                  <h4 className="font-semibold line-clamp-1">{clip.title}</h4>
                   {clip.podcast_name && (
-                    <p className="text-sm text-muted-foreground">{clip.podcast_name}</p>
-                  )}
-                  {clip.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">{clip.description}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{clip.podcast_name}</p>
                   )}
                 </div>
               </div>
