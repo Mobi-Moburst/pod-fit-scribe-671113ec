@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { X, Pencil } from "lucide-react";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface PitchHook {
   speaker_name: string;
@@ -55,13 +56,13 @@ export const CampaignOverview = ({
         {strategy && (
           <div>
             <h4 className="text-sm font-medium mb-2">Campaign Strategy</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">{strategy}</p>
+            <MarkdownRenderer content={strategy} className="text-sm text-muted-foreground leading-relaxed" />
           </div>
         )}
         
         {executive_summary && (
           <div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{executive_summary}</p>
+            <MarkdownRenderer content={executive_summary} className="text-sm text-muted-foreground leading-relaxed" />
           </div>
         )}
         

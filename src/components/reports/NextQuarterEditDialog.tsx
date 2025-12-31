@@ -102,6 +102,7 @@ export function NextQuarterEditDialog({
               placeholder="Opening paragraph for the next quarter strategy..."
               rows={3}
             />
+            <p className="text-xs text-muted-foreground">Supports formatting: **bold**, *italic*, - bullet points</p>
           </div>
 
           <div className="space-y-3">
@@ -180,6 +181,7 @@ export function NextQuarterEditDialog({
               placeholder="Closing paragraph..."
               rows={3}
             />
+            <p className="text-xs text-muted-foreground">Supports formatting: **bold**, *italic*, - bullet points</p>
           </div>
         </div>
 

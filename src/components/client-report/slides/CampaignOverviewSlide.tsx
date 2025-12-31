@@ -1,4 +1,5 @@
 import { ReportData } from "@/types/reports";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface CampaignOverviewSlideProps {
   campaignOverview: ReportData["campaign_overview"];
@@ -10,9 +11,7 @@ export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlid
       <h2 className="text-4xl md:text-5xl font-bold">Campaign Strategy</h2>
       
       {campaignOverview.strategy && (
-        <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed">
-          {campaignOverview.strategy}
-        </p>
+        <MarkdownRenderer content={campaignOverview.strategy} className="text-xl md:text-2xl text-muted-foreground leading-relaxed" />
       )}
 
       {campaignOverview.talking_points && campaignOverview.talking_points.length > 0 && (
