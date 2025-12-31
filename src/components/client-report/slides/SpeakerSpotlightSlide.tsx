@@ -1,10 +1,11 @@
-import { SpeakerBreakdown } from "@/types/reports";
-import { User, Calendar, Podcast, Users, TrendingUp, ExternalLink } from "lucide-react";
+import { SpeakerBreakdown, HighlightClip } from "@/types/reports";
+import { Calendar, Podcast, Users, TrendingUp, ExternalLink, Play, Video, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
 interface SpeakerSpotlightSlideProps {
   speaker: SpeakerBreakdown;
+  highlightClips?: HighlightClip[];
   onAirtableClick?: () => void;
 }
 
@@ -14,7 +15,7 @@ const formatNumber = (num: number): string => {
   return num.toString();
 };
 
-export const SpeakerSpotlightSlide = ({ speaker, onAirtableClick }: SpeakerSpotlightSlideProps) => {
+export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtableClick }: SpeakerSpotlightSlideProps) => {
   const initials = speaker.speaker_name
     .split(" ")
     .map((n) => n[0])
@@ -151,6 +152,92 @@ export const SpeakerSpotlightSlide = ({ speaker, onAirtableClick }: SpeakerSpotl
             Click to open →
           </div>
         </button>
+      )}
+
+      {/* Interview Highlights Section */}
+      {highlightClips.length > 0 && (
+        <div className="space-y-4 pt-4">
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <Video className="h-5 w-5 text-primary" />
+            Interview Highlights
+          </h3>
+          <div className="grid gap-4">
+            {highlightClips.map((clip) => (
+              <div
+                key={clip.id}
+                className="bg-card border border-border rounded-2xl overflow-hidden"
+              >
+                {/* Video/Audio Embed */}
+                <div className="aspect-video bg-muted relative">
+                  {clip.source_type === 'youtube' ? (
+                    <iframe
+                      src={clip.url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={clip.title}
+                    />
+                  ) : clip.source_type === 'vimeo' ? (
+                    <iframe
+                      src={clip.url.replace('vimeo.com/', 'player.vimeo.com/video/')}
+                      className="w-full h-full"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowFullScreen
+                      title={clip.title}
+                    />
+                  ) : clip.source_type === 'descript' ? (
+                    <iframe
+                      src={clip.url}
+                      className="w-full h-full"
+                      allow="autoplay; fullscreen"
+                      allowFullScreen
+                      title={clip.title}
+                    />
+                  ) : (
+                    <a
+                      href={clip.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full h-full flex items-center justify-center group/play hover:bg-muted/80 transition-colors"
+                    >
+                      {clip.thumbnail_url ? (
+                        <img
+                          src={clip.thumbnail_url}
+                          alt={clip.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                          {clip.media_type === 'video' ? (
+                            <Video className="h-12 w-12" />
+                          ) : (
+                            <Headphones className="h-12 w-12" />
+                          )}
+                          <span className="text-sm">Click to play</span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center group-hover/play:scale-110 transition-transform">
+                          <Play className="h-8 w-8 text-primary-foreground ml-1" />
+                        </div>
+                      </div>
+                    </a>
+                  )}
+                </div>
+                {/* Clip Info */}
+                <div className="p-4 space-y-1">
+                  <h4 className="font-semibold">{clip.title}</h4>
+                  {clip.podcast_name && (
+                    <p className="text-sm text-muted-foreground">{clip.podcast_name}</p>
+                  )}
+                  {clip.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">{clip.description}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
