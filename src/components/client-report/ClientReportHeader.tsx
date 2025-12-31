@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { MinimalClient } from "@/types/clients";
-import kitcasterLogo from "@/assets/kitcaster-logo.png";
+import { KitcasterLogo } from "@/components/KitcasterLogo";
 
 interface ClientReportHeaderProps {
   client: MinimalClient;
@@ -16,11 +16,7 @@ export const ClientReportHeader = ({ client, reportName, quarter, generatedAt }:
     <header className="space-y-6">
       {/* Logo Bar */}
       <div className="flex items-center justify-between">
-        <img 
-          src={kitcasterLogo} 
-          alt="Kitcaster by Moburst" 
-          className="h-12 w-auto object-contain"
-        />
+        <KitcasterLogo className="h-12 w-auto" />
         
         {client.logo_url && (
           <div 
