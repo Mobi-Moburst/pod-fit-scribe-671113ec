@@ -440,10 +440,41 @@ async function scrapePodcastMetadata(applePodcastUrl: string): Promise<{
   }
 }
 
-// Calculate categories from booked podcasts by scraping iTunes
+// AI-powered podcast categorization using target audiences
+async function categorizePodcast(
+  podcastName: string,
+  podcastDescription: string | undefined,
+  targetAudiences: string[],
+  companyName?: string
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('categorize-podcast', {
+      body: { 
+        podcastName, 
+        podcastDescription, 
+        targetAudiences,
+        companyName 
+      }
+    });
+    
+    if (error) {
+      console.error('Error categorizing podcast:', error);
+      return null;
+    }
+    
+    return data?.category || null;
+  } catch (err) {
+    console.error('Failed to categorize podcast:', err);
+    return null;
+  }
+}
+
+// Calculate categories from booked podcasts using AI + target audiences
 export async function calculateCategoriesFromBookedPodcasts(
   airtableRows: AirtableCSVRow[],
-  dateRange: { start: Date; end: Date }
+  dateRange: { start: Date; end: Date },
+  targetAudiences: string[],
+  companyName?: string
 ): Promise<ReportData['kpis']['top_categories']> {
   // Filter for booked podcasts with Apple Podcast links (based on date_booked)
   const canonicalizeApplePodcastUrl = (url: string) => {
@@ -490,6 +521,13 @@ export async function calculateCategoriesFromBookedPodcasts(
     return [];
   }
   
+  // If no target audiences provided, fall back to default categories
+  const effectiveAudiences = targetAudiences.length > 0 
+    ? targetAudiences 
+    : ['Technology', 'Business', 'Industry', 'Leadership', 'Innovation'];
+  
+  console.log(`[calculateCategoriesFromBookedPodcasts] Using ${effectiveAudiences.length} target audiences for categorization`);
+  
   // Scrape metadata for each booked podcast (with rate limiting)
   const categoryMap = new Map<string, {
     count: number;
@@ -501,52 +539,62 @@ export async function calculateCategoriesFromBookedPodcasts(
     }>;
   }>();
   
-  // Process in batches of 5 to avoid rate limiting
-  const batchSize = 5;
+  // Process in batches of 3 to avoid rate limiting (AI calls are slower)
+  const batchSize = 3;
   for (let i = 0; i < bookedPodcasts.length; i += batchSize) {
     const batch = bookedPodcasts.slice(i, i + batchSize);
     
     const results = await Promise.all(
       batch.map(async (row) => {
+        // First, scrape iTunes for metadata (cover art, description)
         const metadata = await scrapePodcastMetadata(row.apple_podcast_link!);
+        
+        // Then, use AI to categorize based on target audiences
+        const podcastName = metadata?.podcastName || row.podcast_name;
+        const podcastDescription = metadata?.description;
+        
+        const aiCategory = await categorizePodcast(
+          podcastName,
+          podcastDescription,
+          effectiveAudiences,
+          companyName
+        );
+        
         return {
           row,
           metadata,
+          category: aiCategory,
         };
       })
     );
     
     // Process results
-    results.forEach(({ row, metadata }) => {
-      if (!metadata) return;
-      
-      // Use primary genre, or fall back to first genre from array
-      const genre = metadata.primaryGenreName || (metadata.genres && metadata.genres[0]);
-      if (!genre) return;
+    results.forEach(({ row, metadata, category }) => {
+      if (!category) return;
       
       const podcastEntry = {
-        show_title: metadata.podcastName || row.podcast_name,
-        cover_art_url: metadata.coverArtUrl,
-        description: metadata.description,
+        show_title: metadata?.podcastName || row.podcast_name,
+        cover_art_url: metadata?.coverArtUrl,
+        description: metadata?.description,
         apple_podcast_link: row.apple_podcast_link,
       };
       
-      // Add to primary genre
-      const existing = categoryMap.get(genre);
+      // Add to AI-determined category
+      const existing = categoryMap.get(category);
       if (existing) {
         existing.count++;
         existing.podcasts.push(podcastEntry);
       } else {
-        categoryMap.set(genre, {
+        categoryMap.set(category, {
           count: 1,
           podcasts: [podcastEntry],
         });
       }
     });
     
-    // Small delay between batches to avoid rate limiting
+    // Slightly longer delay between batches for AI processing
     if (i + batchSize < bookedPodcasts.length) {
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
   }
   
@@ -560,7 +608,7 @@ export async function calculateCategoriesFromBookedPodcasts(
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
   
-  console.log(`[calculateCategoriesFromBookedPodcasts] Found ${topCategories.length} unique categories`);
+  console.log(`[calculateCategoriesFromBookedPodcasts] AI categorization complete: ${topCategories.length} categories found`);
   
   return topCategories;
 }
@@ -1237,9 +1285,15 @@ export async function generateReportFromMultipleCSVs(
   // Step 4: Calculate enhanced KPIs (now includes total EMV)
   const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
   
-  // Step 4b: Calculate accurate categories from booked podcasts via iTunes API
+  // Step 4b: Calculate accurate categories from booked podcasts using AI + target audiences
   if (airtableRows.length > 0) {
-    const accurateCategories = await calculateCategoriesFromBookedPodcasts(airtableRows, dateRange);
+    const targetAudiences = client.target_audiences || [];
+    const accurateCategories = await calculateCategoriesFromBookedPodcasts(
+      airtableRows, 
+      dateRange, 
+      targetAudiences,
+      client.company || client.name
+    );
     if (accurateCategories.length > 0) {
       kpis.top_categories = accurateCategories;
     }
@@ -1451,9 +1505,18 @@ export async function generateMultiSpeakerReport(
   // Calculate aggregated company KPIs
   const aggregatedKpis = calculateAggregatedKPIs(speakerBreakdowns, allBatchRows, allAirtableRows, allPodcasts);
   
-  // Calculate accurate categories from booked podcasts via iTunes API
+  // Calculate accurate categories from booked podcasts using AI + target audiences
   if (allAirtableRows.length > 0) {
-    const accurateCategories = await calculateCategoriesFromBookedPodcasts(allAirtableRows, dateRange);
+    // Combine target audiences from all speakers
+    const allTargetAudiences = [...new Set(
+      speakerData.flatMap(sd => sd.speaker.target_audiences || [])
+    )];
+    const accurateCategories = await calculateCategoriesFromBookedPodcasts(
+      allAirtableRows, 
+      dateRange,
+      allTargetAudiences,
+      company.name
+    );
     if (accurateCategories.length > 0) {
       aggregatedKpis.top_categories = accurateCategories;
     }
