@@ -708,7 +708,7 @@ export default function Reports() {
   };
 
   const copyPublicUrl = (slug: string) => {
-    const url = `${window.location.origin}/report/${slug}`;
+    const url = `${window.location.origin}/report/${slug}?v=${Date.now()}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Copied!",

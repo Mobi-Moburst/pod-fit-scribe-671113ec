@@ -56,6 +56,30 @@ export default function PublicReport() {
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
 
+  // Add cache-control meta tags to prevent browser caching
+  useEffect(() => {
+    const metaCacheControl = document.createElement('meta');
+    metaCacheControl.httpEquiv = 'Cache-Control';
+    metaCacheControl.content = 'no-cache, no-store, must-revalidate';
+    document.head.appendChild(metaCacheControl);
+
+    const metaPragma = document.createElement('meta');
+    metaPragma.httpEquiv = 'Pragma';
+    metaPragma.content = 'no-cache';
+    document.head.appendChild(metaPragma);
+
+    const metaExpires = document.createElement('meta');
+    metaExpires.httpEquiv = 'Expires';
+    metaExpires.content = '0';
+    document.head.appendChild(metaExpires);
+
+    return () => {
+      document.head.removeChild(metaCacheControl);
+      document.head.removeChild(metaPragma);
+      document.head.removeChild(metaExpires);
+    };
+  }, []);
+
   useEffect(() => {
     const fetchReport = async () => {
       if (!slug) {
