@@ -1,5 +1,7 @@
 import { ReportData } from "@/types/reports";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { Badge } from "@/components/ui/badge";
+import { Users } from "lucide-react";
 
 interface CampaignOverviewSlideProps {
   campaignOverview: ReportData["campaign_overview"];
@@ -8,6 +10,7 @@ interface CampaignOverviewSlideProps {
 export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlideProps) => {
   const hasTalkingPoints = campaignOverview.talking_points && campaignOverview.talking_points.length > 0;
   const hasPitchHooks = campaignOverview.pitch_hooks && campaignOverview.pitch_hooks.length > 0;
+  const hasTargetAudiences = campaignOverview.target_audiences && campaignOverview.target_audiences.length > 0;
   
   const speakerCount = campaignOverview.pitch_hooks?.length || 0;
   const hooksPerSpeaker = speakerCount > 2 ? 2 : 3;
@@ -44,6 +47,27 @@ export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlid
           </div>
         )}
       </div>
+
+      {/* Target Audience Breakdown */}
+      {hasTargetAudiences && (
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-center gap-2">
+            <Users className="w-5 h-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold text-muted-foreground">Target Audiences</h3>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            {campaignOverview.target_audiences!.map((audience, index) => (
+              <Badge 
+                key={index} 
+                variant="secondary"
+                className="text-sm px-3 py-1.5"
+              >
+                {audience}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       {hasPitchHooks && (
         <div className="space-y-3 pt-2">
