@@ -1,5 +1,5 @@
 import { MinimalClient } from "@/types/clients";
-import kitcasterLogo from "@/assets/kitcaster-logo.png";
+import { KitcasterLogo } from "@/components/KitcasterLogo";
 
 interface ThankYouSlideProps {
   client: MinimalClient;
@@ -18,11 +18,7 @@ export const ThankYouSlide = ({ client }: ThankYouSlideProps) => {
 
       <div className="pt-12 flex items-center justify-center gap-3">
         <span className="text-muted-foreground">Powered by</span>
-        <img 
-          src={kitcasterLogo} 
-          alt="Kitcaster" 
-          className="h-8 w-auto object-contain"
-        />
+        <KitcasterLogo className="h-8 w-auto" />
       </div>
     </div>
   );

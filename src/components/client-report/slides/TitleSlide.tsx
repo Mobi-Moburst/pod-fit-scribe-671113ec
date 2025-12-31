@@ -1,5 +1,5 @@
 import { MinimalClient } from "@/types/clients";
-import kitcasterLogo from "@/assets/kitcaster-logo.png";
+import { KitcasterLogo } from "@/components/KitcasterLogo";
 
 interface TitleSlideProps {
   client: MinimalClient;
@@ -14,11 +14,7 @@ export const TitleSlide = ({ client, reportName, quarter }: TitleSlideProps) => 
     <div className="text-center space-y-12 w-full">
       {/* Logos */}
       <div className="flex items-center justify-center gap-8">
-        <img 
-          src={kitcasterLogo} 
-          alt="Kitcaster" 
-          className="h-14 w-auto object-contain"
-        />
+        <KitcasterLogo className="h-14 w-auto" />
         {client.logo_url && (
           <>
             <div className="h-8 w-px bg-border" />
