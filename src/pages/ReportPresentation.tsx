@@ -344,7 +344,7 @@ export default function ReportPresentation() {
   return (
     <div className="fixed inset-0 bg-background overflow-hidden">
       <BackgroundFX />
-      <SlideContainer scrollable={slides[currentSlide].id.startsWith('speaker-')}>
+      <SlideContainer scrollable={slides[currentSlide].id.startsWith('speaker-') || slides[currentSlide].id === 'campaign-overview'}>
         {slides[currentSlide].component}
       </SlideContainer>
       
