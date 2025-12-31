@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Pencil } from "lucide-react";
 
 interface CampaignOverviewProps {
   strategy: string;
@@ -8,6 +8,7 @@ interface CampaignOverviewProps {
   target_audiences: string[];
   talking_points: string[];
   onHide?: () => void;
+  onEdit?: () => void;
 }
 
 export const CampaignOverview = ({ 
@@ -15,19 +16,31 @@ export const CampaignOverview = ({
   executive_summary,
   target_audiences, 
   talking_points,
-  onHide
+  onHide,
+  onEdit
 }: CampaignOverviewProps) => {
   return (
     <Card className="group relative">
-      {onHide && (
-        <button
-          onClick={onHide}
-          className="absolute top-3 right-3 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted print:hidden"
-          title="Hide section"
-        >
-          <X className="h-4 w-4 text-muted-foreground" />
-        </button>
-      )}
+      <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            className="p-1 rounded-md hover:bg-muted"
+            title="Edit section"
+          >
+            <Pencil className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+        {onHide && (
+          <button
+            onClick={onHide}
+            className="p-1 rounded-md hover:bg-muted"
+            title="Hide section"
+          >
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+      </div>
       <CardHeader>
         <CardTitle>Campaign Overview</CardTitle>
       </CardHeader>

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight, X, Pencil } from "lucide-react";
 
 interface NextQuarterStrategyProps {
   quarter: string;
@@ -14,6 +14,7 @@ interface NextQuarterStrategyProps {
   }>;
   closing_paragraph: string;
   onHide?: () => void;
+  onEdit?: () => void;
 }
 
 export function NextQuarterStrategy({
@@ -22,19 +23,31 @@ export function NextQuarterStrategy({
   strategic_focus_areas,
   talking_points_spotlight,
   closing_paragraph,
-  onHide
+  onHide,
+  onEdit
 }: NextQuarterStrategyProps) {
   return (
     <Card className="relative group">
-      {onHide && (
-        <button
-          onClick={onHide}
-          className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
-          title="Hide this section"
-        >
-          <X className="h-3 w-3" />
-        </button>
-      )}
+      <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity print:hidden z-10">
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            className="p-1 rounded-full bg-muted/80 text-muted-foreground hover:bg-muted"
+            title="Edit this section"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        )}
+        {onHide && (
+          <button
+            onClick={onHide}
+            className="p-1 rounded-full bg-muted/80 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+            title="Hide this section"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ArrowRight className="h-5 w-5 text-primary" />
