@@ -120,8 +120,22 @@ export default function Reports() {
     highlights: true,
   });
   
-  const toggleSection = (key: keyof typeof visibleSections) => {
-    setVisibleSections(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleSection = async (key: keyof typeof visibleSections) => {
+    const newVisibleSections = { ...visibleSections, [key]: !visibleSections[key] };
+    setVisibleSections(newVisibleSections);
+    
+    // Auto-save visibility changes for saved reports
+    if (currentReportId && reportData) {
+      const updatedReportData = { ...reportData, visibleSections: newVisibleSections };
+      try {
+        await supabase
+          .from('reports')
+          .update({ report_data: updatedReportData as any })
+          .eq('id', currentReportId);
+      } catch (error) {
+        console.error('Error saving visibility changes:', error);
+      }
+    }
   };
   
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || 
@@ -721,6 +735,15 @@ export default function Reports() {
     setReportName(report.report_name);
     setQuarter(report.quarter || '');
     setCurrentReportId(report.id);
+    
+    // Restore saved visibility sections if they exist
+    if (report.report_data?.visibleSections) {
+      setVisibleSections(prev => ({
+        ...prev,
+        ...report.report_data.visibleSections,
+      }));
+    }
+    
     toast({
       title: "Report loaded",
       description: `Loaded ${report.report_name}`,
@@ -758,7 +781,7 @@ export default function Reports() {
   const updateReportTargetPodcasts = async (podcasts: TargetPodcast[]) => {
     if (!currentReportId || !reportData) return;
     
-    const updatedReportData = { ...reportData, target_podcasts: podcasts };
+    const updatedReportData = { ...reportData, target_podcasts: podcasts, visibleSections };
     setReportData(updatedReportData);
     
     try {
@@ -798,7 +821,7 @@ export default function Reports() {
   const updateReportHighlights = async (clips: HighlightClip[]) => {
     if (!currentReportId || !reportData) return;
     
-    const updatedReportData = { ...reportData, highlight_clips: clips };
+    const updatedReportData = { ...reportData, highlight_clips: clips, visibleSections };
     setReportData(updatedReportData);
     
     try {
@@ -827,7 +850,7 @@ export default function Reports() {
   const updateReportCampaignOverview = async (campaignOverview: ReportData["campaign_overview"]) => {
     if (!reportData) return;
     
-    const updatedReportData = { ...reportData, campaign_overview: campaignOverview };
+    const updatedReportData = { ...reportData, campaign_overview: campaignOverview, visibleSections };
     setReportData(updatedReportData);
     
     // Only save to database if report is already saved
@@ -864,7 +887,7 @@ export default function Reports() {
   const updateReportNextQuarterStrategy = async (strategy: NonNullable<ReportData["next_quarter_strategy"]>) => {
     if (!reportData) return;
     
-    const updatedReportData = { ...reportData, next_quarter_strategy: strategy };
+    const updatedReportData = { ...reportData, next_quarter_strategy: strategy, visibleSections };
     setReportData(updatedReportData);
     
     // Only save to database if report is already saved
