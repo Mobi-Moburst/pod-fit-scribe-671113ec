@@ -27,6 +27,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       key: 'totalBooked',
       label: "Podcasts Booked",
       value: kpis.total_booked,
+      description: "Confirmed bookings",
       icon: Calendar,
       color: "hsl(var(--primary))",
       onClick: undefined as (() => void) | undefined,
@@ -38,6 +39,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       key: 'totalPublished',
       label: "Episodes Published",
       value: kpis.total_published,
+      description: "Episodes live",
       icon: Podcast,
       color: "hsl(var(--accent))",
       onClick: undefined as (() => void) | undefined,
@@ -48,6 +50,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       key: 'socialReach',
       label: "Social Reach",
       value: formatNumber(kpis.total_social_reach || 0),
+      description: "Combined social following",
       icon: Users,
       color: "hsl(280 70% 60%)",
       onClick: undefined as (() => void) | undefined,
@@ -59,6 +62,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       key: 'totalReach',
       label: "Total Reach",
       value: formatNumber(kpis.total_reach),
+      description: "Total monthly listeners" + (onReachClick ? " • Click for details" : ""),
       icon: Users,
       color: "hsl(191 100% 62%)",
       onClick: onReachClick,
@@ -70,6 +74,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       key: 'averageScore',
       label: "Average Fit Score",
       value: kpis.avg_score.toFixed(1),
+      description: "Podcast alignment score",
       icon: TrendingUp,
       color: "hsl(51 100% 61%)",
       onClick: undefined as (() => void) | undefined,
@@ -103,11 +108,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
               <div>
                 <div className="text-3xl font-bold">{kpi.value}</div>
                 <div className="text-sm text-muted-foreground">{kpi.label}</div>
-                {isClickable && (
-                  <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                    Click for details
-                  </div>
-                )}
+                <div className="text-xs text-muted-foreground mt-1">{kpi.description}</div>
               </div>
             </div>
           );
