@@ -62,19 +62,33 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
             className="border rounded-lg bg-card overflow-hidden"
           >
             <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3 text-left">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary" />
+              <div className="flex items-center justify-between w-full gap-4 text-left">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground truncate">{speaker.speaker_name}</p>
+                    {speaker.speaker_title && (
+                      <p className="text-sm text-muted-foreground truncate">{speaker.speaker_title}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-foreground">{speaker.speaker_name}</p>
-                  {speaker.speaker_title && (
-                    <p className="text-sm text-muted-foreground">{speaker.speaker_title}</p>
+                <div className="flex items-center gap-3 shrink-0 mr-2">
+                  {sections.totalBooked && (
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-sm">
+                      <Calendar className="h-3.5 w-3.5 text-primary" />
+                      <span className="font-medium text-foreground">{speaker.kpis.total_booked}</span>
+                      <span className="text-muted-foreground">booked</span>
+                    </div>
                   )}
-                </div>
-                <div className="ml-auto flex items-center gap-4 mr-4 text-sm text-muted-foreground">
-                  {sections.totalBooked && <span>{speaker.kpis.total_booked} booked</span>}
-                  {sections.totalPublished && <span>{speaker.kpis.total_published} published</span>}
+                  {sections.totalPublished && (
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-sm">
+                      <Radio className="h-3.5 w-3.5 text-accent" />
+                      <span className="font-medium text-foreground">{speaker.kpis.total_published}</span>
+                      <span className="text-muted-foreground">published</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </AccordionTrigger>
