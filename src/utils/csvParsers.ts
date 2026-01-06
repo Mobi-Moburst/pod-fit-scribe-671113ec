@@ -103,7 +103,7 @@ export function parseAirtableCSV(
     csvPreview: csvText.substring(0, 200)
   });
 
-  const result = Papa.parse<AirtableCSVRow>(csvText, {
+  const result = Papa.parse<Record<string, string>>(csvText, {
     header: true,
     skipEmptyLines: true,
     transformHeader: normalizeHeaderName,
@@ -116,8 +116,34 @@ export function parseAirtableCSV(
     errors: result.errors,
   });
   
+  // Map raw rows to AirtableCSVRow, handling common column name variations
+  const mappedRows: AirtableCSVRow[] = result.data.map(raw => {
+    // Handle episode link variations: "link_to_episode", "episode_link", "link"
+    const episodeLink = raw.link_to_episode || raw.episode_link || raw.link || '';
+    
+    return {
+      podcast_name: raw.podcast_name || raw.podcast || raw.show_name || raw.name || '',
+      apple_podcast_link: raw.apple_podcast_link || raw.apple_link || raw.apple_podcasts || '',
+      action: raw.action || '',
+      scheduled_date_time: raw.scheduled_date_time || raw.scheduled_date || raw.recording_date || '',
+      show_notes: raw.show_notes || raw.notes || '',
+      date_booked: raw.date_booked || raw.booked_date || '',
+      date_published: raw.date_published || raw.published_date || raw.publish_date || '',
+      link_to_episode: episodeLink,
+    };
+  }).filter(row => row.podcast_name); // Filter out empty rows
+  
+  console.log('[parseAirtableCSV] After mapping:', {
+    mappedCount: mappedRows.length,
+    sampleEpisodeLinks: mappedRows.slice(0, 5).map(r => ({ 
+      name: r.podcast_name, 
+      date_published: r.date_published, 
+      link: r.link_to_episode 
+    })),
+  });
+  
   // Filter by scheduled_date_time (recording date) OR date_published OR date_booked
-  const filtered = result.data.filter(row => {
+  const filtered = mappedRows.filter(row => {
     let inRange = false;
     
     // Check recording date
@@ -149,6 +175,8 @@ export function parseAirtableCSV(
   
   console.log('[parseAirtableCSV] After filtering:', {
     filteredCount: filtered.length,
+    publishedCount: filtered.filter(r => r.date_published).length,
+    withEpisodeLink: filtered.filter(r => r.link_to_episode).length,
     samples: filtered.slice(0, 3)
   });
   
