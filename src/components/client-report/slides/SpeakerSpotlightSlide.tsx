@@ -3,10 +3,19 @@ import { Calendar, Podcast, Users, TrendingUp, ExternalLink, Play, Video, Headph
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
+interface VisibleSections {
+  totalBooked?: boolean;
+  totalPublished?: boolean;
+  totalReach?: boolean;
+  socialReach?: boolean;
+  averageScore?: boolean;
+}
+
 interface SpeakerSpotlightSlideProps {
   speaker: SpeakerBreakdown;
   highlightClips?: HighlightClip[];
   onAirtableClick?: () => void;
+  visibleSections?: VisibleSections;
 }
 
 const formatNumber = (num: number): string => {
@@ -135,7 +144,16 @@ const ClipMediaPlayer = ({ clip }: { clip: HighlightClip }) => {
   );
 };
 
-export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtableClick }: SpeakerSpotlightSlideProps) => {
+export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtableClick, visibleSections }: SpeakerSpotlightSlideProps) => {
+  // Default all sections to visible if not specified
+  const sections = {
+    totalBooked: visibleSections?.totalBooked ?? true,
+    totalPublished: visibleSections?.totalPublished ?? true,
+    totalReach: visibleSections?.totalReach ?? true,
+    socialReach: visibleSections?.socialReach ?? true,
+    averageScore: visibleSections?.averageScore ?? true,
+  };
+
   const initials = speaker.speaker_name
     .split(" ")
     .map((n) => n[0])
@@ -143,32 +161,52 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
     .toUpperCase()
     .slice(0, 2);
 
-  const kpiItems = [
-    {
+  const kpiItems = [];
+  
+  if (sections.totalBooked) {
+    kpiItems.push({
       label: "Booked",
       value: speaker.kpis.total_booked,
       icon: Calendar,
       color: "hsl(var(--primary))",
-    },
-    {
+    });
+  }
+  
+  if (sections.totalPublished) {
+    kpiItems.push({
       label: "Published",
       value: speaker.kpis.total_published,
       icon: Podcast,
       color: "hsl(var(--accent))",
-    },
-    {
-      label: "Reach",
+    });
+  }
+  
+  if (sections.totalReach) {
+    kpiItems.push({
+      label: "Listenership",
       value: formatNumber(speaker.kpis.total_reach),
       icon: Users,
       color: "hsl(191 100% 62%)",
-    },
-    {
+    });
+  }
+  
+  if (sections.socialReach) {
+    kpiItems.push({
+      label: "Social Reach",
+      value: formatNumber(speaker.kpis.total_social_reach),
+      icon: Users,
+      color: "hsl(280 70% 60%)",
+    });
+  }
+  
+  if (sections.averageScore) {
+    kpiItems.push({
       label: "Avg Score",
       value: speaker.kpis.avg_score.toFixed(1),
       icon: TrendingUp,
       color: "hsl(51 100% 61%)",
-    },
-  ];
+    });
+  }
 
   const hasTargetAudiences = speaker.target_audiences && speaker.target_audiences.length > 0;
   const hasTalkingPoints = speaker.talking_points && speaker.talking_points.length > 0;
