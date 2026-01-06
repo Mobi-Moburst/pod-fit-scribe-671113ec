@@ -5,12 +5,30 @@ import { AirtableEmbed } from "./AirtableEmbed";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Calendar, Radio, Users, TrendingUp, User } from "lucide-react";
 
+interface VisibleSections {
+  totalBooked?: boolean;
+  totalPublished?: boolean;
+  totalReach?: boolean;
+  socialReach?: boolean;
+  averageScore?: boolean;
+}
+
 interface SpeakerAccordionProps {
   speakerBreakdowns: SpeakerBreakdown[];
   defaultOpen?: string[];
+  visibleSections?: VisibleSections;
 }
 
-export function SpeakerAccordion({ speakerBreakdowns, defaultOpen }: SpeakerAccordionProps) {
+export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSections }: SpeakerAccordionProps) {
+  // Default all sections to visible if not specified
+  const sections = {
+    totalBooked: visibleSections?.totalBooked ?? true,
+    totalPublished: visibleSections?.totalPublished ?? true,
+    totalReach: visibleSections?.totalReach ?? true,
+    socialReach: visibleSections?.socialReach ?? true,
+    averageScore: visibleSections?.averageScore ?? true,
+  };
+
   // Format numbers with K/M suffix
   const formatNumber = (n: number): string => {
     if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
@@ -55,8 +73,8 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen }: SpeakerAcco
                   )}
                 </div>
                 <div className="ml-auto flex items-center gap-4 mr-4 text-sm text-muted-foreground">
-                  <span>{speaker.kpis.total_booked} booked</span>
-                  <span>{speaker.kpis.total_published} published</span>
+                  {sections.totalBooked && <span>{speaker.kpis.total_booked} booked</span>}
+                  {sections.totalPublished && <span>{speaker.kpis.total_published} published</span>}
                 </div>
               </div>
             </AccordionTrigger>
@@ -65,56 +83,66 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen }: SpeakerAcco
               <div className="space-y-6 pt-4">
                 {/* Speaker KPIs */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                  <Card className="bg-muted/30">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                        <Calendar className="h-3 w-3" />
-                        Booked
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{speaker.kpis.total_booked}</p>
-                    </CardContent>
-                  </Card>
+                  {sections.totalBooked && (
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                          <Calendar className="h-3 w-3" />
+                          Booked
+                        </div>
+                        <p className="text-2xl font-bold text-foreground">{speaker.kpis.total_booked}</p>
+                      </CardContent>
+                    </Card>
+                  )}
                   
-                  <Card className="bg-muted/30">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                        <Radio className="h-3 w-3" />
-                        Published
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{speaker.kpis.total_published}</p>
-                    </CardContent>
-                  </Card>
+                  {sections.totalPublished && (
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                          <Radio className="h-3 w-3" />
+                          Published
+                        </div>
+                        <p className="text-2xl font-bold text-foreground">{speaker.kpis.total_published}</p>
+                      </CardContent>
+                    </Card>
+                  )}
                   
-                  <Card className="bg-muted/30">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                        <Users className="h-3 w-3" />
-                        Total Reach
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{formatNumber(speaker.kpis.total_reach)}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Total monthly listeners</p>
-                    </CardContent>
-                  </Card>
+                  {sections.totalReach && (
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                          <Users className="h-3 w-3" />
+                          Total Reach
+                        </div>
+                        <p className="text-2xl font-bold text-foreground">{formatNumber(speaker.kpis.total_reach)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Total monthly listeners</p>
+                      </CardContent>
+                    </Card>
+                  )}
                   
-                  <Card className="bg-muted/30">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                        <TrendingUp className="h-3 w-3" />
-                        Social
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{formatNumber(speaker.kpis.total_social_reach)}</p>
-                    </CardContent>
-                  </Card>
+                  {sections.socialReach && (
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                          <TrendingUp className="h-3 w-3" />
+                          Social
+                        </div>
+                        <p className="text-2xl font-bold text-foreground">{formatNumber(speaker.kpis.total_social_reach)}</p>
+                      </CardContent>
+                    </Card>
+                  )}
                   
-                  <Card className="bg-muted/30">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                        <TrendingUp className="h-3 w-3" />
-                        Avg Score
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{speaker.kpis.avg_score.toFixed(1)}</p>
-                    </CardContent>
-                  </Card>
+                  {sections.averageScore && (
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                          <TrendingUp className="h-3 w-3" />
+                          Avg Score
+                        </div>
+                        <p className="text-2xl font-bold text-foreground">{speaker.kpis.avg_score.toFixed(1)}</p>
+                      </CardContent>
+                    </Card>
+                  )}
                   
                 </div>
                 

@@ -244,6 +244,7 @@ export default function PublicReport() {
           <SpeakerAccordion 
             speakerBreakdowns={reportData.speaker_breakdowns}
             defaultOpen={[reportData.speaker_breakdowns[0]?.speaker_id]}
+            visibleSections={visibleSections}
           />
         )}
 
