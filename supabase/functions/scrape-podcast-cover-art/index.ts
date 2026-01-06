@@ -27,9 +27,17 @@ serve(async (req) => {
     // Extract podcast ID from URL (e.g., /id1234567890)
     const idMatch = apple_podcast_url.match(/\/id(\d+)/);
     if (!idMatch) {
-      console.log('Could not extract podcast ID from URL:', apple_podcast_url);
-      return new Response(JSON.stringify({ error: 'Invalid Apple Podcast URL format' }), {
-        status: 400,
+      // Not an Apple Podcast URL - return null gracefully instead of error
+      // This handles Spotify URLs, YouTube URLs, and other non-Apple URLs
+      console.log('Not an Apple Podcast URL, returning null:', apple_podcast_url);
+      return new Response(JSON.stringify({ 
+        coverArtUrl: null,
+        podcastName: null,
+        artistName: null,
+        primaryGenreName: null,
+        genres: [],
+        description: null
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
