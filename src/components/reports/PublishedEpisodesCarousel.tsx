@@ -6,6 +6,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,10 +25,12 @@ interface CoverArtCache {
 
 export function PublishedEpisodesCarousel({ 
   podcasts, 
-  title = "Published Episodes" 
+  title = "Published Episodes This Quarter" 
 }: PublishedEpisodesCarouselProps) {
   const [coverArtCache, setCoverArtCache] = useState<CoverArtCache>({});
   const [loadingArt, setLoadingArt] = useState<Set<string>>(new Set());
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
 
   // Filter to only published episodes with episode links
   const publishedEpisodes = podcasts.filter(
@@ -73,6 +76,17 @@ export function PublishedEpisodesCarousel({
     });
   }, [publishedEpisodes]);
 
+  // Track carousel position
+  useEffect(() => {
+    if (!api) return;
+
+    setCurrent(api.selectedScrollSnap());
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
+
   if (publishedEpisodes.length === 0) {
     return null;
   }
@@ -110,121 +124,142 @@ export function PublishedEpisodesCarousel({
         </Badge>
       </div>
 
-      <Carousel
-        opts={{
-          align: "start",
-          loop: false,
-        }}
-        className="w-full"
-      >
-        <CarouselContent className="-ml-2 md:-ml-4">
-          {publishedEpisodes.map((episode, index) => {
-            const coverArt = episode.apple_podcast_link 
-              ? coverArtCache[episode.apple_podcast_link] 
-              : null;
-            const isLoadingArt = episode.apple_podcast_link 
-              ? loadingArt.has(episode.apple_podcast_link)
-              : false;
+      <div className="relative">
+        <Carousel
+          setApi={setApi}
+          opts={{
+            align: "center",
+            loop: true,
+          }}
+          className="w-full"
+        >
+          <CarouselContent>
+            {publishedEpisodes.map((episode, index) => {
+              const coverArt = episode.apple_podcast_link 
+                ? coverArtCache[episode.apple_podcast_link] 
+                : null;
+              const isLoadingArt = episode.apple_podcast_link 
+                ? loadingArt.has(episode.apple_podcast_link)
+                : false;
 
-            return (
-              <CarouselItem 
-                key={`${episode.show_title}-${index}`}
-                className="pl-2 md:pl-4 basis-[280px] md:basis-[300px]"
-              >
-                <Card className="overflow-hidden bg-card border h-full">
-                  {/* Cover Art Section */}
-                  <div className="relative aspect-square bg-muted">
-                    {isLoadingArt ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    ) : coverArt ? (
-                      <img
-                        src={coverArt}
-                        alt={episode.show_title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
-                        <Podcast className="h-16 w-16 text-muted-foreground/50" />
-                      </div>
-                    )}
-                    
-                    {/* Duration Badge */}
-                    {episode.episode_duration_minutes && (
-                      <Badge 
-                        className="absolute top-2 right-2 bg-black/70 text-white border-0"
-                      >
-                        <Clock className="h-3 w-3 mr-1" />
-                        {formatDuration(episode.episode_duration_minutes)}
-                      </Badge>
-                    )}
-
-                    {/* Play Overlay Button */}
-                    {episode.episode_link && (
-                      <a
-                        href={episode.episode_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors group"
-                      >
-                        <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transform scale-90 group-hover:scale-100 transition-all shadow-lg">
-                          <Play className="h-6 w-6 text-primary-foreground ml-1" />
+              return (
+                <CarouselItem 
+                  key={`${episode.show_title}-${index}`}
+                  className="basis-full"
+                >
+                  <Card className="overflow-hidden bg-card border mx-auto max-w-md">
+                    {/* Cover Art Section */}
+                    <div className="relative aspect-square bg-muted">
+                      {isLoadingArt ? (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         </div>
-                      </a>
-                    )}
-                  </div>
+                      ) : coverArt ? (
+                        <img
+                          src={coverArt}
+                          alt={episode.show_title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
+                          <Podcast className="h-16 w-16 text-muted-foreground/50" />
+                        </div>
+                      )}
+                      
+                      {/* Duration Badge */}
+                      {episode.episode_duration_minutes && (
+                        <Badge 
+                          className="absolute top-2 right-2 bg-black/70 text-white border-0"
+                        >
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatDuration(episode.episode_duration_minutes)}
+                        </Badge>
+                      )}
 
-                  {/* Content Section */}
-                  <CardContent className="p-4 space-y-2">
-                    <h5 className="font-semibold text-sm line-clamp-2 text-foreground leading-tight">
-                      {episode.show_title}
-                    </h5>
-                    
-                    {episode.date_published && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        <span>Published {formatDate(episode.date_published)}</span>
-                      </div>
-                    )}
-                    
-                    {episode.show_notes && (
-                      <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                        {episode.show_notes}
-                      </p>
-                    )}
-
-                    {episode.episode_link && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-2"
-                        asChild
-                      >
-                        <a 
+                      {/* Play Overlay Button */}
+                      {episode.episode_link && (
+                        <a
                           href={episode.episode_link}
                           target="_blank"
                           rel="noopener noreferrer"
+                          className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors group"
                         >
-                          <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                          Listen Now
+                          <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center opacity-80 group-hover:opacity-100 transform scale-90 group-hover:scale-100 transition-all shadow-lg">
+                            <Play className="h-7 w-7 text-primary-foreground ml-1" />
+                          </div>
                         </a>
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              </CarouselItem>
-            );
-          })}
-        </CarouselContent>
-        
+                      )}
+                    </div>
+
+                    {/* Content Section */}
+                    <CardContent className="p-4 space-y-2">
+                      <h5 className="font-semibold text-sm line-clamp-2 text-foreground leading-tight">
+                        {episode.show_title}
+                      </h5>
+                      
+                      {episode.date_published && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          <span>Published {formatDate(episode.date_published)}</span>
+                        </div>
+                      )}
+                      
+                      {episode.show_notes && (
+                        <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                          {episode.show_notes}
+                        </p>
+                      )}
+
+                      {episode.episode_link && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-2"
+                          asChild
+                        >
+                          <a 
+                            href={episode.episode_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                            Listen Now
+                          </a>
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+              );
+            })}
+          </CarouselContent>
+          
+          {/* Always visible navigation arrows */}
+          <CarouselPrevious className="-left-4 md:-left-5 h-10 w-10 border-2" />
+          <CarouselNext className="-right-4 md:-right-5 h-10 w-10 border-2" />
+        </Carousel>
+
+        {/* Dot Indicators */}
         {publishedEpisodes.length > 1 && (
-          <>
-            <CarouselPrevious className="-left-4 hidden md:flex" />
-            <CarouselNext className="-right-4 hidden md:flex" />
-          </>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            {publishedEpisodes.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => api?.scrollTo(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === current 
+                    ? "bg-primary w-4" 
+                    : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                }`}
+                aria-label={`Go to episode ${index + 1}`}
+              />
+            ))}
+            <span className="ml-2 text-xs text-muted-foreground">
+              {current + 1} of {publishedEpisodes.length}
+            </span>
+          </div>
         )}
-      </Carousel>
+      </div>
     </div>
   );
 }

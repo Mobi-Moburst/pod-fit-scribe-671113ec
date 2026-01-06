@@ -295,7 +295,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
         <div className="pt-4">
           <PublishedEpisodesCarousel 
             podcasts={speaker.podcasts}
-            title="Episodes This Quarter"
+            title="Published Episodes This Quarter"
           />
         </div>
       )}

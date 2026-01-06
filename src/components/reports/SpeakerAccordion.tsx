@@ -164,7 +164,7 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
                 {speaker.podcasts && speaker.podcasts.length > 0 && (
                   <PublishedEpisodesCarousel 
                     podcasts={speaker.podcasts}
-                    title="Episodes This Quarter"
+                    title="Published Episodes This Quarter"
                   />
                 )}
 
