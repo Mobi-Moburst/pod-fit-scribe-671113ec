@@ -245,6 +245,7 @@ export default function PublicReport() {
           <PublishedEpisodesCarousel 
             podcasts={reportData.podcasts}
             title="Published Episodes This Quarter"
+            variant="list"
           />
         )}
 
