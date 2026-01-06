@@ -32,13 +32,14 @@ import { ContentGapRecommendations } from "@/components/reports/ContentGapRecomm
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { HighlightClip } from "@/types/reports";
 import HighlightUploadDialog from "@/components/reports/HighlightUploadDialog";
 import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
 import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOverviewEditDialog";
 import { NextQuarterEditDialog } from "@/components/reports/NextQuarterEditDialog";
+import { UpdateCSVDialog } from "@/components/reports/UpdateCSVDialog";
 
 export default function Reports() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -96,6 +97,8 @@ export default function Reports() {
   const [highlightsDialogOpen, setHighlightsDialogOpen] = useState(false);
   const [campaignOverviewEditOpen, setCampaignOverviewEditOpen] = useState(false);
   const [nextQuarterEditOpen, setNextQuarterEditOpen] = useState(false);
+  const [updateCSVDialogOpen, setUpdateCSVDialogOpen] = useState(false);
+  const [reportToUpdate, setReportToUpdate] = useState<any>(null);
   
   
   // Visibility state for report sections
@@ -1078,6 +1081,18 @@ export default function Reports() {
                                     <Video className="h-4 w-4 mr-1" />
                                     Highlights
                                   </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setReportToUpdate(report);
+                                      setUpdateCSVDialogOpen(true);
+                                    }}
+                                    title="Update CSV data"
+                                  >
+                                    <RefreshCw className="h-4 w-4 mr-1" />
+                                    Update
+                                  </Button>
                                   {report.is_published ? (
                                     <Button
                                       size="sm"
@@ -1897,6 +1912,31 @@ export default function Reports() {
               )}
             </>
           )}
+
+          {/* Update CSV Dialog - available globally */}
+          <UpdateCSVDialog
+            open={updateCSVDialogOpen}
+            onOpenChange={setUpdateCSVDialogOpen}
+            report={reportToUpdate}
+            onUpdated={() => {
+              loadAllReports();
+              loadSavedReports();
+              // If the currently viewed report was updated, reload it
+              if (currentReportId && reportToUpdate?.id === currentReportId) {
+                const refreshReport = async () => {
+                  const { data } = await supabase
+                    .from('reports')
+                    .select('*')
+                    .eq('id', currentReportId)
+                    .single();
+                  if (data) {
+                    loadReport(data);
+                  }
+                };
+                refreshReport();
+              }
+            }}
+          />
         </div>
       </main>
     </div>

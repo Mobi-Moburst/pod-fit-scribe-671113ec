@@ -1780,3 +1780,179 @@ function formatCurrency(n: number): string {
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}K`;
   return `$${n.toLocaleString()}`;
 }
+
+// Type for CSV update data
+interface UpdatedCSVData {
+  batchData?: BatchCSVRow[] | null;
+  airtableData?: AirtableCSVRow[] | null;
+  sovData?: SOVCSVRow[] | null;
+  geoData?: GEOCSVRow[] | null;
+  contentGapData?: ContentGapCSVRow[] | null;
+  rephonicData?: RephonicCSVRow[] | null;
+}
+
+type CSVType = 'batch' | 'airtable' | 'sov' | 'geo' | 'content_gap' | 'rephonic';
+
+/**
+ * Merge updated CSV data into an existing report, preserving manually edited fields.
+ * Only recalculates data for the CSV types that were updated.
+ */
+export async function mergeUpdatedReportData(
+  existingReport: ReportData,
+  newData: UpdatedCSVData,
+  updatedCSVTypes: CSVType[]
+): Promise<ReportData> {
+  // Clone the existing report to avoid mutation
+  const updatedReport = JSON.parse(JSON.stringify(existingReport)) as ReportData;
+  
+  // Preserve these fields regardless of what's updated
+  const preservedFields = {
+    target_podcasts: existingReport.target_podcasts,
+    highlight_clips: existingReport.highlight_clips,
+    visibleSections: (existingReport as any).visibleSections,
+  };
+  
+  const cpm = existingReport.cpm || 50;
+  const dateRange = existingReport.date_range ? {
+    start: new Date(existingReport.date_range.start),
+    end: new Date(existingReport.date_range.end)
+  } : {
+    start: new Date(),
+    end: new Date()
+  };
+  
+  // Determine what data to use for recalculations
+  // If batch or airtable is updated, we need to recalculate podcasts and KPIs
+  const needsPodcastRecalc = updatedCSVTypes.includes('batch') || updatedCSVTypes.includes('airtable');
+  
+  if (needsPodcastRecalc) {
+    // Get batch and airtable data (use new if provided, otherwise would need original which we don't have)
+    // For partial updates, we only support updating with the new data
+    if (newData.batchData && newData.airtableData) {
+      // Full recalculation with both new CSVs
+      const mergedPodcasts = mergePodcastData(newData.batchData, newData.airtableData);
+      const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
+      let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
+      
+      // Apply rephonic data if provided or exists
+      if (newData.rephonicData && newData.rephonicData.length > 0) {
+        podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, newData.rephonicData, cpm);
+      }
+      
+      updatedReport.podcasts = podcastsWithEMV;
+      
+      // Recalculate KPIs
+      const newKpis = calculateEnhancedKPIs(newData.batchData, newData.airtableData, podcastsWithEMV, dateRange);
+      
+      // Preserve existing categories if they were AI-generated and new ones would be empty
+      if (newKpis.top_categories.length === 0 && existingReport.kpis.top_categories.length > 0) {
+        newKpis.top_categories = existingReport.kpis.top_categories;
+      }
+      
+      updatedReport.kpis = newKpis;
+      
+      // Recalculate SOV if we have the data
+      if (newData.sovData || existingReport.sov_analysis) {
+        const sovAnalysis = calculateSOVAnalysis(
+          newData.airtableData,
+          newData.sovData || null,
+          null,
+          null
+        );
+        if (sovAnalysis) {
+          updatedReport.sov_analysis = sovAnalysis;
+          updatedReport.kpis.sov_percentage = sovAnalysis.client_percentage;
+        }
+      }
+    } else if (newData.batchData && updatedCSVTypes.includes('batch')) {
+      // Only batch updated - limited recalculation
+      // We can update basic stats but not full podcast merging without airtable
+      console.log('[mergeUpdatedReportData] Batch-only update - limited recalculation');
+    } else if (newData.airtableData && updatedCSVTypes.includes('airtable')) {
+      // Only airtable updated - update booking/publishing stats
+      console.log('[mergeUpdatedReportData] Airtable-only update - updating booking stats');
+      
+      // Update published/booked counts
+      const publishedCount = newData.airtableData.filter(r => 
+        r.date_published && r.date_published.trim() !== ''
+      ).length;
+      const bookedCount = newData.airtableData.filter(r => 
+        r.date_booked && r.date_booked.trim() !== ''
+      ).length;
+      const interviewCount = newData.airtableData.filter(r => 
+        r.action?.toLowerCase().includes('podcast recording')
+      ).length;
+      
+      updatedReport.kpis.total_published = publishedCount;
+      updatedReport.kpis.total_booked = bookedCount;
+      updatedReport.kpis.total_interviews = interviewCount;
+      
+      // Update episode links in existing podcasts
+      newData.airtableData.forEach(airtableRow => {
+        const matchingPodcast = updatedReport.podcasts.find(p => 
+          titlesMatch(p.show_title, airtableRow.podcast_name)
+        );
+        if (matchingPodcast) {
+          matchingPodcast.episode_link = airtableRow.link_to_episode || matchingPodcast.episode_link;
+          matchingPodcast.date_published = airtableRow.date_published || matchingPodcast.date_published;
+          matchingPodcast.date_booked = airtableRow.date_booked || matchingPodcast.date_booked;
+          matchingPodcast.action = airtableRow.action || matchingPodcast.action;
+        }
+      });
+    }
+  }
+  
+  // Update SOV analysis if SOV CSV was updated
+  if (updatedCSVTypes.includes('sov') && newData.sovData) {
+    // Need airtable data for client interview count
+    const airtableRows = newData.airtableData || [];
+    const sovAnalysis = calculateSOVAnalysis(airtableRows, newData.sovData, null, null);
+    if (sovAnalysis) {
+      updatedReport.sov_analysis = sovAnalysis;
+      updatedReport.kpis.sov_percentage = sovAnalysis.client_percentage;
+    }
+  }
+  
+  // Update GEO analysis if GEO CSV was updated
+  if (updatedCSVTypes.includes('geo') && newData.geoData) {
+    updatedReport.geo_csv_uploaded = true;
+    const geoAnalysis = calculateGEOAnalysis(newData.geoData);
+    if (geoAnalysis) {
+      updatedReport.geo_analysis = geoAnalysis;
+      updatedReport.kpis.geo_score = geoAnalysis.geo_score;
+    } else {
+      updatedReport.geo_analysis = undefined;
+    }
+  }
+  
+  // Update Content Gap analysis if Content Gap CSV was updated
+  if (updatedCSVTypes.includes('content_gap') && newData.contentGapData) {
+    updatedReport.content_gap_csv_uploaded = true;
+    const contentGapAnalysis = calculateContentGapAnalysis(newData.contentGapData);
+    if (contentGapAnalysis) {
+      // Preserve existing AI recommendations
+      if (existingReport.content_gap_analysis?.ai_recommendations) {
+        contentGapAnalysis.ai_recommendations = existingReport.content_gap_analysis.ai_recommendations;
+      }
+      updatedReport.content_gap_analysis = contentGapAnalysis;
+    } else {
+      updatedReport.content_gap_analysis = undefined;
+    }
+  }
+  
+  // Update EMV data if Rephonic CSV was updated (without full podcast recalc)
+  if (updatedCSVTypes.includes('rephonic') && newData.rephonicData && !needsPodcastRecalc) {
+    updatedReport.podcasts = applyRephonicEMVData(updatedReport.podcasts, newData.rephonicData, cpm);
+    
+    // Recalculate total EMV
+    const totalEMV = updatedReport.podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
+    updatedReport.kpis.total_emv = totalEMV;
+  }
+  
+  // Restore preserved fields
+  updatedReport.target_podcasts = preservedFields.target_podcasts;
+  updatedReport.highlight_clips = preservedFields.highlight_clips;
+  (updatedReport as any).visibleSections = preservedFields.visibleSections;
+  
+  return updatedReport;
+}
