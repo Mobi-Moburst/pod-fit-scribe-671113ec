@@ -18,6 +18,7 @@ interface PublishedEpisodesCarouselProps {
   podcasts: PodcastReportEntry[];
   title?: string;
   compact?: boolean;
+  variant?: "carousel" | "list";
 }
 
 interface CoverArtCache {
@@ -27,7 +28,8 @@ interface CoverArtCache {
 export function PublishedEpisodesCarousel({ 
   podcasts, 
   title = "Published Episodes This Quarter",
-  compact = false
+  compact = false,
+  variant = "list"
 }: PublishedEpisodesCarouselProps) {
   const [coverArtCache, setCoverArtCache] = useState<CoverArtCache>({});
   const [loadingArt, setLoadingArt] = useState<Set<string>>(new Set());
@@ -116,6 +118,96 @@ export function PublishedEpisodesCarousel({
     }
   };
 
+  // List variant - compact horizontal rows
+  if (variant === "list") {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Podcast className="h-5 w-5 text-primary" />
+          <h4 className="font-semibold text-foreground">{title}</h4>
+          <Badge variant="secondary" className="ml-auto text-xs">
+            {publishedEpisodes.length} episode{publishedEpisodes.length !== 1 ? 's' : ''}
+          </Badge>
+        </div>
+
+        <div className="space-y-1 max-h-[280px] overflow-y-auto pr-1">
+          {publishedEpisodes.map((episode, index) => {
+            const coverArt = episode.apple_podcast_link 
+              ? coverArtCache[episode.apple_podcast_link] 
+              : null;
+            const isLoadingArt = episode.apple_podcast_link 
+              ? loadingArt.has(episode.apple_podcast_link)
+              : false;
+
+            return (
+              <div 
+                key={`${episode.show_title}-${index}`}
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border group"
+              >
+                {/* Small Artwork */}
+                <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 bg-muted relative">
+                  {isLoadingArt ? (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : coverArt ? (
+                    <img
+                      src={coverArt}
+                      alt={episode.show_title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
+                      <Podcast className="h-5 w-5 text-muted-foreground/50" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate text-foreground">
+                    {episode.show_title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(episode.date_published)}
+                  </p>
+                </div>
+
+                {/* Duration Badge */}
+                {episode.episode_duration_minutes && (
+                  <Badge variant="secondary" className="text-xs flex-shrink-0 hidden sm:flex">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {formatDuration(episode.episode_duration_minutes)}
+                  </Badge>
+                )}
+
+                {/* Listen Button */}
+                {episode.episode_link && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 flex-shrink-0 opacity-60 group-hover:opacity-100"
+                    asChild
+                  >
+                    <a 
+                      href={episode.episode_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Listen Now"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Carousel variant - single-focus view for presentations
   return (
     <div className={compact ? "space-y-3" : "space-y-4"}>
       <div className="flex items-center gap-2">

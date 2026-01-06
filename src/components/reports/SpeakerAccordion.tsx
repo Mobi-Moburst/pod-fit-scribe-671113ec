@@ -165,6 +165,7 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
                   <PublishedEpisodesCarousel 
                     podcasts={speaker.podcasts}
                     title="Published Episodes This Quarter"
+                    variant="list"
                   />
                 )}
 
