@@ -1563,7 +1563,7 @@ export default function Reports() {
                   { key: 'totalBooked', label: 'Total Booked', visible: visibleSections.totalBooked },
                   { key: 'totalPublished', label: 'Total Published', visible: visibleSections.totalPublished },
                   { key: 'socialReach', label: 'Social Reach', visible: visibleSections.socialReach },
-                  { key: 'totalReach', label: 'Total Reach', visible: visibleSections.totalReach },
+                  { key: 'totalReach', label: 'Total Listenership', visible: visibleSections.totalReach },
                   { key: 'averageScore', label: 'Avg Score', visible: visibleSections.averageScore },
                   { key: 'emv', label: 'EMV', visible: visibleSections.emv },
                   { key: 'sov', label: 'Peer Comparison', visible: visibleSections.sov },
@@ -1635,7 +1635,7 @@ export default function Reports() {
                     )}
                     {visibleSections.totalReach && (
                       <KPICard
-                        title="Total Reach"
+                        title="Total Listenership"
                         value={reportData.kpis.total_reach.toLocaleString()}
                         subtitle="Total monthly listeners • Click for details"
                         icon={Users}

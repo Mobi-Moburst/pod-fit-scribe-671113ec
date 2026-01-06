@@ -126,7 +126,7 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
                           <Users className="h-3 w-3" />
-                          Total Reach
+                          Total Listenership
                         </div>
                         <p className="text-2xl font-bold text-foreground">{formatNumber(speaker.kpis.total_reach)}</p>
                         <p className="text-xs text-muted-foreground mt-1">Total monthly listeners</p>
