@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface PublishedEpisodesCarouselProps {
   podcasts: PodcastReportEntry[];
   title?: string;
+  compact?: boolean;
 }
 
 interface CoverArtCache {
@@ -25,7 +26,8 @@ interface CoverArtCache {
 
 export function PublishedEpisodesCarousel({ 
   podcasts, 
-  title = "Published Episodes This Quarter" 
+  title = "Published Episodes This Quarter",
+  compact = false
 }: PublishedEpisodesCarouselProps) {
   const [coverArtCache, setCoverArtCache] = useState<CoverArtCache>({});
   const [loadingArt, setLoadingArt] = useState<Set<string>>(new Set());
@@ -115,11 +117,11 @@ export function PublishedEpisodesCarousel({
   };
 
   return (
-    <div className="space-y-4">
+    <div className={compact ? "space-y-3" : "space-y-4"}>
       <div className="flex items-center gap-2">
-        <Podcast className="h-5 w-5 text-primary" />
-        <h4 className="font-semibold text-foreground">{title}</h4>
-        <Badge variant="secondary" className="ml-auto">
+        <Podcast className={compact ? "h-4 w-4 text-primary" : "h-5 w-5 text-primary"} />
+        <h4 className={`font-semibold text-foreground ${compact ? "text-base" : ""}`}>{title}</h4>
+        <Badge variant="secondary" className="ml-auto text-xs">
           {publishedEpisodes.length} episode{publishedEpisodes.length !== 1 ? 's' : ''}
         </Badge>
       </div>
@@ -147,9 +149,9 @@ export function PublishedEpisodesCarousel({
                   key={`${episode.show_title}-${index}`}
                   className="basis-full"
                 >
-                  <Card className="overflow-hidden bg-card border mx-auto max-w-md">
+                  <Card className={`overflow-hidden bg-card/50 border mx-auto ${compact ? "max-w-full" : "max-w-md"}`}>
                     {/* Cover Art Section */}
-                    <div className="relative aspect-square bg-muted">
+                    <div className={`relative bg-muted ${compact ? "aspect-[4/3]" : "aspect-square"}`}>
                       {isLoadingArt ? (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -162,7 +164,7 @@ export function PublishedEpisodesCarousel({
                         />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
-                          <Podcast className="h-16 w-16 text-muted-foreground/50" />
+                          <Podcast className={compact ? "h-12 w-12 text-muted-foreground/50" : "h-16 w-16 text-muted-foreground/50"} />
                         </div>
                       )}
                       
@@ -184,27 +186,27 @@ export function PublishedEpisodesCarousel({
                           rel="noopener noreferrer"
                           className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors group"
                         >
-                          <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center opacity-80 group-hover:opacity-100 transform scale-90 group-hover:scale-100 transition-all shadow-lg">
-                            <Play className="h-7 w-7 text-primary-foreground ml-1" />
+                          <div className={`rounded-full bg-primary/90 flex items-center justify-center opacity-80 group-hover:opacity-100 transform scale-90 group-hover:scale-100 transition-all shadow-lg ${compact ? "w-12 h-12" : "w-16 h-16"}`}>
+                            <Play className={compact ? "h-5 w-5 text-primary-foreground ml-0.5" : "h-7 w-7 text-primary-foreground ml-1"} />
                           </div>
                         </a>
                       )}
                     </div>
 
                     {/* Content Section */}
-                    <CardContent className="p-4 space-y-2">
-                      <h5 className="font-semibold text-sm line-clamp-2 text-foreground leading-tight">
+                    <CardContent className={compact ? "p-3 space-y-1.5" : "p-4 space-y-2"}>
+                      <h5 className={`font-semibold text-foreground leading-tight ${compact ? "text-sm line-clamp-1" : "text-sm line-clamp-2"}`}>
                         {episode.show_title}
                       </h5>
                       
                       {episode.date_published && (
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          <span>Published {formatDate(episode.date_published)}</span>
+                          <span>{formatDate(episode.date_published)}</span>
                         </div>
                       )}
                       
-                      {episode.show_notes && (
+                      {!compact && episode.show_notes && (
                         <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
                           {episode.show_notes}
                         </p>
@@ -214,7 +216,7 @@ export function PublishedEpisodesCarousel({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full mt-2"
+                          className={`w-full ${compact ? "mt-1 h-8 text-xs" : "mt-2"}`}
                           asChild
                         >
                           <a 
@@ -222,7 +224,7 @@ export function PublishedEpisodesCarousel({
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                            <ExternalLink className="h-3 w-3 mr-1" />
                             Listen Now
                           </a>
                         </Button>
@@ -235,27 +237,27 @@ export function PublishedEpisodesCarousel({
           </CarouselContent>
           
           {/* Always visible navigation arrows */}
-          <CarouselPrevious className="-left-4 md:-left-5 h-10 w-10 border-2" />
-          <CarouselNext className="-right-4 md:-right-5 h-10 w-10 border-2" />
+          <CarouselPrevious className={compact ? "-left-3 h-8 w-8 border" : "-left-4 md:-left-5 h-10 w-10 border-2"} />
+          <CarouselNext className={compact ? "-right-3 h-8 w-8 border" : "-right-4 md:-right-5 h-10 w-10 border-2"} />
         </Carousel>
 
         {/* Dot Indicators */}
         {publishedEpisodes.length > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-4">
+          <div className={`flex items-center justify-center gap-1.5 ${compact ? "mt-3" : "mt-4"}`}>
             {publishedEpisodes.map((_, index) => (
               <button
                 key={index}
                 onClick={() => api?.scrollTo(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
+                className={`rounded-full transition-all ${
                   index === current 
-                    ? "bg-primary w-4" 
-                    : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                    ? `bg-primary ${compact ? "w-3 h-1.5" : "w-4 h-2"}` 
+                    : `bg-muted-foreground/30 hover:bg-muted-foreground/50 ${compact ? "w-1.5 h-1.5" : "w-2 h-2"}`
                 }`}
                 aria-label={`Go to episode ${index + 1}`}
               />
             ))}
-            <span className="ml-2 text-xs text-muted-foreground">
-              {current + 1} of {publishedEpisodes.length}
+            <span className={`ml-2 text-muted-foreground ${compact ? "text-[10px]" : "text-xs"}`}>
+              {current + 1} / {publishedEpisodes.length}
             </span>
           </div>
         )}
