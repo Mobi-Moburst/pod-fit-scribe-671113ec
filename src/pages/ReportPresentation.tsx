@@ -215,6 +215,7 @@ export default function ReportPresentation() {
             <SpeakerSpotlightSlide
               speaker={speaker}
               highlightClips={speakerClips}
+              visibleSections={visibleSections}
               onAirtableClick={() => {
                 if (speaker.airtable_embed_url) {
                   setSelectedSpeakerAirtable({
