@@ -1,7 +1,8 @@
 import { SpeakerBreakdown, HighlightClip } from "@/types/reports";
-import { Calendar, Podcast, Users, TrendingUp, ExternalLink, Play, Video, Headphones } from "lucide-react";
+import { Calendar, Podcast, Users, TrendingUp, ExternalLink, Play, Video, Headphones, Clock } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 
 interface VisibleSections {
   totalBooked?: boolean;
@@ -288,6 +289,16 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
           </div>
         )}
       </div>
+
+      {/* Published Episodes Carousel */}
+      {speaker.podcasts && speaker.podcasts.length > 0 && (
+        <div className="pt-4">
+          <PublishedEpisodesCarousel 
+            podcasts={speaker.podcasts}
+            title="Episodes This Quarter"
+          />
+        </div>
+      )}
 
       {/* Airtable Link Card */}
       {hasAirtable && (
