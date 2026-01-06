@@ -251,54 +251,58 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
         ))}
       </div>
 
-      {/* Strategy Section */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Target Audiences */}
-        {hasTargetAudiences && (
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
-              Target Audiences
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {speaker.target_audiences?.slice(0, 5).map((audience, i) => (
-                <Badge
-                  key={i}
-                  variant="secondary"
-                  className="px-3 py-1.5 text-sm"
-                >
-                  {audience}
-                </Badge>
-              ))}
+      {/* Main Content Grid - Target Audiences/Talking Points + Published Episodes */}
+      <div className="grid md:grid-cols-5 gap-6">
+        {/* Left Column - Target Audiences & Talking Points */}
+        <div className="md:col-span-3 space-y-4">
+          {/* Target Audiences */}
+          {hasTargetAudiences && (
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+              <h3 className="text-base font-semibold flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Target Audiences
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {speaker.target_audiences?.slice(0, 5).map((audience, i) => (
+                  <Badge
+                    key={i}
+                    variant="secondary"
+                    className="px-3 py-1.5 text-sm"
+                  >
+                    {audience}
+                  </Badge>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Talking Points */}
-        {hasTalkingPoints && (
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h3 className="text-lg font-semibold">Key Talking Points</h3>
-            <ol className="space-y-2 text-sm text-muted-foreground">
-              {speaker.talking_points?.slice(0, 4).map((point, i) => (
-                <li key={i} className="flex gap-3">
-                  <span className="font-semibold text-foreground shrink-0">{i + 1}.</span>
-                  <span className="line-clamp-2">{point}</span>
-                </li>
-              ))}
-            </ol>
+          {/* Talking Points */}
+          {hasTalkingPoints && (
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+              <h3 className="text-base font-semibold">Key Talking Points</h3>
+              <ol className="space-y-1.5 text-sm text-muted-foreground">
+                {speaker.talking_points?.slice(0, 4).map((point, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="font-semibold text-foreground shrink-0">{i + 1}.</span>
+                    <span className="line-clamp-2">{point}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column - Published Episodes Carousel */}
+        {speaker.podcasts && speaker.podcasts.length > 0 && (
+          <div className="md:col-span-2 bg-card border border-border rounded-2xl p-5">
+            <PublishedEpisodesCarousel 
+              podcasts={speaker.podcasts}
+              title="Published Episodes"
+              compact
+            />
           </div>
         )}
       </div>
-
-      {/* Published Episodes Carousel */}
-      {speaker.podcasts && speaker.podcasts.length > 0 && (
-        <div className="pt-4">
-          <PublishedEpisodesCarousel 
-            podcasts={speaker.podcasts}
-            title="Published Episodes This Quarter"
-          />
-        </div>
-      )}
 
       {/* Airtable Link Card */}
       {hasAirtable && (
