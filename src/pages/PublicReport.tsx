@@ -271,7 +271,7 @@ export default function PublicReport() {
         open={reachDialogOpen}
         onOpenChange={setReachDialogOpen}
         podcasts={reportData.podcasts || []}
-        totalListenersPerEpisode={reportData.kpis.total_reach || 0}
+        totalListenersPerEpisode={reportData.kpis.total_listeners_per_episode || 0}
         quarter={quarter}
       />
       <SOVChartDialog
