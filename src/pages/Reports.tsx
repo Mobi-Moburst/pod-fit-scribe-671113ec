@@ -1720,14 +1720,6 @@ export default function Reports() {
                 </div>
               )}
 
-              {/* Interview Highlights */}
-              {visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
-                <ClientReportHighlights
-                  clips={reportData.highlight_clips}
-                  companyName={reportData.company_name || reportData.client?.company}
-                />
-              )}
-
               {/* Campaign Overview */}
               {visibleSections.campaignOverview && (
                 <CampaignOverview
@@ -1738,6 +1730,14 @@ export default function Reports() {
                   pitch_hooks={reportData.campaign_overview.pitch_hooks}
                   onHide={() => toggleSection('campaignOverview')}
                   onEdit={() => setCampaignOverviewEditOpen(true)}
+                />
+              )}
+
+              {/* Interview Highlights */}
+              {visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
+                <ClientReportHighlights
+                  clips={reportData.highlight_clips}
+                  companyName={reportData.company_name || reportData.client?.company}
                 />
               )}
 

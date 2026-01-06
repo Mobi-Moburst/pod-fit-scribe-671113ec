@@ -222,18 +222,18 @@ export default function PublicReport() {
           />
         )}
 
+        {/* Campaign Overview */}
+        {visibleSections.campaignOverview && reportData.campaign_overview && (
+          <ClientReportCampaignOverview 
+            campaignOverview={reportData.campaign_overview}
+          />
+        )}
+
         {/* Interview Highlights */}
         {visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
           <ClientReportHighlights
             clips={reportData.highlight_clips}
             companyName={reportData.company_name || reportData.client?.company}
-          />
-        )}
-
-        {/* Campaign Overview */}
-        {visibleSections.campaignOverview && reportData.campaign_overview && (
-          <ClientReportCampaignOverview 
-            campaignOverview={reportData.campaign_overview}
           />
         )}
 
