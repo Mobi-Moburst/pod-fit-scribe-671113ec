@@ -60,7 +60,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
   if (visibleSections.totalReach) {
     kpiItems.push({
       key: 'totalReach',
-      label: "Total Reach",
+      label: "Total Listenership",
       value: formatNumber(kpis.total_reach),
       description: "Total monthly listeners" + (onReachClick ? " • Click for details" : ""),
       icon: Users,

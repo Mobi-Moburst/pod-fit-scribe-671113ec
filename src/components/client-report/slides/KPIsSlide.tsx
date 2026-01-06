@@ -57,7 +57,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
 
   if (visibleSections.totalReach) {
     kpiItems.push({
-      label: "Total Reach",
+      label: "Total Listenership",
       value: formatNumber(kpis.total_reach),
       icon: Users,
       color: "hsl(191 100% 62%)",
