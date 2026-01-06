@@ -31,6 +31,7 @@ import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
+import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { HighlightClip } from "@/types/reports";
@@ -1738,6 +1739,16 @@ export default function Reports() {
                 <ClientReportHighlights
                   clips={reportData.highlight_clips}
                   companyName={reportData.company_name || reportData.client?.company}
+                />
+              )}
+
+              {/* Published Episodes Carousel (Single-speaker reports only) */}
+              {reportData.report_type !== 'multi' && 
+               reportData.podcasts && 
+               reportData.podcasts.length > 0 && (
+                <PublishedEpisodesCarousel 
+                  podcasts={reportData.podcasts}
+                  title="Published Episodes This Quarter"
                 />
               )}
 

@@ -16,6 +16,7 @@ import { ClientReportTargetPodcasts } from "@/components/client-report/ClientRep
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
 import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
+import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
@@ -234,6 +235,16 @@ export default function PublicReport() {
           <ClientReportHighlights
             clips={reportData.highlight_clips}
             companyName={reportData.company_name || reportData.client?.company}
+          />
+        )}
+
+        {/* Published Episodes Carousel (Single-speaker reports only) */}
+        {reportData.report_type !== 'multi' && 
+         reportData.podcasts && 
+         reportData.podcasts.length > 0 && (
+          <PublishedEpisodesCarousel 
+            podcasts={reportData.podcasts}
+            title="Published Episodes This Quarter"
           />
         )}
 

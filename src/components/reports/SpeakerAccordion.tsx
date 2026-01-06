@@ -2,9 +2,9 @@ import { SpeakerBreakdown } from "@/types/reports";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KPICard } from "./KPICard";
 import { AirtableEmbed } from "./AirtableEmbed";
+import { PublishedEpisodesCarousel } from "./PublishedEpisodesCarousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Calendar, Radio, Users, TrendingUp, User } from "lucide-react";
-
 interface VisibleSections {
   totalBooked?: boolean;
   totalPublished?: boolean;
@@ -160,6 +160,14 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
                   
                 </div>
                 
+                {/* Published Episodes Carousel */}
+                {speaker.podcasts && speaker.podcasts.length > 0 && (
+                  <PublishedEpisodesCarousel 
+                    podcasts={speaker.podcasts}
+                    title="Episodes This Quarter"
+                  />
+                )}
+
                 {/* Speaker Airtable Embed */}
                 {speaker.airtable_embed_url && (
                   <div className="mt-4">
