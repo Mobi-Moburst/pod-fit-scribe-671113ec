@@ -36,9 +36,9 @@ export function PublishedEpisodesCarousel({
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
 
-  // Filter to only published episodes with episode links
+  // Filter to only published episodes (episode link is optional)
   const publishedEpisodes = podcasts.filter(
-    p => p.date_published && p.episode_link
+    p => p.date_published
   );
 
   // Fetch cover art for a podcast
