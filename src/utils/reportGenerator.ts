@@ -804,7 +804,8 @@ function mergePodcastData(
     });
   });
   
-  // Then, add Airtable-only podcasts (not matched to batch) with "Podcast recording" action
+  // Then, add Airtable-only podcasts (not matched to batch)
+  // Include if: has "podcast recording" action OR has date_published
   airtableRows.forEach(airtableRow => {
     const normalizedAirtableTitle = normalizeTitle(airtableRow.podcast_name);
     
@@ -814,9 +815,18 @@ function mergePodcastData(
         titlesMatch(airtableRow.podcast_name, batchTitle) || normalizedAirtableTitle === batchTitle
       );
     
-    // Only include if not already processed AND has "Podcast recording" action
-    if (!alreadyProcessed && 
-        airtableRow.action?.toLowerCase().includes('podcast recording')) {
+    // Include if NOT already processed AND (has "podcast recording" action OR has date_published)
+    const hasPodcastRecordingAction = airtableRow.action?.toLowerCase().includes('podcast recording');
+    const hasPublishedDate = airtableRow.date_published && airtableRow.date_published.trim() !== '';
+    
+    if (!alreadyProcessed && (hasPodcastRecordingAction || hasPublishedDate)) {
+      console.log('[mergePodcastData] Adding Airtable-only podcast:', {
+        name: airtableRow.podcast_name,
+        action: airtableRow.action,
+        date_published: airtableRow.date_published,
+        episode_link: airtableRow.link_to_episode,
+      });
+      
       merged.push({
         show_title: airtableRow.podcast_name,
         verdict: 'Not' as const, // Default for non-evaluated

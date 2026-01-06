@@ -55,7 +55,7 @@ export function normalizeTitle(title: string): string {
     .trim();
 }
 
-// Check if titles match (exact or partial prefix match)
+// Check if titles match (exact, prefix, or word-based match)
 export function titlesMatch(title1: string, title2: string): boolean {
   const norm1 = normalizeTitle(title1);
   const norm2 = normalizeTitle(title2);
@@ -68,7 +68,21 @@ export function titlesMatch(title1: string, title2: string): boolean {
   const shorter = norm1.length < norm2.length ? norm1 : norm2;
   const longer = norm1.length < norm2.length ? norm2 : norm1;
   
-  return longer.startsWith(shorter);
+  if (longer.startsWith(shorter)) return true;
+  
+  // Word-based match: all significant words from shorter are in longer
+  // e.g., "forward slash" matches "the forward slash podcast"
+  const words1 = norm1.split(' ').filter(w => w.length > 2); // Skip short words like "the", "a"
+  const words2 = norm2.split(' ').filter(w => w.length > 2);
+  
+  const shorterWords = words1.length < words2.length ? words1 : words2;
+  const longerWords = words1.length < words2.length ? words2 : words1;
+  
+  if (shorterWords.length > 0 && shorterWords.every(w => longerWords.includes(w))) {
+    return true;
+  }
+  
+  return false;
 }
 
 // Parse Batch Results CSV
