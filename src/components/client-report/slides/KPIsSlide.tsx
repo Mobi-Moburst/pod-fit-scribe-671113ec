@@ -46,6 +46,15 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
     });
   }
 
+  if (visibleSections.socialReach) {
+    kpiItems.push({
+      label: "Social Reach",
+      value: formatNumber(kpis.total_social_reach || 0),
+      icon: Users,
+      color: "hsl(280 70% 60%)",
+    });
+  }
+
   if (visibleSections.totalReach) {
     kpiItems.push({
       label: "Total Reach",

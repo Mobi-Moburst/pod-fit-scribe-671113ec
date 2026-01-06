@@ -43,6 +43,16 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       onClick: undefined as (() => void) | undefined,
     });
   }
+  if (visibleSections.socialReach) {
+    kpiItems.push({
+      key: 'socialReach',
+      label: "Social Reach",
+      value: formatNumber(kpis.total_social_reach || 0),
+      icon: Users,
+      color: "hsl(280 70% 60%)",
+      onClick: undefined as (() => void) | undefined,
+    });
+  }
 
   if (visibleSections.totalReach) {
     kpiItems.push({

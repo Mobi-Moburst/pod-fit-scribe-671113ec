@@ -15,6 +15,7 @@ import { ClientReportNextQuarter } from "@/components/client-report/ClientReport
 import { ClientReportTargetPodcasts } from "@/components/client-report/ClientReportTargetPodcasts";
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
 import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
+import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
@@ -233,6 +234,16 @@ export default function PublicReport() {
         {visibleSections.campaignOverview && reportData.campaign_overview && (
           <ClientReportCampaignOverview 
             campaignOverview={reportData.campaign_overview}
+          />
+        )}
+
+        {/* Speaker Breakdowns (Multi-speaker reports only) */}
+        {reportData.report_type === 'multi' && 
+         reportData.speaker_breakdowns && 
+         reportData.speaker_breakdowns.length > 0 && (
+          <SpeakerAccordion 
+            speakerBreakdowns={reportData.speaker_breakdowns}
+            defaultOpen={[reportData.speaker_breakdowns[0]?.speaker_id]}
           />
         )}
 
