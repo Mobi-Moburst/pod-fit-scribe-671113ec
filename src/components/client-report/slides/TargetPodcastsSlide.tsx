@@ -16,7 +16,7 @@ export const TargetPodcastsSlide = ({ podcasts }: TargetPodcastsSlideProps) => {
 
   return (
     <div className="w-full space-y-6 max-w-5xl mx-auto">
-      <h2 className="text-4xl md:text-5xl font-bold text-center">Recommended Podcasts</h2>
+      <h2 className="text-4xl md:text-5xl font-bold text-center">Target Podcasts</h2>
       
       <ScrollArea className="h-[60vh] pr-4">
         <div className="space-y-4">
