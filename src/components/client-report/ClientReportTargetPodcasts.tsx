@@ -8,7 +8,7 @@ interface ClientReportTargetPodcastsProps {
 export const ClientReportTargetPodcasts = ({ podcasts }: ClientReportTargetPodcastsProps) => {
   return (
     <section className="space-y-6">
-      <h2 className="text-2xl font-semibold">Recommended Podcasts</h2>
+      <h2 className="text-2xl font-semibold">Target Podcasts</h2>
       
       <div className="grid gap-4 md:grid-cols-2">
         {podcasts.map((podcast, index) => (
