@@ -131,7 +131,7 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
         open={listenershipDialogOpen}
         onOpenChange={setListenershipDialogOpen}
         listenershipGoal={strategy.next_quarter_kpis?.listenership_goal || 0}
-        currentListenersPerEpisode={strategy.next_quarter_kpis?.current_listeners_per_episode}
+        currentListenership={strategy.next_quarter_kpis?.current_total_reach}
         quarter={nextQuarterLabel}
       />
     </>

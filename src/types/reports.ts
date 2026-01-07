@@ -215,7 +215,7 @@ export interface ReportData {
     // Next Quarter KPIs
     next_quarter_kpis?: {
       high_impact_podcasts_goal: number; // 3 per speaker per month × 3 months
-      listenership_goal: number; // Current listeners per episode × 1.2
+      listenership_goal: number; // Current listenership × 1.2
       // Per-speaker breakdown for expandable view
       speaker_breakdown?: Array<{
         speaker_name: string;
@@ -223,7 +223,6 @@ export interface ReportData {
       }>;
       // Current quarter actual values for listenership breakdown
       current_total_reach?: number;
-      current_listeners_per_episode?: number;
     };
   };
   
