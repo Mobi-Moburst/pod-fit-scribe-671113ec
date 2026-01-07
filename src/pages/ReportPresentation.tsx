@@ -91,10 +91,60 @@ export default function ReportPresentation() {
         return;
       }
 
-      const reportData = data.report_data as unknown as ReportData & { visibleSections?: VisibleSections };
+      let reportData = data.report_data as unknown as ReportData & { visibleSections?: VisibleSections };
+
+      // Auto-populate / migrate next_quarter_kpis if missing or using legacy calculation
+      if (reportData.next_quarter_strategy) {
+        const speakerBreakdowns = reportData.speaker_breakdowns || [];
+        const speakerCount = speakerBreakdowns.length || 1;
+
+        const monthlyListenersPerEpisode = reportData.kpis?.total_listeners_per_episode || 0;
+        const currentAnnualListenership = monthlyListenersPerEpisode * 12;
+
+        const legacyBaselineMonthlyReach = reportData.kpis?.total_reach || 0;
+        const legacyGoal = Math.ceil(legacyBaselineMonthlyReach * 1.2);
+
+        // Build speaker breakdown array
+        const speakerBreakdownArray = speakerBreakdowns.length > 0
+          ? speakerBreakdowns.map(s => ({ speaker_name: s.speaker_name, goal: 9 }))
+          : [{ speaker_name: reportData.client?.name || 'Speaker', goal: 9 }];
+
+        const existingKpis = reportData.next_quarter_strategy.next_quarter_kpis;
+
+        const shouldMigrateListenershipGoal =
+          !!existingKpis &&
+          currentAnnualListenership > 0 &&
+          (
+            existingKpis.current_total_reach === legacyBaselineMonthlyReach ||
+            existingKpis.listenership_goal === legacyGoal
+          );
+
+        if (!existingKpis || !existingKpis.speaker_breakdown || shouldMigrateListenershipGoal) {
+          const computedListenershipGoal = Math.round(currentAnnualListenership * 1.2);
+
+          reportData = {
+            ...reportData,
+            next_quarter_strategy: {
+              ...reportData.next_quarter_strategy,
+              next_quarter_kpis: {
+                high_impact_podcasts_goal: existingKpis?.high_impact_podcasts_goal || (3 * speakerCount * 3),
+                listenership_goal: shouldMigrateListenershipGoal
+                  ? computedListenershipGoal
+                  : (existingKpis?.listenership_goal || computedListenershipGoal),
+                speaker_breakdown: speakerBreakdownArray,
+                current_total_reach: shouldMigrateListenershipGoal
+                  ? currentAnnualListenership
+                  : (existingKpis?.current_total_reach ?? currentAnnualListenership),
+              },
+            },
+          };
+        }
+      }
+
       setReportData(reportData);
       setReportName(data.report_name);
       setQuarter(data.quarter || "");
+
       // Build data-aware defaults for visible sections
       const dataAwareDefaults: VisibleSections = {
         totalBooked: true,

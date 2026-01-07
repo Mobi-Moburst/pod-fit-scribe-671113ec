@@ -153,7 +153,7 @@ export function NextQuarterStrategy({
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-foreground">{formatNumber(next_quarter_kpis.listenership_goal)}</p>
-                    <p className="text-xs text-muted-foreground">Listenership Goal</p>
+                    <p className="text-xs text-muted-foreground">Est. Annual Listenership</p>
                   </div>
                 </button>
               </div>

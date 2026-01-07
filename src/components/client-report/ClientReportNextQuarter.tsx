@@ -103,7 +103,7 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
                   </div>
                   <div>
                     <p className="text-3xl font-bold">{formatNumber(strategy.next_quarter_kpis.listenership_goal)}</p>
-                    <p className="text-sm text-muted-foreground">Listenership Goal</p>
+                    <p className="text-sm text-muted-foreground">Est. Annual Listenership</p>
                   </div>
                 </button>
               </div>
