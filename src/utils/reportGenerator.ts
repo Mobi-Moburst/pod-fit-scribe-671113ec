@@ -1992,20 +1992,24 @@ export async function mergeUpdatedReportData(
       // Recalculate KPIs
       const newKpis = calculateEnhancedKPIs(newData.batchData, newData.airtableData, podcastsWithEMV, dateRange);
       
-      // ALWAYS preserve existing AI-generated categories if they have podcast details
-      // Re-running AI categorization often produces worse results due to mixed target_audiences data
-      const existingHasPodcastDetails = existingReport.kpis.top_categories?.some(
-        cat => cat.podcasts && cat.podcasts.length > 0
+      // Check if existing categories look valid (short names, have podcast details)
+      // Categories with very long names (>80 chars) are likely corrupted from bad target_audiences
+      const existingHasValidCategories = existingReport.kpis.top_categories?.some(
+        cat => cat.podcasts && cat.podcasts.length > 0 && cat.name.length <= 80
+      );
+      const existingHasCorruptedCategories = existingReport.kpis.top_categories?.some(
+        cat => cat.name.length > 80
       );
       
-      if (existingHasPodcastDetails) {
-        // Keep existing categories - they were generated with proper data
-        console.log('[mergeUpdatedReportData] Preserving existing categories with podcast details');
+      if (existingHasValidCategories && !existingHasCorruptedCategories) {
+        // Keep existing categories - they look clean
+        console.log('[mergeUpdatedReportData] Preserving existing valid categories with podcast details');
         newKpis.top_categories = existingReport.kpis.top_categories;
       } else if (newKpis.top_categories.length === 0) {
         // Fallback to existing if new calculation returned nothing
         newKpis.top_categories = existingReport.kpis.top_categories;
       }
+      // Otherwise use new categories (existing were corrupted or empty)
       
       updatedReport.kpis = newKpis;
       
