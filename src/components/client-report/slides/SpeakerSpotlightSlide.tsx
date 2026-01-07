@@ -209,7 +209,26 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
     });
   }
 
-  const hasTargetAudiences = speaker.target_audiences && speaker.target_audiences.length > 0;
+  const normalizeListValue = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+
+  const talkingPointsSet = new Set(
+    (speaker.talking_points ?? []).map(normalizeListValue).filter(Boolean)
+  );
+
+  const cleanedTargetAudiences = (speaker.target_audiences ?? []).filter((audience) => {
+    const normalized = normalizeListValue(audience);
+    if (!normalized) return false;
+
+    // Prevent accidental headers/labels from showing as audiences
+    if (normalized.includes("talking points")) return false;
+
+    // Prevent talking points accidentally stored in target_audiences from showing
+    if (talkingPointsSet.has(normalized)) return false;
+
+    return true;
+  });
+
+  const hasTargetAudiences = cleanedTargetAudiences.length > 0;
   const hasTalkingPoints = speaker.talking_points && speaker.talking_points.length > 0;
   const hasAirtable = !!speaker.airtable_embed_url;
 
@@ -263,7 +282,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
                 Target Audiences
               </h3>
               <div className="flex flex-wrap gap-2">
-                {speaker.target_audiences?.slice(0, 5).map((audience, i) => (
+                {cleanedTargetAudiences.slice(0, 5).map((audience, i) => (
                   <Badge
                     key={i}
                     variant="secondary"
@@ -275,6 +294,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
               </div>
             </div>
           )}
+
 
           {/* Talking Points */}
           {hasTalkingPoints && (
