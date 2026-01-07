@@ -1984,6 +1984,7 @@ export default function Reports() {
                   intro_paragraph={reportData.next_quarter_strategy.intro_paragraph}
                   strategic_focus_areas={reportData.next_quarter_strategy.strategic_focus_areas}
                   talking_points_spotlight={reportData.next_quarter_strategy.talking_points_spotlight}
+                  speaker_talking_points_spotlight={reportData.next_quarter_strategy.speaker_talking_points_spotlight}
                   closing_paragraph={reportData.next_quarter_strategy.closing_paragraph}
                   next_quarter_kpis={reportData.next_quarter_strategy.next_quarter_kpis}
                   onHide={() => toggleSection('nextQuarterStrategy')}
@@ -2105,6 +2106,7 @@ export default function Reports() {
                   onOpenChange={setNextQuarterEditOpen}
                   data={reportData.next_quarter_strategy}
                   onSave={updateReportNextQuarterStrategy}
+                  speakerNames={reportData.speaker_breakdowns?.map(s => s.speaker_name) || []}
                 />
               )}
             </>

@@ -211,6 +211,14 @@ export interface ReportData {
       title: string;
       description: string;
     }>;
+    // Per-speaker talking points spotlight (for multi-speaker reports)
+    speaker_talking_points_spotlight?: Array<{
+      speaker_name: string;
+      points: Array<{
+        title: string;
+        description: string;
+      }>;
+    }>;
     closing_paragraph: string;
     // Next Quarter KPIs
     next_quarter_kpis?: {
