@@ -741,26 +741,45 @@ export default function Reports() {
     if (loadedData.next_quarter_strategy) {
       const speakerBreakdowns = loadedData.speaker_breakdowns || [];
       const speakerCount = speakerBreakdowns.length || 1;
-      const currentListenership = loadedData.kpis?.total_reach || 0;
-      
+
+      const monthlyListenersPerEpisode = loadedData.kpis?.total_listeners_per_episode || 0;
+      const currentAnnualListenership = monthlyListenersPerEpisode * 12;
+
+      const legacyBaselineMonthlyReach = loadedData.kpis?.total_reach || 0;
+      const legacyGoal = Math.ceil(legacyBaselineMonthlyReach * 1.2);
+
       // Build speaker breakdown array
       const speakerBreakdownArray = speakerBreakdowns.length > 0
         ? speakerBreakdowns.map(s => ({ speaker_name: s.speaker_name, goal: 9 }))
         : [{ speaker_name: loadedData.client?.name || 'Speaker', goal: 9 }];
-      
+
       const existingKpis = loadedData.next_quarter_strategy.next_quarter_kpis;
-      
-      // Only update if missing or if speaker_breakdown is missing
-      if (!existingKpis || !existingKpis.speaker_breakdown) {
+
+      const shouldMigrateListenershipGoal =
+        !!existingKpis &&
+        currentAnnualListenership > 0 &&
+        (
+          existingKpis.current_total_reach === legacyBaselineMonthlyReach ||
+          existingKpis.listenership_goal === legacyGoal
+        );
+
+      // Update if missing, if speaker_breakdown is missing, or if we detect legacy (overstated) listenership calc
+      if (!existingKpis || !existingKpis.speaker_breakdown || shouldMigrateListenershipGoal) {
+        const computedListenershipGoal = Math.round(currentAnnualListenership * 1.2);
+
         loadedData = {
           ...loadedData,
           next_quarter_strategy: {
             ...loadedData.next_quarter_strategy,
             next_quarter_kpis: {
               high_impact_podcasts_goal: existingKpis?.high_impact_podcasts_goal || (3 * speakerCount * 3),
-              listenership_goal: existingKpis?.listenership_goal || Math.ceil(currentListenership * 1.2),
+              listenership_goal: shouldMigrateListenershipGoal
+                ? computedListenershipGoal
+                : (existingKpis?.listenership_goal || computedListenershipGoal),
               speaker_breakdown: speakerBreakdownArray,
-              current_total_reach: currentListenership,
+              current_total_reach: shouldMigrateListenershipGoal
+                ? currentAnnualListenership
+                : (existingKpis?.current_total_reach ?? currentAnnualListenership),
             },
           },
         };
