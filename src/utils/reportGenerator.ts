@@ -1411,6 +1411,68 @@ export async function generateReportFromMultipleCSVs(
     content_gap_csv_uploaded: contentGapCsvProvided,
   };
 }
+// Build published podcasts directly from airtable rows (same source as KPI)
+function buildPublishedPodcastsFromAirtable(
+  airtableRows: AirtableCSVRow[],
+  mergedPodcasts: PodcastReportEntry[]
+): PodcastReportEntry[] {
+  // Get all airtable rows with date_published (same filter as KPI)
+  const publishedAirtableRows = airtableRows.filter(r => 
+    r.date_published && r.date_published.trim() !== ''
+  );
+  
+  // For each published airtable row, find matching merged podcast or create new entry
+  const publishedPodcasts: PodcastReportEntry[] = [];
+  const processedTitles = new Set<string>();
+  
+  for (const airtableRow of publishedAirtableRows) {
+    const normalizedTitle = normalizeTitle(airtableRow.podcast_name);
+    
+    // Skip duplicates
+    if (processedTitles.has(normalizedTitle)) continue;
+    processedTitles.add(normalizedTitle);
+    
+    // Try to find matching merged podcast for additional data (score, reach, etc.)
+    const matchingMerged = mergedPodcasts.find(p => 
+      normalizeTitle(p.show_title) === normalizedTitle || 
+      titlesMatch(p.show_title, airtableRow.podcast_name)
+    );
+    
+    if (matchingMerged) {
+      // Use merged data but ensure airtable fields are set
+      publishedPodcasts.push({
+        ...matchingMerged,
+        date_published: airtableRow.date_published,
+        episode_link: airtableRow.link_to_episode || matchingMerged.episode_link,
+        apple_podcast_link: airtableRow.apple_podcast_link || matchingMerged.apple_podcast_link,
+        action: airtableRow.action || matchingMerged.action,
+      });
+    } else {
+      // Create entry from airtable data alone
+      publishedPodcasts.push({
+        show_title: airtableRow.podcast_name,
+        verdict: 'Not' as const,
+        overall_score: 0,
+        date_published: airtableRow.date_published,
+        episode_link: airtableRow.link_to_episode,
+        apple_podcast_link: airtableRow.apple_podcast_link,
+        action: airtableRow.action,
+        scheduled_date_time: airtableRow.scheduled_date_time,
+        show_notes: airtableRow.show_notes,
+        date_booked: airtableRow.date_booked,
+        rationale_short: 'Published episode',
+      });
+    }
+  }
+  
+  console.log('[buildPublishedPodcastsFromAirtable] Built published list:', {
+    airtablePublishedCount: publishedAirtableRows.length,
+    resultCount: publishedPodcasts.length,
+    titles: publishedPodcasts.map(p => p.show_title),
+  });
+  
+  return publishedPodcasts;
+}
 
 // Per-speaker KPI calculation helper
 function calculateSpeakerKPIs(
@@ -1511,6 +1573,10 @@ export async function generateMultiSpeakerReport(
     const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
     const podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
     
+    // Build published podcasts directly from airtable (same source as KPI)
+    // This ensures the carousel matches the KPI count exactly
+    const publishedPodcasts = buildPublishedPodcastsFromAirtable(airtableRows, podcastsWithEMV);
+    
     // Calculate per-speaker KPIs
     const speakerKpis = calculateSpeakerKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
     
@@ -1525,7 +1591,8 @@ export async function generateMultiSpeakerReport(
       talking_points: speaker.talking_points || [],
       professional_credentials: speaker.professional_credentials || [],
       kpis: speakerKpis,
-      podcasts: podcastsWithEMV,
+      // Use published podcasts for carousel (matches KPI exactly)
+      podcasts: publishedPodcasts,
     });
     
     // Aggregate for company-level calculations
