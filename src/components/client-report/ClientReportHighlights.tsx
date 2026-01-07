@@ -1,6 +1,13 @@
-import { Play, Video, Music, ExternalLink } from 'lucide-react';
+import { Play, Video, Music, ExternalLink, User } from 'lucide-react';
 import { HighlightClip } from '@/types/reports';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from '@/components/ui/carousel';
 
 interface ClientReportHighlightsProps {
   clips: HighlightClip[];
@@ -123,7 +130,97 @@ function MediaPlayer({ clip }: { clip: HighlightClip }) {
   );
 }
 
+function ClipCard({ clip }: { clip: HighlightClip }) {
+  return (
+    <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm h-full">
+      <MediaPlayer clip={clip} />
+      <div className="p-4 space-y-2">
+        <h3 className="font-medium text-foreground line-clamp-2">{clip.title}</h3>
+        {clip.podcast_name && (
+          <p className="text-sm text-muted-foreground">{clip.podcast_name}</p>
+        )}
+        {clip.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2">{clip.description}</p>
+        )}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+            {clip.media_type}
+          </span>
+          {clip.duration_seconds && (
+            <span className="text-xs text-muted-foreground">
+              {Math.floor(clip.duration_seconds / 60)}:{String(clip.duration_seconds % 60).padStart(2, '0')}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface SpeakerCarouselProps {
+  speakerName: string;
+  clips: HighlightClip[];
+}
+
+function SpeakerCarousel({ speakerName, clips }: SpeakerCarouselProps) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <User className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-lg font-medium text-foreground">{speakerName}</h3>
+        <span className="text-sm text-muted-foreground">
+          ({clips.length} clip{clips.length !== 1 ? 's' : ''})
+        </span>
+      </div>
+      
+      <div className="px-12">
+        <Carousel
+          opts={{
+            align: "start",
+            loop: clips.length > 3,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4">
+            {clips.map((clip) => (
+              <CarouselItem key={clip.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
+                <ClipCard clip={clip} />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          {clips.length > 3 && (
+            <>
+              <CarouselPrevious className="-left-10" />
+              <CarouselNext className="-right-10" />
+            </>
+          )}
+        </Carousel>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientReportHighlights({ clips, companyName }: ClientReportHighlightsProps) {
+  // Group clips by speaker
+  const clipsBySpeaker = useMemo(() => {
+    const grouped = new Map<string, HighlightClip[]>();
+    
+    for (const clip of clips) {
+      const speaker = clip.speaker_name || 'General';
+      if (!grouped.has(speaker)) {
+        grouped.set(speaker, []);
+      }
+      grouped.get(speaker)!.push(clip);
+    }
+    
+    // Convert to array and sort by speaker name (but keep "General" last)
+    return Array.from(grouped.entries()).sort((a, b) => {
+      if (a[0] === 'General') return 1;
+      if (b[0] === 'General') return -1;
+      return a[0].localeCompare(b[0]);
+    });
+  }, [clips]);
+
   if (!clips || clips.length === 0) return null;
 
   return (
@@ -140,33 +237,13 @@ export default function ClientReportHighlights({ clips, companyName }: ClientRep
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {clips.map((clip) => (
-          <div key={clip.id} className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
-            <MediaPlayer clip={clip} />
-            <div className="p-4 space-y-2">
-              <h3 className="font-medium text-foreground line-clamp-2">{clip.title}</h3>
-              {clip.podcast_name && (
-                <p className="text-sm text-muted-foreground">{clip.podcast_name}</p>
-              )}
-              {clip.speaker_name && (
-                <p className="text-xs text-muted-foreground/70">ft. {clip.speaker_name}</p>
-              )}
-              {clip.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2">{clip.description}</p>
-              )}
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
-                  {clip.media_type}
-                </span>
-                {clip.duration_seconds && (
-                  <span className="text-xs text-muted-foreground">
-                    {Math.floor(clip.duration_seconds / 60)}:{String(clip.duration_seconds % 60).padStart(2, '0')}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+      <div className="space-y-8">
+        {clipsBySpeaker.map(([speakerName, speakerClips]) => (
+          <SpeakerCarousel 
+            key={speakerName} 
+            speakerName={speakerName} 
+            clips={speakerClips} 
+          />
         ))}
       </div>
     </section>
