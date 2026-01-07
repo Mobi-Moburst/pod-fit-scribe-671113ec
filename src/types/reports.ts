@@ -215,14 +215,24 @@ export interface ReportData {
     // Next Quarter KPIs
     next_quarter_kpis?: {
       high_impact_podcasts_goal: number; // 3 per speaker per month × 3 months
-      listenership_goal: number; // Current listenership × 1.2
+      
+      // Total Listenership (Monthly) - sum of all monthly listeners from booked podcasts
+      total_listenership_goal?: number; // 20% increase from current_total_listenership
+      current_total_listenership?: number; // Baseline = kpis.total_reach
+      
+      // Est. Annual Listenership - monthly listeners per episode × 12
+      est_annual_listenership_goal?: number; // 20% increase from current_est_annual_listenership
+      current_est_annual_listenership?: number; // Baseline = kpis.total_listeners_per_episode × 12
+      
+      // Legacy fields (for backward compatibility during migration)
+      listenership_goal?: number; // @deprecated - use est_annual_listenership_goal
+      current_total_reach?: number; // @deprecated - use current_est_annual_listenership
+      
       // Per-speaker breakdown for expandable view
       speaker_breakdown?: Array<{
         speaker_name: string;
         goal: number; // 9 per speaker (3/month × 3 months)
       }>;
-      // Current quarter actual values for listenership breakdown
-      current_total_reach?: number;
     };
   };
   

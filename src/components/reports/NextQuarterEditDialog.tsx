@@ -19,7 +19,8 @@ interface NextQuarterData {
   closing_paragraph: string;
   next_quarter_kpis?: {
     high_impact_podcasts_goal: number;
-    listenership_goal: number;
+    total_listenership_goal?: number;
+    est_annual_listenership_goal?: number;
   };
 }
 
@@ -42,7 +43,8 @@ export function NextQuarterEditDialog({
   const [talkingPoints, setTalkingPoints] = useState<FocusArea[]>(data.talking_points_spotlight || []);
   const [closingParagraph, setClosingParagraph] = useState(data.closing_paragraph);
   const [highImpactGoal, setHighImpactGoal] = useState(data.next_quarter_kpis?.high_impact_podcasts_goal || 0);
-  const [listenershipGoal, setListenershipGoal] = useState(data.next_quarter_kpis?.listenership_goal || 0);
+  const [totalListenershipGoal, setTotalListenershipGoal] = useState(data.next_quarter_kpis?.total_listenership_goal || 0);
+  const [estAnnualListenershipGoal, setEstAnnualListenershipGoal] = useState(data.next_quarter_kpis?.est_annual_listenership_goal || 0);
 
   const handleSave = () => {
     onSave({
@@ -53,7 +55,8 @@ export function NextQuarterEditDialog({
       closing_paragraph: closingParagraph,
       next_quarter_kpis: {
         high_impact_podcasts_goal: highImpactGoal,
-        listenership_goal: listenershipGoal,
+        total_listenership_goal: totalListenershipGoal,
+        est_annual_listenership_goal: estAnnualListenershipGoal,
       },
     });
     onOpenChange(false);
@@ -197,7 +200,7 @@ export function NextQuarterEditDialog({
           {/* Next Quarter KPIs */}
           <div className="space-y-3 pt-4 border-t border-border">
             <Label className="text-base font-semibold">Next Quarter Goals</Label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm">High-Impact Podcasts Goal</Label>
                 <Input
@@ -210,15 +213,26 @@ export function NextQuarterEditDialog({
                 <p className="text-xs text-muted-foreground">3 per speaker per month</p>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm">Listenership Goal</Label>
+                <Label className="text-sm">Total Listenership Goal (Monthly)</Label>
                 <Input
                   type="number"
                   min={0}
-                  value={listenershipGoal}
-                  onChange={(e) => setListenershipGoal(parseInt(e.target.value) || 0)}
-                  placeholder="e.g., 1200000"
+                  value={totalListenershipGoal}
+                  onChange={(e) => setTotalListenershipGoal(parseInt(e.target.value) || 0)}
+                  placeholder="e.g., 158693"
                 />
-                <p className="text-xs text-muted-foreground">20% boost over current quarter</p>
+                <p className="text-xs text-muted-foreground">Sum of monthly listeners from booked podcasts × 1.2</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Est. Annual Listenership Goal</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={estAnnualListenershipGoal}
+                  onChange={(e) => setEstAnnualListenershipGoal(parseInt(e.target.value) || 0)}
+                  placeholder="e.g., 141163"
+                />
+                <p className="text-xs text-muted-foreground">Monthly listeners per episode × 12 × 1.2</p>
               </div>
             </div>
           </div>
