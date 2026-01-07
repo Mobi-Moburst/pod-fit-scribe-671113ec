@@ -23,7 +23,6 @@ import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { AirtableDialog } from "@/components/client-report/AirtableDialog";
-import { migrateNextQuarterKpis } from "@/utils/nextQuarterKpis";
 
 interface VisibleSections {
   totalBooked?: boolean;
@@ -92,36 +91,10 @@ export default function ReportPresentation() {
         return;
       }
 
-      let reportData = data.report_data as unknown as ReportData & { visibleSections?: VisibleSections };
-
-      // Auto-populate / migrate next_quarter_kpis if missing or using legacy calculation
-      if (reportData.next_quarter_strategy) {
-        const speakerBreakdowns = reportData.speaker_breakdowns || [];
-        const speakerCount = speakerBreakdowns.length || 1;
-        const speakerNames = speakerBreakdowns.length > 0
-          ? speakerBreakdowns.map(s => s.speaker_name)
-          : [reportData.client?.name || 'Speaker'];
-
-        const migratedKpis = migrateNextQuarterKpis(
-          reportData.next_quarter_strategy.next_quarter_kpis,
-          reportData.kpis,
-          speakerCount,
-          speakerNames
-        );
-
-        reportData = {
-          ...reportData,
-          next_quarter_strategy: {
-            ...reportData.next_quarter_strategy,
-            next_quarter_kpis: migratedKpis,
-          },
-        };
-      }
-
+      const reportData = data.report_data as unknown as ReportData & { visibleSections?: VisibleSections };
       setReportData(reportData);
       setReportName(data.report_name);
       setQuarter(data.quarter || "");
-
       // Build data-aware defaults for visible sections
       const dataAwareDefaults: VisibleSections = {
         totalBooked: true,

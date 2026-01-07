@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, X, Pencil, Target, Users } from "lucide-react";
+import { ArrowRight, X, Pencil, Target, TrendingUp } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { HighImpactPodcastsDialog } from "./HighImpactPodcastsDialog";
-import { TotalListenershipGoalDialog } from "./TotalListenershipGoalDialog";
+import { ListenershipGoalDialog } from "./ListenershipGoalDialog";
 
 interface NextQuarterStrategyProps {
   quarter: string; // This is already the NEXT quarter label (e.g., "Q1 2026")
@@ -19,18 +19,12 @@ interface NextQuarterStrategyProps {
   closing_paragraph: string;
   next_quarter_kpis?: {
     high_impact_podcasts_goal: number;
-    // New fields
-    total_listenership_goal?: number;
-    current_total_listenership?: number;
-    est_annual_listenership_goal?: number;
-    current_est_annual_listenership?: number;
-    // Legacy fields (for backward compat)
-    listenership_goal?: number;
-    current_total_reach?: number;
+    listenership_goal: number;
     speaker_breakdown?: Array<{
       speaker_name: string;
       goal: number;
     }>;
+    current_total_reach?: number;
   };
   onHide?: () => void;
   onEdit?: () => void;
@@ -54,16 +48,10 @@ export function NextQuarterStrategy({
   onEdit
 }: NextQuarterStrategyProps) {
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
-  const [totalListenershipDialogOpen, setTotalListenershipDialogOpen] = useState(false);
+  const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
 
   // quarter prop is already the next quarter label (e.g., "Q1 2026"), use it directly
   const nextQuarterLabel = quarter;
-
-  // Get values, preferring new fields over legacy fields
-  const totalListenershipGoal = next_quarter_kpis?.total_listenership_goal || 0;
-  const currentTotalListenership = next_quarter_kpis?.current_total_listenership || 0;
-  const estAnnualListenershipGoal = next_quarter_kpis?.est_annual_listenership_goal || next_quarter_kpis?.listenership_goal || 0;
-  const currentEstAnnualListenership = next_quarter_kpis?.current_est_annual_listenership || next_quarter_kpis?.current_total_reach || 0;
 
   return (
     <>
@@ -140,10 +128,10 @@ export function NextQuarterStrategy({
           </div>
 
           {/* Next Quarter KPIs */}
-          {next_quarter_kpis && (next_quarter_kpis.high_impact_podcasts_goal > 0 || totalListenershipGoal > 0) && (
+          {next_quarter_kpis && (next_quarter_kpis.high_impact_podcasts_goal > 0 || next_quarter_kpis.listenership_goal > 0) && (
             <div className="space-y-3 pt-4 border-t border-border">
               <h4 className="font-semibold text-foreground">{nextQuarterLabel} Goals</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setPodcastsDialogOpen(true)}
                   className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors group/card text-left"
@@ -156,20 +144,18 @@ export function NextQuarterStrategy({
                     <p className="text-xs text-muted-foreground">High-Impact Podcasts</p>
                   </div>
                 </button>
-                {totalListenershipGoal > 0 && (
-                  <button
-                    onClick={() => setTotalListenershipDialogOpen(true)}
-                    className="flex items-center gap-3 p-4 bg-secondary/50 rounded-lg cursor-pointer hover:bg-secondary/70 transition-colors group/card text-left"
-                  >
-                    <div className="p-2 bg-secondary rounded-full group-hover/card:scale-110 transition-transform">
-                      <Users className="h-5 w-5 text-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-foreground">{formatNumber(totalListenershipGoal)}</p>
-                      <p className="text-xs text-muted-foreground">Total Listenership Goal</p>
-                    </div>
-                  </button>
-                )}
+                <button
+                  onClick={() => setListenershipDialogOpen(true)}
+                  className="flex items-center gap-3 p-4 bg-accent/10 rounded-lg cursor-pointer hover:bg-accent/20 transition-colors group/card text-left"
+                >
+                  <div className="p-2 bg-accent/20 rounded-full group-hover/card:scale-110 transition-transform">
+                    <TrendingUp className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{formatNumber(next_quarter_kpis.listenership_goal)}</p>
+                    <p className="text-xs text-muted-foreground">Listenership Goal</p>
+                  </div>
+                </button>
               </div>
             </div>
           )}
@@ -184,13 +170,11 @@ export function NextQuarterStrategy({
         speakerBreakdown={next_quarter_kpis?.speaker_breakdown}
         quarter={nextQuarterLabel}
       />
-      <TotalListenershipGoalDialog
-        open={totalListenershipDialogOpen}
-        onOpenChange={setTotalListenershipDialogOpen}
-        totalListenershipGoal={totalListenershipGoal}
-        currentTotalListenership={currentTotalListenership}
-        estAnnualListenershipGoal={estAnnualListenershipGoal}
-        currentEstAnnualListenership={currentEstAnnualListenership}
+      <ListenershipGoalDialog
+        open={listenershipDialogOpen}
+        onOpenChange={setListenershipDialogOpen}
+        listenershipGoal={next_quarter_kpis?.listenership_goal || 0}
+        currentListenership={next_quarter_kpis?.current_total_reach}
         quarter={nextQuarterLabel}
       />
     </>
