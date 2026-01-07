@@ -1868,7 +1868,7 @@ export async function mergeUpdatedReportData(
       // Only batch updated - limited recalculation
       // We can update basic stats but not full podcast merging without airtable
       console.log('[mergeUpdatedReportData] Batch-only update - limited recalculation');
-    } else if (newData.airtableData && updatedCSVTypes.includes('airtable')) {
+  } else if (newData.airtableData && updatedCSVTypes.includes('airtable')) {
       // Only airtable updated - update booking/publishing stats
       console.log('[mergeUpdatedReportData] Airtable-only update - updating booking stats');
       
@@ -1876,9 +1876,23 @@ export async function mergeUpdatedReportData(
       const publishedCount = newData.airtableData.filter(r => 
         r.date_published && r.date_published.trim() !== ''
       ).length;
-      const bookedCount = newData.airtableData.filter(r => 
-        r.date_booked && r.date_booked.trim() !== ''
-      ).length;
+      
+      // Booked count: only "podcast recording" actions with date_booked within the date range
+      const bookedCount = newData.airtableData.filter(r => {
+        // Only count "podcast recording" actions
+        const isPodcastRecording = r.action?.toLowerCase().includes('podcast recording');
+        if (!isPodcastRecording) return false;
+        
+        // Must have a date_booked
+        if (!r.date_booked || r.date_booked.trim() === '') return false;
+        
+        // date_booked must be within the date range
+        const bookedDate = parseAirtableDate(r.date_booked);
+        if (!bookedDate) return false;
+        
+        return bookedDate >= dateRange.start && bookedDate <= dateRange.end;
+      }).length;
+      
       const interviewCount = newData.airtableData.filter(r => 
         r.action?.toLowerCase().includes('podcast recording')
       ).length;
