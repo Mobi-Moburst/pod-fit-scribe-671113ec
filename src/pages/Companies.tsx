@@ -677,13 +677,19 @@ const Companies = () => {
                           <Button type="button" variant="ghost" size="sm" onClick={() => removeCompetitor(idx)}><X className="h-4 w-4" /></Button>
                         </div>
                         <div className="space-y-3">
-                          <div>
-                            <Label className="text-xs">Name</Label>
-                            <Input placeholder="John Smith" value={comp.name} onChange={(e) => updateCompetitor(idx, 'name', e.target.value)} />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Name</Label>
+                              <Input placeholder="John Smith" value={comp.name} onChange={(e) => updateCompetitor(idx, 'name', e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Role & Company</Label>
+                              <Input placeholder="CEO, Acme Corp" value={comp.role} onChange={(e) => updateCompetitor(idx, 'role', e.target.value)} />
+                            </div>
                           </div>
                           <div>
-                            <Label className="text-xs">Role & Company</Label>
-                            <Input placeholder="CEO, Acme Corp" value={comp.role} onChange={(e) => updateCompetitor(idx, 'role', e.target.value)} />
+                            <Label className="text-xs">LinkedIn URL</Label>
+                            <Input placeholder="https://linkedin.com/in/johnsmith" value={comp.linkedin_url || ''} onChange={(e) => updateCompetitor(idx, 'linkedin_url', e.target.value)} />
                           </div>
                           <div>
                             <Label className="text-xs">Why are they a peer competitor?</Label>
