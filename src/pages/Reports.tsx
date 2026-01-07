@@ -1692,6 +1692,7 @@ export default function Reports() {
                   { key: 'nextQuarterStrategy', label: 'Looking Ahead', visible: visibleSections.nextQuarterStrategy },
                   { key: 'targetPodcasts', label: 'Target Podcasts', visible: visibleSections.targetPodcasts },
                   { key: 'contentGapRecommendations', label: 'Gap Recommendations', visible: visibleSections.contentGapRecommendations },
+                  { key: 'highlights', label: 'Interview Highlights', visible: visibleSections.highlights },
                 ].filter(item => !item.visible);
                 
                 if (hiddenItems.length === 0) return null;
@@ -1880,11 +1881,46 @@ export default function Reports() {
               )}
 
               {/* Interview Highlights */}
-              {visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
-                <ClientReportHighlights
-                  clips={reportData.highlight_clips}
-                  companyName={reportData.company_name || reportData.client?.company}
-                />
+              {visibleSections.highlights && (
+                <Card className="relative group">
+                  <button
+                    onClick={() => toggleSection('highlights')}
+                    className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
+                    title="Hide this section"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Video className="h-5 w-5 text-primary" />
+                        Interview Highlights
+                      </CardTitle>
+                      <CardDescription>
+                        {reportData.highlight_clips && reportData.highlight_clips.length > 0
+                          ? `${reportData.highlight_clips.length} clip${reportData.highlight_clips.length !== 1 ? 's' : ''} added`
+                          : 'Add video or audio clips from interviews'}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setHighlightsDialogOpen(true)}
+                      className="print:hidden"
+                    >
+                      <Video className="h-4 w-4 mr-2" />
+                      {reportData.highlight_clips && reportData.highlight_clips.length > 0 ? 'Manage Clips' : 'Add Clips'}
+                    </Button>
+                  </CardHeader>
+                  {reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
+                    <CardContent>
+                      <ClientReportHighlights
+                        clips={reportData.highlight_clips}
+                        companyName={reportData.company_name || reportData.client?.company}
+                      />
+                    </CardContent>
+                  )}
+                </Card>
               )}
 
               {/* Published Episodes Carousel (Single-speaker reports only) */}
