@@ -1879,6 +1879,29 @@ export default function Reports() {
                 onOpenChange={setSOVDialogOpen}
                 sovAnalysis={reportData.sov_analysis || null}
                 clientName={speakerAsClient?.name}
+                dateRange={reportData.date_range}
+                podcasts={reportData.podcasts}
+                onRefresh={async (updatedSOV) => {
+                  if (!currentReportId) return;
+                  const updatedReportData = {
+                    ...reportData,
+                    sov_analysis: updatedSOV,
+                    kpis: {
+                      ...reportData.kpis,
+                      sov_percentage: updatedSOV?.client_percentage
+                    },
+                    visibleSections
+                  };
+                  setReportData(updatedReportData);
+                  await supabase
+                    .from('reports')
+                    .update({ report_data: updatedReportData as any })
+                    .eq('id', currentReportId);
+                  toast({
+                    title: "SOV Refreshed",
+                    description: `Client interviews updated to ${updatedSOV?.client_interview_count} (${updatedSOV?.client_percentage}%)`,
+                  });
+                }}
               />
               
               <GEODialog
