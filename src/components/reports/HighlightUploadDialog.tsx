@@ -59,6 +59,7 @@ export default function HighlightUploadDialog({
   const [description, setDescription] = useState('');
   const [mediaType, setMediaType] = useState<'video' | 'audio'>('video');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [useManualPodcast, setUseManualPodcast] = useState(false);
 
   const resetForm = () => {
     setTitle('');
@@ -68,6 +69,7 @@ export default function HighlightUploadDialog({
     setDescription('');
     setMediaType('video');
     setSelectedFile(null);
+    setUseManualPodcast(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -267,8 +269,22 @@ export default function HighlightUploadDialog({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="podcast">Podcast Name</Label>
-                    {podcasts.length > 0 ? (
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="podcast">Podcast Name</Label>
+                      {podcasts.length > 0 && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => {
+                            setUseManualPodcast(!useManualPodcast);
+                            setPodcastName('');
+                          }}
+                        >
+                          {useManualPodcast ? 'Select from list' : 'Enter manually'}
+                        </button>
+                      )}
+                    </div>
+                    {podcasts.length > 0 && !useManualPodcast ? (
                       <Select value={podcastName} onValueChange={setPodcastName}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select podcast" />
@@ -371,8 +387,22 @@ export default function HighlightUploadDialog({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="upload-podcast">Podcast Name</Label>
-                    {podcasts.length > 0 ? (
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="upload-podcast">Podcast Name</Label>
+                      {podcasts.length > 0 && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => {
+                            setUseManualPodcast(!useManualPodcast);
+                            setPodcastName('');
+                          }}
+                        >
+                          {useManualPodcast ? 'Select from list' : 'Enter manually'}
+                        </button>
+                      )}
+                    </div>
+                    {podcasts.length > 0 && !useManualPodcast ? (
                       <Select value={podcastName} onValueChange={setPodcastName}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select podcast" />
