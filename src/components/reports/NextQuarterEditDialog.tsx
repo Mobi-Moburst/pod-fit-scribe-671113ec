@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,19 +56,23 @@ export function NextQuarterEditDialog({
   const [highImpactGoal, setHighImpactGoal] = useState(data.next_quarter_kpis?.high_impact_podcasts_goal || 0);
   const [listenershipGoal, setListenershipGoal] = useState(data.next_quarter_kpis?.listenership_goal || 0);
 
-  // Reset state when dialog opens with new data
+  // Reset state only when the dialog is opened (prevents wiping unsaved edits if parent data updates while open)
+  const prevOpenRef = useRef(open);
   useEffect(() => {
-    if (open) {
-      setQuarter(data.quarter);
-      setIntroParagraph(data.intro_paragraph);
-      setFocusAreas(data.strategic_focus_areas || []);
-      setTalkingPoints(data.talking_points_spotlight || []);
-      setSpeakerTalkingPoints(data.speaker_talking_points_spotlight || []);
-      setClosingParagraph(data.closing_paragraph);
-      setHighImpactGoal(data.next_quarter_kpis?.high_impact_podcasts_goal || 0);
-      setListenershipGoal(data.next_quarter_kpis?.listenership_goal || 0);
-    }
-  }, [open, data]);
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+
+    if (!justOpened) return;
+
+    setQuarter(data.quarter);
+    setIntroParagraph(data.intro_paragraph);
+    setFocusAreas(data.strategic_focus_areas || []);
+    setTalkingPoints(data.talking_points_spotlight || []);
+    setSpeakerTalkingPoints(data.speaker_talking_points_spotlight || []);
+    setClosingParagraph(data.closing_paragraph);
+    setHighImpactGoal(data.next_quarter_kpis?.high_impact_podcasts_goal || 0);
+    setListenershipGoal(data.next_quarter_kpis?.listenership_goal || 0);
+  }, [open]);
 
   const isMultiSpeaker = speakerNames.length > 1;
 
@@ -76,22 +80,24 @@ export function NextQuarterEditDialog({
     onSave({
       quarter,
       intro_paragraph: introParagraph,
-      strategic_focus_areas: focusAreas.filter(a => a.title.trim() || a.description.trim()),
-      talking_points_spotlight: talkingPoints.filter(p => p.title.trim() || p.description.trim()),
+      strategic_focus_areas: focusAreas.filter((a) => a.title.trim() || a.description.trim()),
+      talking_points_spotlight: talkingPoints.filter((p) => p.title.trim() || p.description.trim()),
       speaker_talking_points_spotlight: speakerTalkingPoints
-        .map(s => ({
+        .map((s) => ({
           ...s,
-          points: s.points.filter(p => p.title.trim() || p.description.trim())
+          points: s.points.filter((p) => p.title.trim() || p.description.trim()),
         }))
-        .filter(s => s.points.length > 0),
+        .filter((s) => s.points.length > 0),
       closing_paragraph: closingParagraph,
       next_quarter_kpis: {
+        ...(data.next_quarter_kpis || {}),
         high_impact_podcasts_goal: highImpactGoal,
         listenership_goal: listenershipGoal,
       },
     });
     onOpenChange(false);
   };
+
 
   // Focus area handlers
   const addFocusArea = () => {
