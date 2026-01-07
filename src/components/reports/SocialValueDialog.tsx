@@ -6,7 +6,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Share2 } from "lucide-react";
+import { Share2, Linkedin, Facebook, Youtube, Twitter, Music2, LucideIcon } from "lucide-react";
+
+// Platform icons mapping
+const PLATFORM_ICONS: Record<string, LucideIcon> = {
+  linkedin: Linkedin,
+  meta: Facebook,
+  youtube: Youtube,
+  tiktok: Music2,
+  x: Twitter,
+};
 
 // CPM rates (midpoint values from industry benchmarks)
 const PLATFORM_CPM_RATES = {
@@ -133,7 +142,11 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="flex items-center gap-2 text-2xl font-bold">
+                {highestValuePlatform && (() => {
+                  const Icon = PLATFORM_ICONS[highestValuePlatform.key];
+                  return Icon ? <Icon className="h-6 w-6" style={{ color: highestValuePlatform.color }} /> : null;
+                })()}
                 {highestValuePlatform?.name || 'N/A'}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -159,7 +172,11 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
                 />
                 <CardHeader className="pb-2 relative">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      {(() => {
+                        const Icon = PLATFORM_ICONS[platform.key];
+                        return Icon ? <Icon className="h-4 w-4" style={{ color: platform.color }} /> : null;
+                      })()}
                       {platform.name}
                     </CardTitle>
                     <span 
