@@ -1881,6 +1881,7 @@ export default function Reports() {
                 clientName={speakerAsClient?.name}
                 dateRange={reportData.date_range}
                 podcasts={reportData.podcasts}
+                publishedCount={reportData.kpis.total_published}
                 onRefresh={async (updatedSOV) => {
                   if (!currentReportId) return;
                   const updatedReportData = {

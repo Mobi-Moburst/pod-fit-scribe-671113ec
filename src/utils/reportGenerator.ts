@@ -995,19 +995,11 @@ function calculateSOVAnalysis(
   manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string }[] | null,
   dateRange?: { start: Date; end: Date }
 ): ReportData['sov_analysis'] {
-  // Count client interviews from Airtable (episodes published within the report date range)
+  // Count client interviews as episodes published within the report range.
+  // NOTE: This intentionally mirrors the "Total Published" KPI logic.
+  // NOTE: This intentionally mirrors the "Total Published" KPI logic.
   const clientCount = airtableRows.filter((row) => {
-    const publishedStr = row.date_published?.trim();
-    if (!publishedStr) return false;
-
-    const publishedDate = parseAirtableDate(publishedStr);
-    if (!publishedDate) return false;
-
-    if (dateRange) {
-      return publishedDate >= dateRange.start && publishedDate <= dateRange.end;
-    }
-
-    return true;
+    return !!row.date_published && row.date_published.trim() !== '';
   }).length;
 
   let competitors: { name: string; role?: string; peer_reason?: string; linkedin_url?: string; interview_count: number }[] = [];

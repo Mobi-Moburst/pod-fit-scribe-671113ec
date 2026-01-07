@@ -24,6 +24,8 @@ interface SOVChartDialogProps {
   clientName?: string;
   dateRange?: { start: string; end: string };
   podcasts?: ReportData['podcasts'];
+  /** Prefer passing the report's existing published count so this matches the "Total Published" KPI exactly */
+  publishedCount?: number;
   onRefresh?: (updatedSOV: ReportData['sov_analysis']) => Promise<void>;
 }
 
@@ -91,7 +93,7 @@ const CompetitorInfoCard = ({ competitor }: { competitor: { name: string; role?:
   );
 };
 
-export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, dateRange, podcasts, onRefresh }: SOVChartDialogProps) => {
+export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, dateRange, podcasts, publishedCount, onRefresh }: SOVChartDialogProps) => {
   const [activeCompetitor, setActiveCompetitor] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -99,23 +101,25 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
 
   // Calculate client interview count from podcasts within date range
   const handleRefreshSOV = async () => {
-    if (!podcasts || !dateRange || !onRefresh) return;
+    if (!onRefresh) return;
+    if (typeof publishedCount !== 'number' && (!podcasts || !dateRange)) return;
     
     setIsRefreshing(true);
     try {
       const startDate = new Date(dateRange.start);
       const endDate = new Date(dateRange.end);
       
-      // Count episodes published within the report date range
-      const clientCount = podcasts.filter((podcast) => {
-        const publishedStr = podcast.date_published?.trim();
-        if (!publishedStr) return false;
+      const clientCount = typeof publishedCount === 'number'
+        ? publishedCount
+        : podcasts.filter((podcast) => {
+            const publishedStr = podcast.date_published?.trim();
+            if (!publishedStr) return false;
 
-        const publishedDate = parseAirtableDate(publishedStr);
-        if (!publishedDate) return false;
+            const publishedDate = parseAirtableDate(publishedStr);
+            if (!publishedDate) return false;
 
-        return publishedDate >= startDate && publishedDate <= endDate;
-      }).length;
+            return publishedDate >= startDate && publishedDate <= endDate;
+          }).length;
       
       // Recalculate total and percentage
       const competitorTotal = sovAnalysis.competitors.reduce((sum, c) => sum + c.interview_count, 0);
@@ -134,7 +138,7 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
     }
   };
 
-  const canRefresh = podcasts && dateRange && onRefresh;
+  const canRefresh = !!onRefresh && (typeof publishedCount === 'number' || (!!podcasts && !!dateRange));
 
   // Vibrant, distinct colors that work on dark backgrounds
   const competitorColors = [
