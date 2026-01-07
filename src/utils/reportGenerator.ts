@@ -545,12 +545,32 @@ export async function calculateCategoriesFromBookedPodcasts(
     return [];
   }
   
+  // Filter target audiences to only include clean, short category names
+  // Remove talking points, long sentences, and other non-category content
+  const cleanAudiences = targetAudiences.filter(audience => {
+    if (!audience || typeof audience !== 'string') return false;
+    const trimmed = audience.trim();
+    // Skip empty strings
+    if (trimmed.length === 0) return false;
+    // Skip if it's too long (likely a talking point or description)
+    if (trimmed.length > 80) return false;
+    // Skip if it contains "Talking Points" or similar headers
+    if (/talking\s*points/i.test(trimmed)) return false;
+    // Skip if it starts with common talking point indicators
+    if (/^(how|why|what|the|a\s+|building|from|beyond)/i.test(trimmed)) return false;
+    // Skip if it contains bullet-like markers
+    if (/^[\*\-\#\d+\.]+/.test(trimmed)) return false;
+    // Skip if it looks like a sentence (has multiple verbs or long phrases)
+    if (trimmed.split(' ').length > 12) return false;
+    return true;
+  });
+  
   // If no target audiences provided, fall back to default categories
-  const effectiveAudiences = targetAudiences.length > 0 
-    ? targetAudiences 
+  const effectiveAudiences = cleanAudiences.length > 0 
+    ? cleanAudiences 
     : ['Technology', 'Business', 'Industry', 'Leadership', 'Innovation'];
   
-  console.log(`[calculateCategoriesFromBookedPodcasts] Using ${effectiveAudiences.length} target audiences for categorization`);
+  console.log(`[calculateCategoriesFromBookedPodcasts] Using ${effectiveAudiences.length} clean target audiences for categorization (filtered from ${targetAudiences.length} total)`);
   
   // Scrape metadata for each booked podcast (with rate limiting)
   const categoryMap = new Map<string, {
