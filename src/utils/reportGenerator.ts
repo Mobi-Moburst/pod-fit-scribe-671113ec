@@ -295,15 +295,19 @@ function generateNextQuarterStrategy(
   // Calculate Next Quarter KPIs
   // High impact podcasts: 3 per speaker per month × 3 months
   const high_impact_podcasts_goal = 3 * speakerCount * 3;
-  // Listenership goal: 20% increase over current quarter
-  const currentListenership = kpis.total_reach || 0;
-  const listenership_goal = Math.ceil(currentListenership * 1.2);
-  
+
+  // Listenership goal: 20% increase over current quarter's *estimated annual listenership*
+  // Baseline is derived from the same metric shown in Reach Analysis:
+  // total_listeners_per_episode (monthly) × 12.
+  const monthlyListenersPerEpisode = kpis.total_listeners_per_episode || 0;
+  const currentAnnualListenership = monthlyListenersPerEpisode * 12;
+  const listenership_goal = Math.round(currentAnnualListenership * 1.2);
+
   // Build speaker breakdown array (9 podcasts per speaker = 3/month × 3 months)
   const speaker_breakdown = speakerNames && speakerNames.length > 0
     ? speakerNames.map(name => ({ speaker_name: name, goal: 9 }))
     : [{ speaker_name: client.name, goal: 9 }];
-  
+
   return {
     quarter: currentQuarter, // Store the CURRENT quarter so we can calculate next quarter dynamically
     intro_paragraph,
@@ -314,7 +318,7 @@ function generateNextQuarterStrategy(
       high_impact_podcasts_goal,
       listenership_goal,
       speaker_breakdown,
-      current_total_reach: currentListenership,
+      current_total_reach: currentAnnualListenership,
     },
   };
 }
