@@ -40,6 +40,124 @@ function parseDuration(duration: string | number): number | null {
   return null;
 }
 
+// Extract YouTube video ID from various URL formats
+function extractYouTubeVideoId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+// Extract Spotify episode ID from URL
+function extractSpotifyEpisodeId(url: string): string | null {
+  const match = url.match(/spotify\.com\/episode\/([a-zA-Z0-9]+)/);
+  return match ? match[1] : null;
+}
+
+// Fetch duration from YouTube Data API
+async function getYouTubeDuration(videoId: string): Promise<number | null> {
+  const apiKey = Deno.env.get('YOUTUBE_API_KEY');
+  if (!apiKey) {
+    console.log('YOUTUBE_API_KEY not configured');
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=contentDetails&key=${apiKey}`
+    );
+    
+    if (!response.ok) {
+      console.log(`YouTube API error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.items && data.items.length > 0) {
+      const duration = data.items[0].contentDetails?.duration;
+      if (duration) {
+        const minutes = parseDuration(duration);
+        console.log(`Found YouTube duration: ${minutes} minutes`);
+        return minutes;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching YouTube duration:', error);
+    return null;
+  }
+}
+
+// Fetch duration from Spotify oEmbed API
+async function getSpotifyDuration(episodeId: string, originalUrl: string): Promise<number | null> {
+  try {
+    // Spotify oEmbed doesn't include duration, so we'll scrape the page
+    const response = await fetch(originalUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    });
+
+    if (!response.ok) {
+      console.log(`Spotify page fetch error: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+    
+    // Look for duration in meta tags
+    const metaMatch = html.match(/meta\s+(?:property|name)=["']music:duration["']\s+content=["'](\d+)["']/i) ||
+                      html.match(/meta\s+content=["'](\d+)["']\s+(?:property|name)=["']music:duration["']/i);
+    
+    if (metaMatch) {
+      const seconds = parseInt(metaMatch[1]);
+      const minutes = Math.round(seconds / 60);
+      console.log(`Found Spotify duration from meta: ${minutes} minutes`);
+      return minutes;
+    }
+
+    // Look for duration in JSON data within script tags
+    const scriptMatch = html.match(/"duration_ms"\s*:\s*(\d+)/);
+    if (scriptMatch) {
+      const ms = parseInt(scriptMatch[1]);
+      const minutes = Math.round(ms / 60000);
+      console.log(`Found Spotify duration from JSON: ${minutes} minutes`);
+      return minutes;
+    }
+
+    // Look for duration text pattern (e.g., "45 min", "1 hr 30 min")
+    const durationTextMatch = html.match(/(\d+)\s*hr(?:s)?\s*(\d+)?\s*min/i) ||
+                              html.match(/(\d+)\s*min/i);
+    if (durationTextMatch) {
+      if (durationTextMatch[2]) {
+        // "X hr Y min" format
+        const hours = parseInt(durationTextMatch[1]);
+        const mins = parseInt(durationTextMatch[2]);
+        const minutes = hours * 60 + mins;
+        console.log(`Found Spotify duration from text: ${minutes} minutes`);
+        return minutes;
+      } else {
+        // "X min" format
+        const minutes = parseInt(durationTextMatch[1]);
+        console.log(`Found Spotify duration from text: ${minutes} minutes`);
+        return minutes;
+      }
+    }
+
+    console.log('Could not find duration on Spotify page');
+    return null;
+  } catch (error) {
+    console.error('Error fetching Spotify duration:', error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -58,10 +176,36 @@ serve(async (req) => {
 
     console.log(`Scraping episode duration from: ${url}`);
 
-    // Fetch the page content
+    // Check if it's a YouTube URL
+    const youtubeId = extractYouTubeVideoId(url);
+    if (youtubeId) {
+      console.log(`Detected YouTube video: ${youtubeId}`);
+      const duration = await getYouTubeDuration(youtubeId);
+      if (duration !== null) {
+        return new Response(
+          JSON.stringify({ success: true, duration_minutes: duration, source: 'youtube' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Check if it's a Spotify URL
+    const spotifyId = extractSpotifyEpisodeId(url);
+    if (spotifyId) {
+      console.log(`Detected Spotify episode: ${spotifyId}`);
+      const duration = await getSpotifyDuration(spotifyId, url);
+      if (duration !== null) {
+        return new Response(
+          JSON.stringify({ success: true, duration_minutes: duration, source: 'spotify' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Default: Fetch and parse the page (Apple Podcasts, etc.)
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; PodcastBot/1.0)',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
     });
 
@@ -157,7 +301,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, duration_minutes }),
+      JSON.stringify({ success: true, duration_minutes, source: 'page_scrape' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
