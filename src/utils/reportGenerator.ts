@@ -244,7 +244,8 @@ function generateTalkingPointDescription(talkingPoint: string): string {
 function generateNextQuarterStrategy(
   client: MinimalClient,
   kpis: ReportData['kpis'],
-  currentQuarter: string
+  currentQuarter: string,
+  speakerCount: number = 1
 ): ReportData['next_quarter_strategy'] {
   const nextQuarter = getNextQuarter(currentQuarter);
   const topicSpace = deriveTopicSpaceFromCategories(kpis);
@@ -290,12 +291,23 @@ function generateNextQuarterStrategy(
     : '';
   const closing_paragraph = `By amplifying these themes on ${topicSpace} podcasts, we'll continue to increase ${firstName}'s visibility with the right audiences${companyMention} in the broader conversation about ${topicSpace}.`;
   
+  // Calculate Next Quarter KPIs
+  // High impact podcasts: 3 per speaker per month × 3 months
+  const high_impact_podcasts_goal = 3 * speakerCount * 3;
+  // Listenership goal: 20% increase over current quarter
+  const currentListenership = kpis.total_reach || 0;
+  const listenership_goal = Math.ceil(currentListenership * 1.2);
+  
   return {
     quarter: nextQuarter,
     intro_paragraph,
     strategic_focus_areas,
     talking_points_spotlight,
-    closing_paragraph
+    closing_paragraph,
+    next_quarter_kpis: {
+      high_impact_podcasts_goal,
+      listenership_goal,
+    },
   };
 }
 
@@ -1368,8 +1380,8 @@ export async function generateReportFromMultipleCSVs(
   // Generate executive summary with KPI references
   const executiveSummary = generateExecutiveSummary(client, kpis, quarter);
   
-  // Generate next quarter strategy
-  const next_quarter_strategy = generateNextQuarterStrategy(client, kpis, quarter);
+  // Generate next quarter strategy (single speaker)
+  const next_quarter_strategy = generateNextQuarterStrategy(client, kpis, quarter, 1);
   
   // Generate AI pitch hooks for the speaker
   const aiHooks = await generatePitchHooksForSpeaker({
@@ -1683,8 +1695,8 @@ export async function generateMultiSpeakerReport(
     quarter
   );
   
-  // Generate next quarter strategy
-  const next_quarter_strategy = generateNextQuarterStrategy(companyClient, aggregatedKpis, quarter);
+  // Generate next quarter strategy (multi-speaker: pass speaker count)
+  const next_quarter_strategy = generateNextQuarterStrategy(companyClient, aggregatedKpis, quarter, speakerData.length);
   
   // Generate AI pitch hooks for each speaker
   const pitchHooksPromises = speakerData.map(async (s) => {
