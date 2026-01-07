@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +40,19 @@ export function CampaignOverviewEditDialog({
   const [newTalkingPoint, setNewTalkingPoint] = useState("");
   const [pitchHooks, setPitchHooks] = useState<PitchHook[]>(data.pitch_hooks || []);
   const [newHookInputs, setNewHookInputs] = useState<{ [key: number]: string }>({});
+
+  // Re-sync local state when dialog opens or data changes
+  useEffect(() => {
+    if (open) {
+      setStrategy(data.strategy);
+      setExecutiveSummary(data.executive_summary || "");
+      setTargetAudiences(data.target_audiences || []);
+      setTalkingPoints(data.talking_points || []);
+      setPitchHooks(data.pitch_hooks || []);
+      setNewTalkingPoint("");
+      setNewHookInputs({});
+    }
+  }, [open, data]);
 
   const handleSave = () => {
     onSave({
