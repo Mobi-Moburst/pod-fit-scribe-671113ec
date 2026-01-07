@@ -428,6 +428,7 @@ export default function ReportPresentation() {
         open={socialValueDialogOpen}
         onOpenChange={setSocialValueDialogOpen}
         totalSocialReach={reportData?.kpis?.total_social_reach || 0}
+        hideMethodology
       />
       {selectedSpeakerAirtable && (
         <AirtableDialog

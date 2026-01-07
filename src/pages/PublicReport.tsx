@@ -356,6 +356,7 @@ export default function PublicReport() {
         open={socialValueDialogOpen}
         onOpenChange={setSocialValueDialogOpen}
         totalSocialReach={reportData.kpis?.total_social_reach || 0}
+        hideMethodology
       />
     </div>
   );
