@@ -4,7 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TrendingUp, Users, Calendar } from "lucide-react";
+import { TrendingUp, Users, Calendar, Headphones } from "lucide-react";
 
 interface ListenershipGoalDialogProps {
   open: boolean;
@@ -29,6 +29,16 @@ export function ListenershipGoalDialog({
   currentAnnualListenership,
   quarter,
 }: ListenershipGoalDialogProps) {
+  // Current monthly listeners per episode (annual / 12)
+  const currentMonthlyListenersPerEpisode = currentAnnualListenership && currentAnnualListenership > 0 
+    ? currentAnnualListenership / 12 
+    : 0;
+  
+  // Monthly listeners per episode goal = 20% increase
+  const monthlyListenersPerEpisodeGoal = currentMonthlyListenersPerEpisode > 0
+    ? Math.round(currentMonthlyListenersPerEpisode * 1.2)
+    : 0;
+  
   // Annual goal is 20% increase from current quarter's annual listenership
   const annualGoal = currentAnnualListenership && currentAnnualListenership > 0 
     ? Math.round(currentAnnualListenership * 1.2) 
@@ -54,6 +64,13 @@ export function ListenershipGoalDialog({
 
           {/* Breakdown Cards */}
           <div className="grid grid-cols-2 gap-4">
+            {monthlyListenersPerEpisodeGoal > 0 && (
+              <div className="p-4 bg-muted/50 rounded-lg text-center">
+                <Headphones className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
+                <p className="text-2xl font-bold">{formatNumber(monthlyListenersPerEpisodeGoal)}</p>
+                <p className="text-xs text-muted-foreground">Monthly Listeners/Episode</p>
+              </div>
+            )}
             <div className="p-4 bg-muted/50 rounded-lg text-center">
               <Calendar className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
               <p className="text-2xl font-bold">{formatNumber(annualGoal)}</p>
@@ -80,6 +97,15 @@ export function ListenershipGoalDialog({
                       <span>Current Monthly Listeners</span>
                     </div>
                     <span className="font-bold">{formatNumber(currentListenership)}</span>
+                  </div>
+                )}
+                {currentMonthlyListenersPerEpisode > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Headphones className="h-5 w-5 text-muted-foreground" />
+                      <span>Current Listeners/Episode</span>
+                    </div>
+                    <span className="font-bold">{formatNumber(currentMonthlyListenersPerEpisode)}</span>
                   </div>
                 )}
                 {currentAnnualListenership !== undefined && currentAnnualListenership > 0 && (
