@@ -735,7 +735,25 @@ export default function Reports() {
   };
 
   const loadReport = (report: any) => {
-    setReportData(report.report_data);
+    let loadedData = report.report_data as ReportData;
+    
+    // Auto-populate next_quarter_kpis if missing (for older reports)
+    if (loadedData.next_quarter_strategy && !loadedData.next_quarter_strategy.next_quarter_kpis) {
+      const speakerCount = loadedData.speaker_breakdowns?.length || 1;
+      const currentListenership = loadedData.kpis?.total_reach || 0;
+      loadedData = {
+        ...loadedData,
+        next_quarter_strategy: {
+          ...loadedData.next_quarter_strategy,
+          next_quarter_kpis: {
+            high_impact_podcasts_goal: 3 * speakerCount * 3,
+            listenership_goal: Math.ceil(currentListenership * 1.2),
+          },
+        },
+      };
+    }
+    
+    setReportData(loadedData);
     setReportName(report.report_name);
     setQuarter(report.quarter || '');
     setCurrentReportId(report.id);
