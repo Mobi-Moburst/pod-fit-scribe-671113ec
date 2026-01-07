@@ -25,6 +25,7 @@ interface NextQuarterStrategyProps {
       goal: number;
     }>;
     current_total_reach?: number;
+    current_annual_listenership?: number;
   };
   onHide?: () => void;
   onEdit?: () => void;
@@ -175,6 +176,7 @@ export function NextQuarterStrategy({
         onOpenChange={setListenershipDialogOpen}
         listenershipGoal={next_quarter_kpis?.listenership_goal || 0}
         currentListenership={next_quarter_kpis?.current_total_reach}
+        currentAnnualListenership={next_quarter_kpis?.current_annual_listenership}
         quarter={nextQuarterLabel}
       />
     </>

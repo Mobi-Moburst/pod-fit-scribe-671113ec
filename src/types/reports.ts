@@ -223,6 +223,8 @@ export interface ReportData {
       }>;
       // Current quarter actual values for listenership breakdown
       current_total_reach?: number;
+      // Current quarter's estimated annual listenership for calculating goal
+      current_annual_listenership?: number;
     };
   };
   
