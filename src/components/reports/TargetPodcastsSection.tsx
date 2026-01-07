@@ -8,6 +8,7 @@ import { TargetPodcast } from '@/types/reports';
 import { MinimalClient } from '@/types/clients';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getNextQuarter } from '@/lib/utils';
 
 interface TargetPodcastsSectionProps {
   client: MinimalClient;
@@ -37,6 +38,9 @@ export function TargetPodcastsSection({
   const [hasGenerated, setHasGenerated] = useState(!!initialPodcasts?.length);
   const [coverArtCache, setCoverArtCache] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  
+  // Calculate next quarter for display
+  const nextQuarterLabel = getNextQuarter(nextQuarterStrategy.quarter);
 
   // Fetch cover art for podcasts
   useEffect(() => {
@@ -192,7 +196,7 @@ export function TargetPodcastsSection({
 
       toast({
         title: "Target podcasts generated",
-        description: `Found ${finalPodcasts.length} podcast recommendations for ${nextQuarterStrategy.quarter}.`,
+        description: `Found ${finalPodcasts.length} podcast recommendations for ${nextQuarterLabel}.`,
       });
 
     } catch (err) {
@@ -244,7 +248,7 @@ export function TargetPodcastsSection({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-accent" />
-            Target Podcasts for {nextQuarterStrategy.quarter}
+            Target Podcasts for {nextQuarterLabel}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -269,7 +273,7 @@ export function TargetPodcastsSection({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-accent" />
-            Target Podcasts for {nextQuarterStrategy.quarter}
+            Target Podcasts for {nextQuarterLabel}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -308,7 +312,7 @@ export function TargetPodcastsSection({
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <Target className="h-5 w-5 text-accent" />
-          Target Podcasts for {nextQuarterStrategy.quarter}
+          Target Podcasts for {nextQuarterLabel}
         </CardTitle>
         <Button 
           variant="outline" 
