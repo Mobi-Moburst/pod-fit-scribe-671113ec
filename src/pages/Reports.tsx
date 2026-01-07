@@ -779,10 +779,27 @@ export default function Reports() {
     
     // Restore saved visibility sections if they exist
     if (report.report_data?.visibleSections) {
-      setVisibleSections(prev => ({
-        ...prev,
-        ...report.report_data.visibleSections,
-      }));
+      // Use saved visibility sections directly, only falling back to defaults for new keys not in saved data
+      const savedSections = report.report_data.visibleSections;
+      setVisibleSections({
+        totalBooked: savedSections.totalBooked ?? true,
+        totalPublished: savedSections.totalPublished ?? true,
+        socialReach: savedSections.socialReach ?? true,
+        totalReach: savedSections.totalReach ?? true,
+        averageScore: savedSections.averageScore ?? true,
+        emv: savedSections.emv ?? true,
+        sov: savedSections.sov ?? true,
+        geoScore: savedSections.geoScore ?? true,
+        contentGap: savedSections.contentGap ?? true,
+        socialValue: savedSections.socialValue ?? true,
+        campaignOverview: savedSections.campaignOverview ?? true,
+        airtableEmbed: savedSections.airtableEmbed ?? true,
+        topCategories: savedSections.topCategories ?? true,
+        nextQuarterStrategy: savedSections.nextQuarterStrategy ?? true,
+        targetPodcasts: savedSections.targetPodcasts ?? true,
+        contentGapRecommendations: savedSections.contentGapRecommendations ?? true,
+        highlights: savedSections.highlights ?? true,
+      });
     }
     
     toast({
