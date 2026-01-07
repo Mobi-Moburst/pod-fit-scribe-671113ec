@@ -851,19 +851,44 @@ export default function Reports() {
 
   // Update saved report with new target podcasts
   const updateReportTargetPodcasts = async (podcasts: TargetPodcast[]) => {
-    if (!currentReportId || !reportData) return;
-    
-    const updatedReportData = { ...reportData, target_podcasts: podcasts, visibleSections };
-    setReportData(updatedReportData);
-    
+    if (!reportData) return;
+
+    // Optimistic local update
+    const optimisticReportData = { ...reportData, target_podcasts: podcasts, visibleSections };
+    setReportData(optimisticReportData);
+
+    // Only persist if report is already saved
+    if (!currentReportId) {
+      toast({
+        title: "Report updated",
+        description: "Target podcasts updated. Save report to persist.",
+      });
+      return;
+    }
+
     try {
+      // Fetch fresh report_data to avoid overwriting fields (e.g. categories) with stale local state
+      const { data: freshReport, error: fetchError } = await supabase
+        .from('reports')
+        .select('report_data')
+        .eq('id', currentReportId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const freshReportData = freshReport.report_data as unknown as ReportData;
+      const updatedReportData = { ...freshReportData, target_podcasts: podcasts, visibleSections };
+
+      // Keep local state aligned with persisted data
+      setReportData(updatedReportData);
+
       const { error } = await supabase
         .from('reports')
         .update({ report_data: updatedReportData as any })
         .eq('id', currentReportId);
-      
+
       if (error) throw error;
-      
+
       toast({
         title: "Report updated",
         description: "Target podcasts saved to report.",
@@ -878,47 +903,98 @@ export default function Reports() {
     }
   };
 
-  const handleContentGapRecommendationsUpdate = async (recommendations: ReportData['content_gap_analysis']['ai_recommendations']) => {
+  const handleContentGapRecommendationsUpdate = async (
+    recommendations: ReportData['content_gap_analysis']['ai_recommendations']
+  ) => {
     if (!reportData || !reportData.content_gap_analysis) return;
-    
-    const updatedReportData = {
+
+    // Optimistic local update
+    const optimisticReportData = {
       ...reportData,
       content_gap_analysis: {
         ...reportData.content_gap_analysis,
-        ai_recommendations: recommendations
+        ai_recommendations: recommendations,
       },
-      visibleSections
-    };
-    setReportData(updatedReportData);
-    
-    // Auto-save to database if report is saved
-    if (currentReportId) {
-      try {
-        await supabase
-          .from('reports')
-          .update({ report_data: updatedReportData as any })
-          .eq('id', currentReportId);
-      } catch (error) {
-        console.error('Error saving content gap recommendations:', error);
-      }
+      visibleSections,
+    } as any;
+
+    setReportData(optimisticReportData);
+
+    if (!currentReportId) return;
+
+    try {
+      // Fetch fresh report_data to avoid overwriting fields with stale local state
+      const { data: freshReport, error: fetchError } = await supabase
+        .from('reports')
+        .select('report_data')
+        .eq('id', currentReportId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const freshReportData = freshReport.report_data as unknown as ReportData;
+      const updatedReportData = {
+        ...freshReportData,
+        content_gap_analysis: {
+          ...(freshReportData.content_gap_analysis || reportData.content_gap_analysis),
+          ai_recommendations: recommendations,
+        } as any,
+        visibleSections,
+      } as any;
+
+      setReportData(updatedReportData);
+
+      const { error } = await supabase
+        .from('reports')
+        .update({ report_data: updatedReportData as any })
+        .eq('id', currentReportId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving content gap recommendations:', error);
     }
   };
 
   // Update saved report with highlight clips
   const updateReportHighlights = async (clips: HighlightClip[]) => {
-    if (!currentReportId || !reportData) return;
-    
-    const updatedReportData = { ...reportData, highlight_clips: clips, visibleSections };
-    setReportData(updatedReportData);
-    
+    if (!reportData) return;
+
+    // Optimistic local update
+    const optimisticReportData = { ...reportData, highlight_clips: clips, visibleSections };
+    setReportData(optimisticReportData);
+
+    // Only persist if report is already saved
+    if (!currentReportId) {
+      toast({
+        title: "Highlights updated",
+        description: "Highlights updated. Save report to persist.",
+      });
+      return;
+    }
+
     try {
+      // Fetch fresh report_data to avoid overwriting fields (e.g. categories) with stale local state
+      const { data: freshReport, error: fetchError } = await supabase
+        .from('reports')
+        .select('report_data')
+        .eq('id', currentReportId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const freshReportData = freshReport.report_data as unknown as ReportData;
+      const updatedReportData = { ...freshReportData, highlight_clips: clips, visibleSections };
+
+      // Keep local state aligned with persisted data
+      setReportData(updatedReportData);
+
       const { error } = await supabase
         .from('reports')
         .update({ report_data: updatedReportData as any })
         .eq('id', currentReportId);
-      
+
       if (error) throw error;
-      
+
       toast({
         title: "Highlights saved",
         description: "Interview highlights updated successfully.",
@@ -949,40 +1025,58 @@ export default function Reports() {
         : undefined,
     };
 
-    // Create a completely new reportData object to ensure React detects the change
-    const updatedReportData = {
+    // Optimistic local update
+    const optimisticReportData = {
       ...reportData,
       campaign_overview: nextCampaignOverview,
       visibleSections,
-    };
-    setReportData(updatedReportData);
-    
-    // Only save to database if report is already saved
-    if (currentReportId) {
-      try {
-        const { error } = await supabase
-          .from('reports')
-          .update({ report_data: updatedReportData as any })
-          .eq('id', currentReportId);
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Campaign overview saved",
-          description: "Campaign overview updated successfully.",
-        });
-      } catch (error) {
-        console.error('Error updating campaign overview:', error);
-        toast({
-          title: "Failed to save",
-          description: "Changes couldn't be saved to the report.",
-          variant: "destructive",
-        });
-      }
-    } else {
+    } as any;
+    setReportData(optimisticReportData);
+
+    if (!currentReportId) {
       toast({
         title: "Campaign overview updated",
         description: "Changes applied. Save report to persist.",
+      });
+      return;
+    }
+
+    try {
+      // Fetch fresh report_data to avoid overwriting fields with stale local state
+      const { data: freshReport, error: fetchError } = await supabase
+        .from('reports')
+        .select('report_data')
+        .eq('id', currentReportId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const freshReportData = freshReport.report_data as unknown as ReportData;
+      const updatedReportData = {
+        ...freshReportData,
+        campaign_overview: nextCampaignOverview,
+        visibleSections,
+      } as any;
+
+      setReportData(updatedReportData);
+
+      const { error } = await supabase
+        .from('reports')
+        .update({ report_data: updatedReportData as any })
+        .eq('id', currentReportId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Campaign overview saved",
+        description: "Campaign overview updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating campaign overview:', error);
+      toast({
+        title: "Failed to save",
+        description: "Changes couldn't be saved to the report.",
+        variant: "destructive",
       });
     }
   };
