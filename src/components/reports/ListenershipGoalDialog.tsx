@@ -10,13 +10,13 @@ interface ListenershipGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   listenershipGoal: number;
-  currentListenership?: number;
+  currentListenersPerEpisode?: number;
   quarter: string;
 }
 
 const formatNumber = (num: number): string => {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
   return num.toLocaleString();
 };
 
@@ -24,13 +24,14 @@ export function ListenershipGoalDialog({
   open,
   onOpenChange,
   listenershipGoal,
-  currentListenership,
+  currentListenersPerEpisode,
   quarter,
 }: ListenershipGoalDialogProps) {
-  const annualGoal = listenershipGoal * 12;
-  const growthPercentage = currentListenership && currentListenership > 0
-    ? Math.round(((listenershipGoal - currentListenership) / currentListenership) * 100)
-    : 20;
+  // Calculate estimated annual listenership (monthly goal × 12)
+  const estAnnualListenershipGoal = listenershipGoal * 12;
+  
+  // Current quarter values (if we have current data)
+  const currentEstAnnual = currentListenersPerEpisode ? currentListenersPerEpisode * 12 : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,45 +44,46 @@ export function ListenershipGoalDialog({
         </DialogHeader>
 
         <div className="space-y-6 pt-4">
-          {/* Monthly Goal */}
-          <div className="text-center p-6 bg-accent/10 rounded-xl">
-            <p className="text-5xl font-bold text-accent">{formatNumber(listenershipGoal)}</p>
-            <p className="text-muted-foreground mt-2">Monthly Listeners Goal for {quarter}</p>
-          </div>
-
-          {/* Breakdown Cards */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-muted/50 rounded-lg text-center">
-              <Calendar className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
-              <p className="text-2xl font-bold">{formatNumber(annualGoal)}</p>
-              <p className="text-xs text-muted-foreground">Est. Annual Listenership</p>
+          {/* Goal Metrics */}
+          <div className="space-y-4">
+            {/* Total Monthly Listeners Per Episode Goal */}
+            <div className="text-center p-6 bg-accent/10 rounded-xl">
+              <Users className="h-6 w-6 mx-auto text-accent mb-2" />
+              <p className="text-4xl font-bold text-accent">{formatNumber(listenershipGoal)}</p>
+              <p className="text-muted-foreground mt-1">Total Monthly Listeners Per Episode Goal</p>
+              <p className="text-xs text-muted-foreground mt-1">{quarter}</p>
             </div>
-            <div className="p-4 bg-muted/50 rounded-lg text-center">
-              <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
-              <p className="text-2xl font-bold text-green-500">+{growthPercentage}%</p>
-              <p className="text-xs text-muted-foreground">Growth Target</p>
+
+            {/* Est. Annual Listenership Goal */}
+            <div className="text-center p-6 bg-muted/50 rounded-xl">
+              <Calendar className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+              <p className="text-4xl font-bold">{formatNumber(estAnnualListenershipGoal)}</p>
+              <p className="text-muted-foreground mt-1">Est. Annual Listenership Goal</p>
             </div>
           </div>
 
-          {/* Current Quarter Context */}
-          {currentListenership !== undefined && currentListenership > 0 && (
-            <div className="space-y-2">
+          {/* Current Quarter Baseline */}
+          {currentListenersPerEpisode !== undefined && currentListenersPerEpisode > 0 && (
+            <div className="space-y-3">
               <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
                 Current Quarter Baseline
               </h4>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                  <span>Current Monthly Listeners</span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm">Total Monthly Listeners Per Episode</span>
+                  <span className="font-bold">{formatNumber(currentListenersPerEpisode)}</span>
                 </div>
-                <span className="font-bold">{formatNumber(currentListenership)}</span>
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm">Est. Annual Listenership</span>
+                  <span className="font-bold">{formatNumber(currentEstAnnual)}</span>
+                </div>
               </div>
             </div>
           )}
 
           {/* Calculation Explanation */}
           <div className="text-center text-sm text-muted-foreground border-t pt-4">
-            <p>Goal = Current Listenership × 1.2 (20% growth)</p>
+            <p>Goal = Current Listeners Per Episode × 1.2 (20% growth)</p>
           </div>
         </div>
       </DialogContent>

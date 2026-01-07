@@ -96,7 +96,7 @@ export const NextQuarterSlide = ({ strategy }: NextQuarterSlideProps) => {
         open={listenershipDialogOpen}
         onOpenChange={setListenershipDialogOpen}
         listenershipGoal={strategy.next_quarter_kpis?.listenership_goal || 0}
-        currentListenership={strategy.next_quarter_kpis?.current_total_reach}
+        currentListenersPerEpisode={strategy.next_quarter_kpis?.current_listeners_per_episode}
         quarter={nextQuarterLabel}
       />
     </>
