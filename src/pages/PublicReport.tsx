@@ -103,7 +103,24 @@ export default function PublicReport() {
         return;
       }
 
-      const reportData = data.report_data as unknown as ReportData & { visibleSections?: VisibleSections };
+      let reportData = data.report_data as unknown as ReportData & { visibleSections?: VisibleSections };
+      
+      // Auto-populate next_quarter_kpis if missing (for older reports)
+      if (reportData.next_quarter_strategy && !reportData.next_quarter_strategy.next_quarter_kpis) {
+        const speakerCount = reportData.speaker_breakdowns?.length || 1;
+        const currentListenership = reportData.kpis?.total_reach || 0;
+        reportData = {
+          ...reportData,
+          next_quarter_strategy: {
+            ...reportData.next_quarter_strategy,
+            next_quarter_kpis: {
+              high_impact_podcasts_goal: 3 * speakerCount * 3,
+              listenership_goal: Math.ceil(currentListenership * 1.2),
+            },
+          },
+        };
+      }
+      
       setReportData(reportData);
       setReportName(data.report_name);
       setQuarter(data.quarter || "");
