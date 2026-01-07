@@ -4,9 +4,10 @@ import { ArrowRight, X, Pencil, Target, TrendingUp } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { HighImpactPodcastsDialog } from "./HighImpactPodcastsDialog";
 import { ListenershipGoalDialog } from "./ListenershipGoalDialog";
+import { getNextQuarter } from "@/lib/utils";
 
 interface NextQuarterStrategyProps {
-  quarter: string; // This is already the NEXT quarter label (e.g., "Q1 2026")
+  quarter: string; // This is the CURRENT quarter label (e.g., "Q4 2025"), we calculate next quarter for display
   intro_paragraph: string;
   strategic_focus_areas: Array<{
     title: string;
@@ -59,8 +60,10 @@ export function NextQuarterStrategy({
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
   const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
 
-  // quarter prop is already the next quarter label (e.g., "Q1 2026"), use it directly
-  const nextQuarterLabel = quarter;
+  // quarter stores the CURRENT quarter (e.g., "Q4 2025"), calculate next quarter for display
+  // Check if intro paragraph mentions the stored quarter - if it does, it's already been manually edited
+  const introMentionsStoredQuarter = intro_paragraph?.includes(quarter);
+  const nextQuarterLabel = introMentionsStoredQuarter ? quarter : getNextQuarter(quarter);
 
   return (
     <>
