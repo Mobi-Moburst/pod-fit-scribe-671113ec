@@ -11,6 +11,7 @@ interface ListenershipGoalDialogProps {
   onOpenChange: (open: boolean) => void;
   listenershipGoal: number;
   currentListenership?: number;
+  currentAnnualListenership?: number;
   quarter: string;
 }
 
@@ -25,12 +26,13 @@ export function ListenershipGoalDialog({
   onOpenChange,
   listenershipGoal,
   currentListenership,
+  currentAnnualListenership,
   quarter,
 }: ListenershipGoalDialogProps) {
-  // Calculate current annual listenership (monthly × 12)
-  const currentAnnualListenership = currentListenership ? currentListenership * 12 : 0;
   // Annual goal is 20% increase from current quarter's annual listenership
-  const annualGoal = currentAnnualListenership > 0 ? Math.round(currentAnnualListenership * 1.2) : listenershipGoal * 12;
+  const annualGoal = currentAnnualListenership && currentAnnualListenership > 0 
+    ? Math.round(currentAnnualListenership * 1.2) 
+    : listenershipGoal * 12;
   const growthPercentage = 20;
 
   return (
@@ -65,24 +67,37 @@ export function ListenershipGoalDialog({
           </div>
 
           {/* Current Quarter Context */}
-          {currentListenership !== undefined && currentListenership > 0 && (
+          {(currentListenership !== undefined && currentListenership > 0) || (currentAnnualListenership !== undefined && currentAnnualListenership > 0) ? (
             <div className="space-y-2">
               <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
                 Current Quarter Baseline
               </h4>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                  <span>Current Monthly Listeners</span>
-                </div>
-                <span className="font-bold">{formatNumber(currentListenership)}</span>
+              <div className="space-y-2">
+                {currentListenership !== undefined && currentListenership > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                      <span>Current Monthly Listeners</span>
+                    </div>
+                    <span className="font-bold">{formatNumber(currentListenership)}</span>
+                  </div>
+                )}
+                {currentAnnualListenership !== undefined && currentAnnualListenership > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-5 w-5 text-muted-foreground" />
+                      <span>Current Est. Annual Listenership</span>
+                    </div>
+                    <span className="font-bold">{formatNumber(currentAnnualListenership)}</span>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Calculation Explanation */}
           <div className="text-center text-sm text-muted-foreground border-t pt-4">
-            <p>Goal = Current Listenership × 1.2 (20% growth)</p>
+            <p>Annual Goal = Current Annual Listenership × 1.2 (20% growth)</p>
           </div>
         </div>
       </DialogContent>

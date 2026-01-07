@@ -299,6 +299,9 @@ function generateNextQuarterStrategy(
   const currentListenership = kpis.total_reach || 0;
   const listenership_goal = Math.ceil(currentListenership * 1.2);
   
+  // Current annual listenership = total_listeners_per_episode × 12
+  const currentAnnualListenership = (kpis.total_listeners_per_episode || 0) * 12;
+  
   // Build speaker breakdown array (9 podcasts per speaker = 3/month × 3 months)
   const speaker_breakdown = speakerNames && speakerNames.length > 0
     ? speakerNames.map(name => ({ speaker_name: name, goal: 9 }))
@@ -315,6 +318,7 @@ function generateNextQuarterStrategy(
       listenership_goal,
       speaker_breakdown,
       current_total_reach: currentListenership,
+      current_annual_listenership: currentAnnualListenership,
     },
   };
 }
