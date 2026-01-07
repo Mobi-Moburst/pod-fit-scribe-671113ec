@@ -4,13 +4,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, TrendingUp } from "lucide-react";
+import { Users, TrendingUp, Calendar } from "lucide-react";
 
 interface TotalListenershipGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   totalListenershipGoal: number;
   currentTotalListenership?: number;
+  estAnnualListenershipGoal?: number;
+  currentEstAnnualListenership?: number;
   quarter: string;
 }
 
@@ -25,6 +27,8 @@ export function TotalListenershipGoalDialog({
   onOpenChange,
   totalListenershipGoal,
   currentTotalListenership,
+  estAnnualListenershipGoal,
+  currentEstAnnualListenership,
   quarter,
 }: TotalListenershipGoalDialogProps) {
   const baseline = currentTotalListenership && currentTotalListenership > 0 ? currentTotalListenership : 0;
@@ -38,6 +42,8 @@ export function TotalListenershipGoalDialog({
   const growthPercentage = baseline > 0
     ? Math.round(((goal - baseline) / baseline) * 100)
     : 20;
+
+  const hasEstAnnual = estAnnualListenershipGoal && estAnnualListenershipGoal > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -84,6 +90,31 @@ export function TotalListenershipGoalDialog({
                   {formatNumber(baseline)}
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* Est. Annual Listenership Sub-Card */}
+          {hasEstAnnual && (
+            <div className="border border-border rounded-xl p-4 bg-accent/5">
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="h-4 w-4 text-accent" />
+                <h4 className="font-semibold text-sm">Est. Annual Listenership</h4>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-accent">{formatNumber(estAnnualListenershipGoal)}</p>
+                  <p className="text-xs text-muted-foreground">Goal</p>
+                </div>
+                {currentEstAnnualListenership && currentEstAnnualListenership > 0 && (
+                  <div className="text-right">
+                    <p className="text-lg font-semibold text-muted-foreground">{formatNumber(currentEstAnnualListenership)}</p>
+                    <p className="text-xs text-muted-foreground">Baseline</p>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+                Monthly listeners × 12 × 1.2 growth
+              </p>
             </div>
           )}
 
