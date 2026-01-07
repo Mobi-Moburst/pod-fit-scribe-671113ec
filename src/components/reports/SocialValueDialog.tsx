@@ -67,13 +67,10 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
     };
   });
 
-  // Calculate total for percentage (sum of all platform values)
-  const totalPlatformValues = platformBreakdown.reduce((sum, p) => sum + p.value, 0);
-  
-  // Calculate percentage for each platform
+  // Use allocation percentages for display
   const platformsWithPercentage = platformBreakdown.map(p => ({
     ...p,
-    percentage: totalPlatformValues > 0 ? (p.value / totalPlatformValues) * 100 : 0,
+    percentage: PLATFORM_ALLOCATION[p.key as keyof typeof PLATFORM_ALLOCATION] * 100,
   }));
 
   // Find highest value platform
@@ -185,8 +182,8 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
                   </p>
                   <div className="mt-2">
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                      <span>Share of total value</span>
-                      <span>{platform.percentage.toFixed(1)}%</span>
+                      <span>Estimated share of total value</span>
+                      <span>{platform.percentage.toFixed(0)}%</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div 
