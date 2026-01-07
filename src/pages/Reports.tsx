@@ -810,15 +810,30 @@ export default function Reports() {
     }
   };
 
-  const handleContentGapRecommendationsUpdate = (recommendations: ReportData['content_gap_analysis']['ai_recommendations']) => {
+  const handleContentGapRecommendationsUpdate = async (recommendations: ReportData['content_gap_analysis']['ai_recommendations']) => {
     if (!reportData || !reportData.content_gap_analysis) return;
-    setReportData({
+    
+    const updatedReportData = {
       ...reportData,
       content_gap_analysis: {
         ...reportData.content_gap_analysis,
         ai_recommendations: recommendations
+      },
+      visibleSections
+    };
+    setReportData(updatedReportData);
+    
+    // Auto-save to database if report is saved
+    if (currentReportId) {
+      try {
+        await supabase
+          .from('reports')
+          .update({ report_data: updatedReportData as any })
+          .eq('id', currentReportId);
+      } catch (error) {
+        console.error('Error saving content gap recommendations:', error);
       }
-    });
+    }
   };
 
   // Update saved report with highlight clips
