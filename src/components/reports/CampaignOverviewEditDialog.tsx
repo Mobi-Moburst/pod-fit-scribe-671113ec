@@ -56,12 +56,32 @@ export function CampaignOverviewEditDialog({
   }, [open]);
 
   const handleSave = () => {
+    // Commit any "in-progress" inputs (user may type and click Save without pressing +/Enter)
+    const pendingTalkingPoint = newTalkingPoint.trim();
+    const nextTalkingPoints = (pendingTalkingPoint ? [...talkingPoints, pendingTalkingPoint] : [...talkingPoints])
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    const nextPitchHooks = pitchHooks
+      .map((speaker, speakerIndex) => {
+        const pendingHook = (newHookInputs[speakerIndex] || "").trim();
+        const hooks = (pendingHook ? [...speaker.hooks, pendingHook] : [...speaker.hooks])
+          .map((h) => h.trim())
+          .filter(Boolean);
+
+        return {
+          speaker_name: speaker.speaker_name.trim(),
+          hooks,
+        };
+      })
+      .filter((s) => s.speaker_name || s.hooks.length > 0);
+
     onSave({
       strategy,
       executive_summary: executiveSummary || undefined,
-      target_audiences: targetAudiences,
-      talking_points: talkingPoints,
-      pitch_hooks: pitchHooks.length > 0 ? pitchHooks : undefined,
+      target_audiences: [...targetAudiences],
+      talking_points: nextTalkingPoints,
+      pitch_hooks: nextPitchHooks.length > 0 ? nextPitchHooks : undefined,
     });
     onOpenChange(false);
   };

@@ -868,12 +868,24 @@ export default function Reports() {
   // Update report with campaign overview edits (works for both saved and unsaved reports)
   const updateReportCampaignOverview = async (campaignOverview: ReportData["campaign_overview"]) => {
     if (!reportData) return;
-    
+
+    const nextCampaignOverview: ReportData["campaign_overview"] = {
+      ...campaignOverview,
+      target_audiences: [...(campaignOverview.target_audiences || [])],
+      talking_points: [...(campaignOverview.talking_points || [])],
+      pitch_hooks: campaignOverview.pitch_hooks
+        ? campaignOverview.pitch_hooks.map((s) => ({
+            ...s,
+            hooks: [...(s.hooks || [])],
+          }))
+        : undefined,
+    };
+
     // Create a completely new reportData object to ensure React detects the change
     const updatedReportData = {
       ...reportData,
-      campaign_overview: { ...campaignOverview },
-      visibleSections
+      campaign_overview: nextCampaignOverview,
+      visibleSections,
     };
     setReportData(updatedReportData);
     
