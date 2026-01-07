@@ -278,22 +278,22 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
       </div>
 
       {/* Main Content Grid - Target Audiences/Talking Points + Published Episodes */}
-      <div className="grid md:grid-cols-5 gap-6">
+      <div className="grid md:grid-cols-5 gap-6 items-stretch">
         {/* Left Column - Target Audiences & Talking Points */}
-        <div className="md:col-span-3 space-y-4">
+        <div className="md:col-span-3 flex flex-col gap-4">
           {/* Target Audiences */}
           {hasTargetAudiences && (
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <div className={`bg-card border border-border rounded-2xl p-5 space-y-3 ${!hasTalkingPoints ? 'flex-1 flex flex-col' : ''}`}>
               <h3 className="text-base font-semibold flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
                 Target Audiences
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {cleanedTargetAudiences.slice(0, 5).map((audience, i) => (
+              <div className={`flex flex-wrap gap-2 ${!hasTalkingPoints ? 'flex-1 content-start' : ''}`}>
+                {cleanedTargetAudiences.map((audience, i) => (
                   <Badge
                     key={i}
                     variant="secondary"
-                    className="px-3 py-1.5 text-sm"
+                    className="px-3 py-1.5 text-sm h-fit"
                   >
                     {audience}
                   </Badge>
@@ -302,10 +302,9 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
             </div>
           )}
 
-
           {/* Talking Points */}
           {hasTalkingPoints && (
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-3 flex-1">
               <h3 className="text-base font-semibold">Key Talking Points</h3>
               <ol className="space-y-1.5 text-sm text-muted-foreground">
                 {speaker.talking_points?.slice(0, 4).map((point, i) => (
