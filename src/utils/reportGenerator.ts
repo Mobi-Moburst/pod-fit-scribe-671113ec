@@ -992,19 +992,22 @@ function calculateSOVAnalysis(
   airtableRows: AirtableCSVRow[],
   sovRows: SOVCSVRow[] | null,
   competitorName: string | null,
-  manualCompetitors?: { name: string; role: string; count: number }[] | null
+  manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string }[] | null
 ): ReportData['sov_analysis'] {
   // Count client interviews from Airtable (only "podcast recording")
   const clientCount = airtableRows.filter(
     row => row.action.toLowerCase() === 'podcast recording'
   ).length;
 
-  let competitors: { name: string; interview_count: number }[] = [];
+  let competitors: { name: string; role?: string; peer_reason?: string; linkedin_url?: string; interview_count: number }[] = [];
 
   // Use manual input if provided
   if (manualCompetitors && manualCompetitors.length > 0) {
     competitors = manualCompetitors.map(c => ({
       name: c.name,
+      role: c.role,
+      peer_reason: c.peer_reason,
+      linkedin_url: c.linkedin_url,
       interview_count: c.count
     }));
   }

@@ -2,6 +2,7 @@ export interface Competitor {
   name: string;
   role: string;
   peer_reason: string;
+  linkedin_url?: string;
   interview_count?: number;
 }
 
