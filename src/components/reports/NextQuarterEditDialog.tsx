@@ -235,12 +235,12 @@ export function NextQuarterEditDialog({
             </div>
 
             {/* Talking Points Section - with tabs for multi-speaker */}
-            <div className="space-y-3">
+            <div className="space-y-3 pt-4 border-t border-border">
               <div className="flex items-center justify-between">
-                <Label>Talking Points Spotlight</Label>
+                <Label className="text-base font-semibold">Talking Points Spotlight</Label>
               </div>
               
-              <Tabs defaultValue="general" className="w-full">
+              <Tabs defaultValue="per-speaker" className="w-full">
                 <TabsList className="w-full">
                   <TabsTrigger value="general" className="flex-1">General</TabsTrigger>
                   <TabsTrigger value="per-speaker" className="flex-1">Per Speaker</TabsTrigger>
