@@ -17,6 +17,10 @@ interface NextQuarterData {
   strategic_focus_areas: FocusArea[];
   talking_points_spotlight: FocusArea[];
   closing_paragraph: string;
+  next_quarter_kpis?: {
+    high_impact_podcasts_goal: number;
+    listenership_goal: number;
+  };
 }
 
 interface NextQuarterEditDialogProps {
@@ -37,6 +41,8 @@ export function NextQuarterEditDialog({
   const [focusAreas, setFocusAreas] = useState<FocusArea[]>(data.strategic_focus_areas || []);
   const [talkingPoints, setTalkingPoints] = useState<FocusArea[]>(data.talking_points_spotlight || []);
   const [closingParagraph, setClosingParagraph] = useState(data.closing_paragraph);
+  const [highImpactGoal, setHighImpactGoal] = useState(data.next_quarter_kpis?.high_impact_podcasts_goal || 0);
+  const [listenershipGoal, setListenershipGoal] = useState(data.next_quarter_kpis?.listenership_goal || 0);
 
   const handleSave = () => {
     onSave({
@@ -45,6 +51,10 @@ export function NextQuarterEditDialog({
       strategic_focus_areas: focusAreas,
       talking_points_spotlight: talkingPoints,
       closing_paragraph: closingParagraph,
+      next_quarter_kpis: {
+        high_impact_podcasts_goal: highImpactGoal,
+        listenership_goal: listenershipGoal,
+      },
     });
     onOpenChange(false);
   };
@@ -182,6 +192,35 @@ export function NextQuarterEditDialog({
               rows={3}
             />
             <p className="text-xs text-muted-foreground">Supports formatting: **bold**, *italic*, - bullet points</p>
+          </div>
+
+          {/* Next Quarter KPIs */}
+          <div className="space-y-3 pt-4 border-t border-border">
+            <Label className="text-base font-semibold">Next Quarter Goals</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm">High-Impact Podcasts Goal</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={highImpactGoal}
+                  onChange={(e) => setHighImpactGoal(parseInt(e.target.value) || 0)}
+                  placeholder="e.g., 27"
+                />
+                <p className="text-xs text-muted-foreground">3 per speaker per month</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Listenership Goal</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={listenershipGoal}
+                  onChange={(e) => setListenershipGoal(parseInt(e.target.value) || 0)}
+                  placeholder="e.g., 1200000"
+                />
+                <p className="text-xs text-muted-foreground">20% boost over current quarter</p>
+              </div>
+            </div>
           </div>
         </div>
 

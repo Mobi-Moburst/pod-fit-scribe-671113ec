@@ -212,6 +212,11 @@ export interface ReportData {
       description: string;
     }>;
     closing_paragraph: string;
+    // Next Quarter KPIs
+    next_quarter_kpis?: {
+      high_impact_podcasts_goal: number; // 3 per speaker per month × 3 months
+      listenership_goal: number; // Current listenership × 1.2
+    };
   };
   
   // Content Gap Analysis (from Spotlight)

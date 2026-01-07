@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, X, Pencil } from "lucide-react";
+import { ArrowRight, X, Pencil, Target, TrendingUp } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface NextQuarterStrategyProps {
@@ -14,8 +14,19 @@ interface NextQuarterStrategyProps {
     description: string;
   }>;
   closing_paragraph: string;
+  next_quarter_kpis?: {
+    high_impact_podcasts_goal: number;
+    listenership_goal: number;
+  };
   onHide?: () => void;
   onEdit?: () => void;
+}
+
+// Format numbers with K/M suffix
+function formatNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+  return n.toLocaleString();
 }
 
 export function NextQuarterStrategy({
@@ -24,6 +35,7 @@ export function NextQuarterStrategy({
   strategic_focus_areas,
   talking_points_spotlight,
   closing_paragraph,
+  next_quarter_kpis,
   onHide,
   onEdit
 }: NextQuarterStrategyProps) {
@@ -99,6 +111,33 @@ export function NextQuarterStrategy({
         <div className="italic border-l-2 border-primary/30 pl-4">
           <MarkdownRenderer content={closing_paragraph} className="text-muted-foreground leading-relaxed" />
         </div>
+
+        {/* Next Quarter KPIs */}
+        {next_quarter_kpis && (next_quarter_kpis.high_impact_podcasts_goal > 0 || next_quarter_kpis.listenership_goal > 0) && (
+          <div className="space-y-3 pt-4 border-t border-border">
+            <h4 className="font-semibold text-foreground">Next Quarter Goals</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg">
+                <div className="p-2 bg-primary/20 rounded-full">
+                  <Target className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{next_quarter_kpis.high_impact_podcasts_goal}</p>
+                  <p className="text-xs text-muted-foreground">High-Impact Podcasts</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-4 bg-accent/10 rounded-lg">
+                <div className="p-2 bg-accent/20 rounded-full">
+                  <TrendingUp className="h-5 w-5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{formatNumber(next_quarter_kpis.listenership_goal)}</p>
+                  <p className="text-xs text-muted-foreground">Listenership Goal</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

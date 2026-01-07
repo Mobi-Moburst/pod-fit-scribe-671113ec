@@ -1851,6 +1851,7 @@ export default function Reports() {
                   strategic_focus_areas={reportData.next_quarter_strategy.strategic_focus_areas}
                   talking_points_spotlight={reportData.next_quarter_strategy.talking_points_spotlight}
                   closing_paragraph={reportData.next_quarter_strategy.closing_paragraph}
+                  next_quarter_kpis={reportData.next_quarter_strategy.next_quarter_kpis}
                   onHide={() => toggleSection('nextQuarterStrategy')}
                   onEdit={() => setNextQuarterEditOpen(true)}
                 />
