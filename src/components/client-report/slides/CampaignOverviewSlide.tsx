@@ -74,10 +74,10 @@ export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlid
           <h3 className="text-lg font-semibold text-muted-foreground text-center">Pitch Positioning & Core Hooks</h3>
           <div className={`grid gap-3 ${speakerCount === 1 ? 'grid-cols-1 max-w-xl mx-auto' : speakerCount === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
             {campaignOverview.pitch_hooks!.map((speakerHooks, speakerIndex) => (
-              <div key={speakerIndex} className="bg-card border border-border rounded-lg p-3 space-y-2 h-full">
-                <p className="text-sm font-semibold">{speakerHooks.speaker_name}</p>
-                <ul className="space-y-1">
-                  {speakerHooks.hooks.slice(0, hooksPerSpeaker).map((hook, hookIndex) => (
+              <div key={speakerIndex} className="bg-card border border-border rounded-lg p-3 space-y-2 h-full max-h-40 flex flex-col">
+                <p className="text-sm font-semibold flex-shrink-0">{speakerHooks.speaker_name}</p>
+                <ul className="space-y-1 overflow-y-auto flex-1 pr-1">
+                  {speakerHooks.hooks.map((hook, hookIndex) => (
                     <li key={hookIndex} className="flex items-start gap-2 text-muted-foreground">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary/40 mt-1.5 flex-shrink-0" />
                       <p className="text-xs leading-relaxed">{hook}</p>
