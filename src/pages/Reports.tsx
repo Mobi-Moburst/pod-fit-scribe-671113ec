@@ -28,11 +28,12 @@ import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
+import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
 import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { HighlightClip } from "@/types/reports";
 import HighlightUploadDialog from "@/components/reports/HighlightUploadDialog";
@@ -94,6 +95,7 @@ export default function Reports() {
   const [sovDialogOpen, setSOVDialogOpen] = useState(false);
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
+  const [socialValueDialogOpen, setSocialValueDialogOpen] = useState(false);
   const [highlightsDialogOpen, setHighlightsDialogOpen] = useState(false);
   const [campaignOverviewEditOpen, setCampaignOverviewEditOpen] = useState(false);
   const [nextQuarterEditOpen, setNextQuarterEditOpen] = useState(false);
@@ -114,6 +116,7 @@ export default function Reports() {
     sov: true,
     geoScore: true,
     contentGap: true,
+    socialValue: true,
     // Other Sections
     campaignOverview: true,
     airtableEmbed: true,
@@ -144,7 +147,7 @@ export default function Reports() {
   
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || 
     visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
-  const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || visibleSections.geoScore || visibleSections.contentGap;
+  const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || visibleSections.geoScore || visibleSections.contentGap || visibleSections.socialValue;
   
   const { toast } = useToast();
 
@@ -1651,6 +1654,7 @@ export default function Reports() {
                   { key: 'sov', label: 'Peer Comparison', visible: visibleSections.sov },
                   { key: 'geoScore', label: 'GEO', visible: visibleSections.geoScore },
                   { key: 'contentGap', label: 'Content Gap', visible: visibleSections.contentGap },
+                  { key: 'socialValue', label: 'Social Value', visible: visibleSections.socialValue },
                   { key: 'campaignOverview', label: 'Campaign Overview', visible: visibleSections.campaignOverview },
                   { key: 'airtableEmbed', label: 'Activity Tracking', visible: visibleSections.airtableEmbed },
                   { key: 'topCategories', label: 'Top Categories', visible: visibleSections.topCategories },
@@ -1796,6 +1800,26 @@ export default function Reports() {
                         icon={AlertTriangle}
                         onClick={reportData.content_gap_analysis ? () => setContentGapDialogOpen(true) : undefined}
                         onHide={() => toggleSection('contentGap')}
+                      />
+                    )}
+                    {visibleSections.socialValue && reportData.kpis.total_social_reach > 0 && (
+                      <KPICard
+                        title="Social Value"
+                        value={(() => {
+                          const totalSocialReach = reportData.kpis.total_social_reach;
+                          const cpmRates = { meta: 10.50, tiktok: 5.50, youtube: 4.50, linkedin: 60.00, x: 1.50 };
+                          const totalValue = Object.values(cpmRates).reduce(
+                            (sum, cpm) => sum + (totalSocialReach / 1000) * cpm,
+                            0
+                          );
+                          if (totalValue >= 1000000) return `$${(totalValue / 1000000).toFixed(1)}M`;
+                          if (totalValue >= 1000) return `$${(totalValue / 1000).toFixed(0)}K`;
+                          return `$${totalValue.toFixed(0)}`;
+                        })()}
+                        subtitle="Equivalent ad spend • Click to view breakdown"
+                        icon={Share2}
+                        onClick={() => setSocialValueDialogOpen(true)}
+                        onHide={() => toggleSection('socialValue')}
                       />
                     )}
                   </div>
@@ -1967,6 +1991,12 @@ export default function Reports() {
                 open={contentGapDialogOpen}
                 onOpenChange={setContentGapDialogOpen}
                 gapAnalysis={reportData.content_gap_analysis || null}
+              />
+              
+              <SocialValueDialog
+                open={socialValueDialogOpen}
+                onOpenChange={setSocialValueDialogOpen}
+                totalSocialReach={reportData.kpis.total_social_reach}
               />
               
               <ReachAnalysisDialog

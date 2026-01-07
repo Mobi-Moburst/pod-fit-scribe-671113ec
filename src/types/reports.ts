@@ -240,6 +240,17 @@ content_gap_csv_uploaded?: boolean;
 
 // Interview Highlights (video/audio clips from published interviews)
 highlight_clips?: HighlightClip[];
+
+// Social Value Analysis
+social_value_analysis?: {
+  total_social_value: number;
+  platform_breakdown: Array<{
+    platform: string;
+    cpm: number;
+    value: number;
+    percentage: number;
+  }>;
+};
 }
 
 // Highlight clip for interview showcase

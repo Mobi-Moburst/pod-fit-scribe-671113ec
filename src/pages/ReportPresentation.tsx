@@ -22,6 +22,7 @@ import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
+import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
 import { AirtableDialog } from "@/components/client-report/AirtableDialog";
 
 interface VisibleSections {
@@ -34,6 +35,7 @@ interface VisibleSections {
   sov?: boolean;
   geoScore?: boolean;
   contentGap?: boolean;
+  socialValue?: boolean;
   campaignOverview?: boolean;
   topCategories?: boolean;
   nextQuarterStrategy?: boolean;
@@ -64,6 +66,7 @@ export default function ReportPresentation() {
   const [sovDialogOpen, setSovDialogOpen] = useState(false);
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
+  const [socialValueDialogOpen, setSocialValueDialogOpen] = useState(false);
   const [airtableDialogOpen, setAirtableDialogOpen] = useState(false);
   const [selectedSpeakerAirtable, setSelectedSpeakerAirtable] = useState<{
     url: string;
@@ -145,6 +148,7 @@ export default function ReportPresentation() {
         sov: !!reportData.sov_analysis,
         geoScore: !!reportData.geo_analysis,
         contentGap: !!reportData.content_gap_analysis,
+        socialValue: (reportData.kpis?.total_social_reach || 0) > 0,
       };
 
       setVisibleSections(reportData.visibleSections || dataAwareDefaults);
@@ -200,7 +204,7 @@ export default function ReportPresentation() {
 
     // Additional Value Metrics slide
     const hasAdditionalMetrics = visibleSections.emv || visibleSections.sov || 
-      visibleSections.geoScore || visibleSections.contentGap;
+      visibleSections.geoScore || visibleSections.contentGap || visibleSections.socialValue;
     if (hasAdditionalMetrics) {
       slides.push({
         id: "additional-metrics",
@@ -212,6 +216,7 @@ export default function ReportPresentation() {
             onSovClick={() => setSovDialogOpen(true)}
             onGeoClick={() => setGeoDialogOpen(true)}
             onContentGapClick={() => setContentGapDialogOpen(true)}
+            onSocialValueClick={() => setSocialValueDialogOpen(true)}
           />
         ),
       });
@@ -418,6 +423,11 @@ export default function ReportPresentation() {
         open={contentGapDialogOpen}
         onOpenChange={setContentGapDialogOpen}
         gapAnalysis={reportData?.content_gap_analysis || null}
+      />
+      <SocialValueDialog
+        open={socialValueDialogOpen}
+        onOpenChange={setSocialValueDialogOpen}
+        totalSocialReach={reportData?.kpis?.total_social_reach || 0}
       />
       {selectedSpeakerAirtable && (
         <AirtableDialog

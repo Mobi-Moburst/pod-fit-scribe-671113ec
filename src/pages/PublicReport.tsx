@@ -22,6 +22,7 @@ import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
+import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
 
 interface VisibleSections {
   totalBooked?: boolean;
@@ -33,6 +34,7 @@ interface VisibleSections {
   sov?: boolean;
   geoScore?: boolean;
   contentGap?: boolean;
+  socialValue?: boolean;
   campaignOverview?: boolean;
   topCategories?: boolean;
   nextQuarterStrategy?: boolean;
@@ -57,6 +59,7 @@ export default function PublicReport() {
   const [sovDialogOpen, setSovDialogOpen] = useState(false);
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
+  const [socialValueDialogOpen, setSocialValueDialogOpen] = useState(false);
 
   // Add cache-control meta tags to prevent browser caching
   useEffect(() => {
@@ -159,6 +162,7 @@ export default function PublicReport() {
         sov: !!reportData.sov_analysis,
         geoScore: !!reportData.geo_analysis,
         contentGap: !!reportData.content_gap_analysis,
+        socialValue: (reportData.kpis?.total_social_reach || 0) > 0,
       };
       
       setVisibleSections(reportData.visibleSections || dataAwareDefaults);
@@ -209,7 +213,7 @@ export default function PublicReport() {
     visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
 
   const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || 
-    visibleSections.geoScore || visibleSections.contentGap;
+    visibleSections.geoScore || visibleSections.contentGap || visibleSections.socialValue;
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -253,6 +257,7 @@ export default function PublicReport() {
             onSovClick={() => setSovDialogOpen(true)}
             onGeoClick={() => setGeoDialogOpen(true)}
             onContentGapClick={() => setContentGapDialogOpen(true)}
+            onSocialValueClick={() => setSocialValueDialogOpen(true)}
           />
         )}
 
@@ -346,6 +351,11 @@ export default function PublicReport() {
         open={contentGapDialogOpen}
         onOpenChange={setContentGapDialogOpen}
         gapAnalysis={reportData.content_gap_analysis}
+      />
+      <SocialValueDialog
+        open={socialValueDialogOpen}
+        onOpenChange={setSocialValueDialogOpen}
+        totalSocialReach={reportData.kpis?.total_social_reach || 0}
       />
     </div>
   );
