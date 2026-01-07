@@ -21,8 +21,12 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
   const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
 
-  // Calculate the actual next quarter from the strategy's quarter (which is the current report quarter)
-  const nextQuarterLabel = getNextQuarter(strategy.quarter);
+  // Determine if strategy.quarter is the current quarter or already the next quarter
+  // by checking if the intro paragraph mentions the stored quarter (meaning it's already next)
+  const storedQuarter = strategy.quarter;
+  const introMentionsStoredQuarter = strategy.intro_paragraph?.includes(storedQuarter);
+  // If intro mentions the stored quarter, it's already the next quarter; otherwise calculate it
+  const nextQuarterLabel = introMentionsStoredQuarter ? storedQuarter : getNextQuarter(storedQuarter);
 
   return (
     <>
