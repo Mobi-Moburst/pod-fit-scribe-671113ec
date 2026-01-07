@@ -63,22 +63,22 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
           {/* Talking Points Spotlight */}
           {((strategy.talking_points_spotlight && strategy.talking_points_spotlight.length > 0) ||
             (strategy.speaker_talking_points_spotlight && strategy.speaker_talking_points_spotlight.length > 0)) && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-accent" />
+            <div className="space-y-4">
+              <h3 className="text-base font-medium flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-accent" />
                 Talking Points Spotlight
               </h3>
               
               {/* General Talking Points */}
               {strategy.talking_points_spotlight && strategy.talking_points_spotlight.length > 0 && (
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2">
                   {strategy.talking_points_spotlight.map((point, index) => (
                     <div 
                       key={index}
-                      className="bg-muted/50 rounded-xl p-4 space-y-2"
+                      className="bg-muted/50 rounded-lg p-3"
                     >
-                      <h4 className="font-medium">{point.title}</h4>
-                      <MarkdownRenderer content={point.description} className="text-sm text-muted-foreground" />
+                      <h4 className="font-medium text-sm mb-1">{point.title}</h4>
+                      <MarkdownRenderer content={point.description} className="text-xs text-muted-foreground leading-snug" />
                     </div>
                   ))}
                 </div>
@@ -86,18 +86,21 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
               
               {/* Per-Speaker Talking Points */}
               {strategy.speaker_talking_points_spotlight && strategy.speaker_talking_points_spotlight.length > 0 && (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {strategy.speaker_talking_points_spotlight.map((speaker, speakerIndex) => (
-                    <div key={speakerIndex} className="space-y-3">
-                      <h4 className="font-medium text-primary">{speaker.speaker_name}</h4>
-                      <div className="grid gap-4 md:grid-cols-2">
+                    <div key={speakerIndex} className="space-y-2">
+                      <h4 className="font-medium text-sm text-primary flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        {speaker.speaker_name}
+                      </h4>
+                      <div className="grid gap-3 md:grid-cols-2">
                         {speaker.points.map((point, pointIndex) => (
                           <div 
                             key={pointIndex}
-                            className="bg-muted/50 rounded-xl p-4 space-y-2"
+                            className="bg-muted/50 rounded-lg p-3"
                           >
-                            <h4 className="font-medium">{point.title}</h4>
-                            <MarkdownRenderer content={point.description} className="text-sm text-muted-foreground" />
+                            <h4 className="font-medium text-sm mb-1">{point.title}</h4>
+                            <MarkdownRenderer content={point.description} className="text-xs text-muted-foreground leading-snug" />
                           </div>
                         ))}
                       </div>
