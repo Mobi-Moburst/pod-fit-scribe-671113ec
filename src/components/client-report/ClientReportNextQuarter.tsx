@@ -21,8 +21,11 @@ export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterPro
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
   const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
 
-  // quarter stores the CURRENT quarter (e.g., "Q4 2025"), always calculate next quarter for display
-  const nextQuarterLabel = getNextQuarter(strategy.quarter);
+  // Detect if quarter is already the "next" quarter (old format) or current quarter (new format)
+  // Old format: intro says "As we move into Q1 2026" and quarter="Q1 2026"
+  // New format: intro says "As we move into Q1 2026" and quarter="Q4 2025"
+  const introMentionsMovingIntoQuarter = strategy.intro_paragraph?.includes(`into ${strategy.quarter}`);
+  const nextQuarterLabel = introMentionsMovingIntoQuarter ? strategy.quarter : getNextQuarter(strategy.quarter);
 
   return (
     <>
