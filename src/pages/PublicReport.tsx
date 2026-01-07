@@ -109,7 +109,8 @@ export default function PublicReport() {
       if (reportData.next_quarter_strategy) {
         const speakerBreakdowns = reportData.speaker_breakdowns || [];
         const speakerCount = speakerBreakdowns.length || 1;
-        const currentListenership = reportData.kpis?.total_reach || 0;
+        const currentTotalReach = reportData.kpis?.total_reach || 0;
+        const currentListenersPerEpisode = reportData.kpis?.total_listeners_per_episode || 0;
         
         // Build speaker breakdown array
         const speakerBreakdownArray = speakerBreakdowns.length > 0
@@ -119,16 +120,17 @@ export default function PublicReport() {
         const existingKpis = reportData.next_quarter_strategy.next_quarter_kpis;
         
         // Only update if missing or if speaker_breakdown is missing
-        if (!existingKpis || !existingKpis.speaker_breakdown) {
+        if (!existingKpis || !existingKpis.speaker_breakdown || !existingKpis.current_listeners_per_episode) {
           reportData = {
             ...reportData,
             next_quarter_strategy: {
               ...reportData.next_quarter_strategy,
               next_quarter_kpis: {
                 high_impact_podcasts_goal: existingKpis?.high_impact_podcasts_goal || (3 * speakerCount * 3),
-                listenership_goal: existingKpis?.listenership_goal || Math.ceil(currentListenership * 1.2),
+                listenership_goal: existingKpis?.listenership_goal || Math.ceil(currentListenersPerEpisode * 1.2),
                 speaker_breakdown: speakerBreakdownArray,
-                current_total_reach: currentListenership,
+                current_total_reach: currentTotalReach,
+                current_listeners_per_episode: currentListenersPerEpisode,
               },
             },
           };
