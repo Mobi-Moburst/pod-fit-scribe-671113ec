@@ -39,8 +39,9 @@ export function TargetPodcastsSection({
   const [coverArtCache, setCoverArtCache] = useState<Record<string, string>>({});
   const { toast } = useToast();
   
-  // Calculate next quarter for display
-  const nextQuarterLabel = getNextQuarter(nextQuarterStrategy.quarter);
+  // Detect if quarter is already the "next" quarter (old format) or current quarter (new format)
+  const introMentionsMovingIntoQuarter = nextQuarterStrategy.intro_paragraph?.includes(`into ${nextQuarterStrategy.quarter}`);
+  const nextQuarterLabel = introMentionsMovingIntoQuarter ? nextQuarterStrategy.quarter : getNextQuarter(nextQuarterStrategy.quarter);
 
   // Fetch cover art for podcasts
   useEffect(() => {

@@ -60,8 +60,12 @@ export function NextQuarterStrategy({
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
   const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
 
-  // quarter stores the CURRENT quarter (e.g., "Q4 2025"), always calculate next quarter for display
-  const nextQuarterLabel = getNextQuarter(quarter);
+  // Detect if quarter is already the "next" quarter (old format) or current quarter (new format)
+  // Old format: intro says "As we move into Q1 2026" and quarter="Q1 2026" 
+  // New format: intro says "As we move into Q1 2026" and quarter="Q4 2025"
+  // Check if intro mentions moving into the stored quarter value
+  const introMentionsMovingIntoQuarter = intro_paragraph?.includes(`into ${quarter}`);
+  const nextQuarterLabel = introMentionsMovingIntoQuarter ? quarter : getNextQuarter(quarter);
 
   return (
     <>
