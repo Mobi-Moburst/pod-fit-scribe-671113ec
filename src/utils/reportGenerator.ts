@@ -1913,6 +1913,12 @@ interface UpdatedCSVData {
 
 type CSVType = 'batch' | 'airtable' | 'sov' | 'geo' | 'content_gap' | 'rephonic';
 
+// Minimal client info needed for AI categorization during CSV updates
+interface UpdateClientInfo {
+  target_audiences?: string[];
+  company_name?: string;
+}
+
 /**
  * Merge updated CSV data into an existing report, preserving manually edited fields.
  * Only recalculates data for the CSV types that were updated.
@@ -1921,7 +1927,8 @@ export async function mergeUpdatedReportData(
   existingReport: ReportData,
   newData: UpdatedCSVData,
   updatedCSVTypes: CSVType[],
-  dateRangeOverride?: { start: Date; end: Date }
+  dateRangeOverride?: { start: Date; end: Date },
+  clientInfo?: UpdateClientInfo
 ): Promise<ReportData> {
   // Clone the existing report to avoid mutation
   const updatedReport = JSON.parse(JSON.stringify(existingReport)) as ReportData;
@@ -1965,15 +1972,29 @@ export async function mergeUpdatedReportData(
       // Recalculate KPIs
       const newKpis = calculateEnhancedKPIs(newData.batchData, newData.airtableData, podcastsWithEMV, dateRange);
       
-      // Preserve existing AI-generated categories if:
-      // 1. They already have podcast details (from calculateCategoriesFromBookedPodcasts), OR
-      // 2. New categories are empty
-      // The AI-categorization uses client/target_audiences which we don't have access to here
-      const existingHasPodcastDetails = existingReport.kpis.top_categories.some(
-        cat => cat.podcasts && cat.podcasts.length > 0
-      );
-      if (existingHasPodcastDetails || newKpis.top_categories.length === 0) {
-        newKpis.top_categories = existingReport.kpis.top_categories;
+      // Re-run AI categorization if we have client info and airtable data
+      // This ensures categories with podcast details are regenerated on CSV update
+      if (clientInfo && newData.airtableData && newData.airtableData.length > 0) {
+        console.log('[mergeUpdatedReportData] Re-running AI categorization with client info');
+        const accurateCategories = await calculateCategoriesFromBookedPodcasts(
+          newData.airtableData,
+          dateRange,
+          clientInfo.target_audiences || [],
+          clientInfo.company_name
+        );
+        if (accurateCategories.length > 0) {
+          newKpis.top_categories = accurateCategories;
+        }
+      } else {
+        // Preserve existing AI-generated categories if:
+        // 1. They already have podcast details (from calculateCategoriesFromBookedPodcasts), OR
+        // 2. New categories are empty
+        const existingHasPodcastDetails = existingReport.kpis.top_categories.some(
+          cat => cat.podcasts && cat.podcasts.length > 0
+        );
+        if (existingHasPodcastDetails || newKpis.top_categories.length === 0) {
+          newKpis.top_categories = existingReport.kpis.top_categories;
+        }
       }
       
       updatedReport.kpis = newKpis;

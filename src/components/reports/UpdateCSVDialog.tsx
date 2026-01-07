@@ -228,6 +228,13 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
         updatedCSVTypes.push('rephonic');
       }
 
+      // Extract client info from existing report for AI categorization
+      const clientInfo = {
+        target_audiences: existingReportData.client?.target_audiences || 
+          existingReportData.campaign_overview?.target_audiences || [],
+        company_name: existingReportData.company_name || existingReportData.client?.company || undefined,
+      };
+
       // Merge the updated data with existing report
       const updatedReportData = await mergeUpdatedReportData(
         existingReportData,
@@ -240,7 +247,8 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
           rephonicData: newRephonicData,
         },
         updatedCSVTypes,
-        { start: dateRangeStart, end: dateRangeEnd }
+        { start: dateRangeStart, end: dateRangeEnd },
+        clientInfo
       );
 
       // Save to database
