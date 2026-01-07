@@ -992,12 +992,24 @@ function calculateSOVAnalysis(
   airtableRows: AirtableCSVRow[],
   sovRows: SOVCSVRow[] | null,
   competitorName: string | null,
-  manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string }[] | null
+  manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string }[] | null,
+  dateRange?: { start: Date; end: Date }
 ): ReportData['sov_analysis'] {
-  // Count client interviews from Airtable (only "podcast recording")
-  const clientCount = airtableRows.filter(
-    row => row.action.toLowerCase() === 'podcast recording'
-  ).length;
+  // Count client interviews from Airtable (only "podcast recording" booked within date range)
+  const clientCount = airtableRows.filter(row => {
+    const isPodcastRecording = row.action?.toLowerCase().includes('podcast recording');
+    if (!isPodcastRecording) return false;
+    
+    // If date range provided, filter by date_booked within range
+    if (dateRange) {
+      if (!row.date_booked || row.date_booked.trim() === '') return false;
+      const bookedDate = parseAirtableDate(row.date_booked);
+      if (!bookedDate) return false;
+      return bookedDate >= dateRange.start && bookedDate <= dateRange.end;
+    }
+    
+    return true;
+  }).length;
 
   let competitors: { name: string; role?: string; peer_reason?: string; linkedin_url?: string; interview_count: number }[] = [];
 
@@ -1344,7 +1356,7 @@ export async function generateReportFromMultipleCSVs(
   
   // Step 5: Calculate SOV if provided (either CSV or manual)
   const sov_analysis = (sovRows || manualSOVCompetitors)
-    ? calculateSOVAnalysis(airtableRows, sovRows, sovCompetitorName, manualSOVCompetitors)
+    ? calculateSOVAnalysis(airtableRows, sovRows, sovCompetitorName, manualSOVCompetitors, dateRange)
     : undefined;
   
   // Step 6: Calculate GEO if provided
@@ -1634,7 +1646,7 @@ export async function generateMultiSpeakerReport(
   
   // Calculate company-level SOV
   const sov_analysis = (sovRows || manualSOVCompetitors)
-    ? calculateSOVAnalysis(allAirtableRows, sovRows, null, manualSOVCompetitors)
+    ? calculateSOVAnalysis(allAirtableRows, sovRows, null, manualSOVCompetitors, dateRange)
     : undefined;
   
   // Calculate company-level GEO
@@ -1950,7 +1962,8 @@ export async function mergeUpdatedReportData(
           newData.airtableData,
           newData.sovData || null,
           null,
-          null
+          null,
+          dateRange
         );
         if (sovAnalysis) {
           updatedReport.sov_analysis = sovAnalysis;
@@ -2013,7 +2026,7 @@ export async function mergeUpdatedReportData(
   if (updatedCSVTypes.includes('sov') && newData.sovData) {
     // Need airtable data for client interview count
     const airtableRows = newData.airtableData || [];
-    const sovAnalysis = calculateSOVAnalysis(airtableRows, newData.sovData, null, null);
+    const sovAnalysis = calculateSOVAnalysis(airtableRows, newData.sovData, null, null, dateRange);
     if (sovAnalysis) {
       updatedReport.sov_analysis = sovAnalysis;
       updatedReport.kpis.sov_percentage = sovAnalysis.client_percentage;
