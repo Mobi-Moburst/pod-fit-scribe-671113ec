@@ -53,16 +53,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const body = (await req.json()) as FixPayload;
-    const targetReportId = body?.targetReportId?.trim();
-    const sourceReportId = body?.sourceReportId?.trim();
-
-    if (!targetReportId || !sourceReportId) {
-      return new Response(JSON.stringify({ error: "targetReportId and sourceReportId are required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: { persistSession: false },
