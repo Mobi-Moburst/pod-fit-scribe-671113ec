@@ -1965,8 +1965,14 @@ export async function mergeUpdatedReportData(
       // Recalculate KPIs
       const newKpis = calculateEnhancedKPIs(newData.batchData, newData.airtableData, podcastsWithEMV, dateRange);
       
-      // Preserve existing categories if they were AI-generated and new ones would be empty
-      if (newKpis.top_categories.length === 0 && existingReport.kpis.top_categories.length > 0) {
+      // Preserve existing AI-generated categories if:
+      // 1. They already have podcast details (from calculateCategoriesFromBookedPodcasts), OR
+      // 2. New categories are empty
+      // The AI-categorization uses client/target_audiences which we don't have access to here
+      const existingHasPodcastDetails = existingReport.kpis.top_categories.some(
+        cat => cat.podcasts && cat.podcasts.length > 0
+      );
+      if (existingHasPodcastDetails || newKpis.top_categories.length === 0) {
         newKpis.top_categories = existingReport.kpis.top_categories;
       }
       
