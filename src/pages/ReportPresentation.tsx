@@ -23,6 +23,7 @@ import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { AirtableDialog } from "@/components/client-report/AirtableDialog";
+import { migrateNextQuarterKpis } from "@/utils/nextQuarterKpis";
 
 interface VisibleSections {
   totalBooked?: boolean;
@@ -97,39 +98,24 @@ export default function ReportPresentation() {
       if (reportData.next_quarter_strategy) {
         const speakerBreakdowns = reportData.speaker_breakdowns || [];
         const speakerCount = speakerBreakdowns.length || 1;
+        const speakerNames = speakerBreakdowns.length > 0
+          ? speakerBreakdowns.map(s => s.speaker_name)
+          : [reportData.client?.name || 'Speaker'];
 
-        const monthlyListenersPerEpisode = reportData.kpis?.total_listeners_per_episode || 0;
-        const currentAnnualListenership = monthlyListenersPerEpisode * 12;
-        const correctListenershipGoal = Math.round(currentAnnualListenership * 1.2);
+        const migratedKpis = migrateNextQuarterKpis(
+          reportData.next_quarter_strategy.next_quarter_kpis,
+          reportData.kpis,
+          speakerCount,
+          speakerNames
+        );
 
-        // Build speaker breakdown array
-        const speakerBreakdownArray = speakerBreakdowns.length > 0
-          ? speakerBreakdowns.map(s => ({ speaker_name: s.speaker_name, goal: 9 }))
-          : [{ speaker_name: reportData.client?.name || 'Speaker', goal: 9 }];
-
-        const existingKpis = reportData.next_quarter_strategy.next_quarter_kpis;
-
-        // ALWAYS recalculate if current_total_reach doesn't match the expected annual listenership
-        // This ensures the goal is always 20% higher than current quarter's annual listenership
-        const shouldRecalculate =
-          !existingKpis ||
-          !existingKpis.speaker_breakdown ||
-          (currentAnnualListenership > 0 && existingKpis.current_total_reach !== currentAnnualListenership);
-
-        if (shouldRecalculate) {
-          reportData = {
-            ...reportData,
-            next_quarter_strategy: {
-              ...reportData.next_quarter_strategy,
-              next_quarter_kpis: {
-                high_impact_podcasts_goal: existingKpis?.high_impact_podcasts_goal || (3 * speakerCount * 3),
-                listenership_goal: correctListenershipGoal,
-                speaker_breakdown: speakerBreakdownArray,
-                current_total_reach: currentAnnualListenership,
-              },
-            },
-          };
-        }
+        reportData = {
+          ...reportData,
+          next_quarter_strategy: {
+            ...reportData.next_quarter_strategy,
+            next_quarter_kpis: migratedKpis,
+          },
+        };
       }
 
       setReportData(reportData);
