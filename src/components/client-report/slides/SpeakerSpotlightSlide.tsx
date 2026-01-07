@@ -1,8 +1,15 @@
 import { SpeakerBreakdown, HighlightClip } from "@/types/reports";
-import { Calendar, Podcast, Users, TrendingUp, ExternalLink, Play, Video, Headphones, Clock } from "lucide-react";
+import { Calendar, Podcast, Users, TrendingUp, ExternalLink, Play, Video, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel";
 
 interface VisibleSections {
   totalBooked?: boolean;
@@ -348,38 +355,70 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
         </button>
       )}
 
-      {/* Interview Highlights Section */}
+      {/* Interview Highlights Carousel */}
       {highlightClips.length > 0 && (
-        <div className="space-y-4 pt-4">
-          <h3 className="text-xl font-semibold flex items-center gap-2">
-            <Video className="h-5 w-5 text-primary" />
-            Interview Highlights
-          </h3>
-          <div className={`grid gap-4 ${
-            highlightClips.length === 1 
-              ? "grid-cols-1 max-w-2xl mx-auto" 
-              : "grid-cols-1 md:grid-cols-2"
-          }`}>
-            {highlightClips.map((clip) => (
-              <div
-                key={clip.id}
-                className="bg-card border border-border rounded-2xl overflow-hidden"
-              >
-                {/* Video/Audio Embed */}
-                <div className={`bg-muted relative ${
-                  highlightClips.length === 1 ? "aspect-video" : "aspect-[16/10]"
-                }`}>
-                  <ClipMediaPlayer clip={clip} />
-                </div>
-                {/* Clip Info */}
-                <div className="p-4 space-y-1">
-                  <h4 className="font-semibold line-clamp-1">{clip.title}</h4>
-                  {clip.podcast_name && (
-                    <p className="text-sm text-muted-foreground line-clamp-1">{clip.podcast_name}</p>
-                  )}
-                </div>
-              </div>
-            ))}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Video className="h-4 w-4 text-primary" />
+              Interview Highlights
+            </h3>
+            <span className="text-xs text-muted-foreground">
+              {highlightClips.length} clip{highlightClips.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          
+          <div className="px-8">
+            <Carousel
+              opts={{
+                align: "start",
+                loop: highlightClips.length > 2,
+              }}
+              className="w-full"
+            >
+              <CarouselContent className="-ml-3">
+                {highlightClips.map((clip) => (
+                  <CarouselItem 
+                    key={clip.id} 
+                    className={`pl-3 ${
+                      highlightClips.length === 1 
+                        ? "basis-full" 
+                        : highlightClips.length === 2 
+                          ? "basis-1/2" 
+                          : "basis-1/2 lg:basis-1/3"
+                    }`}
+                  >
+                    <div className="bg-muted/50 border border-border/50 rounded-xl overflow-hidden h-full">
+                      <div className="aspect-video bg-black relative">
+                        <ClipMediaPlayer clip={clip} />
+                      </div>
+                      <div className="p-3 space-y-1">
+                        <h4 className="font-medium text-sm line-clamp-1">{clip.title}</h4>
+                        {clip.podcast_name && (
+                          <p className="text-xs text-muted-foreground line-clamp-1">{clip.podcast_name}</p>
+                        )}
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+                            {clip.media_type}
+                          </span>
+                          {clip.duration_seconds && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {Math.floor(clip.duration_seconds / 60)}:{String(clip.duration_seconds % 60).padStart(2, '0')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              {highlightClips.length > 2 && (
+                <>
+                  <CarouselPrevious className="-left-6 h-7 w-7" />
+                  <CarouselNext className="-right-6 h-7 w-7" />
+                </>
+              )}
+            </Carousel>
           </div>
         </div>
       )}
