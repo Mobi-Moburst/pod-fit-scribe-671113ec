@@ -41,7 +41,7 @@ export function CampaignOverviewEditDialog({
   const [pitchHooks, setPitchHooks] = useState<PitchHook[]>(data.pitch_hooks || []);
   const [newHookInputs, setNewHookInputs] = useState<{ [key: number]: string }>({});
 
-  // Re-sync local state when dialog opens or data changes
+  // Re-sync local state when dialog opens
   useEffect(() => {
     if (open) {
       setStrategy(data.strategy);
@@ -52,7 +52,8 @@ export function CampaignOverviewEditDialog({
       setNewTalkingPoint("");
       setNewHookInputs({});
     }
-  }, [open, data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleSave = () => {
     onSave({
