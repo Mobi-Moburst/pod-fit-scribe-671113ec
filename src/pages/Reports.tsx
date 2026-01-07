@@ -990,40 +990,20 @@ export default function Reports() {
   // Update report with next quarter strategy edits (works for both saved and unsaved reports)
   const updateReportNextQuarterStrategy = async (strategy: NonNullable<ReportData["next_quarter_strategy"]>) => {
     if (!reportData) return;
-
-    // Always update local state immediately
-    const optimisticReportData = { ...reportData, next_quarter_strategy: strategy, visibleSections };
-    setReportData(optimisticReportData);
-
+    
+    const updatedReportData = { ...reportData, next_quarter_strategy: strategy, visibleSections };
+    setReportData(updatedReportData);
+    
     // Only save to database if report is already saved
     if (currentReportId) {
       try {
-        // Fetch fresh report_data to avoid overwriting other fields with stale local state
-        const { data: freshReport, error: fetchError } = await supabase
-          .from('reports')
-          .select('report_data')
-          .eq('id', currentReportId)
-          .single();
-
-        if (fetchError) throw fetchError;
-
-        const freshReportData = freshReport.report_data as unknown as ReportData;
-        const updatedReportData = {
-          ...freshReportData,
-          next_quarter_strategy: strategy,
-          visibleSections,
-        };
-
-        // Keep local state aligned with what we persist
-        setReportData(updatedReportData);
-
         const { error } = await supabase
           .from('reports')
           .update({ report_data: updatedReportData as any })
           .eq('id', currentReportId);
-
+        
         if (error) throw error;
-
+        
         toast({
           title: "Looking ahead saved",
           description: "Next quarter strategy updated successfully.",
