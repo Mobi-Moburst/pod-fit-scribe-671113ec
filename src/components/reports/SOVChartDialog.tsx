@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/popover";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { ReportData } from '@/types/reports';
-import { Linkedin, ExternalLink } from 'lucide-react';
+import { Linkedin, ExternalLink, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
@@ -21,6 +21,9 @@ interface SOVChartDialogProps {
   onOpenChange: (open: boolean) => void;
   sovAnalysis: ReportData['sov_analysis'];
   clientName?: string;
+  dateRange?: { start: string; end: string };
+  podcasts?: ReportData['podcasts'];
+  onRefresh?: (updatedSOV: ReportData['sov_analysis']) => Promise<void>;
 }
 
 // Custom tooltip
@@ -87,10 +90,66 @@ const CompetitorInfoCard = ({ competitor }: { competitor: { name: string; role?:
   );
 };
 
-export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName }: SOVChartDialogProps) => {
+export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, dateRange, podcasts, onRefresh }: SOVChartDialogProps) => {
   const [activeCompetitor, setActiveCompetitor] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   if (!sovAnalysis) return null;
+
+  // Calculate client interview count from podcasts within date range
+  const handleRefreshSOV = async () => {
+    if (!podcasts || !dateRange || !onRefresh) return;
+    
+    setIsRefreshing(true);
+    try {
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+      
+      // Count podcasts with action containing 'podcast recording' and date_booked within range
+      const clientCount = podcasts.filter(podcast => {
+        const isPodcastRecording = podcast.action?.toLowerCase().includes('podcast recording');
+        if (!isPodcastRecording) return false;
+        
+        if (!podcast.date_booked || podcast.date_booked.trim() === '') return false;
+        
+        // Parse date_booked (could be MM/DD/YYYY or YYYY-MM-DD format)
+        let bookedDate: Date | null = null;
+        const dateStr = podcast.date_booked.trim();
+        
+        if (dateStr.includes('/')) {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            const month = parseInt(parts[0]) - 1;
+            const day = parseInt(parts[1]);
+            const year = parseInt(parts[2]);
+            bookedDate = new Date(year, month, day);
+          }
+        } else if (dateStr.includes('-')) {
+          bookedDate = new Date(dateStr);
+        }
+        
+        if (!bookedDate || isNaN(bookedDate.getTime())) return false;
+        return bookedDate >= startDate && bookedDate <= endDate;
+      }).length;
+      
+      // Recalculate total and percentage
+      const competitorTotal = sovAnalysis.competitors.reduce((sum, c) => sum + c.interview_count, 0);
+      const totalInterviews = clientCount + competitorTotal;
+      const clientPercentage = totalInterviews > 0 ? Math.round((clientCount / totalInterviews) * 100) : 0;
+      
+      const updatedSOV: ReportData['sov_analysis'] = {
+        ...sovAnalysis,
+        client_interview_count: clientCount,
+        client_percentage: clientPercentage
+      };
+      
+      await onRefresh(updatedSOV);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const canRefresh = podcasts && dateRange && onRefresh;
 
   // Vibrant, distinct colors that work on dark backgrounds
   const competitorColors = [
@@ -215,7 +274,21 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">Peer Comparison Analysis</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-xl">Peer Comparison Analysis</DialogTitle>
+            {canRefresh && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRefreshSOV}
+                disabled={isRefreshing}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh SOV'}
+              </Button>
+            )}
+          </div>
           <DialogDescription className="text-base">
             <span className="text-primary font-semibold">{clientName || 'Your client'}</span> represents{' '}
             <span className="text-primary font-bold">{sovAnalysis.client_percentage}%</span> of 
