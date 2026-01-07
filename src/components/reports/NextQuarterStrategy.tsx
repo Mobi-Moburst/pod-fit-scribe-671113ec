@@ -16,6 +16,13 @@ interface NextQuarterStrategyProps {
     title: string;
     description: string;
   }>;
+  speaker_talking_points_spotlight?: Array<{
+    speaker_name: string;
+    points: Array<{
+      title: string;
+      description: string;
+    }>;
+  }>;
   closing_paragraph: string;
   next_quarter_kpis?: {
     high_impact_podcasts_goal: number;
@@ -43,6 +50,7 @@ export function NextQuarterStrategy({
   intro_paragraph,
   strategic_focus_areas,
   talking_points_spotlight,
+  speaker_talking_points_spotlight,
   closing_paragraph,
   next_quarter_kpis,
   onHide,
@@ -106,20 +114,46 @@ export function NextQuarterStrategy({
           )}
 
           {/* Talking Points to Spotlight */}
-          {talking_points_spotlight.length > 0 && (
-            <div className="space-y-3">
+          {(talking_points_spotlight.length > 0 || (speaker_talking_points_spotlight && speaker_talking_points_spotlight.length > 0)) && (
+            <div className="space-y-4">
               <h4 className="font-semibold text-foreground">Talking Points to Spotlight</h4>
-              <ul className="space-y-3">
-                {talking_points_spotlight.map((point, idx) => (
-                  <li key={idx} className="flex gap-2">
-                    <span className="text-accent font-bold">•</span>
-                    <div>
-                      <span className="font-semibold text-foreground">{point.title}:</span>{' '}
-                      <MarkdownRenderer content={point.description} className="text-muted-foreground inline" />
+              
+              {/* General Talking Points */}
+              {talking_points_spotlight.length > 0 && (
+                <ul className="space-y-3">
+                  {talking_points_spotlight.map((point, idx) => (
+                    <li key={idx} className="flex gap-2">
+                      <span className="text-accent font-bold">•</span>
+                      <div>
+                        <span className="font-semibold text-foreground">{point.title}:</span>{' '}
+                        <MarkdownRenderer content={point.description} className="text-muted-foreground inline" />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              
+              {/* Per-Speaker Talking Points */}
+              {speaker_talking_points_spotlight && speaker_talking_points_spotlight.length > 0 && (
+                <div className="space-y-4">
+                  {speaker_talking_points_spotlight.map((speaker, speakerIdx) => (
+                    <div key={speakerIdx} className="space-y-2">
+                      <h5 className="font-medium text-primary text-sm">{speaker.speaker_name}</h5>
+                      <ul className="space-y-2 pl-4">
+                        {speaker.points.map((point, pointIdx) => (
+                          <li key={pointIdx} className="flex gap-2">
+                            <span className="text-accent font-bold">•</span>
+                            <div>
+                              <span className="font-semibold text-foreground">{point.title}:</span>{' '}
+                              <MarkdownRenderer content={point.description} className="text-muted-foreground inline" />
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  </li>
-                ))}
-              </ul>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

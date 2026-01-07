@@ -133,32 +133,69 @@ export const NextQuarterSlide = ({ strategy }: NextQuarterSlideProps) => {
           )}
 
           {/* Talking Points Spotlight */}
-          {strategy.talking_points_spotlight && strategy.talking_points_spotlight.length > 0 && (
-            <div className="space-y-4">
+          {((strategy.talking_points_spotlight && strategy.talking_points_spotlight.length > 0) ||
+            (strategy.speaker_talking_points_spotlight && strategy.speaker_talking_points_spotlight.length > 0)) && (
+            <div className="space-y-6">
               <div className="flex items-center justify-center gap-2">
                 <Lightbulb className="h-5 w-5 text-accent" />
                 <h3 className="text-lg font-semibold text-muted-foreground uppercase tracking-wider">
                   Talking Points Spotlight
                 </h3>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {strategy.talking_points_spotlight.slice(0, 4).map((point, index) => (
-                  <div 
-                    key={index}
-                    className="group bg-card border border-border hover:border-accent/30 rounded-xl p-5 space-y-2 transition-all duration-300"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-accent/10 rounded-lg mt-0.5">
-                        <Lightbulb className="h-4 w-4 text-accent" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-lg mb-1">{point.title}</h4>
-                        <MarkdownRenderer content={point.description} className="text-sm text-muted-foreground leading-relaxed" />
+              
+              {/* General Talking Points */}
+              {strategy.talking_points_spotlight && strategy.talking_points_spotlight.length > 0 && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {strategy.talking_points_spotlight.slice(0, 4).map((point, index) => (
+                    <div 
+                      key={index}
+                      className="group bg-card border border-border hover:border-accent/30 rounded-xl p-5 space-y-2 transition-all duration-300"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-accent/10 rounded-lg mt-0.5">
+                          <Lightbulb className="h-4 w-4 text-accent" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-lg mb-1">{point.title}</h4>
+                          <MarkdownRenderer content={point.description} className="text-sm text-muted-foreground leading-relaxed" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Per-Speaker Talking Points */}
+              {strategy.speaker_talking_points_spotlight && strategy.speaker_talking_points_spotlight.length > 0 && (
+                <div className="space-y-6">
+                  {strategy.speaker_talking_points_spotlight.map((speaker, speakerIndex) => (
+                    <div key={speakerIndex} className="space-y-3">
+                      <h4 className="font-semibold text-base text-primary flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-primary" />
+                        {speaker.speaker_name}
+                      </h4>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {speaker.points.map((point, pointIndex) => (
+                          <div 
+                            key={pointIndex}
+                            className="group bg-card border border-border hover:border-accent/30 rounded-xl p-5 space-y-2 transition-all duration-300"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 bg-accent/10 rounded-lg mt-0.5">
+                                <Lightbulb className="h-4 w-4 text-accent" />
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-lg mb-1">{point.title}</h4>
+                                <MarkdownRenderer content={point.description} className="text-sm text-muted-foreground leading-relaxed" />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
