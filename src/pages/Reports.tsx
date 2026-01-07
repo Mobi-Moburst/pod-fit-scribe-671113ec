@@ -132,9 +132,23 @@ export default function Reports() {
     setVisibleSections(newVisibleSections);
     
     // Auto-save visibility changes for saved reports
-    if (currentReportId && reportData) {
-      const updatedReportData = { ...reportData, visibleSections: newVisibleSections };
+    // IMPORTANT: Fetch fresh data from DB to avoid overwriting other fields like highlight_clips
+    if (currentReportId) {
       try {
+        const { data: freshReport, error: fetchError } = await supabase
+          .from('reports')
+          .select('report_data')
+          .eq('id', currentReportId)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        const freshReportData = freshReport.report_data as unknown as ReportData;
+        const updatedReportData = { ...freshReportData, visibleSections: newVisibleSections };
+        
+        // Also update local state to stay in sync
+        setReportData(updatedReportData);
+        
         await supabase
           .from('reports')
           .update({ report_data: updatedReportData as any })
