@@ -1800,7 +1800,8 @@ type CSVType = 'batch' | 'airtable' | 'sov' | 'geo' | 'content_gap' | 'rephonic'
 export async function mergeUpdatedReportData(
   existingReport: ReportData,
   newData: UpdatedCSVData,
-  updatedCSVTypes: CSVType[]
+  updatedCSVTypes: CSVType[],
+  dateRangeOverride?: { start: Date; end: Date }
 ): Promise<ReportData> {
   // Clone the existing report to avoid mutation
   const updatedReport = JSON.parse(JSON.stringify(existingReport)) as ReportData;
@@ -1813,13 +1814,13 @@ export async function mergeUpdatedReportData(
   };
   
   const cpm = existingReport.cpm || 50;
-  const dateRange = existingReport.date_range ? {
+  const dateRange = dateRangeOverride ?? (existingReport.date_range ? {
     start: new Date(existingReport.date_range.start),
     end: new Date(existingReport.date_range.end)
   } : {
     start: new Date(),
     end: new Date()
-  };
+  });
   
   // Determine what data to use for recalculations
   // If batch or airtable is updated, we need to recalculate podcasts and KPIs
