@@ -60,10 +60,8 @@ export function NextQuarterStrategy({
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
   const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
 
-  // quarter stores the CURRENT quarter (e.g., "Q4 2025"), calculate next quarter for display
-  // Check if intro paragraph mentions the stored quarter - if it does, it's already been manually edited
-  const introMentionsStoredQuarter = intro_paragraph?.includes(quarter);
-  const nextQuarterLabel = introMentionsStoredQuarter ? quarter : getNextQuarter(quarter);
+  // quarter stores the CURRENT quarter (e.g., "Q4 2025"), always calculate next quarter for display
+  const nextQuarterLabel = getNextQuarter(quarter);
 
   return (
     <>
