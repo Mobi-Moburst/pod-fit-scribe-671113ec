@@ -995,19 +995,18 @@ function calculateSOVAnalysis(
   manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string }[] | null,
   dateRange?: { start: Date; end: Date }
 ): ReportData['sov_analysis'] {
-  // Count client interviews from Airtable (only "podcast recording" booked within date range)
-  const clientCount = airtableRows.filter(row => {
-    const isPodcastRecording = row.action?.toLowerCase().includes('podcast recording');
-    if (!isPodcastRecording) return false;
-    
-    // If date range provided, filter by date_booked within range
+  // Count client interviews from Airtable (episodes published within the report date range)
+  const clientCount = airtableRows.filter((row) => {
+    const publishedStr = row.date_published?.trim();
+    if (!publishedStr) return false;
+
+    const publishedDate = parseAirtableDate(publishedStr);
+    if (!publishedDate) return false;
+
     if (dateRange) {
-      if (!row.date_booked || row.date_booked.trim() === '') return false;
-      const bookedDate = parseAirtableDate(row.date_booked);
-      if (!bookedDate) return false;
-      return bookedDate >= dateRange.start && bookedDate <= dateRange.end;
+      return publishedDate >= dateRange.start && publishedDate <= dateRange.end;
     }
-    
+
     return true;
   }).length;
 

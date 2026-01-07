@@ -15,6 +15,7 @@ import { ReportData } from '@/types/reports';
 import { Linkedin, ExternalLink, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { parseAirtableDate } from "@/utils/csvParsers";
 
 interface SOVChartDialogProps {
   open: boolean;
@@ -105,31 +106,15 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
       const startDate = new Date(dateRange.start);
       const endDate = new Date(dateRange.end);
       
-      // Count podcasts with action containing 'podcast recording' and date_booked within range
-      const clientCount = podcasts.filter(podcast => {
-        const isPodcastRecording = podcast.action?.toLowerCase().includes('podcast recording');
-        if (!isPodcastRecording) return false;
-        
-        if (!podcast.date_booked || podcast.date_booked.trim() === '') return false;
-        
-        // Parse date_booked (could be MM/DD/YYYY or YYYY-MM-DD format)
-        let bookedDate: Date | null = null;
-        const dateStr = podcast.date_booked.trim();
-        
-        if (dateStr.includes('/')) {
-          const parts = dateStr.split('/');
-          if (parts.length === 3) {
-            const month = parseInt(parts[0]) - 1;
-            const day = parseInt(parts[1]);
-            const year = parseInt(parts[2]);
-            bookedDate = new Date(year, month, day);
-          }
-        } else if (dateStr.includes('-')) {
-          bookedDate = new Date(dateStr);
-        }
-        
-        if (!bookedDate || isNaN(bookedDate.getTime())) return false;
-        return bookedDate >= startDate && bookedDate <= endDate;
+      // Count episodes published within the report date range
+      const clientCount = podcasts.filter((podcast) => {
+        const publishedStr = podcast.date_published?.trim();
+        if (!publishedStr) return false;
+
+        const publishedDate = parseAirtableDate(publishedStr);
+        if (!publishedDate) return false;
+
+        return publishedDate >= startDate && publishedDate <= endDate;
       }).length;
       
       // Recalculate total and percentage
