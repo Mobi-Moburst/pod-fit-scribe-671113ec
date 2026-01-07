@@ -26,20 +26,24 @@ const formatCurrency = (amount: number): string => {
   return `$${amount.toFixed(0)}`;
 };
 
-// CPM rates for social value calculation
-const PLATFORM_CPM_RATES = {
-  meta: 10.50,
-  tiktok: 5.50,
-  youtube: 4.50,
-  linkedin: 60.00,
-  x: 1.50,
+// Platform data for social value calculation (allocation and CPM rates)
+const PLATFORM_DATA = {
+  linkedin: { cpm: 60.00, allocation: 0.60 },
+  meta: { cpm: 10.50, allocation: 0.20 },
+  youtube: { cpm: 4.50, allocation: 0.10 },
+  tiktok: { cpm: 5.50, allocation: 0.07 },
+  x: { cpm: 1.50, allocation: 0.03 },
 };
 
+const VISIBILITY_FACTOR = 1.5;
+const PREMIUM_CONTENT_FACTOR = 1.2;
+
 const calculateTotalSocialValue = (totalSocialReach: number): number => {
-  return Object.values(PLATFORM_CPM_RATES).reduce(
-    (sum, cpm) => sum + (totalSocialReach / 1000) * cpm,
-    0
-  );
+  return Object.values(PLATFORM_DATA).reduce((sum, platform) => {
+    const allocatedReach = totalSocialReach * platform.allocation;
+    const baseValue = (allocatedReach / 1000) * platform.cpm;
+    return sum + baseValue * VISIBILITY_FACTOR * PREMIUM_CONTENT_FACTOR;
+  }, 0);
 };
 
 export function ClientReportAdditionalMetrics({

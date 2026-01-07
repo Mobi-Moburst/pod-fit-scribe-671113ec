@@ -8,14 +8,18 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Share2 } from "lucide-react";
 
-// CPM rates (midpoint values from industry benchmarks)
-const PLATFORM_CPM_RATES = {
-  meta: { name: "Meta (FB/IG)", cpm: 10.50, color: "hsl(221 83% 53%)" },
-  tiktok: { name: "TikTok", cpm: 5.50, color: "hsl(348 83% 47%)" },
-  youtube: { name: "YouTube", cpm: 4.50, color: "hsl(0 72% 51%)" },
-  linkedin: { name: "LinkedIn", cpm: 60.00, color: "hsl(201 100% 35%)" },
-  x: { name: "X (Twitter)", cpm: 1.50, color: "hsl(0 0% 0%)" },
+// CPM rates (midpoint values from industry benchmarks) and reach allocation
+const PLATFORM_DATA = {
+  linkedin: { name: "LinkedIn", cpm: 60.00, allocation: 0.60, color: "hsl(201 100% 35%)" },
+  meta: { name: "Meta (FB/IG)", cpm: 10.50, allocation: 0.20, color: "hsl(221 83% 53%)" },
+  youtube: { name: "YouTube", cpm: 4.50, allocation: 0.10, color: "hsl(0 72% 51%)" },
+  tiktok: { name: "TikTok", cpm: 5.50, allocation: 0.07, color: "hsl(348 83% 47%)" },
+  x: { name: "X (Twitter)", cpm: 1.50, allocation: 0.03, color: "hsl(0 0% 0%)" },
 } as const;
+
+// Multipliers for media valuation
+const VISIBILITY_FACTOR = 1.5; // Feed resurfacing, cross-posting, episode promotion, guest reposts
+const PREMIUM_CONTENT_FACTOR = 1.2; // Podcast-driven, editorial, thought leadership, non-interruptive
 
 interface SocialValueDialogProps {
   open: boolean;
@@ -36,14 +40,18 @@ const formatNumber = (num: number): string => {
 };
 
 export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: SocialValueDialogProps) => {
-  // Calculate value for each platform using the total social reach
-  const platformBreakdown = Object.entries(PLATFORM_CPM_RATES).map(([key, platform]) => {
-    const value = (totalSocialReach / 1000) * platform.cpm;
+  // Calculate value for each platform using allocated reach and multipliers
+  const platformBreakdown = Object.entries(PLATFORM_DATA).map(([key, platform]) => {
+    const allocatedReach = totalSocialReach * platform.allocation;
+    const baseValue = (allocatedReach / 1000) * platform.cpm;
+    const adjustedValue = baseValue * VISIBILITY_FACTOR * PREMIUM_CONTENT_FACTOR;
     return {
       key,
       name: platform.name,
       cpm: platform.cpm,
-      value,
+      allocation: platform.allocation,
+      allocatedReach,
+      value: adjustedValue,
       color: platform.color,
     };
   });
@@ -72,7 +80,8 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
             Social Value Analysis
           </DialogTitle>
           <DialogDescription>
-            Equivalent advertising cost to reach your combined social audience across platforms.
+            Equivalent advertising cost to reach your allocated social audience across platforms, 
+            adjusted for visibility (1.5×) and premium content factors (1.2×).
           </DialogDescription>
         </DialogHeader>
         
@@ -131,7 +140,7 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
         <div className="mt-6">
           <h3 className="text-lg font-semibold mb-4">Platform Breakdown</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            What it would cost to reach your {formatNumber(totalSocialReach)} followers through paid advertising on each platform.
+            Reach allocated by platform, with visibility (1.5×) and premium content (1.2×) multipliers applied.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -153,7 +162,7 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
                         color: platform.color,
                       }}
                     >
-                      ${platform.cpm} CPM
+                      {(platform.allocation * 100).toFixed(0)}% reach
                     </span>
                   </div>
                 </CardHeader>
@@ -161,9 +170,12 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
                   <div className="text-2xl font-bold">
                     {formatCurrency(platform.value)}
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatNumber(platform.allocatedReach)} reach × ${platform.cpm} CPM
+                  </p>
                   <div className="mt-2">
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                      <span>Share of total</span>
+                      <span>Share of total value</span>
                       <span>{platform.percentage.toFixed(1)}%</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -182,12 +194,11 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
           </div>
         </div>
 
-        {/* Footer Note */}
         <div className="mt-6 p-4 bg-muted/50 rounded-lg">
           <p className="text-xs text-muted-foreground">
-            <strong>Note:</strong> Values calculated using industry-average CPM rates. Meta: $10.50, TikTok: $5.50, 
-            YouTube: $4.50, LinkedIn: $60.00, X: $1.50. Actual advertising costs may vary based on targeting, 
-            ad format, audience demographics, and market conditions.
+            <strong>Methodology:</strong> Total reach allocated by platform (LinkedIn 60%, Meta 20%, YouTube 10%, TikTok 7%, X 3%), 
+            then multiplied by platform CPM rates and adjusted with visibility factor (1.5×) for feed resurfacing and cross-posting, 
+            plus premium content factor (1.2×) for podcast-driven thought leadership content.
           </p>
         </div>
       </DialogContent>

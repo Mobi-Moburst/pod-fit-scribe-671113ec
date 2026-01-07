@@ -1807,11 +1807,20 @@ export default function Reports() {
                         title="Social Value"
                         value={(() => {
                           const totalSocialReach = reportData.kpis.total_social_reach;
-                          const cpmRates = { meta: 10.50, tiktok: 5.50, youtube: 4.50, linkedin: 60.00, x: 1.50 };
-                          const totalValue = Object.values(cpmRates).reduce(
-                            (sum, cpm) => sum + (totalSocialReach / 1000) * cpm,
-                            0
-                          );
+                          const platformData = {
+                            linkedin: { cpm: 60.00, allocation: 0.60 },
+                            meta: { cpm: 10.50, allocation: 0.20 },
+                            youtube: { cpm: 4.50, allocation: 0.10 },
+                            tiktok: { cpm: 5.50, allocation: 0.07 },
+                            x: { cpm: 1.50, allocation: 0.03 },
+                          };
+                          const visibilityFactor = 1.5;
+                          const premiumFactor = 1.2;
+                          const totalValue = Object.values(platformData).reduce((sum, p) => {
+                            const allocatedReach = totalSocialReach * p.allocation;
+                            const baseValue = (allocatedReach / 1000) * p.cpm;
+                            return sum + baseValue * visibilityFactor * premiumFactor;
+                          }, 0);
                           if (totalValue >= 1000000) return `$${(totalValue / 1000000).toFixed(1)}M`;
                           if (totalValue >= 1000) return `$${(totalValue / 1000).toFixed(0)}K`;
                           return `$${totalValue.toFixed(0)}`;
