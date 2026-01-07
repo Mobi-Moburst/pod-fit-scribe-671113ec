@@ -91,8 +91,7 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
             Social Value Analysis
           </DialogTitle>
           <DialogDescription>
-            Equivalent advertising cost to reach your allocated social audience across platforms, 
-            adjusted for visibility (1.5×) and premium content factors (1.2×).
+            Equivalent advertising cost to reach your combined social audience across platforms.
           </DialogDescription>
         </DialogHeader>
         
