@@ -239,7 +239,8 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
           contentGapData: newContentGapData,
           rephonicData: newRephonicData,
         },
-        updatedCSVTypes
+        updatedCSVTypes,
+        { start: dateRangeStart, end: dateRangeEnd }
       );
 
       // Save to database
