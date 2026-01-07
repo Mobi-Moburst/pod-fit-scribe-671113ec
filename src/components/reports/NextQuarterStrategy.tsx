@@ -2,12 +2,11 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, X, Pencil, Target, TrendingUp } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
-import { getNextQuarter } from "@/lib/utils";
 import { HighImpactPodcastsDialog } from "./HighImpactPodcastsDialog";
 import { ListenershipGoalDialog } from "./ListenershipGoalDialog";
 
 interface NextQuarterStrategyProps {
-  quarter: string; // This is the CURRENT report quarter
+  quarter: string; // This is already the NEXT quarter label (e.g., "Q1 2026")
   intro_paragraph: string;
   strategic_focus_areas: Array<{
     title: string;
@@ -51,8 +50,8 @@ export function NextQuarterStrategy({
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
   const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
 
-  // Calculate the actual next quarter from the current report quarter
-  const nextQuarterLabel = getNextQuarter(quarter);
+  // quarter prop is already the next quarter label (e.g., "Q1 2026"), use it directly
+  const nextQuarterLabel = quarter;
 
   return (
     <>
