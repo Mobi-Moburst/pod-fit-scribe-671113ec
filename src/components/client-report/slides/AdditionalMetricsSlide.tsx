@@ -1,5 +1,21 @@
 import { ReportData } from "@/types/reports";
-import { DollarSign, PieChart, Globe, Target } from "lucide-react";
+import { DollarSign, PieChart, Globe, Target, Share2 } from "lucide-react";
+
+// CPM rates for social value calculation
+const PLATFORM_CPM_RATES = {
+  meta: 10.50,
+  tiktok: 5.50,
+  youtube: 4.50,
+  linkedin: 60.00,
+  x: 1.50,
+};
+
+const calculateTotalSocialValue = (totalSocialReach: number): number => {
+  return Object.values(PLATFORM_CPM_RATES).reduce(
+    (sum, cpm) => sum + (totalSocialReach / 1000) * cpm,
+    0
+  );
+};
 
 interface AdditionalMetricsSlideProps {
   reportData: ReportData;
@@ -8,11 +24,13 @@ interface AdditionalMetricsSlideProps {
     sov?: boolean;
     geoScore?: boolean;
     contentGap?: boolean;
+    socialValue?: boolean;
   };
   onEmvClick: () => void;
   onSovClick: () => void;
   onGeoClick: () => void;
   onContentGapClick: () => void;
+  onSocialValueClick: () => void;
 }
 
 const formatCurrency = (value: number): string => {
@@ -28,6 +46,7 @@ export const AdditionalMetricsSlide = ({
   onSovClick,
   onGeoClick,
   onContentGapClick,
+  onSocialValueClick,
 }: AdditionalMetricsSlideProps) => {
   const metrics = [];
 
@@ -83,6 +102,22 @@ export const AdditionalMetricsSlide = ({
       color: "hsl(25 95% 53%)",
       onClick: onContentGapClick,
     });
+  }
+
+  // Social Value
+  if (visibleSections.socialValue) {
+    const totalSocialReach = reportData.kpis?.total_social_reach || 0;
+    if (totalSocialReach > 0) {
+      const totalSocialValue = calculateTotalSocialValue(totalSocialReach);
+      metrics.push({
+        label: "Social Value",
+        value: formatCurrency(totalSocialValue),
+        subtitle: "Equivalent ad spend",
+        icon: Share2,
+        color: "hsl(330 81% 60%)",
+        onClick: onSocialValueClick,
+      });
+    }
   }
 
   if (metrics.length === 0) return null;

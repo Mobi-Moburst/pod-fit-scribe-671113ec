@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { DollarSign, Users, Brain, Target, Sparkles } from "lucide-react";
+import { DollarSign, Users, Brain, Target, Sparkles, Share2 } from "lucide-react";
 import { ReportData } from "@/types/reports";
 
 interface VisibleSections {
@@ -7,6 +7,7 @@ interface VisibleSections {
   sov?: boolean;
   geoScore?: boolean;
   contentGap?: boolean;
+  socialValue?: boolean;
 }
 
 interface ClientReportAdditionalMetricsProps {
@@ -16,12 +17,29 @@ interface ClientReportAdditionalMetricsProps {
   onSovClick: () => void;
   onGeoClick: () => void;
   onContentGapClick: () => void;
+  onSocialValueClick: () => void;
 }
 
 const formatCurrency = (amount: number): string => {
   if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
   if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
   return `$${amount.toFixed(0)}`;
+};
+
+// CPM rates for social value calculation
+const PLATFORM_CPM_RATES = {
+  meta: 10.50,
+  tiktok: 5.50,
+  youtube: 4.50,
+  linkedin: 60.00,
+  x: 1.50,
+};
+
+const calculateTotalSocialValue = (totalSocialReach: number): number => {
+  return Object.values(PLATFORM_CPM_RATES).reduce(
+    (sum, cpm) => sum + (totalSocialReach / 1000) * cpm,
+    0
+  );
 };
 
 export function ClientReportAdditionalMetrics({
@@ -31,6 +49,7 @@ export function ClientReportAdditionalMetrics({
   onSovClick,
   onGeoClick,
   onContentGapClick,
+  onSocialValueClick,
 }: ClientReportAdditionalMetricsProps) {
   // Calculate total EMV from podcasts
   const totalEmv = reportData.podcasts?.reduce((sum, p) => sum + (p.true_emv || 0), 0) || 0;
@@ -43,6 +62,10 @@ export function ClientReportAdditionalMetrics({
   
   // Get Content Gap coverage
   const contentGapCoverage = reportData.content_gap_analysis?.coverage_percentage || 0;
+  
+  // Calculate Social Value
+  const totalSocialReach = reportData.kpis?.total_social_reach || 0;
+  const totalSocialValue = calculateTotalSocialValue(totalSocialReach);
 
   const metrics = [
     {
@@ -88,6 +111,17 @@ export function ClientReportAdditionalMetrics({
       onClick: onContentGapClick,
       color: "text-amber-500",
       bgColor: "bg-amber-500/10",
+    },
+    {
+      key: 'socialValue',
+      visible: visibleSections.socialValue && totalSocialReach > 0,
+      icon: Share2,
+      value: formatCurrency(totalSocialValue),
+      label: "Social Value",
+      subtitle: "Equivalent ad spend",
+      onClick: onSocialValueClick,
+      color: "text-pink-500",
+      bgColor: "bg-pink-500/10",
     },
   ];
 
