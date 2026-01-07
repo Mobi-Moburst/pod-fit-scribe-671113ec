@@ -27,10 +27,11 @@ export function ListenershipGoalDialog({
   currentListenership,
   quarter,
 }: ListenershipGoalDialogProps) {
-  const annualGoal = listenershipGoal * 12;
-  const growthPercentage = currentListenership && currentListenership > 0
-    ? Math.round(((listenershipGoal - currentListenership) / currentListenership) * 100)
-    : 20;
+  // Calculate current annual listenership (monthly × 12)
+  const currentAnnualListenership = currentListenership ? currentListenership * 12 : 0;
+  // Annual goal is 20% increase from current quarter's annual listenership
+  const annualGoal = currentAnnualListenership > 0 ? Math.round(currentAnnualListenership * 1.2) : listenershipGoal * 12;
+  const growthPercentage = 20;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
