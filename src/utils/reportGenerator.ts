@@ -1972,29 +1972,19 @@ export async function mergeUpdatedReportData(
       // Recalculate KPIs
       const newKpis = calculateEnhancedKPIs(newData.batchData, newData.airtableData, podcastsWithEMV, dateRange);
       
-      // Re-run AI categorization if we have client info and airtable data
-      // This ensures categories with podcast details are regenerated on CSV update
-      if (clientInfo && newData.airtableData && newData.airtableData.length > 0) {
-        console.log('[mergeUpdatedReportData] Re-running AI categorization with client info');
-        const accurateCategories = await calculateCategoriesFromBookedPodcasts(
-          newData.airtableData,
-          dateRange,
-          clientInfo.target_audiences || [],
-          clientInfo.company_name
-        );
-        if (accurateCategories.length > 0) {
-          newKpis.top_categories = accurateCategories;
-        }
-      } else {
-        // Preserve existing AI-generated categories if:
-        // 1. They already have podcast details (from calculateCategoriesFromBookedPodcasts), OR
-        // 2. New categories are empty
-        const existingHasPodcastDetails = existingReport.kpis.top_categories.some(
-          cat => cat.podcasts && cat.podcasts.length > 0
-        );
-        if (existingHasPodcastDetails || newKpis.top_categories.length === 0) {
-          newKpis.top_categories = existingReport.kpis.top_categories;
-        }
+      // ALWAYS preserve existing AI-generated categories if they have podcast details
+      // Re-running AI categorization often produces worse results due to mixed target_audiences data
+      const existingHasPodcastDetails = existingReport.kpis.top_categories?.some(
+        cat => cat.podcasts && cat.podcasts.length > 0
+      );
+      
+      if (existingHasPodcastDetails) {
+        // Keep existing categories - they were generated with proper data
+        console.log('[mergeUpdatedReportData] Preserving existing categories with podcast details');
+        newKpis.top_categories = existingReport.kpis.top_categories;
+      } else if (newKpis.top_categories.length === 0) {
+        // Fallback to existing if new calculation returned nothing
+        newKpis.top_categories = existingReport.kpis.top_categories;
       }
       
       updatedReport.kpis = newKpis;
