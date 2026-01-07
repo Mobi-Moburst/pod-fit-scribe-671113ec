@@ -869,7 +869,12 @@ export default function Reports() {
   const updateReportCampaignOverview = async (campaignOverview: ReportData["campaign_overview"]) => {
     if (!reportData) return;
     
-    const updatedReportData = { ...reportData, campaign_overview: campaignOverview, visibleSections };
+    // Create a completely new reportData object to ensure React detects the change
+    const updatedReportData = {
+      ...reportData,
+      campaign_overview: { ...campaignOverview },
+      visibleSections
+    };
     setReportData(updatedReportData);
     
     // Only save to database if report is already saved
