@@ -1913,6 +1913,12 @@ interface UpdatedCSVData {
 
 type CSVType = 'batch' | 'airtable' | 'sov' | 'geo' | 'content_gap' | 'rephonic';
 
+// Minimal client info needed for AI categorization during CSV updates
+interface UpdateClientInfo {
+  target_audiences?: string[];
+  company_name?: string;
+}
+
 /**
  * Merge updated CSV data into an existing report, preserving manually edited fields.
  * Only recalculates data for the CSV types that were updated.
@@ -1921,7 +1927,8 @@ export async function mergeUpdatedReportData(
   existingReport: ReportData,
   newData: UpdatedCSVData,
   updatedCSVTypes: CSVType[],
-  dateRangeOverride?: { start: Date; end: Date }
+  dateRangeOverride?: { start: Date; end: Date },
+  clientInfo?: UpdateClientInfo
 ): Promise<ReportData> {
   // Clone the existing report to avoid mutation
   const updatedReport = JSON.parse(JSON.stringify(existingReport)) as ReportData;
@@ -1965,8 +1972,18 @@ export async function mergeUpdatedReportData(
       // Recalculate KPIs
       const newKpis = calculateEnhancedKPIs(newData.batchData, newData.airtableData, podcastsWithEMV, dateRange);
       
-      // Preserve existing categories if they were AI-generated and new ones would be empty
-      if (newKpis.top_categories.length === 0 && existingReport.kpis.top_categories.length > 0) {
+      // ALWAYS preserve existing AI-generated categories if they have podcast details
+      // Re-running AI categorization often produces worse results due to mixed target_audiences data
+      const existingHasPodcastDetails = existingReport.kpis.top_categories?.some(
+        cat => cat.podcasts && cat.podcasts.length > 0
+      );
+      
+      if (existingHasPodcastDetails) {
+        // Keep existing categories - they were generated with proper data
+        console.log('[mergeUpdatedReportData] Preserving existing categories with podcast details');
+        newKpis.top_categories = existingReport.kpis.top_categories;
+      } else if (newKpis.top_categories.length === 0) {
+        // Fallback to existing if new calculation returned nothing
         newKpis.top_categories = existingReport.kpis.top_categories;
       }
       
