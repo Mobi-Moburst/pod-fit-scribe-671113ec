@@ -719,30 +719,52 @@ async function batchScrapeDurations(
   return Promise.all(scrapeTasks);
 }
 
-// Find matching Airtable row using exact or partial title matching
+// Merge data from ALL matching Airtable rows for a podcast
+// This ensures we capture date_published even if it's on a different row than "podcast recording"
+function mergeAllAirtableMatches(
+  batchTitle: string,
+  airtableRows: AirtableCSVRow[]
+): Partial<AirtableCSVRow> | undefined {
+  const normalizedBatch = normalizeTitle(batchTitle);
+  
+  // Find ALL matching rows (exact or partial)
+  const allMatches = airtableRows.filter(row => {
+    const normalized = normalizeTitle(row.podcast_name);
+    return normalized === normalizedBatch || titlesMatch(batchTitle, row.podcast_name);
+  });
+  
+  if (allMatches.length === 0) return undefined;
+  
+  if (allMatches.length > 1) {
+    console.log('[mergeAllAirtableMatches] Found multiple matches for:', {
+      batchTitle,
+      matchCount: allMatches.length,
+      matches: allMatches.map(m => ({ name: m.podcast_name, action: m.action, date_published: m.date_published })),
+    });
+  }
+  
+  // Merge all data - take first non-empty value for each field
+  // Prioritize "podcast recording" action rows for action field
+  const podcastRecordingRow = allMatches.find(r => r.action?.toLowerCase().includes('podcast recording'));
+  
+  return {
+    podcast_name: allMatches[0].podcast_name,
+    apple_podcast_link: allMatches.find(r => r.apple_podcast_link?.trim())?.apple_podcast_link,
+    action: podcastRecordingRow?.action || allMatches[0].action,
+    scheduled_date_time: allMatches.find(r => r.scheduled_date_time?.trim())?.scheduled_date_time,
+    show_notes: allMatches.find(r => r.show_notes?.trim())?.show_notes,
+    date_booked: allMatches.find(r => r.date_booked?.trim())?.date_booked,
+    date_published: allMatches.find(r => r.date_published?.trim())?.date_published,
+    link_to_episode: allMatches.find(r => r.link_to_episode?.trim())?.link_to_episode,
+  };
+}
+
+// Find matching Airtable row using exact or partial title matching (returns merged data from all matches)
 function findAirtableMatch(
   batchTitle: string,
   airtableRows: AirtableCSVRow[]
-): AirtableCSVRow | undefined {
-  const normalizedBatch = normalizeTitle(batchTitle);
-  
-  // First try exact match
-  const exactMatch = airtableRows.find(row => 
-    normalizeTitle(row.podcast_name) === normalizedBatch
-  );
-  if (exactMatch) return exactMatch;
-  
-  // Then try partial/prefix match
-  const partialMatch = airtableRows.find(row => 
-    titlesMatch(batchTitle, row.podcast_name)
-  );
-  if (partialMatch) {
-    console.log('[findAirtableMatch] Partial match found:', {
-      batchTitle,
-      airtableName: partialMatch.podcast_name,
-    });
-  }
-  return partialMatch;
+): Partial<AirtableCSVRow> | undefined {
+  return mergeAllAirtableMatches(batchTitle, airtableRows);
 }
 
 // Merge Batch + Airtable by podcast title
