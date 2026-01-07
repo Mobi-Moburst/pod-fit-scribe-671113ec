@@ -41,6 +41,7 @@ interface SocialValueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   totalSocialReach: number;
+  hideMethodology?: boolean;
 }
 
 const formatCurrency = (amount: number): string => {
@@ -55,7 +56,7 @@ const formatNumber = (num: number): string => {
   return num.toString();
 };
 
-export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: SocialValueDialogProps) => {
+export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach, hideMethodology = false }: SocialValueDialogProps) => {
   // Calculate Total Social Value using allocated reach + multipliers
   const totalSocialValue = Object.entries(PLATFORM_CPM_RATES).reduce((sum, [key, platform]) => {
     const allocation = PLATFORM_ALLOCATION[key as keyof typeof PLATFORM_ALLOCATION];
@@ -218,13 +219,15 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach }: Soci
           </div>
         </div>
 
-        <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-          <p className="text-xs text-muted-foreground">
-            <strong>Methodology:</strong> Total reach allocated by platform (LinkedIn 60%, Meta 20%, YouTube 10%, TikTok 7%, X 3%), 
-            then multiplied by platform CPM rates and adjusted with visibility factor (1.5×) for feed resurfacing and cross-posting, 
-            plus premium content factor (1.2×) for podcast-driven thought leadership content.
-          </p>
-        </div>
+        {!hideMethodology && (
+          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+            <p className="text-xs text-muted-foreground">
+              <strong>Methodology:</strong> Total reach allocated by platform (LinkedIn 60%, Meta 20%, YouTube 10%, TikTok 7%, X 3%), 
+              then multiplied by platform CPM rates and adjusted with visibility factor (1.5×) for feed resurfacing and cross-posting, 
+              plus premium content factor (1.2×) for podcast-driven thought leadership content.
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
