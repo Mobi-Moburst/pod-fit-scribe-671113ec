@@ -15,6 +15,11 @@ export const BackgroundFX = () => {
   }, []);
 
   return (
-    <div ref={ref} aria-hidden className="pointer-events-none fixed inset-0 -z-10" style={{ background: 'var(--gradient-surface)' }} />
+    <div
+      ref={ref}
+      aria-hidden
+      className="pointer-events-none fixed inset-0 -z-10"
+      style={{ background: 'var(--gradient-surface)' }}
+    />
   );
 };
