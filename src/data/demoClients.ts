@@ -658,14 +658,14 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
         ],
         closing_paragraph: "This quarter's strategy positions AtlasBridge AI as the definitive voice on enterprise AI transformation — combining executive leadership with deep technical expertise to guide organizations from AI ambition to AI execution.",
         next_quarter_kpis: {
-          high_impact_podcasts_goal: 20, // 10 per speaker
-          listenership_goal: 500000,
+          high_impact_podcasts_goal: 32, // 20% more than current 26 booked
+          listenership_goal: 197280, // 20% higher than current 164,400
           speaker_breakdown: [
-            { speaker_name: "Maya Reynolds", goal: 10 },
-            { speaker_name: "Daniel Ortiz", goal: 10 },
+            { speaker_name: "Maya Reynolds", goal: 16 },
+            { speaker_name: "Daniel Ortiz", goal: 16 },
           ],
           current_total_reach: 82800,
-          current_annual_listenership: 350000,
+          current_annual_listenership: 164400, // matches current report's Est. Annual Listenership
         },
       },
       target_podcasts: [],
