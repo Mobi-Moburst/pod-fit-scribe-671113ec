@@ -123,12 +123,18 @@ export default function DemoReport() {
     try {
       const { data, error } = await supabase.functions.invoke("suggest-target-podcasts", {
         body: {
-          speaker_name: client.speaker.name,
-          company_name: client.company.name,
-          title: client.speaker.title,
-          talking_points: client.speaker.talking_points,
-          target_audiences: client.speaker.target_audiences,
-          campaign_strategy: client.speaker.campaign_strategy,
+          client: {
+            name: client.speaker.name,
+            company: client.company.name,
+            title: client.speaker.title,
+            talking_points: client.speaker.talking_points,
+            target_audiences: client.speaker.target_audiences,
+            campaign_strategy: client.speaker.campaign_strategy,
+          },
+          next_quarter_strategy: reportData.next_quarter_strategy,
+          top_categories: reportData.kpis.top_categories,
+          num_suggestions: 10,
+          exclude_podcasts: reportData.podcasts?.map(p => p.show_title) || [],
         },
       });
 
@@ -165,12 +171,15 @@ export default function DemoReport() {
     try {
       const { data, error } = await supabase.functions.invoke("content-gap-recommendations", {
         body: {
-          client_name: client.company.name,
-          speaker_name: client.speaker.name,
-          talking_points: client.speaker.talking_points,
-          target_audiences: client.speaker.target_audiences,
-          campaign_strategy: client.speaker.campaign_strategy,
-          content_gap_analysis: reportData.content_gap_analysis,
+          client: {
+            name: client.speaker.name,
+            company: client.company.name,
+            title: client.speaker.title,
+            talking_points: client.speaker.talking_points,
+            target_audiences: client.speaker.target_audiences,
+            campaign_strategy: client.speaker.campaign_strategy,
+          },
+          gap_analysis: reportData.content_gap_analysis,
         },
       });
 
