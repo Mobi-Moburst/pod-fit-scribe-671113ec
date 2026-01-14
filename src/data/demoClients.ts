@@ -30,7 +30,9 @@ const signalForgePodcasts: PodcastReportEntry[] = [
     overall_score: 8.4,
     episode_duration_minutes: 47,
     verdict: "Fit",
-    true_emv: 2480,
+    true_emv: 4850,
+    ad_units: 47,
+    value_per_minute: 103.19,
   },
   {
     show_title: "JUST Branding",
@@ -43,7 +45,9 @@ const signalForgePodcasts: PodcastReportEntry[] = [
     overall_score: 7.6,
     episode_duration_minutes: 42,
     verdict: "Fit",
-    true_emv: 1520,
+    true_emv: 3280,
+    ad_units: 42,
+    value_per_minute: 78.10,
   },
   {
     show_title: "Leveling Up with Eric Siu",
@@ -56,7 +60,9 @@ const signalForgePodcasts: PodcastReportEntry[] = [
     overall_score: 7.9,
     episode_duration_minutes: 50,
     verdict: "Fit",
-    true_emv: 1640,
+    true_emv: 3920,
+    ad_units: 50,
+    value_per_minute: 78.40,
   },
   {
     show_title: "Behind the Brand with Bryan Elliott",
@@ -69,7 +75,9 @@ const signalForgePodcasts: PodcastReportEntry[] = [
     overall_score: 8.2,
     episode_duration_minutes: 45,
     verdict: "Fit",
-    true_emv: 2160,
+    true_emv: 4410,
+    ad_units: 45,
+    value_per_minute: 98.00,
   },
   {
     show_title: "The Duct Tape Marketing Podcast",
@@ -82,7 +90,9 @@ const signalForgePodcasts: PodcastReportEntry[] = [
     overall_score: 7.4,
     episode_duration_minutes: 39,
     verdict: "Fit",
-    true_emv: 1440,
+    true_emv: 2540,
+    ad_units: 39,
+    value_per_minute: 65.13,
   },
 ];
 

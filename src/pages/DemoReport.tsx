@@ -670,6 +670,7 @@ export default function DemoReport() {
         open={emvDialogOpen}
         onOpenChange={setEmvDialogOpen}
         podcasts={reportData.podcasts || []}
+        hideCorrelationChart
       />
       <ReachAnalysisDialog
         open={reachDialogOpen}
