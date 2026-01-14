@@ -60,8 +60,15 @@ serve(async (req) => {
 
     if (!itunesData.results || itunesData.results.length === 0) {
       console.log('No results from iTunes API for podcast ID:', podcastId);
-      return new Response(JSON.stringify({ error: 'Podcast not found in iTunes' }), {
-        status: 404,
+      // Return null values gracefully instead of error - podcast may be removed or unavailable
+      return new Response(JSON.stringify({ 
+        coverArtUrl: null,
+        podcastName: null,
+        artistName: null,
+        primaryGenreName: null,
+        genres: [],
+        description: null
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
