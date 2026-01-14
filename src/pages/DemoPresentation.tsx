@@ -328,6 +328,7 @@ export default function DemoPresentation() {
         open={emvDialogOpen}
         onOpenChange={setEmvDialogOpen}
         podcasts={reportData?.podcasts || []}
+        hideCorrelationChart
       />
       <SOVChartDialog
         open={sovDialogOpen}

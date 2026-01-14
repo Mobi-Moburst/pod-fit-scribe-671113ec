@@ -22,9 +22,10 @@ interface EMVAnalysisDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   podcasts: PodcastReportEntry[];
+  hideCorrelationChart?: boolean;
 }
 
-export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts }: EMVAnalysisDialogProps) => {
+export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelationChart }: EMVAnalysisDialogProps) => {
   // Filter podcasts that have EMV data
   const podcastsWithEMV = podcasts.filter(p => p.true_emv && p.true_emv > 0);
 
@@ -174,72 +175,76 @@ export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts }: EMVAnalysisD
           </Card>
         </div>
 
-        {/* Scatter Chart Section */}
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Fit Score vs EMV Correlation</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Each point represents a podcast episode, showing the relationship between fit score and earned media value.
-          </p>
-        </div>
-        
-        <div className="w-full h-[500px]">
-          {validPodcasts.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart
-                margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  type="number"
-                  dataKey="score"
-                  name="Fit Score"
-                  domain={[0, 10]}
-                  label={{ value: 'Fit Score', position: 'insideBottom', offset: -10 }}
-                  className="text-muted-foreground"
-                />
-                <YAxis
-                  type="number"
-                  dataKey="emv"
-                  name="True EMV"
-                  label={{ value: 'Earned Media Value ($)', angle: -90, position: 'insideLeft' }}
-                  tickFormatter={(value) => `$${value.toLocaleString()}`}
-                  className="text-muted-foreground"
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend 
-                  verticalAlign="top" 
-                  height={36}
-                  wrapperStyle={{ paddingBottom: '20px' }}
-                />
-                
-                <Scatter
-                  name="Fit"
-                  data={fitPodcasts}
-                  fill="hsl(var(--chart-1))"
-                  opacity={0.7}
-                />
-                <Scatter
-                  name="Consider"
-                  data={considerPodcasts}
-                  fill="hsl(var(--chart-2))"
-                  opacity={0.7}
-                />
-                <Scatter
-                  name="Not Fit"
-                  data={notFitPodcasts}
-                  fill="hsl(var(--chart-3))"
-                  opacity={0.7}
-                />
-              </ScatterChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">
-                No data available. EMV requires both fit scores and episode metrics.
+        {/* Scatter Chart Section - hide in demo mode */}
+        {!hideCorrelationChart && (
+          <>
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-2">Fit Score vs EMV Correlation</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Each point represents a podcast episode, showing the relationship between fit score and earned media value.
               </p>
             </div>
-          )}
-        </div>
+            
+            <div className="w-full h-[500px]">
+              {validPodcasts.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart
+                    margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      type="number"
+                      dataKey="score"
+                      name="Fit Score"
+                      domain={[0, 10]}
+                      label={{ value: 'Fit Score', position: 'insideBottom', offset: -10 }}
+                      className="text-muted-foreground"
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey="emv"
+                      name="True EMV"
+                      label={{ value: 'Earned Media Value ($)', angle: -90, position: 'insideLeft' }}
+                      tickFormatter={(value) => `$${value.toLocaleString()}`}
+                      className="text-muted-foreground"
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend 
+                      verticalAlign="top" 
+                      height={36}
+                      wrapperStyle={{ paddingBottom: '20px' }}
+                    />
+                    
+                    <Scatter
+                      name="Fit"
+                      data={fitPodcasts}
+                      fill="hsl(var(--chart-1))"
+                      opacity={0.7}
+                    />
+                    <Scatter
+                      name="Consider"
+                      data={considerPodcasts}
+                      fill="hsl(var(--chart-2))"
+                      opacity={0.7}
+                    />
+                    <Scatter
+                      name="Not Fit"
+                      data={notFitPodcasts}
+                      fill="hsl(var(--chart-3))"
+                      opacity={0.7}
+                    />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-muted-foreground">
+                    No data available. EMV requires both fit scores and episode metrics.
+                  </p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
