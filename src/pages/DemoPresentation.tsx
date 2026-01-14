@@ -101,6 +101,7 @@ export default function DemoPresentation() {
         nextQuarterStrategy: true,
         targetPodcasts: true,
         contentGapRecommendations: true,
+        highlights: true,
       });
       setIsLoading(false);
     } catch (e) {

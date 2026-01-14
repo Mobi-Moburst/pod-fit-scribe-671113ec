@@ -18,6 +18,7 @@ import { TargetPodcastsSection } from "@/components/reports/TargetPodcastsSectio
 import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
+import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
@@ -30,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Eye, DollarSign, PieChart, Search, Globe, Share2, 
   ChevronDown, ChevronRight, Radio, Users, TrendingUp, 
-  Sparkles, Target, ExternalLink, Loader2, Play, Edit2
+  Sparkles, Target, ExternalLink, Loader2, Play, Edit2, Video
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -67,6 +68,7 @@ export default function DemoReport() {
     nextQuarterStrategy: true,
     targetPodcasts: true,
     contentGapRecommendations: true,
+    highlights: true,
   });
 
   // Dialog states
@@ -590,6 +592,35 @@ export default function DemoReport() {
               variant="list"
             />
           )
+        )}
+
+        {/* Interview Highlights */}
+        {reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
+          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Video className="h-5 w-5 text-primary" />
+                  Interview Highlights
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Show</span>
+                  <Switch 
+                    checked={visibleSections.highlights} 
+                    onCheckedChange={() => toggleSection("highlights")} 
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            {visibleSections.highlights && (
+              <CardContent>
+                <ClientReportHighlights
+                  clips={reportData.highlight_clips}
+                  companyName={reportData.company_name || reportData.client?.company}
+                />
+              </CardContent>
+            )}
+          </Card>
         )}
 
         {/* Top Categories */}
