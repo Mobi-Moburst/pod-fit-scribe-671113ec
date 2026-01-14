@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import DemoPresentation from "./pages/DemoPresentation";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/demo" element={<Demo />} />
             <Route path="/demo/report" element={<DemoReport />} />
             <Route path="/demo/report/public" element={<DemoPublicReport />} />
+            <Route path="/demo/report/present" element={<DemoPresentation />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
