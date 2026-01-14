@@ -102,6 +102,11 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 15%;
     --sidebar-ring: 191 100% 62%;
+
+    /* Gradient surface for dark mode - matches light mode but explicit */
+    --gradient-primary: linear-gradient(135deg, hsl(191 100% 62%), hsl(51 100% 61%));
+    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 100% 62% / 0.15), transparent 60%);
+    --shadow-elevated: 0 10px 30px -10px hsl(191 100% 62% / 0.25);
   }
 }
 
