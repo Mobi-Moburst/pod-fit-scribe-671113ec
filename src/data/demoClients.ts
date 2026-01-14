@@ -433,9 +433,10 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
         closing_paragraph: "By focusing on high-impact placements and deepening our AI narrative, {{NEXT_QUARTER}} will solidify SignalForge AI's position as the leading voice in AI-powered marketing intelligence.",
         next_quarter_kpis: {
           high_impact_podcasts_goal: 10,
-          listenership_goal: 27720, // 20% higher than current 23,100
-          current_total_reach: 23100,
-          current_annual_listenership: 46200,
+          listenership_goal: 500000, // Main KPI goal (500K)
+          current_total_reach: 36100, // Current monthly listeners per episode (36.1K)
+          current_annual_listenership: 433200, // Current est. annual listenership (433.2K)
+          // Goals after 20% increase: Monthly/ep = 43.3K, Annual = 519.8K
         },
       },
       target_podcasts: [],
