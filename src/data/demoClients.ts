@@ -391,10 +391,10 @@ const atlasBridgeSpeakerBreakdowns: SpeakerBreakdown[] = [
     kpis: {
       total_booked: 14,
       total_published: 9,
-      total_reach: 85600, // Sum of all Maya's podcast listeners
+      total_reach: 43700,
       total_social_reach: 145000,
-      avg_score: 8.4,
-      total_emv: 25672, // Sum of all EMV from podcasts
+      avg_score: 8.8,
+      total_emv: 10500,
     },
     podcasts: mayaReynoldsPodcasts,
   },
@@ -419,10 +419,10 @@ const atlasBridgeSpeakerBreakdowns: SpeakerBreakdown[] = [
     kpis: {
       total_booked: 12,
       total_published: 8,
-      total_reach: 74500, // Sum of all Daniel's podcast listeners
+      total_reach: 39100,
       total_social_reach: 118000,
-      avg_score: 8.5,
-      total_emv: 22273, // Sum of all EMV from podcasts
+      avg_score: 8.6,
+      total_emv: 8500,
     },
     podcasts: danielOrtizPodcasts,
   },
@@ -676,19 +676,18 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
         fit_count: 17,
         consider_count: 7,
         not_fit_count: 2,
-        avg_score: 8.45,
+        avg_score: 8.7,
         total_interviews: 17,
         total_booked: 26, // 14 + 12
         total_published: 17, // 9 + 8
         total_social_reach: 263000, // 145K + 118K
-        total_reach: 160100, // 85,600 + 74,500
-        total_listeners_per_episode: 9418, // 160,100 / 17
+        total_reach: 82800, // 43,700 + 39,100
+        total_listeners_per_episode: 13700,
         top_categories: [
-          { name: "AI", count: 8, podcasts: [{ show_title: "The Modern CEO Podcast" }, { show_title: "The Artificial Intelligence Show" }, { show_title: "The Artificial Intelligence Podcast" }] },
-          { name: "Leadership", count: 5, podcasts: [{ show_title: "The Modern CEO Podcast" }, { show_title: "Gaining the Technology Leadership Edge" }, { show_title: "Software People Stories" }] },
-          { name: "Enterprise Tech", count: 5, podcasts: [{ show_title: "Data Center Go-to-Market Podcast" }, { show_title: "Software People Stories" }] },
-          { name: "Risk & Compliance", count: 4, podcasts: [{ show_title: "Lights On Data Show" }, { show_title: "Risk Management Show" }, { show_title: "Mastering Risk Management Podcast" }] },
-          { name: "Security", count: 3, podcasts: [{ show_title: "Security Confidential" }, { show_title: "2 Cyber Chicks" }] },
+          { name: "AI", count: 6, podcasts: [{ show_title: "The Modern CEO Podcast" }, { show_title: "The Artificial Intelligence Show" }] },
+          { name: "Leadership", count: 4, podcasts: [{ show_title: "The Modern CEO Podcast" }, { show_title: "Gaining the Technology Leadership Edge" }] },
+          { name: "Enterprise Tech", count: 4, podcasts: [{ show_title: "Data Center Go-to-Market Podcast" }] },
+          { name: "Data", count: 3, podcasts: [{ show_title: "The Data Stack Show" }, { show_title: "Compliance Conversations by Healthicity" }] },
         ],
       },
       podcasts: atlasBridgePodcasts,
@@ -826,13 +825,13 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
         closing_paragraph: "This quarter's strategy positions AtlasBridge AI as the definitive voice on enterprise AI transformation — combining executive leadership with deep technical expertise to guide organizations from AI ambition to AI execution.",
         next_quarter_kpis: {
           high_impact_podcasts_goal: 20, // 10 per speaker
-          listenership_goal: 192120, // 20% higher than current 160,100
+          listenership_goal: 99360, // 20% higher than current 82,800
           speaker_breakdown: [
             { speaker_name: "Maya Reynolds", goal: 10 },
             { speaker_name: "Daniel Ortiz", goal: 10 },
           ],
-          current_total_reach: 160100, // 85,600 + 74,500
-          current_annual_listenership: 320200, // Current reach * ~2 (assuming semi-annual estimate)
+          current_total_reach: 82800,
+          current_annual_listenership: 164400,
         },
       },
       target_podcasts: [],
