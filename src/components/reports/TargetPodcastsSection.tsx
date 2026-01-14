@@ -43,21 +43,24 @@ export function TargetPodcastsSection({
   const introMentionsMovingIntoQuarter = nextQuarterStrategy.intro_paragraph?.includes(`into ${nextQuarterStrategy.quarter}`);
   const nextQuarterLabel = introMentionsMovingIntoQuarter ? nextQuarterStrategy.quarter : getNextQuarter(nextQuarterStrategy.quarter);
 
-  // Fetch cover art for podcasts
+  // Fetch cover art for podcasts (and persist it into the podcast objects so it survives publish/present)
   useEffect(() => {
+    let cancelled = false;
+
     const fetchCoverArt = async () => {
       for (const podcast of podcasts) {
-        if (coverArtCache[podcast.podcast_name]) continue;
-        
+        // If already persisted, nothing to do
+        if (podcast.cover_art_url) continue;
+
         let coverArtUrl: string | undefined;
-        
+
         // Try 1: Use the edge function if we have an Apple Podcast URL
         if (podcast.apple_podcast_url) {
           try {
-            const { data, error } = await supabase.functions.invoke('scrape-podcast-cover-art', {
-              body: { apple_podcast_url: podcast.apple_podcast_url }
+            const { data, error } = await supabase.functions.invoke("scrape-podcast-cover-art", {
+              body: { apple_podcast_url: podcast.apple_podcast_url },
             });
-            
+
             if (!error && data?.coverArtUrl) {
               coverArtUrl = data.coverArtUrl;
             }
@@ -65,7 +68,7 @@ export function TargetPodcastsSection({
             console.warn(`Edge function failed for ${podcast.podcast_name}:`, err);
           }
         }
-        
+
         // Try 2: Fallback - search iTunes by name
         if (!coverArtUrl) {
           try {
@@ -73,7 +76,7 @@ export function TargetPodcastsSection({
               `https://itunes.apple.com/search?term=${encodeURIComponent(podcast.podcast_name)}&entity=podcast&limit=1`
             );
             const data = await response.json();
-            
+
             if (data.results?.[0]?.artworkUrl600) {
               coverArtUrl = data.results[0].artworkUrl600;
             }
@@ -81,21 +84,35 @@ export function TargetPodcastsSection({
             console.warn(`iTunes search failed for ${podcast.podcast_name}:`, err);
           }
         }
-        
-        // Update cache if we found cover art
-        if (coverArtUrl) {
-          setCoverArtCache(prev => ({
-            ...prev,
-            [podcast.podcast_name]: coverArtUrl
-          }));
-        }
+
+        if (cancelled || !coverArtUrl) continue;
+
+        // Cache for UI + persist into the actual podcast object for downstream pages
+        setCoverArtCache((prev) => ({
+          ...prev,
+          [podcast.podcast_name]: coverArtUrl!,
+        }));
+
+        setPodcasts((prev) => {
+          const next = prev.map((p) =>
+            p.podcast_name === podcast.podcast_name
+              ? { ...p, cover_art_url: p.cover_art_url ?? coverArtUrl }
+              : p
+          );
+          onPodcastsGenerated?.(next);
+          return next;
+        });
       }
     };
 
     if (podcasts.length > 0) {
       fetchCoverArt();
     }
-  }, [podcasts]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [podcasts, onPodcastsGenerated]);
 
   // Helper function to validate a single podcast via iTunes
   const validatePodcast = async (p: any, twoMonthsAgo: Date): Promise<TargetPodcast | null> => {

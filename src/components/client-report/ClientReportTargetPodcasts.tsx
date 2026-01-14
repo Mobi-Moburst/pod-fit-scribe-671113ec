@@ -21,6 +21,8 @@ export const ClientReportTargetPodcasts = ({ podcasts }: ClientReportTargetPodca
                 <img 
                   src={podcast.cover_art_url} 
                   alt={podcast.podcast_name}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
                   className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
                 />
               ) : (
