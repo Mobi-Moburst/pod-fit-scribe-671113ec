@@ -258,17 +258,20 @@ export default function DemoReport() {
   // Calculate total EMV
   const totalEMV = reportData.podcasts?.reduce((sum, p) => sum + (p.true_emv || 0), 0) || 0;
 
-  // Calculate social value
-  const PLATFORM_CPM_RATES = {
-    linkedin: 6.59,
-    meta: 7.19,
-    youtube: 9.68,
-    tiktok: 10.0,
-    x: 6.46,
+  // Calculate social value - uses same formula as SocialValueDialog
+  const PLATFORM_CPM_RATES_SV = {
+    linkedin: { cpm: 60.00, allocation: 0.60 },
+    meta: { cpm: 10.50, allocation: 0.20 },
+    youtube: { cpm: 4.50, allocation: 0.10 },
+    tiktok: { cpm: 5.50, allocation: 0.07 },
+    x: { cpm: 1.50, allocation: 0.03 },
   };
-  const totalSocialValue = Object.values(PLATFORM_CPM_RATES).reduce((sum, cpm) => {
-    const reach = (reportData.kpis.total_social_reach || 0) * 0.2;
-    return sum + (reach / 1000) * cpm * 0.3 * 1.2;
+  const VISIBILITY_FACTOR = 1.5;
+  const PREMIUM_CONTENT_FACTOR = 1.2;
+  const totalSocialValue = Object.values(PLATFORM_CPM_RATES_SV).reduce((sum, platform) => {
+    const allocatedReach = (reportData.kpis.total_social_reach || 0) * platform.allocation;
+    const baseValue = (allocatedReach / 1000) * platform.cpm;
+    return sum + baseValue * VISIBILITY_FACTOR * PREMIUM_CONTENT_FACTOR;
   }, 0);
 
   return (
