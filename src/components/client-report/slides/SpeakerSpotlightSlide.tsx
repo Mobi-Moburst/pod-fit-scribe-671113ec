@@ -233,7 +233,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
   const hasAirtable = !!speaker.airtable_embed_url;
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-8">
+    <div className="w-full max-w-5xl mx-auto space-y-8 overflow-y-auto max-h-full pb-8">
       {/* Speaker Header */}
       <div className="flex items-center gap-6">
         <Avatar className="h-20 w-20 border-2 border-primary/20">
