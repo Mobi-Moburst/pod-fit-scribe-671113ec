@@ -137,7 +137,7 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
         total_interviews: 11,
         total_booked: 18,
         total_published: 11,
-        total_social_reach: 126000,
+        total_social_reach: 485000,
         total_reach: 412000,
         total_listeners_per_episode: 36100,
         top_categories: [
