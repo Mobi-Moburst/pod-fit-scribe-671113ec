@@ -43,6 +43,7 @@ export default function DemoReport() {
     clientId: string;
     quarter: string;
     reportName: string;
+    selectedSpeakerIds?: string[];
   } | null>(null);
 
   const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -104,7 +105,47 @@ export default function DemoReport() {
 
     const client = DEMO_CLIENTS[parsed.clientId];
     if (client) {
-      const processedData = applyQuarterToReportData(client.reportData, parsed.quarter);
+      let processedData = applyQuarterToReportData(client.reportData, parsed.quarter);
+      
+      // Filter speaker breakdowns if specific speakers are selected for multi-speaker clients
+      if (client.isMultiSpeaker && parsed.selectedSpeakerIds && parsed.selectedSpeakerIds.length > 0) {
+        const selectedIds = new Set(parsed.selectedSpeakerIds);
+        
+        // Filter speaker_breakdowns to only include selected speakers
+        if (processedData.speaker_breakdowns) {
+          const originalBreakdowns = processedData.speaker_breakdowns;
+          const filteredBreakdowns = originalBreakdowns.filter(sb => {
+            // Match speaker breakdown to selected speaker by name
+            const matchingSpeaker = client.speakers?.find(s => s.name === sb.speaker_name);
+            return matchingSpeaker && selectedIds.has(matchingSpeaker.id);
+          });
+          
+          // Recalculate aggregated KPIs based on filtered speakers
+          if (filteredBreakdowns.length > 0) {
+            const aggregatedKpis = {
+              total_booked: filteredBreakdowns.reduce((sum, sb) => sum + sb.kpis.total_booked, 0),
+              total_published: filteredBreakdowns.reduce((sum, sb) => sum + sb.kpis.total_published, 0),
+              total_reach: filteredBreakdowns.reduce((sum, sb) => sum + sb.kpis.total_reach, 0),
+              total_social_reach: filteredBreakdowns.reduce((sum, sb) => sum + sb.kpis.total_social_reach, 0),
+              avg_score: filteredBreakdowns.reduce((sum, sb) => sum + sb.kpis.avg_score, 0) / filteredBreakdowns.length,
+            };
+            
+            processedData = {
+              ...processedData,
+              speaker_breakdowns: filteredBreakdowns,
+              kpis: {
+                ...processedData.kpis,
+                total_booked: aggregatedKpis.total_booked,
+                total_published: aggregatedKpis.total_published,
+                total_reach: aggregatedKpis.total_reach,
+                total_social_reach: aggregatedKpis.total_social_reach,
+                avg_score: Math.round(aggregatedKpis.avg_score * 10) / 10,
+              },
+            };
+          }
+        }
+      }
+      
       setReportData(processedData);
     }
   }, [navigate]);

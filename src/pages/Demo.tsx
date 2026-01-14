@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DEMO_CLIENT_OPTIONS, DEMO_CLIENTS } from "@/data/demoClients";
 import { Loader2, Sparkles, FileText, Radio, TrendingUp, BarChart3, Target, Users } from "lucide-react";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
@@ -30,9 +31,19 @@ export default function Demo() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [selectedSpeakerIds, setSelectedSpeakerIds] = useState<string[]>([]);
 
   const selectedClient = selectedClientId ? DEMO_CLIENTS[selectedClientId] : null;
   const selectedClientOption = DEMO_CLIENT_OPTIONS.find(c => c.id === selectedClientId);
+
+  // Initialize selected speakers when multi-speaker client is selected (default: all)
+  useEffect(() => {
+    if (selectedClient?.isMultiSpeaker && selectedClient.speakers) {
+      setSelectedSpeakerIds(selectedClient.speakers.map(s => s.id));
+    } else {
+      setSelectedSpeakerIds([]);
+    }
+  }, [selectedClientId]);
 
   // Auto-populate report name when client is selected
   useEffect(() => {
@@ -83,6 +94,7 @@ export default function Demo() {
         clientId: selectedClientId,
         quarter: `${selectedQuarter} ${selectedYear}`,
         reportName,
+        selectedSpeakerIds: selectedClient?.isMultiSpeaker ? selectedSpeakerIds : undefined,
       }));
       
       navigate("/demo/report");
@@ -224,31 +236,62 @@ export default function Demo() {
               </div>
             )}
 
-            {/* Speaker Display - Multi-Speaker */}
+            {/* Speaker Display - Multi-Speaker with Selection */}
             {selectedClient && selectedClient.isMultiSpeaker && selectedClient.speakers && (
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Speakers ({selectedClient.speakers.length})
+                  Select Speakers to Include
                 </Label>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Choose which speakers to feature in this report
+                </p>
                 <div className="space-y-2">
-                  {selectedClient.speakers.map((speaker) => (
-                    <div 
-                      key={speaker.id} 
-                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border/50"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-sm font-medium text-primary">
-                          {speaker.name.split(' ').map(n => n[0]).join('')}
-                        </span>
+                  {selectedClient.speakers.map((speaker) => {
+                    const isChecked = selectedSpeakerIds.includes(speaker.id);
+                    return (
+                      <div 
+                        key={speaker.id} 
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                          isChecked 
+                            ? "bg-primary/5 border-primary/30" 
+                            : "bg-muted/50 border-border/50 opacity-60"
+                        }`}
+                        onClick={() => {
+                          setSelectedSpeakerIds(prev => 
+                            isChecked
+                              ? prev.filter(id => id !== speaker.id)
+                              : [...prev, speaker.id]
+                          );
+                        }}
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            setSelectedSpeakerIds(prev => 
+                              checked
+                                ? [...prev, speaker.id]
+                                : prev.filter(id => id !== speaker.id)
+                            );
+                          }}
+                          className="shrink-0"
+                        />
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-sm font-medium text-primary">
+                            {speaker.name.split(' ').map(n => n[0]).join('')}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">{speaker.name}</p>
+                          <p className="text-sm text-muted-foreground">{speaker.title}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{speaker.name}</p>
-                        <p className="text-sm text-muted-foreground">{speaker.title}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                {selectedSpeakerIds.length === 0 && (
+                  <p className="text-sm text-destructive">Please select at least one speaker</p>
+                )}
               </div>
             )}
 
@@ -296,7 +339,7 @@ export default function Demo() {
             {/* Generate Button */}
             <Button
               onClick={handleGenerate}
-              disabled={!selectedClientId || !reportName}
+              disabled={!selectedClientId || !reportName || (selectedClient?.isMultiSpeaker && selectedSpeakerIds.length === 0)}
               className="w-full"
               size="lg"
             >
