@@ -49,6 +49,7 @@ export interface SpeakerBreakdown {
   speaker_id: string;
   speaker_name: string;
   speaker_title?: string;
+  speaker_headshot_url?: string;
   airtable_embed_url?: string;
   
   // Strategy insights from speaker profile
