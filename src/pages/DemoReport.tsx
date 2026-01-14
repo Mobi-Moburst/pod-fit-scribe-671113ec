@@ -280,9 +280,9 @@ export default function DemoReport() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <ReportHeader
-            reportData={reportData}
-            reportName={reportName}
-            quarter={quarter}
+            client={reportData.client}
+            generated_at={reportData.generated_at}
+            batch_name={reportName || reportData.batch_name}
           />
           <Button onClick={handlePublish} className="flex items-center gap-2">
             <Share2 className="h-4 w-4" />
@@ -358,7 +358,6 @@ export default function DemoReport() {
                         value={`${((reportData.kpis.total_reach || 0) / 1000).toFixed(0)}K`}
                         icon={TrendingUp}
                         onClick={() => setReachDialogOpen(true)}
-                        clickable
                       />
                     )}
                     {visibleSections.averageScore && (
@@ -422,7 +421,6 @@ export default function DemoReport() {
                         value={`$${(totalEMV / 1000).toFixed(1)}K`}
                         icon={DollarSign}
                         onClick={() => setEmvDialogOpen(true)}
-                        clickable
                       />
                     )}
                     {visibleSections.sov && reportData.sov_analysis && (
@@ -431,7 +429,6 @@ export default function DemoReport() {
                         value={`${reportData.sov_analysis.client_percentage}%`}
                         icon={PieChart}
                         onClick={() => setSOVDialogOpen(true)}
-                        clickable
                       />
                     )}
                     {visibleSections.geoScore && reportData.geo_analysis && (
@@ -440,7 +437,6 @@ export default function DemoReport() {
                         value={`${reportData.geo_analysis.geo_score}/100`}
                         icon={Search}
                         onClick={() => setGeoDialogOpen(true)}
-                        clickable
                       />
                     )}
                     {visibleSections.contentGap && reportData.content_gap_analysis && (
@@ -449,7 +445,6 @@ export default function DemoReport() {
                         value={`${reportData.content_gap_analysis.coverage_percentage}%`}
                         icon={Globe}
                         onClick={() => setContentGapDialogOpen(true)}
-                        clickable
                       />
                     )}
                     {visibleSections.socialValue && (
@@ -458,7 +453,6 @@ export default function DemoReport() {
                         value={`$${(totalSocialValue / 1000).toFixed(1)}K`}
                         icon={Share2}
                         onClick={() => setSocialValueDialogOpen(true)}
-                        clickable
                       />
                     )}
                   </div>
@@ -481,8 +475,13 @@ export default function DemoReport() {
               Edit
             </Button>
             <CampaignOverview
-              campaignOverview={reportData.campaign_overview}
-              airtableEmbedUrl=""
+              strategy={reportData.campaign_overview.strategy}
+              executive_summary={reportData.campaign_overview.executive_summary}
+              target_audiences={reportData.campaign_overview.target_audiences}
+              talking_points={reportData.campaign_overview.talking_points}
+              pitch_hooks={reportData.campaign_overview.pitch_hooks}
+              onEdit={() => setCampaignOverviewEditOpen(true)}
+              onHide={() => toggleSection("campaignOverview")}
             />
           </div>
         )}
@@ -527,10 +526,15 @@ export default function DemoReport() {
               Edit
             </Button>
             <NextQuarterStrategy
-              {...reportData.next_quarter_strategy}
-              podcasts={reportData.podcasts}
-              dateRangeStart=""
-              dateRangeEnd=""
+              quarter={reportData.next_quarter_strategy.quarter}
+              intro_paragraph={reportData.next_quarter_strategy.intro_paragraph}
+              strategic_focus_areas={reportData.next_quarter_strategy.strategic_focus_areas}
+              talking_points_spotlight={reportData.next_quarter_strategy.talking_points_spotlight}
+              speaker_talking_points_spotlight={reportData.next_quarter_strategy.speaker_talking_points_spotlight}
+              closing_paragraph={reportData.next_quarter_strategy.closing_paragraph}
+              next_quarter_kpis={reportData.next_quarter_strategy.next_quarter_kpis}
+              onEdit={() => setNextQuarterEditOpen(true)}
+              onHide={() => toggleSection("nextQuarterStrategy")}
             />
           </div>
         )}
@@ -565,17 +569,21 @@ export default function DemoReport() {
             <CardContent>
               {reportData.target_podcasts && reportData.target_podcasts.length > 0 ? (
                 <TargetPodcastsSection
-                  targetPodcasts={reportData.target_podcasts}
+                  client={{
+                    id: 'demo-client',
+                    name: client?.speaker.name || '',
+                    company: client?.company.name || '',
+                    title: client?.speaker.title,
+                    talking_points: client?.speaker.talking_points,
+                    target_audiences: client?.speaker.target_audiences,
+                    campaign_strategy: client?.speaker.campaign_strategy,
+                    media_kit_url: '',
+                  }}
                   nextQuarterStrategy={reportData.next_quarter_strategy!}
-                  onPodcastsChange={(podcasts) => setReportData(prev => prev ? { ...prev, target_podcasts: podcasts } : null)}
-                  onRegenerateAll={handleGenerateTargetPodcasts}
-                  isGenerating={isGeneratingPodcasts}
-                  speakerName={client?.speaker.name}
-                  companyName={client?.company.name}
-                  speakerTitle={client?.speaker.title}
-                  talkingPoints={client?.speaker.talking_points}
-                  targetAudiences={client?.speaker.target_audiences}
-                  campaignStrategy={client?.speaker.campaign_strategy}
+                  topCategories={reportData.kpis.top_categories}
+                  initialPodcasts={reportData.target_podcasts}
+                  onPodcastsGenerated={(podcasts) => setReportData(prev => prev ? { ...prev, target_podcasts: podcasts } : null)}
+                  onHide={() => toggleSection("targetPodcasts")}
                 />
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -617,9 +625,22 @@ export default function DemoReport() {
             <CardContent>
               {reportData.content_gap_analysis.ai_recommendations && reportData.content_gap_analysis.ai_recommendations.length > 0 ? (
                 <ContentGapRecommendations
-                  recommendations={reportData.content_gap_analysis.ai_recommendations}
-                  onRegenerate={handleGenerateContentGapRecommendations}
-                  isRegenerating={isGeneratingRecommendations}
+                  gapAnalysis={reportData.content_gap_analysis}
+                  client={{
+                    id: 'demo-client',
+                    name: client?.speaker.name || '',
+                    company: client?.company.name || '',
+                    title: client?.speaker.title,
+                    talking_points: client?.speaker.talking_points,
+                    target_audiences: client?.speaker.target_audiences,
+                    campaign_strategy: client?.speaker.campaign_strategy,
+                    media_kit_url: '',
+                  }}
+                  onUpdate={(recommendations) => {
+                    const updatedAnalysis = { ...reportData.content_gap_analysis!, ai_recommendations: recommendations };
+                    setReportData(prev => prev ? { ...prev, content_gap_analysis: updatedAnalysis } : null);
+                  }}
+                  onHide={() => toggleSection("contentGapRecommendations")}
                 />
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -669,15 +690,18 @@ export default function DemoReport() {
       <CampaignOverviewEditDialog
         open={campaignOverviewEditOpen}
         onOpenChange={setCampaignOverviewEditOpen}
-        campaignOverview={reportData.campaign_overview}
+        data={reportData.campaign_overview}
         onSave={handleCampaignOverviewSave}
       />
-      <NextQuarterEditDialog
-        open={nextQuarterEditOpen}
-        onOpenChange={setNextQuarterEditOpen}
-        nextQuarterStrategy={reportData.next_quarter_strategy}
-        onSave={handleNextQuarterSave}
-      />
+      {reportData.next_quarter_strategy && (
+        <NextQuarterEditDialog
+          open={nextQuarterEditOpen}
+          onOpenChange={setNextQuarterEditOpen}
+          data={reportData.next_quarter_strategy}
+          onSave={handleNextQuarterSave}
+          speakerNames={[client?.speaker.name || '']}
+        />
+      )}
     </div>
   );
 }

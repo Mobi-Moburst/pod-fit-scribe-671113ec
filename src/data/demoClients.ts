@@ -140,7 +140,6 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
         total_social_reach: 126000,
         total_reach: 412000,
         total_listeners_per_episode: 36100,
-        average_fit_score: 9.6,
         top_categories: [
           { 
             name: "B2B Marketing", 
