@@ -284,6 +284,18 @@ export default function DemoReport() {
   }
 
   const client = DEMO_CLIENTS[demoState.clientId];
+  const primarySpeaker = client?.isMultiSpeaker ? client.speakers?.[0] : client?.speaker;
+  const aiClientForGeneration = {
+    id: "demo-client",
+    name: primarySpeaker?.name || reportData.client?.name || client?.company.name || "",
+    company: client?.company.name || reportData.company_name || "",
+    title: primarySpeaker?.title || "",
+    talking_points: primarySpeaker?.talking_points || [],
+    target_audiences: primarySpeaker?.target_audiences || [],
+    campaign_strategy: primarySpeaker?.campaign_strategy || "",
+    media_kit_url: "",
+  };
+
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || 
     visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
   const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || 
@@ -613,16 +625,7 @@ export default function DemoReport() {
             <CardContent>
               {reportData.target_podcasts && reportData.target_podcasts.length > 0 ? (
                 <TargetPodcastsSection
-                  client={{
-                    id: 'demo-client',
-                    name: client?.speaker.name || '',
-                    company: client?.company.name || '',
-                    title: client?.speaker.title,
-                    talking_points: client?.speaker.talking_points,
-                    target_audiences: client?.speaker.target_audiences,
-                    campaign_strategy: client?.speaker.campaign_strategy,
-                    media_kit_url: '',
-                  }}
+                  client={aiClientForGeneration}
                   nextQuarterStrategy={reportData.next_quarter_strategy!}
                   topCategories={reportData.kpis.top_categories}
                   initialPodcasts={reportData.target_podcasts}
@@ -670,16 +673,7 @@ export default function DemoReport() {
               {reportData.content_gap_analysis.ai_recommendations && reportData.content_gap_analysis.ai_recommendations.length > 0 ? (
                 <ContentGapRecommendations
                   gapAnalysis={reportData.content_gap_analysis}
-                  client={{
-                    id: 'demo-client',
-                    name: client?.speaker.name || '',
-                    company: client?.company.name || '',
-                    title: client?.speaker.title,
-                    talking_points: client?.speaker.talking_points,
-                    target_audiences: client?.speaker.target_audiences,
-                    campaign_strategy: client?.speaker.campaign_strategy,
-                    media_kit_url: '',
-                  }}
+                  client={aiClientForGeneration}
                   onUpdate={(recommendations) => {
                     const updatedAnalysis = { ...reportData.content_gap_analysis!, ai_recommendations: recommendations };
                     setReportData(prev => prev ? { ...prev, content_gap_analysis: updatedAnalysis } : null);
@@ -744,7 +738,7 @@ export default function DemoReport() {
           onOpenChange={setNextQuarterEditOpen}
           data={reportData.next_quarter_strategy}
           onSave={handleNextQuarterSave}
-          speakerNames={[client?.speaker.name || '']}
+          speakerNames={client?.isMultiSpeaker ? (client.speakers?.map(s => s.name) ?? []) : [client?.speaker?.name || ""].filter(Boolean)}
         />
       )}
     </div>
