@@ -159,21 +159,22 @@ export default function Demo() {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8 max-w-2xl relative z-10">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Campaign Report Demo</h1>
+        {/* Header matching Reports page style */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Podcast Campaign Reports</h1>
           <p className="text-muted-foreground">
-            Generate a sample quarterly campaign report with AI-powered insights
+            Generate quarterly campaign reports with comprehensive performance analytics
           </p>
         </div>
 
         <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Report Configuration
+              <FileText className="h-5 w-5 text-primary" />
+              New Report
             </CardTitle>
             <CardDescription>
-              Select a demo client and configure the report parameters
+              Select a client and configure report parameters
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
