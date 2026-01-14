@@ -122,16 +122,28 @@ export default function DemoReport() {
     setIsGeneratingPodcasts(true);
 
     try {
+      // For multi-speaker clients, use the first speaker or combined data
+      const speakerData = client.isMultiSpeaker && client.speakers?.[0]
+        ? {
+            name: client.speakers[0].name,
+            company: client.company.name,
+            title: client.speakers[0].title,
+            talking_points: client.speakers[0].talking_points,
+            target_audiences: client.speakers[0].target_audiences,
+            campaign_strategy: client.speakers[0].campaign_strategy,
+          }
+        : {
+            name: client.speaker?.name || "",
+            company: client.company.name,
+            title: client.speaker?.title || "",
+            talking_points: client.speaker?.talking_points || [],
+            target_audiences: client.speaker?.target_audiences || [],
+            campaign_strategy: client.speaker?.campaign_strategy || "",
+          };
+
       const { data, error } = await supabase.functions.invoke("suggest-target-podcasts", {
         body: {
-          client: {
-            name: client.speaker.name,
-            company: client.company.name,
-            title: client.speaker.title,
-            talking_points: client.speaker.talking_points,
-            target_audiences: client.speaker.target_audiences,
-            campaign_strategy: client.speaker.campaign_strategy,
-          },
+          client: speakerData,
           next_quarter_strategy: reportData.next_quarter_strategy,
           top_categories: reportData.kpis.top_categories,
           num_suggestions: 10,
@@ -170,16 +182,28 @@ export default function DemoReport() {
     setIsGeneratingRecommendations(true);
 
     try {
+      // For multi-speaker clients, use the first speaker or combined data
+      const speakerData = client.isMultiSpeaker && client.speakers?.[0]
+        ? {
+            name: client.speakers[0].name,
+            company: client.company.name,
+            title: client.speakers[0].title,
+            talking_points: client.speakers[0].talking_points,
+            target_audiences: client.speakers[0].target_audiences,
+            campaign_strategy: client.speakers[0].campaign_strategy,
+          }
+        : {
+            name: client.speaker?.name || "",
+            company: client.company.name,
+            title: client.speaker?.title || "",
+            talking_points: client.speaker?.talking_points || [],
+            target_audiences: client.speaker?.target_audiences || [],
+            campaign_strategy: client.speaker?.campaign_strategy || "",
+          };
+
       const { data, error } = await supabase.functions.invoke("content-gap-recommendations", {
         body: {
-          client: {
-            name: client.speaker.name,
-            company: client.company.name,
-            title: client.speaker.title,
-            talking_points: client.speaker.talking_points,
-            target_audiences: client.speaker.target_audiences,
-            campaign_strategy: client.speaker.campaign_strategy,
-          },
+          client: speakerData,
           gap_analysis: reportData.content_gap_analysis,
         },
       });
