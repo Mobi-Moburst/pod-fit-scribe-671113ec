@@ -14,7 +14,7 @@ import { CategoriesSlide } from "@/components/client-report/slides/CategoriesSli
 import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterSlide";
 import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
-import HighlightsSlide from "@/components/client-report/slides/HighlightsSlide";
+
 import { SpeakerSpotlightSlide } from "@/components/client-report/slides/SpeakerSpotlightSlide";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
@@ -174,27 +174,20 @@ export default function DemoPresentation() {
       });
     }
 
-    // Highlights slide (if available)
-    if (visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0) {
-      slides.push({
-        id: "highlights",
-        component: (
-          <HighlightsSlide
-            clips={reportData.highlight_clips}
-            companyName={reportData.company_name || reportData.client?.company}
-          />
-        ),
-      });
-    }
-
-    // Speaker Spotlight Slides (for multi-speaker reports)
+    // Speaker Spotlight Slides (for multi-speaker reports) - with their highlight clips
     if (reportData.report_type === 'multi' && reportData.speaker_breakdowns) {
       reportData.speaker_breakdowns.forEach((speaker) => {
+        // Filter highlight clips for this speaker by matching speaker_name
+        const speakerClips = visibleSections.highlights !== false && reportData.highlight_clips
+          ? reportData.highlight_clips.filter(clip => clip.speaker_name === speaker.speaker_name)
+          : [];
+        
         slides.push({
           id: `speaker-${speaker.speaker_id}`,
           component: (
             <SpeakerSpotlightSlide
               speaker={speaker}
+              highlightClips={speakerClips}
               visibleSections={visibleSections}
             />
           ),
