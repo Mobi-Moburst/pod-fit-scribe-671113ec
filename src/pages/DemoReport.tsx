@@ -243,7 +243,7 @@ export default function DemoReport() {
 
   if (!reportData || !demoState) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -272,7 +272,7 @@ export default function DemoReport() {
   }, 0);
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen relative">
       <BackgroundFX />
       <Navbar />
       

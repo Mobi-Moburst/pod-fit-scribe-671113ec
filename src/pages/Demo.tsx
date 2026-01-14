@@ -91,7 +91,7 @@ export default function Demo() {
     const CurrentIcon = LOADING_MESSAGES[loadingStep].icon;
     
     return (
-      <div className="min-h-screen bg-background relative flex items-center justify-center">
+      <div className="min-h-screen relative flex items-center justify-center">
         <BackgroundFX />
         <div className="relative z-10 text-center space-y-8 max-w-md mx-auto px-4">
           {/* Pulsing Logo */}
@@ -154,7 +154,7 @@ export default function Demo() {
   }
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen relative">
       <BackgroundFX />
       <Navbar />
       
