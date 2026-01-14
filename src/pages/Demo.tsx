@@ -221,12 +221,18 @@ export default function Demo() {
               <div className="space-y-2">
                 <Label>Speaker</Label>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border/50">
-                  {selectedClient.company.logo_url && (
+                  {selectedClient.speaker.headshot_url ? (
                     <img
-                      src={selectedClient.company.logo_url}
-                      alt={selectedClient.company.name}
+                      src={selectedClient.speaker.headshot_url}
+                      alt={selectedClient.speaker.name}
                       className="w-10 h-10 rounded-full object-cover bg-background"
                     />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-medium text-primary">
+                        {selectedClient.speaker.name.split(' ').map(n => n[0]).join('')}
+                      </span>
+                    </div>
                   )}
                   <div>
                     <p className="font-medium">{selectedClient.speaker.name}</p>
@@ -276,11 +282,19 @@ export default function Demo() {
                           }}
                           className="shrink-0"
                         />
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <span className="text-sm font-medium text-primary">
-                            {speaker.name.split(' ').map(n => n[0]).join('')}
-                          </span>
-                        </div>
+                        {speaker.headshot_url ? (
+                          <img
+                            src={speaker.headshot_url}
+                            alt={speaker.name}
+                            className="w-10 h-10 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-sm font-medium text-primary">
+                              {speaker.name.split(' ').map(n => n[0]).join('')}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex-1">
                           <p className="font-medium">{speaker.name}</p>
                           <p className="text-sm text-muted-foreground">{speaker.title}</p>

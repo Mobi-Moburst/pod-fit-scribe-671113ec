@@ -4,6 +4,7 @@ export interface DemoSpeaker {
   id: string;
   name: string;
   title: string;
+  headshot_url?: string;
   talking_points: string[];
   target_audiences: string[];
   campaign_strategy: string;
@@ -374,6 +375,7 @@ const atlasBridgeSpeakerBreakdowns: SpeakerBreakdown[] = [
     speaker_id: "maya-reynolds",
     speaker_name: "Maya Reynolds",
     speaker_title: "Founder & CEO",
+    speaker_headshot_url: "/demo/maya-reynolds-headshot.png",
     campaign_strategy: "Position Maya as a founder-led executive voice on enterprise AI adoption, organizational readiness, and leadership through transformation. Her campaign focuses on helping CEOs and senior leaders understand where AI creates real business leverage — and where initiatives fail without alignment, governance, and clarity.",
     target_audiences: [
       "Enterprise CEOs and Founders",
@@ -402,6 +404,7 @@ const atlasBridgeSpeakerBreakdowns: SpeakerBreakdown[] = [
     speaker_id: "daniel-ortiz",
     speaker_name: "Daniel Ortiz",
     speaker_title: "Chief Technology & Data Officer",
+    speaker_headshot_url: "/demo/daniel-ortiz-headshot.png",
     campaign_strategy: "Position Daniel as a trusted technical authority on AI infrastructure, data governance, and secure deployment at scale. His campaign translates complex technical realities into practical guidance for IT and data leaders responsible for building systems that actually support AI outcomes.",
     target_audiences: [
       "CIOs and CTOs",
@@ -440,6 +443,7 @@ export const DEMO_CLIENTS: Record<string, DemoClient> = {
       id: "alex-moreno",
       name: "Alex Moreno",
       title: "Founder & CEO",
+      headshot_url: "/demo/alex-moreno-headshot.png",
       talking_points: [
         "From clicks to signals: why traditional marketing metrics fail",
         "Attribution in an AI-driven discovery landscape",
@@ -655,6 +659,7 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
         id: "maya-reynolds",
         name: "Maya Reynolds",
         title: "Founder & CEO",
+        headshot_url: "/demo/maya-reynolds-headshot.png",
         talking_points: [
           "Moving from AI experimentation to enterprise execution",
           "Why AI strategies fail without leadership alignment",
@@ -674,6 +679,7 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
         id: "daniel-ortiz",
         name: "Daniel Ortiz",
         title: "Chief Technology & Data Officer",
+        headshot_url: "/demo/daniel-ortiz-headshot.png",
         talking_points: [
           "Data governance as the backbone of enterprise AI",
           "Why copilots and agents fail in poorly governed environments",

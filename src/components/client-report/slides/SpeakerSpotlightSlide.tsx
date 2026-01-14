@@ -1,6 +1,6 @@
 import { SpeakerBreakdown, HighlightClip } from "@/types/reports";
 import { Calendar, Podcast, Users, TrendingUp, ExternalLink, Play, Video, Headphones, Clock } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 
@@ -237,6 +237,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
       {/* Speaker Header */}
       <div className="flex items-center gap-6">
         <Avatar className="h-20 w-20 border-2 border-primary/20">
+          <AvatarImage src={speaker.speaker_headshot_url} alt={speaker.speaker_name} />
           <AvatarFallback className="text-2xl font-semibold bg-primary/10 text-primary">
             {initials}
           </AvatarFallback>

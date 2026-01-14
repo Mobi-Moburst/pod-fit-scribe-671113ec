@@ -4,6 +4,7 @@ import { KPICard } from "./KPICard";
 import { AirtableEmbed } from "./AirtableEmbed";
 import { PublishedEpisodesCarousel } from "./PublishedEpisodesCarousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, Radio, Users, TrendingUp, User } from "lucide-react";
 interface VisibleSections {
   totalBooked?: boolean;
@@ -64,9 +65,12 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
             <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between w-full gap-4 text-left">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
+                  <Avatar className="h-10 w-10 shrink-0 border border-primary/20">
+                    <AvatarImage src={speaker.speaker_headshot_url} alt={speaker.speaker_name} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                      {speaker.speaker_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="min-w-0">
                     <p className="font-semibold text-foreground truncate">{speaker.speaker_name}</p>
                     {speaker.speaker_title && (
