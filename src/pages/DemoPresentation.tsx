@@ -15,6 +15,7 @@ import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterS
 import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
 import HighlightsSlide from "@/components/client-report/slides/HighlightsSlide";
+import { SpeakerSpotlightSlide } from "@/components/client-report/slides/SpeakerSpotlightSlide";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
@@ -182,6 +183,21 @@ export default function DemoPresentation() {
             companyName={reportData.company_name || reportData.client?.company}
           />
         ),
+      });
+    }
+
+    // Speaker Spotlight Slides (for multi-speaker reports)
+    if (reportData.report_type === 'multi' && reportData.speaker_breakdowns) {
+      reportData.speaker_breakdowns.forEach((speaker) => {
+        slides.push({
+          id: `speaker-${speaker.speaker_id}`,
+          component: (
+            <SpeakerSpotlightSlide
+              speaker={speaker}
+              visibleSections={visibleSections}
+            />
+          ),
+        });
       });
     }
 

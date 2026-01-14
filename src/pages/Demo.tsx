@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEMO_CLIENT_OPTIONS, DEMO_CLIENTS } from "@/data/demoClients";
-import { Loader2, Sparkles, FileText, Radio, TrendingUp, BarChart3, Target } from "lucide-react";
+import { Loader2, Sparkles, FileText, Radio, TrendingUp, BarChart3, Target, Users } from "lucide-react";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
+import { Badge } from "@/components/ui/badge";
 
 const LOADING_MESSAGES = [
   { message: "Connecting to data sources...", icon: FileText },
@@ -31,6 +32,7 @@ export default function Demo() {
   const [progress, setProgress] = useState(0);
 
   const selectedClient = selectedClientId ? DEMO_CLIENTS[selectedClientId] : null;
+  const selectedClientOption = DEMO_CLIENT_OPTIONS.find(c => c.id === selectedClientId);
 
   // Auto-populate report name when client is selected
   useEffect(() => {
@@ -188,15 +190,22 @@ export default function Demo() {
                 <SelectContent>
                   {DEMO_CLIENT_OPTIONS.map((option) => (
                     <SelectItem key={option.id} value={option.id}>
-                      {option.name}
+                      <div className="flex items-center gap-2">
+                        <span>{option.name}</span>
+                        {option.isMultiSpeaker && (
+                          <Badge variant="secondary" className="text-xs">
+                            {option.speakers.length} speakers
+                          </Badge>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Speaker Display */}
-            {selectedClient && (
+            {/* Speaker Display - Single Speaker */}
+            {selectedClient && !selectedClient.isMultiSpeaker && selectedClient.speaker && (
               <div className="space-y-2">
                 <Label>Speaker</Label>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border/50">
@@ -211,6 +220,34 @@ export default function Demo() {
                     <p className="font-medium">{selectedClient.speaker.name}</p>
                     <p className="text-sm text-muted-foreground">{selectedClient.speaker.title}</p>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Speaker Display - Multi-Speaker */}
+            {selectedClient && selectedClient.isMultiSpeaker && selectedClient.speakers && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Speakers ({selectedClient.speakers.length})
+                </Label>
+                <div className="space-y-2">
+                  {selectedClient.speakers.map((speaker) => (
+                    <div 
+                      key={speaker.id} 
+                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border/50"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-medium text-primary">
+                          {speaker.name.split(' ').map(n => n[0]).join('')}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium">{speaker.name}</p>
+                        <p className="text-sm text-muted-foreground">{speaker.title}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

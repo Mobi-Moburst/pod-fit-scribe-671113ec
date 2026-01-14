@@ -17,6 +17,7 @@ import { NextQuarterStrategy } from "@/components/reports/NextQuarterStrategy";
 import { TargetPodcastsSection } from "@/components/reports/TargetPodcastsSection";
 import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
+import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
@@ -498,13 +499,20 @@ export default function DemoReport() {
           </div>
         )}
 
-        {/* Published Episodes */}
-        {reportData.podcasts && reportData.podcasts.length > 0 && (
-          <PublishedEpisodesCarousel 
-            podcasts={reportData.podcasts}
-            title="Published Episodes This Quarter"
-            variant="list"
+        {/* Published Episodes / Speaker Breakdowns */}
+        {reportData.report_type === 'multi' && reportData.speaker_breakdowns ? (
+          <SpeakerAccordion 
+            speakerBreakdowns={reportData.speaker_breakdowns}
+            visibleSections={visibleSections}
           />
+        ) : (
+          reportData.podcasts && reportData.podcasts.length > 0 && (
+            <PublishedEpisodesCarousel 
+              podcasts={reportData.podcasts}
+              title="Published Episodes This Quarter"
+              variant="list"
+            />
+          )
         )}
 
         {/* Top Categories */}
