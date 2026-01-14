@@ -13,6 +13,7 @@ import { ClientReportCategories } from "@/components/client-report/ClientReportC
 import { ClientReportNextQuarter } from "@/components/client-report/ClientReportNextQuarter";
 import { ClientReportTargetPodcasts } from "@/components/client-report/ClientReportTargetPodcasts";
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
+import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,7 @@ interface VisibleSections {
   nextQuarterStrategy?: boolean;
   targetPodcasts?: boolean;
   contentGapRecommendations?: boolean;
+  highlights?: boolean;
 }
 
 export default function DemoPublicReport() {
@@ -89,6 +91,7 @@ export default function DemoPublicReport() {
         nextQuarterStrategy: true,
         targetPodcasts: true,
         contentGapRecommendations: true,
+        highlights: true,
       });
       setIsLoading(false);
     } catch (e) {
@@ -234,6 +237,14 @@ export default function DemoPublicReport() {
               variant="list"
             />
           )
+        )}
+
+        {/* Interview Highlights */}
+        {visibleSections.highlights !== false && reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
+          <ClientReportHighlights
+            clips={reportData.highlight_clips}
+            companyName={reportData.company_name || reportData.client?.company}
+          />
         )}
 
         {/* Top Categories */}
