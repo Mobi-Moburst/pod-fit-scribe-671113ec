@@ -11,6 +11,8 @@ import History from "./pages/History";
 import Reports from "./pages/Reports";
 import PublicReport from "./pages/PublicReport";
 import ReportPresentation from "./pages/ReportPresentation";
+import Demo from "./pages/Demo";
+import DemoReport from "./pages/DemoReport";
 import NotFound from "./pages/NotFound";
 
 // Singleton pattern for QueryClient to prevent recreation during HMR
@@ -46,6 +48,8 @@ const App = () => (
             <Route path="/reports" element={<Reports />} />
             <Route path="/report/:slug" element={<PublicReport />} />
             <Route path="/report/:slug/present" element={<ReportPresentation />} />
+            <Route path="/demo" element={<Demo />} />
+            <Route path="/demo/report" element={<DemoReport />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
