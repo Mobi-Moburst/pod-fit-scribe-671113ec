@@ -14,6 +14,7 @@ import { ClientReportNextQuarter } from "@/components/client-report/ClientReport
 import { ClientReportTargetPodcasts } from "@/components/client-report/ClientReportTargetPodcasts";
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
+import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
@@ -219,13 +220,20 @@ export default function DemoPublicReport() {
           />
         )}
 
-        {/* Published Episodes Carousel */}
-        {reportData.podcasts && reportData.podcasts.length > 0 && (
-          <PublishedEpisodesCarousel 
-            podcasts={reportData.podcasts}
-            title="Published Episodes This Quarter"
-            variant="list"
+        {/* Published Episodes / Speaker Breakdowns */}
+        {reportData.report_type === 'multi' && reportData.speaker_breakdowns ? (
+          <SpeakerAccordion 
+            speakerBreakdowns={reportData.speaker_breakdowns}
+            visibleSections={visibleSections}
           />
+        ) : (
+          reportData.podcasts && reportData.podcasts.length > 0 && (
+            <PublishedEpisodesCarousel 
+              podcasts={reportData.podcasts}
+              title="Published Episodes This Quarter"
+              variant="list"
+            />
+          )
         )}
 
         {/* Top Categories */}
