@@ -34,6 +34,8 @@ export const TargetPodcastsSlide = ({ podcasts }: TargetPodcastsSlideProps) => {
                   <img 
                     src={podcast.cover_art_url} 
                     alt={podcast.podcast_name}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
                     className="h-24 w-24 rounded-lg object-cover"
                   />
                 ) : (
