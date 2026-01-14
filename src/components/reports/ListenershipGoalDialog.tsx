@@ -29,9 +29,9 @@ export function ListenershipGoalDialog({
   currentAnnualListenership,
   quarter,
 }: ListenershipGoalDialogProps) {
-  // Current monthly listeners per episode (annual / 12)
-  const currentMonthlyListenersPerEpisode = currentAnnualListenership && currentAnnualListenership > 0 
-    ? currentAnnualListenership / 12 
+  // Current monthly listeners per episode comes from currentListenership prop
+  const currentMonthlyListenersPerEpisode = currentListenership && currentListenership > 0 
+    ? currentListenership 
     : 0;
   
   // Monthly listeners per episode goal = 20% increase
@@ -39,7 +39,7 @@ export function ListenershipGoalDialog({
     ? Math.round(currentMonthlyListenersPerEpisode * 1.2)
     : 0;
   
-  // Annual goal is 20% increase from current quarter's annual listenership
+  // Annual goal is 20% increase from current annual listenership
   const annualGoal = currentAnnualListenership && currentAnnualListenership > 0 
     ? Math.round(currentAnnualListenership * 1.2) 
     : listenershipGoal * 12;
