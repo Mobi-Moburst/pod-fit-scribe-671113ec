@@ -45,6 +45,7 @@ const emptyCompany: Omit<Company, 'id'> = {
 const emptySpeaker: Omit<Speaker, 'id' | 'company_id'> = {
   name: '',
   title: '',
+  headshot_url: '',
   media_kit_url: '',
   airtable_embed_url: '',
   gender: undefined,
@@ -138,6 +139,7 @@ const Companies = () => {
         company_id: s.company_id,
         name: s.name,
         title: s.title || '',
+        headshot_url: s.headshot_url || '',
         media_kit_url: s.media_kit_url || '',
         airtable_embed_url: s.airtable_embed_url || '',
         gender: s.gender,
@@ -272,6 +274,7 @@ const Companies = () => {
       company_id: editingSpeaker.company_id,
       name: editingSpeaker.name.trim(),
       title: editingSpeaker.title?.trim() || null,
+      headshot_url: editingSpeaker.headshot_url?.trim() || null,
       media_kit_url: editingSpeaker.media_kit_url?.trim() || '',
       airtable_embed_url: editingSpeaker.airtable_embed_url?.trim() || null,
       gender: editingSpeaker.gender || null,
@@ -598,6 +601,15 @@ const Companies = () => {
                   onChange={(e) => setEditingSpeaker({ ...editingSpeaker, media_kit_url: e.target.value })}
                   className={editingSpeaker.media_kit_url && /^https?:\/\/.+/.test(editingSpeaker.media_kit_url.trim()) ? 'border-green-500/50' : ''}
                 />
+              </div>
+              <div>
+                <Label>Headshot URL</Label>
+                <Input 
+                  placeholder="https://example.com/headshot.png"
+                  value={editingSpeaker.headshot_url || ''} 
+                  onChange={(e) => setEditingSpeaker({ ...editingSpeaker, headshot_url: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Profile photo for reports (square image recommended)</p>
               </div>
               <div>
                 <Label>Airtable Embed URL</Label>

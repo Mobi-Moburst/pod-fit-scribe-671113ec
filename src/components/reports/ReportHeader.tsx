@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { MinimalClient } from "@/types/clients";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ReportHeaderProps {
   client: MinimalClient;
@@ -10,6 +11,11 @@ interface ReportHeaderProps {
 
 export const ReportHeader = ({ client, generated_at, batch_name }: ReportHeaderProps) => {
   const clientPrimaryColor = client.brand_colors?.primary;
+  
+  // Generate initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  };
   
   return (
     <div className="space-y-4">
@@ -51,9 +57,17 @@ export const ReportHeader = ({ client, generated_at, batch_name }: ReportHeaderP
       <div className="space-y-2">
         <h1 className="text-4xl font-bold">Podcast Campaign Report</h1>
         <div className="flex items-center gap-4 text-muted-foreground flex-wrap">
-          <div>
-            <span className="font-medium">Client:</span> {client.name}
-            {client.company && ` - ${client.company}`}
+          <div className="flex items-center gap-2">
+            {client.headshot_url && (
+              <Avatar className="h-6 w-6 border border-primary/20">
+                <AvatarImage src={client.headshot_url} alt={client.name} />
+                <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                  {getInitials(client.name)}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <span><span className="font-medium">Client:</span> {client.name}
+            {client.company && ` - ${client.company}`}</span>
           </div>
           <div className="text-muted-foreground">•</div>
           <div>

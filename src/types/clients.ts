@@ -36,6 +36,7 @@ export interface Speaker {
   company_id: string;
   name: string;
   title?: string;
+  headshot_url?: string;
   media_kit_url?: string;
   airtable_embed_url?: string;
   gender?: 'male' | 'female' | 'non_binary' | 'unspecified';
@@ -64,6 +65,7 @@ export interface MinimalClient {
   company_url?: string;
   logo_url?: string;
   brand_colors?: BrandColors;
+  headshot_url?: string;
   media_kit_url: string;
   target_audiences?: string[];
   talking_points?: string[];

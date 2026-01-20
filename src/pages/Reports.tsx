@@ -259,6 +259,7 @@ export default function Reports() {
       company_url: selectedCompany.company_url || '',
       logo_url: (selectedCompany as any).logo_url || '',
       brand_colors: (selectedCompany as any).brand_colors || undefined,
+      headshot_url: (selectedSpeaker as any).headshot_url || '',
       media_kit_url: selectedSpeaker.media_kit_url || '',
       target_audiences: selectedSpeaker.target_audiences || [],
       talking_points: selectedSpeaker.talking_points || [],
