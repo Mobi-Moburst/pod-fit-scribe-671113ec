@@ -1634,6 +1634,7 @@ export async function generateMultiSpeakerReport(
       speaker_id: speaker.id,
       speaker_name: speaker.name,
       speaker_title: speaker.title || undefined,
+      speaker_headshot_url: speaker.headshot_url || undefined,
       airtable_embed_url: speaker.airtable_embed_url || undefined,
       // Include strategy insights from speaker profile
       campaign_strategy: speaker.campaign_strategy || undefined,

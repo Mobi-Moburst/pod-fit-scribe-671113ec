@@ -344,6 +344,7 @@ export type Database = {
           created_at: string | null
           gender: string | null
           guest_identity_tags: string[] | null
+          headshot_url: string | null
           id: string
           media_kit_url: string | null
           name: string
@@ -364,6 +365,7 @@ export type Database = {
           created_at?: string | null
           gender?: string | null
           guest_identity_tags?: string[] | null
+          headshot_url?: string | null
           id?: string
           media_kit_url?: string | null
           name: string
@@ -384,6 +386,7 @@ export type Database = {
           created_at?: string | null
           gender?: string | null
           guest_identity_tags?: string[] | null
+          headshot_url?: string | null
           id?: string
           media_kit_url?: string | null
           name?: string
