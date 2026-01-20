@@ -35,6 +35,7 @@ export function TargetPodcastsSection({
 }: TargetPodcastsSectionProps) {
   const [podcasts, setPodcasts] = useState<TargetPodcast[]>(initialPodcasts || []);
   const [isLoading, setIsLoading] = useState(false);
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const [hasGenerated, setHasGenerated] = useState(!!initialPodcasts?.length);
   const [coverArtCache, setCoverArtCache] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -229,6 +230,80 @@ export function TargetPodcastsSection({
     }
   };
 
+  // Regenerate a single podcast recommendation
+  const regenerateSinglePodcast = async (index: number) => {
+    setRegeneratingIndex(index);
+    
+    const currentPodcast = podcasts[index];
+    const excludeNames = podcasts.map(p => p.podcast_name);
+    
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    
+    try {
+      // Request more suggestions to find a valid replacement
+      const { data, error } = await supabase.functions.invoke('suggest-target-podcasts', {
+        body: {
+          client: {
+            name: client.name,
+            company: client.company,
+            title: client.title,
+            talking_points: client.talking_points,
+            target_audiences: client.target_audiences,
+            campaign_strategy: client.campaign_strategy,
+          },
+          next_quarter_strategy: nextQuarterStrategy,
+          top_categories: topCategories,
+          num_suggestions: 5, // Request a few to find a valid one
+          exclude_podcasts: excludeNames,
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to generate suggestion');
+      }
+
+      if (!data?.success || !data?.podcasts?.length) {
+        throw new Error('No new podcasts found. Try regenerating all.');
+      }
+
+      // Validate suggestions until we find a valid one
+      let newPodcast: TargetPodcast | null = null;
+      for (const p of data.podcasts) {
+        const validated = await validatePodcast(p, twoMonthsAgo);
+        if (validated) {
+          newPodcast = validated;
+          break;
+        }
+      }
+
+      if (!newPodcast) {
+        throw new Error('Could not find an active replacement podcast. Try regenerating all.');
+      }
+
+      // Replace the podcast at the index
+      const updatedPodcasts = [...podcasts];
+      updatedPodcasts[index] = newPodcast;
+      setPodcasts(updatedPodcasts);
+      onPodcastsGenerated?.(updatedPodcasts);
+
+      toast({
+        title: "Podcast replaced",
+        description: `Replaced "${currentPodcast.podcast_name}" with "${newPodcast.podcast_name}".`,
+      });
+
+    } catch (err) {
+      console.error('Error regenerating single podcast:', err);
+      toast({
+        title: "Failed to regenerate",
+        description: err instanceof Error ? err.message : 'Unknown error occurred',
+        variant: "destructive",
+      });
+    } finally {
+      setRegeneratingIndex(null);
+    }
+  };
+
   // Search iTunes for Apple Podcast URL if not provided
   const searchiTunes = async (podcastName: string): Promise<string | undefined> => {
     try {
@@ -346,10 +421,27 @@ export function TargetPodcastsSection({
       <CardContent>
         <div className="space-y-6">
           {podcasts.map((podcast, index) => (
-            <div key={index} className="flex gap-4 p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors">
+            <div key={index} className="flex gap-4 p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors relative group/item">
+              {/* Individual Regenerate Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  regenerateSinglePodcast(index);
+                }}
+                disabled={regeneratingIndex !== null || isLoading}
+                className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover/item:opacity-100 transition-opacity print:hidden"
+                title="Regenerate this recommendation"
+              >
+                <RefreshCw className={`h-4 w-4 ${regeneratingIndex === index ? 'animate-spin' : ''}`} />
+              </Button>
+
               {/* Cover Art */}
               <div className="flex-shrink-0">
-                {getCoverArt(podcast) ? (
+                {regeneratingIndex === index ? (
+                  <Skeleton className="h-24 w-24 rounded-lg" />
+                ) : getCoverArt(podcast) ? (
                   <img
                     src={getCoverArt(podcast)}
                     alt={podcast.podcast_name}
@@ -364,51 +456,62 @@ export function TargetPodcastsSection({
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                {/* Title and Link */}
-                <div className="flex items-start gap-2 mb-2">
-                  <h3 className="font-semibold text-lg leading-tight">
-                    {podcast.apple_podcast_url ? (
-                      <a
-                        href={podcast.apple_podcast_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-primary transition-colors inline-flex items-center gap-1"
-                      >
-                        {podcast.podcast_name}
-                        <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                      </a>
-                    ) : (
-                      podcast.podcast_name
-                    )}
-                  </h3>
-                </div>
+                {regeneratingIndex === index ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ) : (
+                  <>
+                    {/* Title and Link */}
+                    <div className="flex items-start gap-2 mb-2">
+                      <h3 className="font-semibold text-lg leading-tight">
+                        {podcast.apple_podcast_url ? (
+                          <a
+                            href={podcast.apple_podcast_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-primary transition-colors inline-flex items-center gap-1"
+                          >
+                            {podcast.podcast_name}
+                            <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                          </a>
+                        ) : (
+                          podcast.podcast_name
+                        )}
+                      </h3>
+                    </div>
 
-                {/* Description */}
-                <p className="text-muted-foreground text-sm mb-3">
-                  {podcast.description}
-                </p>
+                    {/* Description */}
+                    <p className="text-muted-foreground text-sm mb-3">
+                      {podcast.description}
+                    </p>
 
-                {/* Pitch Angle */}
-                <div className="mb-3">
-                  <span className="font-medium text-sm">Pitch angle: </span>
-                  <span className="text-sm">{podcast.pitch_angle}</span>
-                </div>
+                    {/* Pitch Angle */}
+                    <div className="mb-3">
+                      <span className="font-medium text-sm">Pitch angle: </span>
+                      <span className="text-sm">{podcast.pitch_angle}</span>
+                    </div>
 
-                {/* Talking Points */}
-                <div className="mb-3">
-                  <span className="font-medium text-sm">Talking points: </span>
-                  <span className="text-sm text-muted-foreground">
-                    {podcast.talking_points.join(', ')}.
-                  </span>
-                </div>
+                    {/* Talking Points */}
+                    <div className="mb-3">
+                      <span className="font-medium text-sm">Talking points: </span>
+                      <span className="text-sm text-muted-foreground">
+                        {podcast.talking_points.join(', ')}.
+                      </span>
+                    </div>
 
-                {/* Target Audience */}
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">Target Audience:</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {podcast.target_audience}
-                  </Badge>
-                </div>
+                    {/* Target Audience */}
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">Target Audience:</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {podcast.target_audience}
+                      </Badge>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ))}
