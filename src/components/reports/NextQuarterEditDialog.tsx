@@ -17,6 +17,11 @@ interface SpeakerTalkingPoints {
   points: FocusArea[];
 }
 
+interface SpeakerGoalBreakdown {
+  speaker_name: string;
+  goal: number;
+}
+
 interface NextQuarterData {
   quarter: string;
   intro_paragraph: string;
@@ -27,6 +32,9 @@ interface NextQuarterData {
   next_quarter_kpis?: {
     high_impact_podcasts_goal: number;
     listenership_goal: number;
+    speaker_breakdown?: SpeakerGoalBreakdown[];
+    current_total_reach?: number;
+    current_annual_listenership?: number;
   };
 }
 
@@ -55,6 +63,13 @@ export function NextQuarterEditDialog({
   const [closingParagraph, setClosingParagraph] = useState(data.closing_paragraph);
   const [highImpactGoal, setHighImpactGoal] = useState(data.next_quarter_kpis?.high_impact_podcasts_goal || 0);
   const [listenershipGoal, setListenershipGoal] = useState(data.next_quarter_kpis?.listenership_goal || 0);
+  const [speakerGoalBreakdown, setSpeakerGoalBreakdown] = useState<SpeakerGoalBreakdown[]>(
+    data.next_quarter_kpis?.speaker_breakdown || []
+  );
+  const [currentTotalReach, setCurrentTotalReach] = useState(data.next_quarter_kpis?.current_total_reach || 0);
+  const [currentAnnualListenership, setCurrentAnnualListenership] = useState(
+    data.next_quarter_kpis?.current_annual_listenership || 0
+  );
 
   // Reset state only when the dialog is opened (prevents wiping unsaved edits if parent data updates while open)
   const prevOpenRef = useRef(open);
@@ -72,6 +87,9 @@ export function NextQuarterEditDialog({
     setClosingParagraph(data.closing_paragraph);
     setHighImpactGoal(data.next_quarter_kpis?.high_impact_podcasts_goal || 0);
     setListenershipGoal(data.next_quarter_kpis?.listenership_goal || 0);
+    setSpeakerGoalBreakdown(data.next_quarter_kpis?.speaker_breakdown || []);
+    setCurrentTotalReach(data.next_quarter_kpis?.current_total_reach || 0);
+    setCurrentAnnualListenership(data.next_quarter_kpis?.current_annual_listenership || 0);
   }, [open]);
 
   const isMultiSpeaker = speakerNames.length > 1;
@@ -93,6 +111,9 @@ export function NextQuarterEditDialog({
         ...(data.next_quarter_kpis || {}),
         high_impact_podcasts_goal: highImpactGoal,
         listenership_goal: listenershipGoal,
+        speaker_breakdown: speakerGoalBreakdown.filter(s => s.speaker_name.trim()),
+        current_total_reach: currentTotalReach,
+        current_annual_listenership: currentAnnualListenership,
       },
     });
     onOpenChange(false);
@@ -390,11 +411,13 @@ export function NextQuarterEditDialog({
             </div>
 
             {/* Next Quarter KPIs */}
-            <div className="space-y-3 pt-4 border-t border-border">
+            <div className="space-y-4 pt-4 border-t border-border">
               <Label className="text-base font-semibold">Next Quarter Goals</Label>
-              <div className="grid grid-cols-2 gap-4">
+              
+              {/* High-Impact Podcasts Section */}
+              <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                 <div className="space-y-2">
-                  <Label className="text-sm">High-Impact Podcasts Goal</Label>
+                  <Label className="text-sm font-medium">High-Impact Podcasts Goal (Total)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -402,10 +425,89 @@ export function NextQuarterEditDialog({
                     onChange={(e) => setHighImpactGoal(parseInt(e.target.value) || 0)}
                     placeholder="e.g., 27"
                   />
-                  <p className="text-xs text-muted-foreground">3 per speaker per month</p>
+                  <p className="text-xs text-muted-foreground">Total podcasts across all speakers</p>
                 </div>
+                
+                {/* Per-Speaker Breakdown */}
+                {isMultiSpeaker && (
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm">Per-Speaker Breakdown</Label>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setSpeakerGoalBreakdown([...speakerGoalBreakdown, { speaker_name: "", goal: 9 }])}
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Add Speaker
+                      </Button>
+                    </div>
+                    {speakerGoalBreakdown.map((speaker, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        {speakerNames.length > 0 ? (
+                          <select
+                            value={speaker.speaker_name}
+                            onChange={(e) => {
+                              const updated = [...speakerGoalBreakdown];
+                              updated[index] = { ...updated[index], speaker_name: e.target.value };
+                              setSpeakerGoalBreakdown(updated);
+                            }}
+                            className="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                          >
+                            <option value="">Select speaker...</option>
+                            {speakerNames.map(name => (
+                              <option key={name} value={name}>{name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <Input
+                            value={speaker.speaker_name}
+                            onChange={(e) => {
+                              const updated = [...speakerGoalBreakdown];
+                              updated[index] = { ...updated[index], speaker_name: e.target.value };
+                              setSpeakerGoalBreakdown(updated);
+                            }}
+                            placeholder="Speaker name..."
+                            className="flex-1"
+                          />
+                        )}
+                        <Input
+                          type="number"
+                          min={0}
+                          value={speaker.goal}
+                          onChange={(e) => {
+                            const updated = [...speakerGoalBreakdown];
+                            updated[index] = { ...updated[index], goal: parseInt(e.target.value) || 0 };
+                            setSpeakerGoalBreakdown(updated);
+                          }}
+                          placeholder="Goal"
+                          className="w-24"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setSpeakerGoalBreakdown(speakerGoalBreakdown.filter((_, i) => i !== index))}
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {speakerGoalBreakdown.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Speaker total: {speakerGoalBreakdown.reduce((sum, s) => sum + s.goal, 0)} 
+                        {speakerGoalBreakdown.reduce((sum, s) => sum + s.goal, 0) !== highImpactGoal && (
+                          <span className="text-amber-500 ml-1">(differs from total goal)</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Listenership Section */}
+              <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                 <div className="space-y-2">
-                  <Label className="text-sm">Listenership Goal</Label>
+                  <Label className="text-sm font-medium">Listenership Goal (Monthly)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -413,7 +515,35 @@ export function NextQuarterEditDialog({
                     onChange={(e) => setListenershipGoal(parseInt(e.target.value) || 0)}
                     placeholder="e.g., 1200000"
                   />
-                  <p className="text-xs text-muted-foreground">20% boost over current quarter</p>
+                  <p className="text-xs text-muted-foreground">Target monthly listeners for next quarter</p>
+                </div>
+                
+                {/* Listenership Breakdown Metrics */}
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <Label className="text-sm">Current Quarter Baseline (for comparison)</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Current Monthly Listeners</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={currentTotalReach}
+                        onChange={(e) => setCurrentTotalReach(parseInt(e.target.value) || 0)}
+                        placeholder="e.g., 1000000"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Est. Annual Listenership</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={currentAnnualListenership}
+                        onChange={(e) => setCurrentAnnualListenership(parseInt(e.target.value) || 0)}
+                        placeholder="e.g., 12000000"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">These values appear in the Listenership Goal dialog breakdown</p>
                 </div>
               </div>
             </div>
