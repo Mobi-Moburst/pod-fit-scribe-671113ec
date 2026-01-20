@@ -12,7 +12,7 @@ import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe, ImageIcon, Pencil, Check } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe, ImageIcon, Pencil, Check, Upload } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 // Deterministic color classes for CM badge using design tokens
@@ -603,13 +603,68 @@ const Companies = () => {
                 />
               </div>
               <div>
-                <Label>Headshot URL</Label>
-                <Input 
-                  placeholder="https://example.com/headshot.png"
-                  value={editingSpeaker.headshot_url || ''} 
-                  onChange={(e) => setEditingSpeaker({ ...editingSpeaker, headshot_url: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground mt-1">Profile photo for reports (square image recommended)</p>
+                <Label>Headshot</Label>
+                <div className="flex items-center gap-4 mt-2">
+                  {editingSpeaker.headshot_url ? (
+                    <div className="relative group">
+                      <img 
+                        src={editingSpeaker.headshot_url} 
+                        alt="Speaker headshot" 
+                        className="w-20 h-20 rounded-full object-cover border-2 border-border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEditingSpeaker({ ...editingSpeaker, headshot_url: '' })}
+                        className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
+                      <Upload className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id="headshot-upload"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${editingSpeaker.id || crypto.randomUUID()}-${Date.now()}.${fileExt}`;
+                        
+                        const { data, error } = await supabase.storage
+                          .from('speaker-headshots')
+                          .upload(fileName, file, { upsert: true });
+                        
+                        if (error) {
+                          toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+                          return;
+                        }
+                        
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('speaker-headshots')
+                          .getPublicUrl(fileName);
+                        
+                        setEditingSpeaker({ ...editingSpeaker, headshot_url: publicUrl });
+                        toast({ title: 'Headshot uploaded!' });
+                      }}
+                    />
+                    <label
+                      htmlFor="headshot-upload"
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-secondary hover:bg-secondary/80 rounded-md cursor-pointer transition-colors"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {editingSpeaker.headshot_url ? 'Change Photo' : 'Upload Photo'}
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-1">Square image recommended (JPG, PNG)</p>
+                  </div>
+                </div>
               </div>
               <div>
                 <Label>Airtable Embed URL</Label>
