@@ -39,3 +39,6 @@ verify_jwt = false
 [functions.generate-talking-points]
 verify_jwt = false
 
+[functions.generate-podcast-categories]
+verify_jwt = false
+

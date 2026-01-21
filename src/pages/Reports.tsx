@@ -15,7 +15,7 @@ import { CompanySpeakerSelector } from "@/components/CompanySpeakerSelector";
 import type { Company, Speaker, MinimalClient, Competitor } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
-import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints } from "@/utils/reportGenerator";
+import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints, generatePodcastCategories } from "@/utils/reportGenerator";
 import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
@@ -102,6 +102,7 @@ export default function Reports() {
   const [updateCSVDialogOpen, setUpdateCSVDialogOpen] = useState(false);
   const [reportToUpdate, setReportToUpdate] = useState<any>(null);
   const [isRegeneratingTalkingPoints, setIsRegeneratingTalkingPoints] = useState(false);
+  const [isRegeneratingCategories, setIsRegeneratingCategories] = useState(false);
   
   // Visibility state for report sections
   const [visibleSections, setVisibleSections] = useState({
@@ -1243,6 +1244,137 @@ export default function Reports() {
     }
   };
 
+  // Regenerate podcast categories using AI
+  const handleRegenerateCategories = async () => {
+    if (!reportData || !reportData.podcasts || reportData.podcasts.length === 0) {
+      toast({
+        title: "No podcasts",
+        description: "No podcast data available to regenerate categories.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsRegeneratingCategories(true);
+    
+    try {
+      // Get target audiences from client or speaker data
+      let targetAudiences: string[] = [];
+      let companyName: string | undefined;
+      
+      if (reportData.report_type === 'multi' && reportData.speaker_breakdowns) {
+        // Multi-speaker: collect all target audiences
+        reportData.speaker_breakdowns.forEach(sb => {
+          if (sb.target_audiences) {
+            targetAudiences.push(...sb.target_audiences);
+          }
+        });
+        companyName = reportData.company_name || reportData.client?.company;
+      } else {
+        // Single speaker
+        targetAudiences = reportData.client?.target_audiences || [];
+        companyName = reportData.client?.company;
+      }
+      
+      // Filter to unique podcasts with metadata
+      const uniquePodcasts = new Map<string, {
+        name: string;
+        description?: string;
+        apple_link?: string;
+        cover_art_url?: string;
+      }>();
+      
+      reportData.podcasts.forEach(p => {
+        const key = (p.apple_podcast_link || p.show_title || '').toLowerCase();
+        if (!uniquePodcasts.has(key)) {
+          uniquePodcasts.set(key, {
+            name: p.show_title,
+            description: p.rationale_short, // Use rationale as description proxy
+            apple_link: p.apple_podcast_link,
+            cover_art_url: undefined, // Will be fetched by the edge function if needed
+          });
+        }
+      });
+      
+      const podcastsForAI = Array.from(uniquePodcasts.values());
+      
+      console.log(`Regenerating categories for ${podcastsForAI.length} podcasts`);
+      
+      const newCategories = await generatePodcastCategories(
+        podcastsForAI,
+        targetAudiences,
+        companyName
+      );
+      
+      if (newCategories.length === 0) {
+        toast({
+          title: "No categories generated",
+          description: "The AI could not categorize the podcasts. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Update report data with new categories
+      const updatedKpis = {
+        ...reportData.kpis,
+        top_categories: newCategories,
+      };
+      
+      const updatedReportData = {
+        ...reportData,
+        kpis: updatedKpis,
+      };
+      
+      setReportData(updatedReportData);
+      
+      // If saved report, persist to database
+      if (currentReportId) {
+        try {
+          const { data: freshReport, error: fetchError } = await supabase
+            .from('reports')
+            .select('report_data')
+            .eq('id', currentReportId)
+            .single();
+          
+          if (fetchError) throw fetchError;
+          
+          const freshReportData = freshReport.report_data as unknown as ReportData;
+          const mergedReportData = {
+            ...freshReportData,
+            kpis: {
+              ...freshReportData.kpis,
+              top_categories: newCategories,
+            },
+          };
+          
+          const { error } = await supabase
+            .from('reports')
+            .update({ report_data: mergedReportData as any })
+            .eq('id', currentReportId);
+          
+          if (error) throw error;
+        } catch (dbError) {
+          console.error('Error persisting categories:', dbError);
+        }
+      }
+      
+      toast({
+        title: "Categories regenerated",
+        description: `Generated ${newCategories.length} audience-focused categories.`,
+      });
+    } catch (error) {
+      console.error('Error regenerating categories:', error);
+      toast({
+        title: "Error",
+        description: "Failed to regenerate categories. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegeneratingCategories(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full">
       <BackgroundFX />
@@ -2176,13 +2308,28 @@ export default function Reports() {
                 <Card className="relative group">
                   <button
                     onClick={() => toggleSection('topCategories')}
-                    className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
+                    className="absolute top-4 right-12 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
                     title="Hide this section"
                   >
                     <X className="h-3 w-3" />
                   </button>
-                  <CardHeader>
-                    <CardTitle>Top Categories</CardTitle>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Top Podcast Categories</CardTitle>
+                      <CardDescription>
+                        Audience types reached through booked podcasts
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRegenerateCategories}
+                      disabled={isRegeneratingCategories}
+                      className="print:hidden"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${isRegeneratingCategories ? 'animate-spin' : ''}`} />
+                      {isRegeneratingCategories ? 'Regenerating...' : 'Regenerate'}
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-3">
