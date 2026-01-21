@@ -230,20 +230,21 @@ export async function generateAITalkingPoints(
     professional_credentials?: string[] | null;
     guest_identity_tags?: string[] | null;
   }>,
-  quarter: string,
+  nextQuarter: string, // The quarter these talking points are FOR (next quarter)
   kpis?: {
     total_booked?: number;
     total_published?: number;
     total_reach?: number;
     top_categories?: Array<{ name: string; count: number }>;
   },
-  isMultiSpeaker: boolean = false
+  isMultiSpeaker: boolean = false,
+  reportQuarter?: string // The quarter the report covers (current/past quarter)
 ): Promise<{
   talking_points_spotlight?: Array<{ title: string; description: string }>;
   speaker_talking_points_spotlight?: Array<{ speaker_name: string; points: Array<{ title: string; description: string }> }>;
 }> {
   try {
-    console.log(`Generating AI talking points for ${speakers.length} speaker(s), multi-speaker: ${isMultiSpeaker}`);
+    console.log(`Generating AI talking points for ${speakers.length} speaker(s), multi-speaker: ${isMultiSpeaker}, nextQuarter: ${nextQuarter}, reportQuarter: ${reportQuarter}`);
     
     const { data, error } = await supabase.functions.invoke('generate-talking-points', {
       body: {
@@ -257,7 +258,8 @@ export async function generateAITalkingPoints(
           professional_credentials: s.professional_credentials || undefined,
           guest_identity_tags: s.guest_identity_tags || undefined,
         })),
-        quarter,
+        quarter: nextQuarter,
+        reportQuarter,
         kpis,
         isMultiSpeaker,
       }
@@ -1529,6 +1531,7 @@ export async function generateReportFromMultipleCSVs(
   
   // Enhance with AI-generated talking points (3 for single speaker)
   try {
+    const nextQuarter = getNextQuarter(quarter);
     const aiTalkingPoints = await generateAITalkingPoints(
       [{
         name: client.name,
@@ -1540,14 +1543,15 @@ export async function generateReportFromMultipleCSVs(
         professional_credentials: client.professional_credentials,
         guest_identity_tags: client.guest_identity_tags,
       }],
-      quarter,
+      nextQuarter, // The quarter these talking points are FOR
       {
         total_booked: kpis.total_booked,
         total_published: kpis.total_published,
         total_reach: kpis.total_reach,
         top_categories: kpis.top_categories,
       },
-      false // Single speaker
+      false, // Single speaker
+      quarter // The quarter the report covers
     );
     
     if (aiTalkingPoints.talking_points_spotlight && aiTalkingPoints.talking_points_spotlight.length > 0) {
@@ -1887,16 +1891,18 @@ export async function generateMultiSpeakerReport(
       guest_identity_tags: s.speaker.guest_identity_tags,
     }));
     
+    const nextQuarter = getNextQuarter(quarter);
     const aiTalkingPoints = await generateAITalkingPoints(
       speakersForAI,
-      quarter,
+      nextQuarter, // The quarter these talking points are FOR
       {
         total_booked: aggregatedKpis.total_booked,
         total_published: aggregatedKpis.total_published,
         total_reach: aggregatedKpis.total_reach,
         top_categories: aggregatedKpis.top_categories,
       },
-      true // Multi-speaker
+      true, // Multi-speaker
+      quarter // The quarter the report covers
     );
     
     if (aiTalkingPoints.speaker_talking_points_spotlight && aiTalkingPoints.speaker_talking_points_spotlight.length > 0) {

@@ -1187,17 +1187,27 @@ export default function Reports() {
         }];
       }
       
+      // Calculate next quarter for talking points target
+      const nextQuarter = (() => {
+        const match = quarter.match(/Q(\d)\s*(\d{4})/);
+        if (!match) return quarter;
+        const q = parseInt(match[1]);
+        const y = parseInt(match[2]);
+        return q === 4 ? `Q1 ${y + 1}` : `Q${q + 1} ${y}`;
+      })();
+      
       // Call AI to generate talking points
       const aiResult = await generateAITalkingPoints(
         speakersForAI,
-        quarter,
+        nextQuarter, // The quarter these talking points are FOR
         {
           total_booked: reportData.kpis?.total_booked,
           total_published: reportData.kpis?.total_published,
           total_reach: reportData.kpis?.total_reach,
           top_categories: reportData.kpis?.top_categories,
         },
-        isMultiSpeaker
+        isMultiSpeaker,
+        quarter // The quarter the report covers
       );
       
       // Update the next quarter strategy with AI-generated talking points
