@@ -23,7 +23,8 @@ interface TalkingPoint {
 
 interface GenerateRequest {
   speakers: Speaker[];
-  quarter: string;
+  quarter: string; // The NEXT quarter these talking points are for (e.g., "Q1 2026")
+  reportQuarter?: string; // The quarter the report covers (e.g., "Q4 2025")
   kpis?: {
     total_booked?: number;
     total_published?: number;
@@ -39,7 +40,14 @@ serve(async (req) => {
   }
 
   try {
-    const { speakers, quarter, kpis, isMultiSpeaker } = await req.json() as GenerateRequest;
+    const { speakers, quarter, reportQuarter, kpis, isMultiSpeaker } = await req.json() as GenerateRequest;
+    
+    // Get current date for temporal context
+    const now = new Date();
+    const currentMonth = now.toLocaleString('en-US', { month: 'long' });
+    const currentYear = now.getFullYear();
+    const targetQuarter = quarter || reportQuarter || `Q${Math.ceil((now.getMonth() + 1) / 3)} ${currentYear}`;
+    const previousQuarter = reportQuarter || quarter;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -54,12 +62,22 @@ serve(async (req) => {
 
     // Build context about the campaign performance
     const campaignContext = kpis ? `
-Campaign Performance Context:
-- Total podcasts booked this quarter: ${kpis.total_booked || 0}
+Campaign Performance Context (from ${previousQuarter}):
+- Total podcasts booked: ${kpis.total_booked || 0}
 - Episodes published: ${kpis.total_published || 0}
 - Total reach: ${kpis.total_reach?.toLocaleString() || 'N/A'} listeners
 - Top podcast categories: ${kpis.top_categories?.slice(0, 3).map(c => c.name).join(', ') || 'Various'}
 ` : '';
+
+    // Temporal context for the AI
+    const timeContext = `
+IMPORTANT TEMPORAL CONTEXT:
+- Current date: ${currentMonth} ${currentYear}
+- Report covers: ${previousQuarter}
+- These talking points are for: ${targetQuarter}
+- Do NOT reference years or quarters that have already passed
+- Focus on what's timely and relevant for ${targetQuarter}
+`;
 
     const results: Array<{ speaker_name: string; points: TalkingPoint[] }> = [];
 
@@ -79,19 +97,22 @@ Speaker Profile:
 
       const systemPrompt = `You are a podcast PR strategist creating "Talking Points to Spotlight" for the next quarter strategy section of a campaign report.
 
-Your task is to generate exactly 3 compelling, specific talking points that this speaker should emphasize in upcoming podcast appearances.
+Your task is to generate exactly 3 compelling, specific talking points that this speaker should emphasize in upcoming podcast appearances during ${targetQuarter}.
 
 Each talking point should:
 1. Be derived from the speaker's actual expertise, talking points, and professional background
-2. Be timely and relevant for ${quarter} (consider current industry trends, seasonal relevance)
+2. Be timely and relevant for ${targetQuarter} - reference current trends, NOT past dates
 3. Be actionable and specific - not generic advice
 4. Explain WHY this topic will resonate with podcast hosts and their audiences
 5. Connect to the campaign's goals and target audiences
 
+CRITICAL: Do not mention years or quarters that have passed. These are forward-looking recommendations for ${targetQuarter}.
+
 The talking points should position the speaker as a thought leader and give podcast hosts compelling reasons to feature them.`;
 
-      const userPrompt = `Generate 3 talking points to spotlight for ${speaker.name} for ${quarter}.
+      const userPrompt = `Generate 3 talking points to spotlight for ${speaker.name} for ${targetQuarter}.
 
+${timeContext}
 ${speakerContext}
 ${campaignContext}
 
