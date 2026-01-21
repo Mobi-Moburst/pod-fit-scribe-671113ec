@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, X, Pencil, Target, TrendingUp } from "lucide-react";
+import { ArrowRight, X, Pencil, Target, TrendingUp, RefreshCw, Lightbulb } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { HighImpactPodcastsDialog } from "./HighImpactPodcastsDialog";
 import { ListenershipGoalDialog } from "./ListenershipGoalDialog";
 import { getNextQuarter } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface NextQuarterStrategyProps {
   quarter: string; // This is the CURRENT quarter label (e.g., "Q4 2025"), we calculate next quarter for display
@@ -37,6 +38,8 @@ interface NextQuarterStrategyProps {
   };
   onHide?: () => void;
   onEdit?: () => void;
+  onRegenerateTalkingPoints?: () => void;
+  isRegenerating?: boolean;
 }
 
 // Format numbers with K/M suffix
@@ -55,7 +58,9 @@ export function NextQuarterStrategy({
   closing_paragraph,
   next_quarter_kpis,
   onHide,
-  onEdit
+  onEdit,
+  onRegenerateTalkingPoints,
+  isRegenerating = false
 }: NextQuarterStrategyProps) {
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
   const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
@@ -121,7 +126,24 @@ export function NextQuarterStrategy({
           {/* Talking Points to Spotlight */}
           {(talking_points_spotlight.length > 0 || (speaker_talking_points_spotlight && speaker_talking_points_spotlight.length > 0)) && (
             <div className="space-y-4">
-              <h4 className="font-semibold text-foreground">Talking Points to Spotlight</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4 text-accent" />
+                  Talking Points to Spotlight
+                </h4>
+                {onRegenerateTalkingPoints && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onRegenerateTalkingPoints}
+                    disabled={isRegenerating}
+                    className="text-xs text-muted-foreground hover:text-foreground print:hidden"
+                  >
+                    <RefreshCw className={`h-3 w-3 mr-1 ${isRegenerating ? 'animate-spin' : ''}`} />
+                    {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+                  </Button>
+                )}
+              </div>
               
               {/* General Talking Points */}
               {talking_points_spotlight.length > 0 && (
