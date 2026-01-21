@@ -36,3 +36,6 @@ verify_jwt = false
 [functions.fix-report-categories]
 verify_jwt = false
 
+[functions.generate-talking-points]
+verify_jwt = false
+
