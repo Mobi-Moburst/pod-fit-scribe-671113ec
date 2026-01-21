@@ -96,8 +96,8 @@ ${speakerContext}
 ${campaignContext}
 
 Return ONLY a JSON array with exactly 3 objects, each with:
-- "title": A concise, compelling title (max 80 characters) that captures the essence of the talking point
-- "description": A 2-3 sentence strategic description explaining why this topic matters now and how it positions the speaker. Make sure descriptions are complete sentences, never truncated.
+- "title": A concise, compelling title (max 60 characters) that captures the essence of the talking point
+- "description": A brief 1-2 sentence strategic description (under 200 characters) explaining why this topic matters now. Keep it concise and complete.
 
 Example format:
 [
@@ -162,11 +162,31 @@ Focus on making these SPECIFIC to ${speaker.name}'s expertise and current market
         const points = JSON.parse(jsonStr) as TalkingPoint[];
         
         if (Array.isArray(points) && points.length > 0) {
-          // Ensure we have exactly 3 points - don't truncate descriptions
-          const validPoints = points.slice(0, 3).map(p => ({
-            title: String(p.title || '').substring(0, 100),
-            description: String(p.description || '')
-          }));
+          // Ensure we have exactly 3 points with smart truncation at word boundaries
+          const validPoints = points.slice(0, 3).map(p => {
+            let title = String(p.title || '');
+            let desc = String(p.description || '');
+            
+            // Truncate title at word boundary if needed
+            if (title.length > 60) {
+              title = title.substring(0, 60).replace(/\s+\S*$/, '') + '...';
+            }
+            
+            // Truncate description at sentence or word boundary if needed
+            if (desc.length > 220) {
+              // Try to end at a sentence
+              const truncated = desc.substring(0, 220);
+              const lastPeriod = truncated.lastIndexOf('.');
+              if (lastPeriod > 150) {
+                desc = truncated.substring(0, lastPeriod + 1);
+              } else {
+                // End at word boundary
+                desc = truncated.replace(/\s+\S*$/, '') + '.';
+              }
+            }
+            
+            return { title, description: desc };
+          });
           
           results.push({
             speaker_name: speaker.name,
