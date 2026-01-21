@@ -96,8 +96,8 @@ ${speakerContext}
 ${campaignContext}
 
 Return ONLY a JSON array with exactly 3 objects, each with:
-- "title": A concise, compelling title (max 60 characters) that captures the essence of the talking point
-- "description": A 1-2 sentence strategic description explaining why this topic matters now and how it positions the speaker (max 200 characters)
+- "title": A concise, compelling title (max 80 characters) that captures the essence of the talking point
+- "description": A 2-3 sentence strategic description explaining why this topic matters now and how it positions the speaker. Make sure descriptions are complete sentences, never truncated.
 
 Example format:
 [
@@ -162,10 +162,10 @@ Focus on making these SPECIFIC to ${speaker.name}'s expertise and current market
         const points = JSON.parse(jsonStr) as TalkingPoint[];
         
         if (Array.isArray(points) && points.length > 0) {
-          // Ensure we have exactly 3 points
+          // Ensure we have exactly 3 points - don't truncate descriptions
           const validPoints = points.slice(0, 3).map(p => ({
-            title: String(p.title || '').substring(0, 60),
-            description: String(p.description || '').substring(0, 250)
+            title: String(p.title || '').substring(0, 100),
+            description: String(p.description || '')
           }));
           
           results.push({
