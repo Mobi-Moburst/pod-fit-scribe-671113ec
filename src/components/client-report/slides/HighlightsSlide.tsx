@@ -1,15 +1,20 @@
-import { useState } from 'react';
-import { Play, Video, Music, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, Video, Music, ChevronLeft, ChevronRight, ExternalLink, Headphones } from 'lucide-react';
 import { HighlightClip } from '@/types/reports';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HighlightsSlideProps {
   clips: HighlightClip[];
   companyName?: string;
 }
 
+interface CoverArtCache {
+  [url: string]: string | null;
+}
+
 function getYouTubeVideoId(url: string): string | null {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/;
   const match = url.match(regExp);
   return match && match[2].length === 11 ? match[2] : null;
 }
@@ -20,7 +25,11 @@ function getVimeoVideoId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-function SlideMediaPlayer({ clip }: { clip: HighlightClip }) {
+function isApplePodcastUrl(url: string): boolean {
+  return url.includes('podcasts.apple.com');
+}
+
+function SlideMediaPlayer({ clip, coverArt }: { clip: HighlightClip; coverArt?: string | null }) {
   // YouTube embed
   if (clip.source_type === 'youtube') {
     const videoId = getYouTubeVideoId(clip.url);
@@ -86,8 +95,8 @@ function SlideMediaPlayer({ clip }: { clip: HighlightClip }) {
     );
   }
 
-  // Audio with visual
-  if (clip.media_type === 'audio') {
+  // Direct audio upload (playable)
+  if (clip.media_type === 'audio' && clip.source_type === 'upload') {
     return (
       <div className="w-full max-w-2xl rounded-xl overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 p-12 flex flex-col items-center justify-center gap-8 shadow-2xl">
         {clip.thumbnail_url ? (
@@ -103,6 +112,41 @@ function SlideMediaPlayer({ clip }: { clip: HighlightClip }) {
         )}
         <audio src={clip.url} controls className="w-full" />
       </div>
+    );
+  }
+
+  // External audio links (Apple Podcasts, etc.) - show as clickable card with cover art
+  if (clip.media_type === 'audio' && (clip.source_type === 'external' || isApplePodcastUrl(clip.url))) {
+    return (
+      <a
+        href={clip.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="w-full max-w-2xl aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 flex flex-col items-center justify-center gap-8 hover:from-primary/30 hover:to-primary/10 transition-colors shadow-2xl group"
+      >
+        {coverArt ? (
+          <img 
+            src={coverArt} 
+            alt={clip.title} 
+            className="w-48 h-48 rounded-xl object-cover shadow-lg group-hover:scale-105 transition-transform"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : clip.thumbnail_url ? (
+          <img 
+            src={clip.thumbnail_url} 
+            alt={clip.title} 
+            className="w-48 h-48 rounded-xl object-cover shadow-lg group-hover:scale-105 transition-transform"
+          />
+        ) : (
+          <div className="w-48 h-48 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <Headphones className="w-24 h-24 text-primary" />
+          </div>
+        )}
+        <span className="text-lg text-muted-foreground flex items-center gap-2 font-medium">
+          Listen on Apple Podcasts <ExternalLink className="w-5 h-5" />
+        </span>
+      </a>
     );
   }
 
@@ -124,6 +168,36 @@ function SlideMediaPlayer({ clip }: { clip: HighlightClip }) {
 
 export default function HighlightsSlide({ clips, companyName }: HighlightsSlideProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [coverArtCache, setCoverArtCache] = useState<CoverArtCache>({});
+  
+  // Fetch cover art for Apple Podcast links
+  useEffect(() => {
+    const fetchCoverArt = async (url: string) => {
+      if (coverArtCache[url] !== undefined) return;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('scrape-podcast-cover-art', {
+          body: { apple_podcast_url: url }
+        });
+
+        if (!error && data?.coverArtUrl) {
+          setCoverArtCache(prev => ({ ...prev, [url]: data.coverArtUrl }));
+        } else {
+          setCoverArtCache(prev => ({ ...prev, [url]: null }));
+        }
+      } catch (err) {
+        console.error('Error fetching cover art:', err);
+        setCoverArtCache(prev => ({ ...prev, [url]: null }));
+      }
+    };
+
+    // Fetch cover art for all Apple Podcast URLs
+    clips.forEach(clip => {
+      if (isApplePodcastUrl(clip.url)) {
+        fetchCoverArt(clip.url);
+      }
+    });
+  }, [clips]);
   
   if (!clips || clips.length === 0) return null;
   
@@ -145,7 +219,7 @@ export default function HighlightsSlide({ clips, companyName }: HighlightsSlideP
 
       {/* Media Player */}
       <div className="flex-1 flex items-center justify-center w-full">
-        <SlideMediaPlayer clip={currentClip} />
+        <SlideMediaPlayer clip={currentClip} coverArt={coverArtCache[currentClip.url]} />
       </div>
 
       {/* Clip Info */}
