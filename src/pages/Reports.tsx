@@ -1284,10 +1284,10 @@ export default function Reports() {
       
       reportData.podcasts.forEach(p => {
         const key = (p.apple_podcast_link || p.show_title || '').toLowerCase();
-        if (!uniquePodcasts.has(key) && p.apple_podcast_link) {
+        if (!uniquePodcasts.has(key)) {
           uniquePodcasts.set(key, {
             name: p.show_title,
-            apple_link: p.apple_podcast_link,
+            apple_link: p.apple_podcast_link, // May be undefined - that's ok
           });
         }
       });
@@ -1309,6 +1309,15 @@ export default function Reports() {
         
         const results = await Promise.all(
           batch.map(async (podcast) => {
+            // Skip scraping if no Apple link
+            if (!podcast.apple_link) {
+              return {
+                name: podcast.name,
+                apple_link: undefined,
+                cover_art_url: undefined,
+              };
+            }
+            
             try {
               const { data, error } = await supabase.functions.invoke('scrape-podcast-cover-art', {
                 body: { apple_podcast_url: podcast.apple_link }
