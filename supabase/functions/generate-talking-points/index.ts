@@ -96,23 +96,18 @@ ${speakerContext}
 ${campaignContext}
 
 Return ONLY a JSON array with exactly 3 objects, each with:
-- "title": A concise, compelling title (max 60 characters) that captures the essence of the talking point
-- "description": ONE natural-sounding sentence (target 140–180 chars; hard max 200 chars) explaining why this topic matters now.
-
-Rules for description:
-- Must end with . ! or ?
-- Do NOT end with trailing fragments like "and", "or", "but", "that", "which", "to", "with"
-- Keep it punchy and specific to the speaker
+- "title": A short, compelling title (5-8 words max)
+- "description": 1-2 complete sentences explaining why this topic resonates with podcast audiences right now. Write naturally and end with proper punctuation.
 
 Example format:
 [
   {
     "title": "AI-Powered Customer Success",
-    "description": "With AI adoption accelerating in 2025, position Jane as an expert on practical AI applications that drive retention and expansion."
+    "description": "With AI adoption accelerating in 2025, Jane can position herself as an expert on practical AI applications that drive retention and expansion."
   }
 ]
 
-Focus on making these SPECIFIC to ${speaker.name}'s expertise and current market trends. Avoid generic talking points.`;
+Make these SPECIFIC to ${speaker.name}'s expertise. Avoid generic advice.`;
 
       console.log(`Generating talking points for speaker: ${speaker.name}`);
 
@@ -167,51 +162,10 @@ Focus on making these SPECIFIC to ${speaker.name}'s expertise and current market
         const points = JSON.parse(jsonStr) as TalkingPoint[];
         
         if (Array.isArray(points) && points.length > 0) {
-          const MAX_TITLE = 60;
-          const MAX_DESC = 200;
-          const TRAILING_FRAGMENT_RE = /\b(and|or|but|that|which|who|to|of|for|with|on|in|at|from)\b$/i;
-      
-          const stripDanglingEnding = (s: string) =>
-            s.replace(/\s+(and|or|but|that|which|who|to)\s*[.!?]?\s*$/i, '').trim();
-
-          const cleanWhitespace = (s: string) => s.replace(/\s+/g, ' ').trim();
-
-          const truncateTitle = (t: string) => {
-            let title = cleanWhitespace(t);
-            if (title.length <= MAX_TITLE) return title;
-            const cut = title.slice(0, MAX_TITLE).replace(/\s+\S*$/, '').trim();
-            return (cut || title.slice(0, MAX_TITLE - 1)).trim() + '…';
-          };
-
-          const truncateDescription = (d: string) => {
-            let desc = stripDanglingEnding(cleanWhitespace(d));
-            if (desc.length <= MAX_DESC) {
-              if (!/[.!?]$/.test(desc)) desc += '.';
-              return desc;
-            }
-
-            // Prefer cutting at a natural sentence boundary before MAX_DESC
-            const slice = desc.slice(0, MAX_DESC + 1);
-            const punctMatches = [...slice.matchAll(/[.!?]/g)];
-            const lastPunctIndex = punctMatches.length
-              ? (punctMatches[punctMatches.length - 1].index ?? -1)
-              : -1;
-
-            if (lastPunctIndex >= Math.floor(MAX_DESC * 0.6)) {
-              return slice.slice(0, lastPunctIndex + 1).trim();
-            }
-
-            // Otherwise cut at word boundary and add ellipsis, while removing dangling fragments
-            let cut = slice.slice(0, MAX_DESC).replace(/\s+\S*$/, '').trim();
-            cut = cut.replace(/[,:;]\s*$/, '').trim();
-            cut = cut.replace(TRAILING_FRAGMENT_RE, '').trim();
-            return (cut || slice.slice(0, MAX_DESC)).trim() + '…';
-          };
-
-          // Ensure we have exactly 3 points with natural truncation
+          // No truncation - store full AI-generated content
           const validPoints = points.slice(0, 3).map(p => ({
-            title: truncateTitle(String(p.title || '')),
-            description: truncateDescription(String(p.description || '')),
+            title: String(p.title || '').trim(),
+            description: String(p.description || '').trim(),
           }));
           
           results.push({

@@ -6,6 +6,7 @@ import { getNextQuarter } from "@/lib/utils";
 import { HighImpactPodcastsDialog } from "@/components/reports/HighImpactPodcastsDialog";
 import { ListenershipGoalDialog } from "@/components/reports/ListenershipGoalDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ExpandableTalkingPoint } from "@/components/client-report/ExpandableTalkingPoint";
 
 // Format numbers with K/M suffix
 function formatNumber(n: number): string {
@@ -146,20 +147,11 @@ export const NextQuarterSlide = ({ strategy }: NextQuarterSlideProps) => {
               {strategy.talking_points_spotlight && strategy.talking_points_spotlight.length > 0 && (
                 <div className="grid gap-3 md:grid-cols-2">
                   {strategy.talking_points_spotlight.slice(0, 4).map((point, index) => (
-                    <div 
+                    <ExpandableTalkingPoint 
                       key={index}
-                      className="group bg-card border border-border hover:border-accent/30 rounded-lg p-3 transition-all duration-300"
-                    >
-                      <div className="flex items-start gap-2">
-                        <div className="p-1.5 bg-accent/10 rounded-md mt-0.5 shrink-0">
-                          <Lightbulb className="h-3.5 w-3.5 text-accent" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-sm mb-0.5">{point.title}</h4>
-                          <MarkdownRenderer content={point.description} className="text-xs text-muted-foreground leading-snug" />
-                        </div>
-                      </div>
-                    </div>
+                      title={point.title}
+                      description={point.description}
+                    />
                   ))}
                 </div>
               )}
@@ -175,20 +167,11 @@ export const NextQuarterSlide = ({ strategy }: NextQuarterSlideProps) => {
                       </h4>
                       <div className="grid gap-3 md:grid-cols-2">
                         {speaker.points.map((point, pointIndex) => (
-                          <div 
+                          <ExpandableTalkingPoint 
                             key={pointIndex}
-                            className="group bg-card border border-border hover:border-accent/30 rounded-lg p-3 transition-all duration-300"
-                          >
-                            <div className="flex items-start gap-2">
-                              <div className="p-1.5 bg-accent/10 rounded-md mt-0.5 shrink-0">
-                                <Lightbulb className="h-3.5 w-3.5 text-accent" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-sm mb-0.5">{point.title}</h4>
-                                <MarkdownRenderer content={point.description} className="text-xs text-muted-foreground leading-snug" />
-                              </div>
-                            </div>
-                          </div>
+                            title={point.title}
+                            description={point.description}
+                          />
                         ))}
                       </div>
                     </div>
