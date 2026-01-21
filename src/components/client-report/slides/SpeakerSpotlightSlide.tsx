@@ -1,8 +1,10 @@
 import { SpeakerBreakdown, HighlightClip } from "@/types/reports";
-import { Calendar, Podcast, Users, TrendingUp, ExternalLink, Play, Video, Headphones, Clock } from "lucide-react";
+import { Calendar, Podcast, Users, TrendingUp, ExternalLink, Play, Video, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VisibleSections {
   totalBooked?: boolean;
@@ -19,6 +21,10 @@ interface SpeakerSpotlightSlideProps {
   visibleSections?: VisibleSections;
 }
 
+interface CoverArtCache {
+  [url: string]: string | null;
+}
+
 const formatNumber = (num: number): string => {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
   if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
@@ -26,7 +32,7 @@ const formatNumber = (num: number): string => {
 };
 
 const getYouTubeVideoId = (url: string): string | null => {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/;
   const match = url.match(regExp);
   return match && match[2].length === 11 ? match[2] : null;
 };
@@ -37,7 +43,11 @@ const getVimeoVideoId = (url: string): string | null => {
   return match ? match[1] : null;
 };
 
-const ClipMediaPlayer = ({ clip }: { clip: HighlightClip }) => {
+const isApplePodcastUrl = (url: string): boolean => {
+  return url.includes('podcasts.apple.com');
+};
+
+const ClipMediaPlayer = ({ clip, coverArt }: { clip: HighlightClip; coverArt?: string | null }) => {
   // YouTube
   if (clip.source_type === 'youtube') {
     const videoId = getYouTubeVideoId(clip.url);
@@ -95,7 +105,7 @@ const ClipMediaPlayer = ({ clip }: { clip: HighlightClip }) => {
     );
   }
 
-  // Direct upload - audio
+  // Direct upload - audio (playable)
   if (clip.source_type === 'upload' && clip.media_type === 'audio') {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 p-4">
@@ -110,6 +120,41 @@ const ClipMediaPlayer = ({ clip }: { clip: HighlightClip }) => {
         )}
         <audio src={clip.url} controls className="w-full max-w-xs" />
       </div>
+    );
+  }
+
+  // External audio links (Apple Podcasts, etc.) - show as clickable card with cover art
+  if (clip.media_type === 'audio' && (clip.source_type === 'external' || isApplePodcastUrl(clip.url))) {
+    return (
+      <a
+        href={clip.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 gap-4 group/play"
+      >
+        {coverArt ? (
+          <img 
+            src={coverArt} 
+            alt={clip.title} 
+            className="w-28 h-28 rounded-xl object-cover shadow-lg group-hover/play:scale-105 transition-transform"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : clip.thumbnail_url ? (
+          <img 
+            src={clip.thumbnail_url} 
+            alt={clip.title} 
+            className="w-28 h-28 rounded-xl object-cover shadow-lg group-hover/play:scale-105 transition-transform"
+          />
+        ) : (
+          <div className="w-28 h-28 rounded-xl bg-primary/10 flex items-center justify-center group-hover/play:scale-105 transition-transform">
+            <Headphones className="w-14 h-14 text-primary" />
+          </div>
+        )}
+        <span className="text-sm text-muted-foreground flex items-center gap-2 font-medium">
+          Listen on Apple Podcasts <ExternalLink className="w-4 h-4" />
+        </span>
+      </a>
     );
   }
 
@@ -146,6 +191,37 @@ const ClipMediaPlayer = ({ clip }: { clip: HighlightClip }) => {
 };
 
 export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtableClick, visibleSections }: SpeakerSpotlightSlideProps) => {
+  const [coverArtCache, setCoverArtCache] = useState<CoverArtCache>({});
+
+  // Fetch cover art for Apple Podcast links
+  useEffect(() => {
+    const fetchCoverArt = async (url: string) => {
+      if (coverArtCache[url] !== undefined) return;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('scrape-podcast-cover-art', {
+          body: { apple_podcast_url: url }
+        });
+
+        if (!error && data?.coverArtUrl) {
+          setCoverArtCache(prev => ({ ...prev, [url]: data.coverArtUrl }));
+        } else {
+          setCoverArtCache(prev => ({ ...prev, [url]: null }));
+        }
+      } catch (err) {
+        console.error('Error fetching cover art:', err);
+        setCoverArtCache(prev => ({ ...prev, [url]: null }));
+      }
+    };
+
+    // Fetch cover art for all Apple Podcast URLs in highlight clips
+    highlightClips.forEach(clip => {
+      if (isApplePodcastUrl(clip.url)) {
+        fetchCoverArt(clip.url);
+      }
+    });
+  }, [highlightClips]);
+
   // Default all sections to visible if not specified
   const sections = {
     totalBooked: visibleSections?.totalBooked ?? true,
@@ -370,7 +446,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
                 <div className={`bg-muted relative ${
                   highlightClips.length === 1 ? "aspect-video" : "aspect-[16/10]"
                 }`}>
-                  <ClipMediaPlayer clip={clip} />
+                  <ClipMediaPlayer clip={clip} coverArt={coverArtCache[clip.url]} />
                 </div>
                 {/* Clip Info */}
                 <div className="p-4 space-y-1">
