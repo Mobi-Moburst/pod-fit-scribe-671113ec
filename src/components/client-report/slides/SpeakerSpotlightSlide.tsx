@@ -313,7 +313,11 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
       {/* Speaker Header */}
       <div className="flex items-center gap-6">
         <Avatar className="h-20 w-20 border-2 border-primary/20">
-          <AvatarImage src={speaker.speaker_headshot_url} alt={speaker.speaker_name} />
+          <AvatarImage 
+            src={speaker.speaker_headshot_url} 
+            alt={speaker.speaker_name}
+            className="object-cover"
+          />
           <AvatarFallback className="text-2xl font-semibold bg-primary/10 text-primary">
             {initials}
           </AvatarFallback>
