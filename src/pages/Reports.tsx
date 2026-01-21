@@ -15,7 +15,7 @@ import { CompanySpeakerSelector } from "@/components/CompanySpeakerSelector";
 import type { Company, Speaker, MinimalClient, Competitor } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
-import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription } from "@/utils/reportGenerator";
+import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints } from "@/utils/reportGenerator";
 import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
@@ -1139,70 +1139,93 @@ export default function Reports() {
     }
   };
 
-  // Regenerate talking points spotlight from client data
+  // Regenerate talking points spotlight using AI
   const handleRegenerateTalkingPoints = async () => {
     if (!reportData || !reportData.next_quarter_strategy) return;
     
     setIsRegeneratingTalkingPoints(true);
     
     try {
-      const client = reportData.client;
-      const firstName = client?.name?.split(' ')[0] || 'the guest';
+      const isMultiSpeaker = reportData.report_type === 'multi' && reportData.speaker_breakdowns && reportData.speaker_breakdowns.length > 1;
+      const quarter = reportData.next_quarter_strategy.quarter || reportData.quarter || '';
       
-      // Get talking points from client or speaker
-      let talkingPoints: string[] = [];
+      // Build speaker data for AI
+      let speakersForAI: Array<{
+        name: string;
+        title?: string | null;
+        company?: string;
+        talking_points?: string[] | null;
+        target_audiences?: string[] | null;
+        campaign_strategy?: string | null;
+        professional_credentials?: string[] | null;
+        guest_identity_tags?: string[] | null;
+      }> = [];
       
-      // First try client's talking points
-      if (client?.talking_points && client.talking_points.length > 0) {
-        talkingPoints = client.talking_points.slice(0, 3);
+      if (isMultiSpeaker && reportData.speaker_breakdowns) {
+        // Multi-speaker: use each speaker's data
+        speakersForAI = reportData.speaker_breakdowns.map(sb => ({
+          name: sb.speaker_name,
+          title: sb.speaker_title,
+          company: reportData.company_name || reportData.client?.company,
+          talking_points: sb.talking_points,
+          target_audiences: sb.target_audiences,
+          campaign_strategy: sb.campaign_strategy,
+          professional_credentials: sb.professional_credentials,
+        }));
+      } else {
+        // Single speaker: use client data
+        const client = reportData.client;
+        speakersForAI = [{
+          name: client?.name || '',
+          title: client?.title,
+          company: client?.company,
+          talking_points: client?.talking_points,
+          target_audiences: client?.target_audiences,
+          campaign_strategy: client?.campaign_strategy,
+          professional_credentials: client?.professional_credentials,
+          guest_identity_tags: client?.guest_identity_tags,
+        }];
       }
       
-      // If no talking points, try campaign strategy
-      if (talkingPoints.length === 0 && client?.campaign_strategy) {
-        const strategyLines = client.campaign_strategy.split('\n')
-          .filter(l => l.trim().startsWith('-') || l.trim().startsWith('•'))
-          .map(l => l.replace(/^[-•*]\s*/, '').trim())
-          .filter(Boolean)
-          .slice(0, 3);
-        talkingPoints = strategyLines;
+      // Call AI to generate talking points
+      const aiResult = await generateAITalkingPoints(
+        speakersForAI,
+        quarter,
+        {
+          total_booked: reportData.kpis?.total_booked,
+          total_published: reportData.kpis?.total_published,
+          total_reach: reportData.kpis?.total_reach,
+          top_categories: reportData.kpis?.top_categories,
+        },
+        isMultiSpeaker
+      );
+      
+      // Update the next quarter strategy with AI-generated talking points
+      let updatedStrategy = { ...reportData.next_quarter_strategy };
+      
+      if (isMultiSpeaker && aiResult.speaker_talking_points_spotlight) {
+        updatedStrategy.speaker_talking_points_spotlight = aiResult.speaker_talking_points_spotlight;
+        updatedStrategy.talking_points_spotlight = []; // Clear general points for multi-speaker
+      } else if (aiResult.talking_points_spotlight) {
+        updatedStrategy.talking_points_spotlight = aiResult.talking_points_spotlight;
       }
-      
-      // If still no talking points, create from target audiences
-      if (talkingPoints.length === 0 && client?.target_audiences && client.target_audiences.length > 0) {
-        talkingPoints = client.target_audiences.slice(0, 2).map((aud, i) => 
-          i === 0 ? `Expertise in ${aud}` : `Thought leadership for ${aud}`
-        );
-      }
-      
-      // Generate spotlight items
-      const talking_points_spotlight = talkingPoints.length > 0 
-        ? talkingPoints.map(point => ({
-            title: point.length > 50 ? point.substring(0, 50) + '...' : point,
-            description: generateTalkingPointDescription(point, firstName)
-          }))
-        : [{
-            title: 'Core Expertise',
-            description: `Emphasize ${firstName}'s unique perspective and expertise to create compelling conversations.`
-          }];
-      
-      // Update the next quarter strategy with new talking points
-      const updatedStrategy = {
-        ...reportData.next_quarter_strategy,
-        talking_points_spotlight,
-      };
       
       // Save using the existing handler
       await updateReportNextQuarterStrategy(updatedStrategy);
       
+      const pointCount = isMultiSpeaker 
+        ? aiResult.speaker_talking_points_spotlight?.reduce((sum, s) => sum + s.points.length, 0) || 0
+        : aiResult.talking_points_spotlight?.length || 0;
+      
       toast({
         title: "Talking points regenerated",
-        description: `Generated ${talking_points_spotlight.length} talking point${talking_points_spotlight.length !== 1 ? 's' : ''} to spotlight.`,
+        description: `Generated ${pointCount} AI-powered talking point${pointCount !== 1 ? 's' : ''} to spotlight.`,
       });
     } catch (error) {
       console.error('Error regenerating talking points:', error);
       toast({
         title: "Error",
-        description: "Failed to regenerate talking points.",
+        description: "Failed to regenerate talking points. Please try again.",
         variant: "destructive",
       });
     } finally {

@@ -218,9 +218,65 @@ function generateFocusDescription(audience: string, clientName: string): string 
   return `Continue building presence on ${audience.toLowerCase()} podcasts to expand ${clientName}'s thought leadership reach.`;
 }
 
-// Old generateTalkingPointDescription function removed - using exported version below
+// Generate AI-powered talking points spotlight via edge function
+export async function generateAITalkingPoints(
+  speakers: Array<{
+    name: string;
+    title?: string | null;
+    company?: string;
+    talking_points?: string[] | null;
+    target_audiences?: string[] | null;
+    campaign_strategy?: string | null;
+    professional_credentials?: string[] | null;
+    guest_identity_tags?: string[] | null;
+  }>,
+  quarter: string,
+  kpis?: {
+    total_booked?: number;
+    total_published?: number;
+    total_reach?: number;
+    top_categories?: Array<{ name: string; count: number }>;
+  },
+  isMultiSpeaker: boolean = false
+): Promise<{
+  talking_points_spotlight?: Array<{ title: string; description: string }>;
+  speaker_talking_points_spotlight?: Array<{ speaker_name: string; points: Array<{ title: string; description: string }> }>;
+}> {
+  try {
+    console.log(`Generating AI talking points for ${speakers.length} speaker(s), multi-speaker: ${isMultiSpeaker}`);
+    
+    const { data, error } = await supabase.functions.invoke('generate-talking-points', {
+      body: {
+        speakers: speakers.map(s => ({
+          name: s.name,
+          title: s.title || undefined,
+          company: s.company,
+          talking_points: s.talking_points || undefined,
+          target_audiences: s.target_audiences || undefined,
+          campaign_strategy: s.campaign_strategy || undefined,
+          professional_credentials: s.professional_credentials || undefined,
+          guest_identity_tags: s.guest_identity_tags || undefined,
+        })),
+        quarter,
+        kpis,
+        isMultiSpeaker,
+      }
+    });
 
-// Generate talking point spotlight description
+    if (error) {
+      console.error('Error generating AI talking points:', error);
+      return {};
+    }
+
+    console.log('AI talking points generated:', data);
+    return data || {};
+  } catch (err) {
+    console.error('Failed to generate AI talking points:', err);
+    return {};
+  }
+}
+
+// Generate talking point spotlight description (fallback/helper)
 export function generateTalkingPointDescription(talkingPoint: string, clientName?: string): string {
   // Extract key themes and create a strategic framing
   const pointLower = talkingPoint.toLowerCase();
@@ -1469,7 +1525,37 @@ export async function generateReportFromMultipleCSVs(
   const executiveSummary = generateExecutiveSummary(client, kpis, quarter);
   
   // Generate next quarter strategy (single speaker)
-  const next_quarter_strategy = generateNextQuarterStrategy(client, kpis, quarter, 1, [client.name]);
+  let next_quarter_strategy = generateNextQuarterStrategy(client, kpis, quarter, 1, [client.name]);
+  
+  // Enhance with AI-generated talking points (3 for single speaker)
+  try {
+    const aiTalkingPoints = await generateAITalkingPoints(
+      [{
+        name: client.name,
+        title: client.title,
+        company: client.company,
+        talking_points: client.talking_points,
+        target_audiences: client.target_audiences,
+        campaign_strategy: client.campaign_strategy,
+        professional_credentials: client.professional_credentials,
+        guest_identity_tags: client.guest_identity_tags,
+      }],
+      quarter,
+      {
+        total_booked: kpis.total_booked,
+        total_published: kpis.total_published,
+        total_reach: kpis.total_reach,
+        top_categories: kpis.top_categories,
+      },
+      false // Single speaker
+    );
+    
+    if (aiTalkingPoints.talking_points_spotlight && aiTalkingPoints.talking_points_spotlight.length > 0) {
+      next_quarter_strategy.talking_points_spotlight = aiTalkingPoints.talking_points_spotlight;
+    }
+  } catch (err) {
+    console.error('AI talking points generation failed, using default:', err);
+  }
   
   // Generate AI pitch hooks for the speaker
   const aiHooks = await generatePitchHooksForSpeaker({
@@ -1786,7 +1872,41 @@ export async function generateMultiSpeakerReport(
   
   // Generate next quarter strategy (multi-speaker: pass speaker count and names)
   const speakerNames = speakerData.map(s => s.speaker.name);
-  const next_quarter_strategy = generateNextQuarterStrategy(companyClient, aggregatedKpis, quarter, speakerData.length, speakerNames);
+  let next_quarter_strategy = generateNextQuarterStrategy(companyClient, aggregatedKpis, quarter, speakerData.length, speakerNames);
+  
+  // Enhance with AI-generated per-speaker talking points (3 per speaker for multi-speaker)
+  try {
+    const speakersForAI = speakerData.map(s => ({
+      name: s.speaker.name,
+      title: s.speaker.title,
+      company: company.name,
+      talking_points: s.speaker.talking_points,
+      target_audiences: s.speaker.target_audiences,
+      campaign_strategy: s.speaker.campaign_strategy,
+      professional_credentials: s.speaker.professional_credentials,
+      guest_identity_tags: s.speaker.guest_identity_tags,
+    }));
+    
+    const aiTalkingPoints = await generateAITalkingPoints(
+      speakersForAI,
+      quarter,
+      {
+        total_booked: aggregatedKpis.total_booked,
+        total_published: aggregatedKpis.total_published,
+        total_reach: aggregatedKpis.total_reach,
+        top_categories: aggregatedKpis.top_categories,
+      },
+      true // Multi-speaker
+    );
+    
+    if (aiTalkingPoints.speaker_talking_points_spotlight && aiTalkingPoints.speaker_talking_points_spotlight.length > 0) {
+      next_quarter_strategy.speaker_talking_points_spotlight = aiTalkingPoints.speaker_talking_points_spotlight;
+      // Clear the general talking points since we're using per-speaker
+      next_quarter_strategy.talking_points_spotlight = [];
+    }
+  } catch (err) {
+    console.error('AI talking points generation failed, using default:', err);
+  }
   
   // Generate AI pitch hooks for each speaker
   const pitchHooksPromises = speakerData.map(async (s) => {
