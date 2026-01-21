@@ -74,28 +74,60 @@ export const ClientReportCategories = ({ categories }: ClientReportCategoriesPro
                 {hasPodcasts && (
                   <CollapsibleContent className="pt-3 space-y-2">
                     {category.podcasts!.map((podcast, pIndex) => (
-                      <a 
-                        key={pIndex}
-                        href={podcast.apple_podcast_link || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        {podcast.cover_art_url ? (
-                          <img 
-                            src={podcast.cover_art_url} 
-                            alt={podcast.show_title}
-                            className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs text-muted-foreground">🎙️</span>
+                      podcast.apple_podcast_link ? (
+                        <a 
+                          key={pIndex}
+                          href={podcast.apple_podcast_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          {podcast.cover_art_url ? (
+                            <img 
+                              src={podcast.cover_art_url} 
+                              alt={podcast.show_title}
+                              className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <img
+                              src="/placeholder.svg"
+                              alt="Podcast placeholder cover"
+                              className="w-12 h-12 rounded-lg object-cover flex-shrink-0 opacity-60"
+                              loading="lazy"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{podcast.show_title}</p>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{podcast.show_title}</p>
+                        </a>
+                      ) : (
+                        <div
+                          key={pIndex}
+                          className="flex items-start gap-3 p-2 rounded-lg"
+                        >
+                          {podcast.cover_art_url ? (
+                            <img 
+                              src={podcast.cover_art_url} 
+                              alt={podcast.show_title}
+                              className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <img
+                              src="/placeholder.svg"
+                              alt="Podcast placeholder cover"
+                              className="w-12 h-12 rounded-lg object-cover flex-shrink-0 opacity-60"
+                              loading="lazy"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{podcast.show_title}</p>
+                          </div>
                         </div>
-                      </a>
+                      )
                     ))}
                   </CollapsibleContent>
                 )}
