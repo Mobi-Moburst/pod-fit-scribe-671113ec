@@ -15,7 +15,7 @@ import { CompanySpeakerSelector } from "@/components/CompanySpeakerSelector";
 import type { Company, Speaker, MinimalClient, Competitor } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
-import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput } from "@/utils/reportGenerator";
+import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription } from "@/utils/reportGenerator";
 import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
@@ -101,7 +101,7 @@ export default function Reports() {
   const [nextQuarterEditOpen, setNextQuarterEditOpen] = useState(false);
   const [updateCSVDialogOpen, setUpdateCSVDialogOpen] = useState(false);
   const [reportToUpdate, setReportToUpdate] = useState<any>(null);
-  
+  const [isRegeneratingTalkingPoints, setIsRegeneratingTalkingPoints] = useState(false);
   
   // Visibility state for report sections
   const [visibleSections, setVisibleSections] = useState({
@@ -1139,6 +1139,77 @@ export default function Reports() {
     }
   };
 
+  // Regenerate talking points spotlight from client data
+  const handleRegenerateTalkingPoints = async () => {
+    if (!reportData || !reportData.next_quarter_strategy) return;
+    
+    setIsRegeneratingTalkingPoints(true);
+    
+    try {
+      const client = reportData.client;
+      const firstName = client?.name?.split(' ')[0] || 'the guest';
+      
+      // Get talking points from client or speaker
+      let talkingPoints: string[] = [];
+      
+      // First try client's talking points
+      if (client?.talking_points && client.talking_points.length > 0) {
+        talkingPoints = client.talking_points.slice(0, 3);
+      }
+      
+      // If no talking points, try campaign strategy
+      if (talkingPoints.length === 0 && client?.campaign_strategy) {
+        const strategyLines = client.campaign_strategy.split('\n')
+          .filter(l => l.trim().startsWith('-') || l.trim().startsWith('•'))
+          .map(l => l.replace(/^[-•*]\s*/, '').trim())
+          .filter(Boolean)
+          .slice(0, 3);
+        talkingPoints = strategyLines;
+      }
+      
+      // If still no talking points, create from target audiences
+      if (talkingPoints.length === 0 && client?.target_audiences && client.target_audiences.length > 0) {
+        talkingPoints = client.target_audiences.slice(0, 2).map((aud, i) => 
+          i === 0 ? `Expertise in ${aud}` : `Thought leadership for ${aud}`
+        );
+      }
+      
+      // Generate spotlight items
+      const talking_points_spotlight = talkingPoints.length > 0 
+        ? talkingPoints.map(point => ({
+            title: point.length > 50 ? point.substring(0, 50) + '...' : point,
+            description: generateTalkingPointDescription(point, firstName)
+          }))
+        : [{
+            title: 'Core Expertise',
+            description: `Emphasize ${firstName}'s unique perspective and expertise to create compelling conversations.`
+          }];
+      
+      // Update the next quarter strategy with new talking points
+      const updatedStrategy = {
+        ...reportData.next_quarter_strategy,
+        talking_points_spotlight,
+      };
+      
+      // Save using the existing handler
+      await updateReportNextQuarterStrategy(updatedStrategy);
+      
+      toast({
+        title: "Talking points regenerated",
+        description: `Generated ${talking_points_spotlight.length} talking point${talking_points_spotlight.length !== 1 ? 's' : ''} to spotlight.`,
+      });
+    } catch (error) {
+      console.error('Error regenerating talking points:', error);
+      toast({
+        title: "Error",
+        description: "Failed to regenerate talking points.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegeneratingTalkingPoints(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full">
       <BackgroundFX />
@@ -2104,6 +2175,8 @@ export default function Reports() {
                   next_quarter_kpis={reportData.next_quarter_strategy.next_quarter_kpis}
                   onHide={() => toggleSection('nextQuarterStrategy')}
                   onEdit={() => setNextQuarterEditOpen(true)}
+                  onRegenerateTalkingPoints={handleRegenerateTalkingPoints}
+                  isRegenerating={isRegeneratingTalkingPoints}
                 />
               )}
 

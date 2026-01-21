@@ -218,26 +218,47 @@ function generateFocusDescription(audience: string, clientName: string): string 
   return `Continue building presence on ${audience.toLowerCase()} podcasts to expand ${clientName}'s thought leadership reach.`;
 }
 
+// Old generateTalkingPointDescription function removed - using exported version below
+
 // Generate talking point spotlight description
-function generateTalkingPointDescription(talkingPoint: string): string {
+export function generateTalkingPointDescription(talkingPoint: string, clientName?: string): string {
   // Extract key themes and create a strategic framing
   const pointLower = talkingPoint.toLowerCase();
+  const name = clientName || 'the guest';
   
-  if (pointLower.includes('ai') || pointLower.includes('automation')) {
-    return `Emphasize practical AI applications and automation strategies that give hosts actionable insights to share with their audiences.`;
+  if (pointLower.includes('ai') || pointLower.includes('automation') || pointLower.includes('artificial intelligence')) {
+    return `Emphasize ${name}'s practical AI applications and automation strategies that give hosts actionable insights to share with their audiences.`;
   }
-  if (pointLower.includes('growth') || pointLower.includes('scale')) {
-    return `Highlight growth frameworks and scaling strategies that resonate with ambitious audiences seeking proven playbooks.`;
+  if (pointLower.includes('growth') || pointLower.includes('scale') || pointLower.includes('scaling')) {
+    return `Highlight ${name}'s growth frameworks and scaling strategies that resonate with ambitious audiences seeking proven playbooks.`;
   }
-  if (pointLower.includes('leadership') || pointLower.includes('team')) {
-    return `Position leadership insights as a bridge between team challenges and organizational success.`;
+  if (pointLower.includes('leadership') || pointLower.includes('team') || pointLower.includes('management')) {
+    return `Position ${name}'s leadership insights as a bridge between team challenges and organizational success.`;
   }
-  if (pointLower.includes('product') || pointLower.includes('launch')) {
-    return `Frame product updates and launches as timely news hooks that create urgency for podcast hosts.`;
+  if (pointLower.includes('product') || pointLower.includes('launch') || pointLower.includes('innovation')) {
+    return `Frame ${name}'s product updates and launches as timely news hooks that create urgency for podcast hosts.`;
+  }
+  if (pointLower.includes('marketing') || pointLower.includes('brand') || pointLower.includes('content')) {
+    return `Showcase ${name}'s marketing expertise and brand-building strategies that resonate with growth-focused audiences.`;
+  }
+  if (pointLower.includes('sales') || pointLower.includes('revenue') || pointLower.includes('customer')) {
+    return `Emphasize ${name}'s revenue and customer acquisition strategies that appeal to business-focused podcast audiences.`;
+  }
+  if (pointLower.includes('fundrais') || pointLower.includes('invest') || pointLower.includes('capital')) {
+    return `Highlight ${name}'s fundraising journey and investment insights that resonate with entrepreneurial audiences.`;
+  }
+  if (pointLower.includes('culture') || pointLower.includes('hiring') || pointLower.includes('talent')) {
+    return `Share ${name}'s perspectives on building culture and attracting talent that appeal to leadership-focused shows.`;
+  }
+  if (pointLower.includes('data') || pointLower.includes('analytics') || pointLower.includes('metrics')) {
+    return `Position ${name}'s data-driven approach and analytical insights as valuable takeaways for strategic decision-makers.`;
+  }
+  if (pointLower.includes('strateg') || pointLower.includes('vision') || pointLower.includes('future')) {
+    return `Share ${name}'s strategic vision and forward-thinking perspectives that position them as an industry thought leader.`;
   }
   
-  // Default - create a generic but useful description
-  return `Emphasize this topic to give hosts practical, shareable insights that resonate with their audience.`;
+  // Default - create a personalized description
+  return `Emphasize ${name}'s unique perspective on ${talkingPoint.toLowerCase()} to create compelling conversations that resonate with podcast audiences.`;
 }
 
 // Generate next quarter strategy section
@@ -272,18 +293,53 @@ function generateNextQuarterStrategy(
   }
   
   // Generate talking points spotlight from client talking points (top 3)
+  // Use the exported function for consistency
   const talkingPoints = client.talking_points?.slice(0, 3) || [];
   const talking_points_spotlight = talkingPoints.map(point => ({
-    title: point.length > 40 ? point.substring(0, 40) + '...' : point,
-    description: generateTalkingPointDescription(point)
+    title: point.length > 50 ? point.substring(0, 50) + '...' : point,
+    description: generateTalkingPointDescription(point, firstName)
   }));
   
-  // If no talking points, create default
+  // If no talking points, create default from target audiences or campaign strategy
   if (talking_points_spotlight.length === 0) {
-    talking_points_spotlight.push({
-      title: 'Core Expertise',
-      description: `Emphasize ${firstName}'s unique perspective and expertise to create compelling conversations.`
-    });
+    // Try to extract from campaign strategy
+    const strategy = client.campaign_strategy || '';
+    const strategyLines = strategy.split('\n').filter(l => l.trim().startsWith('-') || l.trim().startsWith('•'));
+    
+    if (strategyLines.length > 0) {
+      // Use first 3 strategy bullet points
+      strategyLines.slice(0, 3).forEach(line => {
+        const cleaned = line.replace(/^[-•*]\s*/, '').trim();
+        if (cleaned) {
+          talking_points_spotlight.push({
+            title: cleaned.length > 50 ? cleaned.substring(0, 50) + '...' : cleaned,
+            description: generateTalkingPointDescription(cleaned, firstName)
+          });
+        }
+      });
+    }
+    
+    // If still empty, create default based on available data
+    if (talking_points_spotlight.length === 0) {
+      if (audiences.length > 0) {
+        // Create talking points based on audiences
+        talking_points_spotlight.push({
+          title: 'Industry Expertise',
+          description: `Emphasize ${firstName}'s deep expertise in ${audiences[0]?.toLowerCase() || 'the industry'} to create compelling conversations.`
+        });
+        if (audiences.length > 1) {
+          talking_points_spotlight.push({
+            title: 'Thought Leadership',
+            description: `Position ${firstName} as a thought leader speaking to ${audiences[1]?.toLowerCase() || 'key decision-makers'}.`
+          });
+        }
+      } else {
+        talking_points_spotlight.push({
+          title: 'Core Expertise',
+          description: `Emphasize ${firstName}'s unique perspective and expertise to create compelling conversations.`
+        });
+      }
+    }
   }
   
   // Generate closing paragraph
