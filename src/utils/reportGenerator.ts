@@ -578,32 +578,85 @@ async function scrapePodcastMetadata(applePodcastUrl: string): Promise<{
   }
 }
 
-// AI-powered podcast categorization using target audiences
-async function categorizePodcast(
-  podcastName: string,
-  podcastDescription: string | undefined,
+// AI-powered batch podcast categorization
+export async function generatePodcastCategories(
+  podcasts: Array<{
+    name: string;
+    description?: string;
+    apple_link?: string;
+    cover_art_url?: string;
+  }>,
   targetAudiences: string[],
   companyName?: string
-): Promise<string | null> {
+): Promise<Array<{
+  name: string;
+  count: number;
+  podcasts: Array<{
+    show_title: string;
+    description?: string;
+    apple_podcast_link?: string;
+    cover_art_url?: string;
+  }>;
+}>> {
   try {
-    const { data, error } = await supabase.functions.invoke('categorize-podcast', {
+    console.log(`[generatePodcastCategories] Generating AI categories for ${podcasts.length} podcasts`);
+    
+    const { data, error } = await supabase.functions.invoke('generate-podcast-categories', {
       body: { 
-        podcastName, 
-        podcastDescription, 
+        podcasts: podcasts.map(p => ({
+          name: p.name,
+          description: p.description,
+          apple_link: p.apple_link,
+        })),
         targetAudiences,
         companyName 
       }
     });
     
     if (error) {
-      console.error('Error categorizing podcast:', error);
-      return null;
+      console.error('Error generating podcast categories:', error);
+      return [];
     }
     
-    return data?.category || null;
+    if (!data?.categories || !Array.isArray(data.categories)) {
+      console.error('Invalid response from generate-podcast-categories');
+      return [];
+    }
+    
+    // Create a lookup map for podcast metadata
+    const podcastLookup = new Map<string, typeof podcasts[0]>();
+    podcasts.forEach(p => {
+      podcastLookup.set(p.name.toLowerCase(), p);
+    });
+    
+    // Transform AI response to include full podcast metadata
+    const categoriesWithMetadata = data.categories.map((cat: { name: string; podcasts: string[] }) => {
+      const podcastsWithMetadata = cat.podcasts.map(podcastName => {
+        const metadata = podcastLookup.get(podcastName.toLowerCase());
+        return {
+          show_title: metadata?.name || podcastName,
+          description: metadata?.description,
+          apple_podcast_link: metadata?.apple_link,
+          cover_art_url: metadata?.cover_art_url,
+        };
+      });
+      
+      return {
+        name: cat.name,
+        count: podcastsWithMetadata.length,
+        podcasts: podcastsWithMetadata,
+      };
+    });
+    
+    // Sort by count descending
+    categoriesWithMetadata.sort((a: { count: number }, b: { count: number }) => b.count - a.count);
+    
+    console.log(`[generatePodcastCategories] Generated ${categoriesWithMetadata.length} categories`);
+    return categoriesWithMetadata;
+    
   } catch (err) {
-    console.error('Failed to categorize podcast:', err);
-    return null;
+    console.error('Failed to generate podcast categories:', err);
+    return [];
   }
 }
 
@@ -686,89 +739,51 @@ export async function calculateCategoriesFromBookedPodcasts(
   
   console.log(`[calculateCategoriesFromBookedPodcasts] Using ${effectiveAudiences.length} clean target audiences for categorization (filtered from ${targetAudiences.length} total)`);
   
-  // Scrape metadata for each booked podcast (with rate limiting)
-  const categoryMap = new Map<string, {
-    count: number;
-    podcasts: Array<{
-      show_title: string;
-      cover_art_url?: string;
-      description?: string;
-      apple_podcast_link?: string;
-    }>;
-  }>();
+  // First, scrape metadata for each podcast in parallel batches
+  const podcastsWithMetadata: Array<{
+    name: string;
+    description?: string;
+    apple_link?: string;
+    cover_art_url?: string;
+  }> = [];
   
-  // Process in batches of 3 to avoid rate limiting (AI calls are slower)
-  const batchSize = 3;
-  for (let i = 0; i < bookedPodcasts.length; i += batchSize) {
-    const batch = bookedPodcasts.slice(i, i + batchSize);
+  // Process in batches of 5 for metadata scraping
+  const metadataBatchSize = 5;
+  for (let i = 0; i < bookedPodcasts.length; i += metadataBatchSize) {
+    const batch = bookedPodcasts.slice(i, i + metadataBatchSize);
     
     const results = await Promise.all(
       batch.map(async (row) => {
-        // First, scrape iTunes for metadata (cover art, description)
         const metadata = await scrapePodcastMetadata(row.apple_podcast_link!);
-        
-        // Then, use AI to categorize based on target audiences
-        const podcastName = metadata?.podcastName || row.podcast_name;
-        const podcastDescription = metadata?.description;
-        
-        const aiCategory = await categorizePodcast(
-          podcastName,
-          podcastDescription,
-          effectiveAudiences,
-          companyName
-        );
-        
         return {
-          row,
-          metadata,
-          category: aiCategory,
+          name: metadata?.podcastName || row.podcast_name,
+          description: metadata?.description,
+          apple_link: row.apple_podcast_link,
+          cover_art_url: metadata?.coverArtUrl,
         };
       })
     );
     
-    // Process results
-    results.forEach(({ row, metadata, category }) => {
-      if (!category) return;
-      
-      const podcastEntry = {
-        show_title: metadata?.podcastName || row.podcast_name,
-        cover_art_url: metadata?.coverArtUrl,
-        description: metadata?.description,
-        apple_podcast_link: row.apple_podcast_link,
-      };
-      
-      // Add to AI-determined category
-      const existing = categoryMap.get(category);
-      if (existing) {
-        existing.count++;
-        existing.podcasts.push(podcastEntry);
-      } else {
-        categoryMap.set(category, {
-          count: 1,
-          podcasts: [podcastEntry],
-        });
-      }
-    });
+    podcastsWithMetadata.push(...results);
     
-    // Slightly longer delay between batches for AI processing
-    if (i + batchSize < bookedPodcasts.length) {
-      await new Promise(resolve => setTimeout(resolve, 300));
+    // Small delay between batches
+    if (i + metadataBatchSize < bookedPodcasts.length) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
   
-  // Convert to sorted array
-  const topCategories = Array.from(categoryMap.entries())
-    .map(([name, data]) => ({
-      name,
-      count: data.count,
-      podcasts: data.podcasts,
-    }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8);
+  console.log(`[calculateCategoriesFromBookedPodcasts] Scraped metadata for ${podcastsWithMetadata.length} podcasts`);
   
-  console.log(`[calculateCategoriesFromBookedPodcasts] AI categorization complete: ${topCategories.length} categories found`);
+  // Now use the new batch AI categorization
+  const categories = await generatePodcastCategories(
+    podcastsWithMetadata,
+    effectiveAudiences,
+    companyName
+  );
   
-  return topCategories;
+  console.log(`[calculateCategoriesFromBookedPodcasts] AI batch categorization complete: ${categories.length} categories found`);
+  
+  return categories.slice(0, 8);
 }
 
 // Calculate EMV for a single podcast
