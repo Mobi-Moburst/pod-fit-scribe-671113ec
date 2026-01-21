@@ -1276,32 +1276,80 @@ export default function Reports() {
         companyName = reportData.client?.company;
       }
       
-      // Filter to unique podcasts with metadata
+      // Filter to unique podcasts
       const uniquePodcasts = new Map<string, {
         name: string;
-        description?: string;
         apple_link?: string;
-        cover_art_url?: string;
       }>();
       
       reportData.podcasts.forEach(p => {
         const key = (p.apple_podcast_link || p.show_title || '').toLowerCase();
-        if (!uniquePodcasts.has(key)) {
+        if (!uniquePodcasts.has(key) && p.apple_podcast_link) {
           uniquePodcasts.set(key, {
             name: p.show_title,
-            description: p.rationale_short, // Use rationale as description proxy
             apple_link: p.apple_podcast_link,
-            cover_art_url: undefined, // Will be fetched by the edge function if needed
           });
         }
       });
       
-      const podcastsForAI = Array.from(uniquePodcasts.values());
+      const podcastsList = Array.from(uniquePodcasts.values());
+      console.log(`Regenerating categories for ${podcastsList.length} podcasts - scraping cover art first`);
       
-      console.log(`Regenerating categories for ${podcastsForAI.length} podcasts`);
+      // Scrape cover art for each podcast in batches
+      const podcastsWithMetadata: Array<{
+        name: string;
+        description?: string;
+        apple_link?: string;
+        cover_art_url?: string;
+      }> = [];
+      
+      const batchSize = 5;
+      for (let i = 0; i < podcastsList.length; i += batchSize) {
+        const batch = podcastsList.slice(i, i + batchSize);
+        
+        const results = await Promise.all(
+          batch.map(async (podcast) => {
+            try {
+              const { data, error } = await supabase.functions.invoke('scrape-podcast-cover-art', {
+                body: { apple_podcast_url: podcast.apple_link }
+              });
+              
+              if (error || !data) {
+                return {
+                  name: podcast.name,
+                  apple_link: podcast.apple_link,
+                  cover_art_url: undefined,
+                };
+              }
+              
+              return {
+                name: data.podcastName || podcast.name,
+                description: data.description,
+                apple_link: podcast.apple_link,
+                cover_art_url: data.coverArtUrl,
+              };
+            } catch {
+              return {
+                name: podcast.name,
+                apple_link: podcast.apple_link,
+                cover_art_url: undefined,
+              };
+            }
+          })
+        );
+        
+        podcastsWithMetadata.push(...results);
+        
+        // Small delay between batches
+        if (i + batchSize < podcastsList.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      console.log(`Scraped metadata for ${podcastsWithMetadata.length} podcasts, now categorizing...`);
       
       const newCategories = await generatePodcastCategories(
-        podcastsForAI,
+        podcastsWithMetadata,
         targetAudiences,
         companyName
       );

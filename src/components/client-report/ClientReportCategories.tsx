@@ -94,11 +94,6 @@ export const ClientReportCategories = ({ categories }: ClientReportCategoriesPro
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{podcast.show_title}</p>
-                          {podcast.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                              {podcast.description}
-                            </p>
-                          )}
                         </div>
                       </a>
                     ))}
