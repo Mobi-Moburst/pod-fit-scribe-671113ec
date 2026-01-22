@@ -134,3 +134,115 @@
     color: transparent;
   }
 }
+
+/* Thank You Slide Animations */
+@layer utilities {
+  /* Flowing gradient animation */
+  @keyframes gradient-flow {
+    0% { background-position: 0% center; }
+    50% { background-position: 100% center; }
+    100% { background-position: 0% center; }
+  }
+  .animate-gradient-flow {
+    animation: gradient-flow 4s ease-in-out infinite;
+  }
+
+  /* Orb floating animations */
+  @keyframes thankyou-orb-1 {
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+    25% { transform: translate(50px, -30px) scale(1.1); opacity: 0.4; }
+    50% { transform: translate(20px, 40px) scale(0.95); opacity: 0.25; }
+    75% { transform: translate(-30px, 10px) scale(1.05); opacity: 0.35; }
+  }
+  .animate-thankyou-orb-1 {
+    animation: thankyou-orb-1 12s ease-in-out infinite;
+  }
+
+  @keyframes thankyou-orb-2 {
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.25; }
+    33% { transform: translate(-40px, 30px) scale(1.15); opacity: 0.35; }
+    66% { transform: translate(30px, -20px) scale(0.9); opacity: 0.2; }
+  }
+  .animate-thankyou-orb-2 {
+    animation: thankyou-orb-2 15s ease-in-out infinite;
+  }
+
+  @keyframes thankyou-orb-3 {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.2; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.3; }
+  }
+  .animate-thankyou-orb-3 {
+    animation: thankyou-orb-3 8s ease-in-out infinite;
+  }
+
+  /* Content entrance animations */
+  @keyframes thankyou-content {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .animate-thankyou-content {
+    animation: thankyou-content 1s ease-out forwards;
+  }
+
+  @keyframes thankyou-sparkle {
+    0% { opacity: 0; transform: scale(0.5) rotate(-180deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+  .animate-thankyou-sparkle {
+    animation: thankyou-sparkle 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation-delay: 0.2s;
+    opacity: 0;
+  }
+
+  @keyframes thankyou-heading {
+    0% { opacity: 0; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .animate-thankyou-heading {
+    animation: thankyou-heading 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation-delay: 0.4s;
+    opacity: 0;
+  }
+
+  @keyframes thankyou-text {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .animate-thankyou-text {
+    animation: thankyou-text 0.6s ease-out forwards;
+    animation-delay: 0.7s;
+    opacity: 0;
+  }
+
+  @keyframes thankyou-logo {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  .animate-thankyou-logo {
+    animation: thankyou-logo 0.5s ease-out forwards;
+    animation-delay: 1s;
+    opacity: 0;
+  }
+
+  /* Floating particles */
+  @keyframes thankyou-particle {
+    0% { 
+      transform: translateY(100vh) scale(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.6;
+      transform: translateY(80vh) scale(1);
+    }
+    90% {
+      opacity: 0.4;
+    }
+    100% { 
+      transform: translateY(-20vh) scale(0.5);
+      opacity: 0;
+    }
+  }
+  .animate-thankyou-particle {
+    animation: thankyou-particle 4s ease-in-out infinite;
+  }
+}
