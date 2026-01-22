@@ -422,7 +422,7 @@ function generateNextQuarterStrategy(
     : [{ speaker_name: client.name, goal: 9 }];
   
   return {
-    quarter: currentQuarter, // Store the CURRENT quarter so we can calculate next quarter dynamically
+    quarter: nextQuarter, // Store the NEXT quarter directly for display
     intro_paragraph,
     strategic_focus_areas,
     talking_points_spotlight,
