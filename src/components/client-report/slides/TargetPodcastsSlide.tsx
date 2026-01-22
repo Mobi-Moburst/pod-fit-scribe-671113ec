@@ -25,13 +25,13 @@ export const TargetPodcastsSlide = ({ podcasts }: TargetPodcastsSlideProps) => {
         <h2 className="text-4xl md:text-5xl font-bold">Target Podcasts</h2>
       </div>
       
-      {/* Scrollable Content with Fade Effect */}
-      <div className="flex-1 min-h-0 relative">
-        {/* Top fade gradient */}
-        <div className="absolute top-0 left-0 right-4 h-6 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none" />
+      {/* Scrollable Content Container */}
+      <div className="flex-1 min-h-0 relative rounded-2xl overflow-hidden">
+        {/* Top fade gradient - rounded */}
+        <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none rounded-t-2xl" />
         
         <ScrollArea className="h-full">
-          <div className="space-y-3 py-6 pr-4">
+          <div className="space-y-3 py-4 px-1">
             {podcasts.map((podcast, index) => (
               <div 
                 key={index}
@@ -107,17 +107,12 @@ export const TargetPodcastsSlide = ({ podcasts }: TargetPodcastsSlideProps) => {
             ))}
             
             {/* Bottom spacer for scroll */}
-            <div className="h-4" />
+            <div className="h-8" />
           </div>
         </ScrollArea>
         
-        {/* Bottom fade gradient */}
-        <div className="absolute bottom-0 left-0 right-4 h-12 bg-gradient-to-t from-background via-background/80 to-transparent z-10 pointer-events-none" />
-      </div>
-      
-      {/* Scroll hint */}
-      <div className="flex-shrink-0 text-center py-2 text-xs text-muted-foreground/60">
-        Scroll to see more recommendations
+        {/* Bottom fade gradient - rounded */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/90 to-transparent z-10 pointer-events-none rounded-b-2xl" />
       </div>
     </div>
   );
