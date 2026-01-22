@@ -35,6 +35,11 @@ interface NextQuarterData {
     speaker_breakdown?: SpeakerGoalBreakdown[];
     current_total_reach?: number;
     current_annual_listenership?: number;
+    // Manual overrides
+    monthly_listeners_per_episode_goal?: number;
+    annual_listenership_goal?: number;
+    growth_percentage?: number;
+    current_listeners_per_episode?: number;
   };
 }
 
@@ -70,6 +75,19 @@ export function NextQuarterEditDialog({
   const [currentAnnualListenership, setCurrentAnnualListenership] = useState(
     data.next_quarter_kpis?.current_annual_listenership || 0
   );
+  // New manual override fields
+  const [monthlyListenersPerEpisodeGoal, setMonthlyListenersPerEpisodeGoal] = useState(
+    data.next_quarter_kpis?.monthly_listeners_per_episode_goal || 0
+  );
+  const [annualListenershipGoal, setAnnualListenershipGoal] = useState(
+    data.next_quarter_kpis?.annual_listenership_goal || 0
+  );
+  const [growthPercentage, setGrowthPercentage] = useState(
+    data.next_quarter_kpis?.growth_percentage || 20
+  );
+  const [currentListenersPerEpisode, setCurrentListenersPerEpisode] = useState(
+    data.next_quarter_kpis?.current_listeners_per_episode || 0
+  );
 
   // Reset state only when the dialog is opened (prevents wiping unsaved edits if parent data updates while open)
   const prevOpenRef = useRef(open);
@@ -90,6 +108,10 @@ export function NextQuarterEditDialog({
     setSpeakerGoalBreakdown(data.next_quarter_kpis?.speaker_breakdown || []);
     setCurrentTotalReach(data.next_quarter_kpis?.current_total_reach || 0);
     setCurrentAnnualListenership(data.next_quarter_kpis?.current_annual_listenership || 0);
+    setMonthlyListenersPerEpisodeGoal(data.next_quarter_kpis?.monthly_listeners_per_episode_goal || 0);
+    setAnnualListenershipGoal(data.next_quarter_kpis?.annual_listenership_goal || 0);
+    setGrowthPercentage(data.next_quarter_kpis?.growth_percentage || 20);
+    setCurrentListenersPerEpisode(data.next_quarter_kpis?.current_listeners_per_episode || 0);
   }, [open]);
 
   const isMultiSpeaker = speakerNames.length > 1;
@@ -114,6 +136,10 @@ export function NextQuarterEditDialog({
         speaker_breakdown: speakerGoalBreakdown.filter(s => s.speaker_name.trim()),
         current_total_reach: currentTotalReach,
         current_annual_listenership: currentAnnualListenership,
+        monthly_listeners_per_episode_goal: monthlyListenersPerEpisodeGoal,
+        annual_listenership_goal: annualListenershipGoal,
+        growth_percentage: growthPercentage,
+        current_listeners_per_episode: currentListenersPerEpisode,
       },
     });
     onOpenChange(false);
@@ -519,8 +545,46 @@ export function NextQuarterEditDialog({
                 </div>
                 
                 {/* Listenership Breakdown Metrics */}
-                <div className="space-y-2 pt-2 border-t border-border">
-                  <Label className="text-sm">Current Quarter Baseline (for comparison)</Label>
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <Label className="text-sm font-medium">Goal Metrics</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Monthly Listeners/Episode Goal</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={monthlyListenersPerEpisodeGoal}
+                        onChange={(e) => setMonthlyListenersPerEpisodeGoal(parseInt(e.target.value) || 0)}
+                        placeholder="e.g., 5000"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Est. Annual Listenership Goal</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={annualListenershipGoal}
+                        onChange={(e) => setAnnualListenershipGoal(parseInt(e.target.value) || 0)}
+                        placeholder="e.g., 72000"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Growth Target (%)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={growthPercentage}
+                        onChange={(e) => setGrowthPercentage(parseInt(e.target.value) || 0)}
+                        placeholder="e.g., 20"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Current Quarter Baseline */}
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <Label className="text-sm font-medium">Current Quarter Baseline</Label>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Current Monthly Listeners</Label>
@@ -529,21 +593,31 @@ export function NextQuarterEditDialog({
                         min={0}
                         value={currentTotalReach}
                         onChange={(e) => setCurrentTotalReach(parseInt(e.target.value) || 0)}
-                        placeholder="e.g., 1000000"
+                        placeholder="e.g., 4000"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Est. Annual Listenership</Label>
+                      <Label className="text-xs text-muted-foreground">Current Listeners/Episode</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={currentListenersPerEpisode}
+                        onChange={(e) => setCurrentListenersPerEpisode(parseInt(e.target.value) || 0)}
+                        placeholder="e.g., 4000"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Current Est. Annual Listenership</Label>
                       <Input
                         type="number"
                         min={0}
                         value={currentAnnualListenership}
                         onChange={(e) => setCurrentAnnualListenership(parseInt(e.target.value) || 0)}
-                        placeholder="e.g., 12000000"
+                        placeholder="e.g., 60000"
                       />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">These values appear in the Listenership Goal dialog breakdown</p>
+                  <p className="text-xs text-muted-foreground">Manual values override automatic calculations in the Listenership Goal dialog</p>
                 </div>
               </div>
             </div>

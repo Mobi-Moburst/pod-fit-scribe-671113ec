@@ -234,6 +234,11 @@ export interface ReportData {
       current_total_reach?: number;
       // Current quarter's estimated annual listenership for calculating goal
       current_annual_listenership?: number;
+      // Manual overrides for listenership dialog (when set, these override calculations)
+      monthly_listeners_per_episode_goal?: number;
+      annual_listenership_goal?: number;
+      growth_percentage?: number;
+      current_listeners_per_episode?: number;
     };
   };
   

@@ -13,6 +13,11 @@ interface ListenershipGoalDialogProps {
   currentListenership?: number;
   currentAnnualListenership?: number;
   quarter: string;
+  // Manual override values (when set, these override calculations)
+  monthlyListenersPerEpisodeGoal?: number;
+  annualListenershipGoal?: number;
+  growthPercentage?: number;
+  currentListenersPerEpisode?: number;
 }
 
 const formatNumber = (num: number): string => {
@@ -28,22 +33,32 @@ export function ListenershipGoalDialog({
   currentListenership,
   currentAnnualListenership,
   quarter,
+  monthlyListenersPerEpisodeGoal,
+  annualListenershipGoal,
+  growthPercentage,
+  currentListenersPerEpisode,
 }: ListenershipGoalDialogProps) {
-  // Current monthly listeners per episode comes from currentListenership prop
-  const currentMonthlyListenersPerEpisode = currentListenership && currentListenership > 0 
-    ? currentListenership 
-    : 0;
+  // Use manual override for current listeners/episode if set, otherwise fall back to currentListenership
+  const currentMonthlyListenersPerEpisode = currentListenersPerEpisode && currentListenersPerEpisode > 0
+    ? currentListenersPerEpisode
+    : (currentListenership && currentListenership > 0 ? currentListenership : 0);
   
-  // Monthly listeners per episode goal = 20% increase
-  const monthlyListenersPerEpisodeGoal = currentMonthlyListenersPerEpisode > 0
-    ? Math.round(currentMonthlyListenersPerEpisode * 1.2)
-    : 0;
+  // Use manual override for monthly listeners/episode goal if set, otherwise calculate 20% increase
+  const displayMonthlyListenersPerEpisodeGoal = monthlyListenersPerEpisodeGoal && monthlyListenersPerEpisodeGoal > 0
+    ? monthlyListenersPerEpisodeGoal
+    : (currentMonthlyListenersPerEpisode > 0 ? Math.round(currentMonthlyListenersPerEpisode * 1.2) : 0);
   
-  // Annual goal is 20% increase from current annual listenership
-  const annualGoal = currentAnnualListenership && currentAnnualListenership > 0 
-    ? Math.round(currentAnnualListenership * 1.2) 
-    : listenershipGoal * 12;
-  const growthPercentage = 20;
+  // Use manual override for annual goal if set, otherwise calculate
+  const displayAnnualGoal = annualListenershipGoal && annualListenershipGoal > 0 
+    ? annualListenershipGoal
+    : (currentAnnualListenership && currentAnnualListenership > 0 
+        ? Math.round(currentAnnualListenership * 1.2) 
+        : listenershipGoal * 12);
+  
+  // Use manual override for growth percentage if set, otherwise default to 20
+  const displayGrowthPercentage = growthPercentage !== undefined && growthPercentage > 0
+    ? growthPercentage
+    : 20;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,21 +79,21 @@ export function ListenershipGoalDialog({
 
           {/* Breakdown Cards */}
           <div className="grid grid-cols-2 gap-4">
-            {monthlyListenersPerEpisodeGoal > 0 && (
+            {displayMonthlyListenersPerEpisodeGoal > 0 && (
               <div className="p-4 bg-muted/50 rounded-lg text-center">
                 <Headphones className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
-                <p className="text-2xl font-bold">{formatNumber(monthlyListenersPerEpisodeGoal)}</p>
+                <p className="text-2xl font-bold">{formatNumber(displayMonthlyListenersPerEpisodeGoal)}</p>
                 <p className="text-xs text-muted-foreground">Monthly Listeners/Episode</p>
               </div>
             )}
             <div className="p-4 bg-muted/50 rounded-lg text-center">
               <Calendar className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
-              <p className="text-2xl font-bold">{formatNumber(annualGoal)}</p>
+              <p className="text-2xl font-bold">{formatNumber(displayAnnualGoal)}</p>
               <p className="text-xs text-muted-foreground">Est. Annual Listenership</p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg text-center">
               <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
-              <p className="text-2xl font-bold text-green-500">+{growthPercentage}%</p>
+              <p className="text-2xl font-bold text-green-500">+{displayGrowthPercentage}%</p>
               <p className="text-xs text-muted-foreground">Growth Target</p>
             </div>
           </div>
