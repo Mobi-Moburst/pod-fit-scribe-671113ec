@@ -74,7 +74,9 @@ export function ListenershipGoalDialog({
           {/* Monthly Goal */}
           <div className="text-center p-6 bg-accent/10 rounded-xl">
             <p className="text-5xl font-bold text-accent">{formatNumber(listenershipGoal)}</p>
-            <p className="text-muted-foreground mt-2">Monthly Listeners Goal for {quarter}</p>
+            <p className="text-muted-foreground mt-2">
+              {quarter === "Next Quarter" ? "Monthly Listeners Goal" : `Monthly Listeners Goal for ${quarter}`}
+            </p>
           </div>
 
           {/* Breakdown Cards */}

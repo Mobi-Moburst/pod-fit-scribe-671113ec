@@ -78,7 +78,9 @@ export function HighImpactPodcastsDialog({
           {/* Total Goal */}
           <div className="text-center p-6 bg-primary/10 rounded-xl">
             <p className="text-5xl font-bold text-primary">{totalGoal}</p>
-            <p className="text-muted-foreground mt-2">Podcasts for {quarter}</p>
+            <p className="text-muted-foreground mt-2">
+              {quarter === "Next Quarter" ? "Podcasts for Next Quarter" : `Podcasts for ${quarter}`}
+            </p>
           </div>
 
           {/* Breakdown by Speaker */}

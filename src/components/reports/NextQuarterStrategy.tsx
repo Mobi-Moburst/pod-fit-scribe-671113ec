@@ -77,11 +77,12 @@ export function NextQuarterStrategy({
   // Check if intro mentions moving into the stored quarter value
   const introMentionsMovingIntoQuarter = intro_paragraph?.includes(`into ${quarter}`);
   
-  // Derive next quarter label - use quarter prop if valid, otherwise derive from report end date
+  // Derive next quarter label - use quarter prop if it's a valid predefined quarter (e.g., "Q4 2025")
+  // For custom date ranges (no valid quarter), use a static "Next Quarter" label
   const hasValidQuarter = quarter && /Q\d\s*\d{4}/.test(quarter);
   const nextQuarterLabel = hasValidQuarter
     ? (introMentionsMovingIntoQuarter ? quarter : getNextQuarter(quarter))
-    : (reportEndDate ? getNextQuarterFromDate(reportEndDate) : getNextQuarter(quarter));
+    : "Next Quarter";
 
   return (
     <>
