@@ -211,6 +211,10 @@ export const NextQuarterSlide = ({ strategy }: NextQuarterSlideProps) => {
         currentListenership={strategy.next_quarter_kpis?.current_total_reach}
         currentAnnualListenership={strategy.next_quarter_kpis?.current_annual_listenership}
         quarter={nextQuarterLabel}
+        monthlyListenersPerEpisodeGoal={strategy.next_quarter_kpis?.monthly_listeners_per_episode_goal}
+        annualListenershipGoal={strategy.next_quarter_kpis?.annual_listenership_goal}
+        growthPercentage={strategy.next_quarter_kpis?.growth_percentage}
+        currentListenersPerEpisode={strategy.next_quarter_kpis?.current_listeners_per_episode}
       />
     </>
   );

@@ -35,6 +35,10 @@ interface NextQuarterStrategyProps {
     }>;
     current_total_reach?: number;
     current_annual_listenership?: number;
+    monthly_listeners_per_episode_goal?: number;
+    annual_listenership_goal?: number;
+    growth_percentage?: number;
+    current_listeners_per_episode?: number;
   };
   onHide?: () => void;
   onEdit?: () => void;
@@ -239,6 +243,10 @@ export function NextQuarterStrategy({
         currentListenership={next_quarter_kpis?.current_total_reach}
         currentAnnualListenership={next_quarter_kpis?.current_annual_listenership}
         quarter={nextQuarterLabel}
+        monthlyListenersPerEpisodeGoal={next_quarter_kpis?.monthly_listeners_per_episode_goal}
+        annualListenershipGoal={next_quarter_kpis?.annual_listenership_goal}
+        growthPercentage={next_quarter_kpis?.growth_percentage}
+        currentListenersPerEpisode={next_quarter_kpis?.current_listeners_per_episode}
       />
     </>
   );
