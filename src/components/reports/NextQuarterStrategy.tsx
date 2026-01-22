@@ -4,7 +4,7 @@ import { ArrowRight, X, Pencil, Target, TrendingUp, RefreshCw, Lightbulb } from 
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { HighImpactPodcastsDialog } from "./HighImpactPodcastsDialog";
 import { ListenershipGoalDialog } from "./ListenershipGoalDialog";
-import { getNextQuarter, getNextQuarterFromDate } from "@/lib/utils";
+
 import { Button } from "@/components/ui/button";
 
 interface NextQuarterStrategyProps {
@@ -71,18 +71,11 @@ export function NextQuarterStrategy({
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
   const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
 
-  // Detect if quarter is already the "next" quarter (old format) or current quarter (new format)
-  // Old format: intro says "As we move into Q1 2026" and quarter="Q1 2026" 
-  // New format: intro says "As we move into Q1 2026" and quarter="Q4 2025"
-  // Check if intro mentions moving into the stored quarter value
-  const introMentionsMovingIntoQuarter = intro_paragraph?.includes(`into ${quarter}`);
-  
-  // Derive next quarter label - use quarter prop if it's a valid predefined quarter (e.g., "Q4 2025")
-  // For custom date ranges (no valid quarter), use a static "Next Quarter" label
+  // The quarter field stores the intended "next quarter" label directly when manually edited.
+  // For valid quarter strings (e.g., "Q1 2026"), use the value as-is.
+  // For empty/invalid values (custom date ranges), use static "Next Quarter" label.
   const hasValidQuarter = quarter && /Q\d\s*\d{4}/.test(quarter);
-  const nextQuarterLabel = hasValidQuarter
-    ? (introMentionsMovingIntoQuarter ? quarter : getNextQuarter(quarter))
-    : "Next Quarter";
+  const nextQuarterLabel = hasValidQuarter ? quarter : "Next Quarter";
 
   return (
     <>
