@@ -48,22 +48,21 @@ export const ThankYouSlide = ({ client }: ThankYouSlideProps) => {
 
   return (
     <div className="text-center space-y-12 w-full">
-      <h2 className="text-5xl md:text-7xl font-bold gradient-text relative inline-block">
-        <span className="relative">
+      <div className="relative inline-block">
+        <h2 className="text-5xl md:text-7xl font-bold gradient-text">
           Thank You
-          {animateShine && (
-            <span 
-              className="absolute inset-0 overflow-hidden pointer-events-none"
-              style={{
-                background: 'linear-gradient(90deg, transparent 0%, transparent 40%, rgba(255,255,255,0.8) 50%, transparent 60%, transparent 100%)',
-                backgroundSize: '200% 100%',
-                animation: 'text-shine 1.5s ease-out forwards',
-                mixBlendMode: 'overlay',
-              }}
-            />
-          )}
-        </span>
-      </h2>
+        </h2>
+        {animateShine && (
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'linear-gradient(90deg, transparent 0%, transparent 40%, rgba(255,255,255,0.6) 50%, transparent 60%, transparent 100%)',
+              backgroundSize: '200% 100%',
+              animation: 'text-shine 1.5s ease-out forwards',
+            }}
+          />
+        )}
+      </div>
       
       <p className="text-2xl text-muted-foreground max-w-2xl mx-auto">
         We look forward to continuing our partnership and achieving even greater podcast visibility for {client.company || client.name}.
