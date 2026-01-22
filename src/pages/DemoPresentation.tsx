@@ -214,6 +214,7 @@ export default function DemoPresentation() {
         component: (
           <NextQuarterSlide 
             strategy={reportData.next_quarter_strategy}
+            reportEndDate={reportData.date_range?.end}
           />
         ),
       });

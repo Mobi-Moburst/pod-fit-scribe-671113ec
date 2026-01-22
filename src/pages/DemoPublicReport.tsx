@@ -258,6 +258,7 @@ export default function DemoPublicReport() {
         {visibleSections.nextQuarterStrategy && reportData.next_quarter_strategy && (
           <ClientReportNextQuarter 
             strategy={reportData.next_quarter_strategy}
+            reportEndDate={reportData.date_range?.end}
           />
         )}
 

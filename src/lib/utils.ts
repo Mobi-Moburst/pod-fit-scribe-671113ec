@@ -25,3 +25,26 @@ export function getNextQuarter(currentQuarter: string): string {
   }
   return `Q${quarterNum + 1} ${year}`;
 }
+
+// Derive the next quarter from a date (typically report end date)
+// For example: 2026-01-01 (end of report range) -> Q1 2026
+export function getQuarterFromDate(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const month = d.getMonth(); // 0-11
+  const year = d.getFullYear();
+  const quarter = Math.floor(month / 3) + 1;
+  return `Q${quarter} ${year}`;
+}
+
+// Get the quarter following a given date
+export function getNextQuarterFromDate(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const month = d.getMonth(); // 0-11
+  const year = d.getFullYear();
+  const currentQuarter = Math.floor(month / 3) + 1;
+  
+  if (currentQuarter === 4) {
+    return `Q1 ${year + 1}`;
+  }
+  return `Q${currentQuarter + 1} ${year}`;
+}

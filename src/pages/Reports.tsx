@@ -2404,6 +2404,7 @@ export default function Reports() {
               {visibleSections.nextQuarterStrategy && reportData.next_quarter_strategy && (
                 <NextQuarterStrategy
                   quarter={reportData.next_quarter_strategy.quarter}
+                  reportEndDate={reportData.date_range?.end}
                   intro_paragraph={reportData.next_quarter_strategy.intro_paragraph}
                   strategic_focus_areas={reportData.next_quarter_strategy.strategic_focus_areas}
                   talking_points_spotlight={reportData.next_quarter_strategy.talking_points_spotlight}

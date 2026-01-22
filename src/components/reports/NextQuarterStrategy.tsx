@@ -4,11 +4,12 @@ import { ArrowRight, X, Pencil, Target, TrendingUp, RefreshCw, Lightbulb } from 
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { HighImpactPodcastsDialog } from "./HighImpactPodcastsDialog";
 import { ListenershipGoalDialog } from "./ListenershipGoalDialog";
-import { getNextQuarter } from "@/lib/utils";
+import { getNextQuarter, getNextQuarterFromDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface NextQuarterStrategyProps {
   quarter: string; // This is the CURRENT quarter label (e.g., "Q4 2025"), we calculate next quarter for display
+  reportEndDate?: string; // ISO date string for fallback when quarter is empty/custom
   intro_paragraph: string;
   strategic_focus_areas: Array<{
     title: string;
@@ -55,6 +56,7 @@ function formatNumber(n: number): string {
 
 export function NextQuarterStrategy({
   quarter,
+  reportEndDate,
   intro_paragraph,
   strategic_focus_areas,
   talking_points_spotlight,
@@ -74,7 +76,12 @@ export function NextQuarterStrategy({
   // New format: intro says "As we move into Q1 2026" and quarter="Q4 2025"
   // Check if intro mentions moving into the stored quarter value
   const introMentionsMovingIntoQuarter = intro_paragraph?.includes(`into ${quarter}`);
-  const nextQuarterLabel = introMentionsMovingIntoQuarter ? quarter : getNextQuarter(quarter);
+  
+  // Derive next quarter label - use quarter prop if valid, otherwise derive from report end date
+  const hasValidQuarter = quarter && /Q\d\s*\d{4}/.test(quarter);
+  const nextQuarterLabel = hasValidQuarter
+    ? (introMentionsMovingIntoQuarter ? quarter : getNextQuarter(quarter))
+    : (reportEndDate ? getNextQuarterFromDate(reportEndDate) : getNextQuarter(quarter));
 
   return (
     <>
