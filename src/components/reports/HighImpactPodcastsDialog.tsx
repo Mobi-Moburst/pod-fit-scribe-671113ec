@@ -26,6 +26,44 @@ export function HighImpactPodcastsDialog({
   speakerBreakdown,
   quarter,
 }: HighImpactPodcastsDialogProps) {
+  // Calculate dynamic explanation based on actual numbers
+  const speakerCount = speakerBreakdown?.length || 1;
+  const perSpeakerGoal = speakerBreakdown && speakerBreakdown.length > 0
+    ? speakerBreakdown[0]?.goal || 0
+    : totalGoal;
+  
+  // Assume 3 months per quarter, calculate podcasts per month
+  const monthsPerQuarter = 3;
+  const podcastsPerMonthPerSpeaker = perSpeakerGoal / monthsPerQuarter;
+  
+  // Build dynamic explanation
+  const buildExplanation = () => {
+    if (speakerBreakdown && speakerBreakdown.length > 0) {
+      // Check if all speakers have the same goal
+      const allSameGoal = speakerBreakdown.every(s => s.goal === perSpeakerGoal);
+      
+      if (allSameGoal && perSpeakerGoal > 0) {
+        // Format podcasts per month (handle decimals nicely)
+        const perMonthDisplay = Number.isInteger(podcastsPerMonthPerSpeaker) 
+          ? podcastsPerMonthPerSpeaker 
+          : podcastsPerMonthPerSpeaker.toFixed(1).replace(/\.0$/, '');
+        
+        return `${perMonthDisplay} podcast${Number(perMonthDisplay) !== 1 ? 's' : ''}/month × ${monthsPerQuarter} months = ${perSpeakerGoal} per speaker`;
+      } else {
+        // Mixed goals - show total calculation
+        const totalFromBreakdown = speakerBreakdown.reduce((sum, s) => sum + s.goal, 0);
+        return `Total: ${totalFromBreakdown} podcasts across ${speakerCount} speaker${speakerCount !== 1 ? 's' : ''}`;
+      }
+    } else {
+      // No speaker breakdown - show simple total
+      const perMonth = totalGoal / monthsPerQuarter;
+      const perMonthDisplay = Number.isInteger(perMonth) 
+        ? perMonth 
+        : perMonth.toFixed(1).replace(/\.0$/, '');
+      return `${perMonthDisplay} podcast${Number(perMonthDisplay) !== 1 ? 's' : ''}/month × ${monthsPerQuarter} months = ${totalGoal} total`;
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -71,9 +109,9 @@ export function HighImpactPodcastsDialog({
             </div>
           )}
 
-          {/* Calculation Explanation */}
+          {/* Dynamic Calculation Explanation */}
           <div className="text-center text-sm text-muted-foreground border-t pt-4">
-            <p>3 podcasts/month × 3 months = 9 per speaker</p>
+            <p>{buildExplanation()}</p>
           </div>
         </div>
       </DialogContent>
