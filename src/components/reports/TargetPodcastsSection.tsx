@@ -8,7 +8,7 @@ import { TargetPodcast } from '@/types/reports';
 import { MinimalClient } from '@/types/clients';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getNextQuarter } from '@/lib/utils';
+
 
 interface TargetPodcastsSectionProps {
   client: MinimalClient;
@@ -40,9 +40,11 @@ export function TargetPodcastsSection({
   const [coverArtCache, setCoverArtCache] = useState<Record<string, string>>({});
   const { toast } = useToast();
   
-  // Detect if quarter is already the "next" quarter (old format) or current quarter (new format)
-  const introMentionsMovingIntoQuarter = nextQuarterStrategy.intro_paragraph?.includes(`into ${nextQuarterStrategy.quarter}`);
-  const nextQuarterLabel = introMentionsMovingIntoQuarter ? nextQuarterStrategy.quarter : getNextQuarter(nextQuarterStrategy.quarter);
+  // The quarter field stores the intended display quarter directly.
+  // For valid quarter strings (e.g., "Q1 2026"), use as-is.
+  // For empty values (custom date ranges), use static "Next Quarter" label.
+  const hasValidQuarter = nextQuarterStrategy.quarter && /Q\d\s*\d{4}/.test(nextQuarterStrategy.quarter);
+  const nextQuarterLabel = hasValidQuarter ? nextQuarterStrategy.quarter : "Next Quarter";
 
   // Fetch cover art for podcasts (and persist it into the podcast objects so it survives publish/present)
   useEffect(() => {
