@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ReportData } from "@/types/reports";
 import { Compass, Lightbulb, Target, TrendingUp } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
-import { getNextQuarter } from "@/lib/utils";
+import { getNextQuarter, getNextQuarterFromDate } from "@/lib/utils";
 import { HighImpactPodcastsDialog } from "@/components/reports/HighImpactPodcastsDialog";
 import { ListenershipGoalDialog } from "@/components/reports/ListenershipGoalDialog";
 
@@ -15,17 +15,21 @@ function formatNumber(n: number): string {
 
 interface ClientReportNextQuarterProps {
   strategy: NonNullable<ReportData["next_quarter_strategy"]>;
+  reportEndDate?: string;
 }
 
-export const ClientReportNextQuarter = ({ strategy }: ClientReportNextQuarterProps) => {
+export const ClientReportNextQuarter = ({ strategy, reportEndDate }: ClientReportNextQuarterProps) => {
   const [podcastsDialogOpen, setPodcastsDialogOpen] = useState(false);
   const [listenershipDialogOpen, setListenershipDialogOpen] = useState(false);
 
   // Detect if quarter is already the "next" quarter (old format) or current quarter (new format)
-  // Old format: intro says "As we move into Q1 2026" and quarter="Q1 2026"
-  // New format: intro says "As we move into Q1 2026" and quarter="Q4 2025"
   const introMentionsMovingIntoQuarter = strategy.intro_paragraph?.includes(`into ${strategy.quarter}`);
-  const nextQuarterLabel = introMentionsMovingIntoQuarter ? strategy.quarter : getNextQuarter(strategy.quarter);
+  
+  // Derive next quarter label - use quarter prop if valid, otherwise derive from report end date
+  const hasValidQuarter = strategy.quarter && /Q\d\s*\d{4}/.test(strategy.quarter);
+  const nextQuarterLabel = hasValidQuarter
+    ? (introMentionsMovingIntoQuarter ? strategy.quarter : getNextQuarter(strategy.quarter))
+    : (reportEndDate ? getNextQuarterFromDate(reportEndDate) : getNextQuarter(strategy.quarter));
 
   return (
     <>
