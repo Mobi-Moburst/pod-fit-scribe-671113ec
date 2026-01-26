@@ -9,13 +9,9 @@ interface KPICardProps {
   icon?: LucideIcon;
   onClick?: () => void;
   onHide?: () => void;
-  subMetric?: {
-    value: string;
-    label: string;
-  };
 }
 
-export const KPICard = ({ title, value, subtitle, icon: Icon, onClick, onHide, subMetric }: KPICardProps) => {
+export const KPICard = ({ title, value, subtitle, icon: Icon, onClick, onHide }: KPICardProps) => {
   return (
     <Card 
       className={cn(
@@ -43,12 +39,6 @@ export const KPICard = ({ title, value, subtitle, icon: Icon, onClick, onHide, s
             <p className="text-3xl font-bold">{value}</p>
             {subtitle && (
               <p className="text-xs text-muted-foreground">{subtitle}</p>
-            )}
-            {subMetric && (
-              <div className="mt-2 pt-2 border-t border-border">
-                <p className="text-lg font-semibold text-primary">{subMetric.value}</p>
-                <p className="text-xs text-muted-foreground">{subMetric.label}</p>
-              </div>
             )}
           </div>
           {Icon && (

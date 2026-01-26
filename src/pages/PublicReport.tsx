@@ -264,8 +264,6 @@ export default function PublicReport() {
             kpis={reportData.kpis}
             visibleSections={visibleSections}
             onReachClick={() => setReachDialogOpen(true)}
-            dateRange={reportData.date_range}
-            quarter={reportData.quarter}
           />
         )}
 
@@ -357,6 +355,8 @@ export default function PublicReport() {
         podcasts={reportData.podcasts || []}
         totalListenersPerEpisode={reportData.kpis.total_listeners_per_episode || 0}
         quarter={quarter}
+        dateRange={reportData.date_range}
+        totalReach={reportData.kpis.total_reach}
       />
       <SOVChartDialog
         open={sovDialogOpen}
