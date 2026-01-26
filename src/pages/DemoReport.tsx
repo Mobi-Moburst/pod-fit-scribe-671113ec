@@ -777,6 +777,8 @@ export default function DemoReport() {
         podcasts={reportData.podcasts || []}
         totalListenersPerEpisode={reportData.kpis.total_listeners_per_episode || 36100}
         quarter={quarter}
+        dateRange={reportData.date_range}
+        totalReach={reportData.kpis.total_reach}
       />
       <SOVChartDialog
         open={sovDialogOpen}

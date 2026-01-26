@@ -8,8 +8,9 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PodcastReportEntry } from "@/types/reports";
-import { Users, TrendingUp, Trophy, ExternalLink, Loader2 } from "lucide-react";
+import { Users, TrendingUp, Trophy, ExternalLink, Loader2, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { differenceInMonths, parseISO } from "date-fns";
 
 interface ReachAnalysisDialogProps {
   open: boolean;
@@ -17,17 +18,46 @@ interface ReachAnalysisDialogProps {
   podcasts: PodcastReportEntry[];
   totalListenersPerEpisode?: number;
   quarter?: string;
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  totalReach?: number;
 }
+
+// Calculate months in reporting period
+const calculatePeriodMonths = (dateRange?: { start: string; end: string }, quarter?: string): number => {
+  // If it's a quarter-based report, always return 3
+  if (quarter && /^Q\d\s*\d{4}$/.test(quarter)) {
+    return 3;
+  }
+  
+  // For custom date ranges, calculate actual months
+  if (dateRange?.start && dateRange?.end) {
+    const startDate = parseISO(dateRange.start);
+    const endDate = parseISO(dateRange.end);
+    const months = differenceInMonths(endDate, startDate) + 1;
+    return Math.max(1, months);
+  }
+  
+  return 3;
+};
 
 export const ReachAnalysisDialog = ({ 
   open, 
   onOpenChange, 
   podcasts,
   totalListenersPerEpisode = 0,
-  quarter = ''
+  quarter = '',
+  dateRange,
+  totalReach = 0
 }: ReachAnalysisDialogProps) => {
   const [coverArtUrl, setCoverArtUrl] = useState<string | null>(null);
   const [isLoadingCoverArt, setIsLoadingCoverArt] = useState(false);
+
+  // Calculate period months and period reach
+  const periodMonths = calculatePeriodMonths(dateRange, quarter);
+  const periodReach = totalReach * periodMonths;
 
   // Calculate Estimated Annual Listenership
   const estimatedAnnualListenership = totalListenersPerEpisode * 12;
@@ -87,9 +117,14 @@ export const ReachAnalysisDialog = ({
     return n.toLocaleString();
   };
 
+  // Generate period label
+  const periodLabel = quarter && /^Q\d\s*\d{4}$/.test(quarter) 
+    ? "Quarterly reach" 
+    : `${periodMonths}-month period reach`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Reach Analysis</DialogTitle>
           <DialogDescription>
@@ -98,7 +133,7 @@ export const ReachAnalysisDialog = ({
         </DialogHeader>
         
         {/* Summary Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -129,6 +164,23 @@ export const ReachAnalysisDialog = ({
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {quarter ? `Annual reach from podcasts booked in ${quarter}` : 'Annual reach projection'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Net Period Listenership
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatNumber(periodReach)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {periodLabel}
               </p>
             </CardContent>
           </Card>
