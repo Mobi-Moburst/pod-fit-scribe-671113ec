@@ -96,6 +96,25 @@ export default function ReportPresentation() {
 
       let reportData = data.report_data as unknown as ReportData & { visibleSections?: VisibleSections };
       
+      // Ensure date_range is populated from database row if not in report_data
+      if (!reportData.date_range && data.date_range_start && data.date_range_end) {
+        reportData = {
+          ...reportData,
+          date_range: {
+            start: data.date_range_start,
+            end: data.date_range_end,
+          },
+        };
+      }
+      
+      // Ensure quarter is populated from database row if not in report_data
+      if (!reportData.quarter && data.quarter) {
+        reportData = {
+          ...reportData,
+          quarter: data.quarter,
+        };
+      }
+      
       // Auto-populate next_quarter_kpis if missing or incomplete (for older reports)
       if (reportData.next_quarter_strategy) {
         const speakerBreakdowns = reportData.speaker_breakdowns || [];
