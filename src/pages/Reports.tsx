@@ -41,6 +41,32 @@ import ClientReportHighlights from "@/components/client-report/ClientReportHighl
 import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOverviewEditDialog";
 import { NextQuarterEditDialog } from "@/components/reports/NextQuarterEditDialog";
 import { UpdateCSVDialog } from "@/components/reports/UpdateCSVDialog";
+import { differenceInMonths, parseISO } from "date-fns";
+
+// Helper function to calculate period months
+const calculatePeriodMonths = (dateRange?: { start: string; end: string }, quarter?: string): number => {
+  // If it's a quarter-based report, always return 3
+  if (quarter && /^Q\d\s*\d{4}$/.test(quarter)) {
+    return 3;
+  }
+  
+  // For custom date ranges, calculate actual months
+  if (dateRange?.start && dateRange?.end) {
+    const startDate = parseISO(dateRange.start);
+    const endDate = parseISO(dateRange.end);
+    const months = differenceInMonths(endDate, startDate) + 1;
+    return Math.max(1, months);
+  }
+  
+  return 3;
+};
+
+// Helper function to format large numbers
+const formatNumber = (num: number): string => {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+  return num.toString();
+};
 
 export default function Reports() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -2159,16 +2185,24 @@ export default function Reports() {
                         onHide={() => toggleSection('socialReach')}
                       />
                     )}
-                    {visibleSections.totalReach && (
-                      <KPICard
-                        title="Total Listenership"
-                        value={reportData.kpis.total_reach.toLocaleString()}
-                        subtitle="Total monthly listeners • Click for details"
-                        icon={Users}
-                        onClick={() => setReachDialogOpen(true)}
-                        onHide={() => toggleSection('totalReach')}
-                      />
-                    )}
+                    {visibleSections.totalReach && (() => {
+                      const periodMonths = calculatePeriodMonths(reportData.date_range, reportData.quarter);
+                      const periodReach = reportData.kpis.total_reach * periodMonths;
+                      return (
+                        <KPICard
+                          title="Total Listenership"
+                          value={reportData.kpis.total_reach.toLocaleString()}
+                          subtitle="Total monthly listeners • Click for details"
+                          icon={Users}
+                          onClick={() => setReachDialogOpen(true)}
+                          onHide={() => toggleSection('totalReach')}
+                          subMetric={{
+                            value: formatNumber(periodReach),
+                            label: `${periodMonths}-month period reach`,
+                          }}
+                        />
+                      );
+                    })()}
                     {visibleSections.averageScore && (
                       <KPICard
                         title="Average Score"
