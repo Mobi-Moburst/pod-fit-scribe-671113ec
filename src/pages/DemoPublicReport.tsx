@@ -200,6 +200,8 @@ export default function DemoPublicReport() {
             kpis={reportData.kpis}
             visibleSections={visibleSections}
             onReachClick={() => setReachDialogOpen(true)}
+            dateRange={reportData.date_range}
+            quarter={reportData.quarter}
           />
         )}
 

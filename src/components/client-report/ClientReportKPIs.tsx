@@ -1,5 +1,6 @@
 import { ReportData } from "@/types/reports";
 import { Calendar, Podcast, Users, TrendingUp } from "lucide-react";
+import { differenceInMonths, parseISO } from "date-fns";
 
 interface ClientReportKPIsProps {
   kpis: ReportData["kpis"];
@@ -11,6 +12,11 @@ interface ClientReportKPIsProps {
     averageScore?: boolean;
   };
   onReachClick?: () => void;
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  quarter?: string;
 }
 
 const formatNumber = (num: number): string => {
@@ -19,7 +25,30 @@ const formatNumber = (num: number): string => {
   return num.toString();
 };
 
-export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: ClientReportKPIsProps) => {
+// Calculate months in reporting period
+const calculatePeriodMonths = (dateRange?: { start: string; end: string }, quarter?: string): number => {
+  // If it's a quarter-based report, always return 3
+  if (quarter && /^Q\d\s*\d{4}$/.test(quarter)) {
+    return 3;
+  }
+  
+  // For custom date ranges, calculate actual months
+  if (dateRange?.start && dateRange?.end) {
+    const startDate = parseISO(dateRange.start);
+    const endDate = parseISO(dateRange.end);
+    // Add 1 because differenceInMonths doesn't include partial months
+    const months = differenceInMonths(endDate, startDate) + 1;
+    return Math.max(1, months); // Minimum 1 month
+  }
+  
+  // Default to 3 months (quarterly)
+  return 3;
+};
+
+export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, dateRange, quarter }: ClientReportKPIsProps) => {
+  const periodMonths = calculatePeriodMonths(dateRange, quarter);
+  const periodReach = kpis.total_reach * periodMonths;
+  
   const kpiItems = [];
 
   if (visibleSections.totalBooked) {
@@ -31,6 +60,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       icon: Calendar,
       color: "hsl(var(--primary))",
       onClick: undefined as (() => void) | undefined,
+      subMetric: undefined as { value: string; label: string } | undefined,
     });
   }
 
@@ -43,6 +73,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       icon: Podcast,
       color: "hsl(var(--accent))",
       onClick: undefined as (() => void) | undefined,
+      subMetric: undefined as { value: string; label: string } | undefined,
     });
   }
   if (visibleSections.socialReach) {
@@ -54,6 +85,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       icon: Users,
       color: "hsl(280 70% 60%)",
       onClick: undefined as (() => void) | undefined,
+      subMetric: undefined as { value: string; label: string } | undefined,
     });
   }
 
@@ -66,6 +98,10 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       icon: Users,
       color: "hsl(191 100% 62%)",
       onClick: onReachClick,
+      subMetric: {
+        value: formatNumber(periodReach),
+        label: `${periodMonths}-month period reach`,
+      },
     });
   }
 
@@ -78,6 +114,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       icon: TrendingUp,
       color: "hsl(51 100% 61%)",
       onClick: undefined as (() => void) | undefined,
+      subMetric: undefined as { value: string; label: string } | undefined,
     });
   }
 
@@ -109,6 +146,12 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
                 <div className="text-3xl font-bold">{kpi.value}</div>
                 <div className="text-sm text-muted-foreground">{kpi.label}</div>
                 <div className="text-xs text-muted-foreground mt-1">{kpi.description}</div>
+                {kpi.subMetric && (
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <div className="text-lg font-semibold text-primary">{kpi.subMetric.value}</div>
+                    <div className="text-xs text-muted-foreground">{kpi.subMetric.label}</div>
+                  </div>
+                )}
               </div>
             </div>
           );
