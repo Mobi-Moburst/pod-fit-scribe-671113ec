@@ -60,6 +60,9 @@ export default function Reports() {
       airtableFile: File | null;
     };
   }>({});
+  const [speakerSyncedData, setSpeakerSyncedData] = useState<{
+    [speakerId: string]: AirtableCSVRow[] | null;
+  }>({});
   const [speakerFileExpanded, setSpeakerFileExpanded] = useState<{ [speakerId: string]: boolean }>({});
   
   // Single-speaker file uploads
@@ -433,14 +436,17 @@ export default function Reports() {
         return;
       }
       
-      // Validate all speakers have both files
+      // Validate all speakers have batch file and either synced data or airtable file
       for (const speakerId of selectedSpeakerIds) {
         const files = speakerFiles[speakerId];
-        if (!files?.batchFile || !files?.airtableFile) {
+        const syncedData = speakerSyncedData[speakerId];
+        const hasAirtableData = !!syncedData || !!files?.airtableFile;
+        
+        if (!files?.batchFile || !hasAirtableData) {
           const speaker = speakers.find(s => s.id === speakerId);
           toast({
-            title: "Missing CSV files",
-            description: `${speaker?.name || 'Speaker'} is missing required Batch or Airtable CSV.`,
+            title: "Missing data",
+            description: `${speaker?.name || 'Speaker'} is missing required Batch CSV or Airtable data.`,
             variant: "destructive",
           });
           return;
@@ -465,14 +471,23 @@ export default function Reports() {
         for (const speakerId of selectedSpeakerIds) {
           const speaker = speakers.find(s => s.id === speakerId);
           const files = speakerFiles[speakerId];
+          const syncedData = speakerSyncedData[speakerId];
           
-          if (!speaker || !files?.batchFile || !files?.airtableFile) continue;
+          if (!speaker || !files?.batchFile) continue;
           
           const batchText = await files.batchFile.text();
-          const airtableText = await files.airtableFile.text();
-          
           const batchRows = parseBatchCSV(batchText);
-          const airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
+          
+          // Use synced data if available, otherwise parse CSV
+          let airtableRows: any[];
+          if (syncedData && syncedData.length > 0) {
+            airtableRows = syncedData;
+          } else if (files?.airtableFile) {
+            const airtableText = await files.airtableFile.text();
+            airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
+          } else {
+            continue; // Skip if no airtable data (validation should catch this)
+          }
           
           speakerDataInputs.push({
             speaker: speaker as Speaker,
@@ -1719,14 +1734,16 @@ export default function Reports() {
                       onCheckedChange={(checked) => {
                         setIsMultiSpeakerMode(checked);
                         if (checked) {
-                          setSelectedSpeakerId(null);
+                        setSelectedSpeakerId(null);
                           setSelectedSpeakerIds([]);
                           setSpeakerFiles({});
+                          setSpeakerSyncedData({});
                           setBatchFile(null);
                           setAirtableFile(null);
                         } else {
                           setSelectedSpeakerIds([]);
                           setSpeakerFiles({});
+                          setSpeakerSyncedData({});
                         }
                       }}
                     />
@@ -1750,6 +1767,11 @@ export default function Reports() {
                               } else {
                                 setSelectedSpeakerIds(prev => prev.filter(id => id !== speaker.id));
                                 setSpeakerFiles(prev => {
+                                  const updated = { ...prev };
+                                  delete updated[speaker.id];
+                                  return updated;
+                                });
+                                setSpeakerSyncedData(prev => {
                                   const updated = { ...prev };
                                   delete updated[speaker.id];
                                   return updated;
@@ -1839,11 +1861,14 @@ export default function Reports() {
                 {/* Multi-speaker per-speaker CSV uploads */}
                 {isMultiSpeakerMode && selectedSpeakerIds.length > 0 && (
                   <div className="space-y-3">
-                    <Label className="font-medium">Per-Speaker CSV Files</Label>
+                    <Label className="font-medium">Per-Speaker Data</Label>
                     {selectedSpeakerIds.map(speakerId => {
                       const speaker = speakers.find(s => s.id === speakerId);
                       const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
+                      const syncedData = speakerSyncedData[speakerId];
                       const isExpanded = speakerFileExpanded[speakerId] ?? true;
+                      const hasAirtableData = !!syncedData || !!files.airtableFile;
+                      const isReady = files.batchFile && hasAirtableData;
                       
                       return (
                         <Collapsible key={speakerId} open={isExpanded} onOpenChange={(open) => setSpeakerFileExpanded(prev => ({ ...prev, [speakerId]: open }))}>
@@ -1852,7 +1877,7 @@ export default function Reports() {
                               <div className="flex items-center gap-2">
                                 {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                 <span className="font-medium">{speaker?.name}</span>
-                                {files.batchFile && files.airtableFile && (
+                                {isReady && (
                                   <Badge variant="default" className="ml-2">Ready</Badge>
                                 )}
                               </div>
@@ -1873,20 +1898,76 @@ export default function Reports() {
                                 />
                                 {files.batchFile && <p className="text-xs text-muted-foreground mt-1">{files.batchFile.name}</p>}
                               </div>
+                              
+                              {/* Airtable data section */}
                               <div>
-                                <Label className="text-xs">Airtable Report CSV *</Label>
-                                <Input
-                                  type="file"
-                                  accept=".csv"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0] || null;
-                                    setSpeakerFiles(prev => ({
-                                      ...prev,
-                                      [speakerId]: { ...prev[speakerId], airtableFile: file }
-                                    }));
-                                  }}
-                                />
-                                {files.airtableFile && <p className="text-xs text-muted-foreground mt-1">{files.airtableFile.name}</p>}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Label className="text-xs">Airtable Data *</Label>
+                                  <Badge variant={syncedData ? "default" : files.airtableFile ? "default" : "secondary"} className="text-[10px]">
+                                    {syncedData ? `Synced (${syncedData.length})` : files.airtableFile ? "CSV" : "Required"}
+                                  </Badge>
+                                </div>
+                                
+                                {/* Sync from Airtable - primary option */}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <AirtableSyncButton
+                                    companyId={selectedCompanyId || undefined}
+                                    speakerId={speakerId}
+                                    entityName={speaker?.name || 'Speaker'}
+                                    dateRangeStart={dateRangeStart}
+                                    dateRangeEnd={dateRangeEnd}
+                                    onDataSynced={(data) => {
+                                      setSpeakerSyncedData(prev => ({
+                                        ...prev,
+                                        [speakerId]: data
+                                      }));
+                                      // Clear file if syncing
+                                      setSpeakerFiles(prev => ({
+                                        ...prev,
+                                        [speakerId]: { ...prev[speakerId], airtableFile: null }
+                                      }));
+                                    }}
+                                    variant="inline"
+                                    size="sm"
+                                  />
+                                  {syncedData && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setSpeakerSyncedData(prev => ({
+                                        ...prev,
+                                        [speakerId]: null
+                                      }))}
+                                      title="Clear synced data"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                                
+                                {/* Fallback to CSV upload */}
+                                {!syncedData && (
+                                  <Collapsible>
+                                    <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                                      <ChevronRight className="h-3 w-3" />
+                                      Or upload CSV manually
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="pt-2">
+                                      <Input
+                                        type="file"
+                                        accept=".csv"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0] || null;
+                                          setSpeakerFiles(prev => ({
+                                            ...prev,
+                                            [speakerId]: { ...prev[speakerId], airtableFile: file }
+                                          }));
+                                        }}
+                                      />
+                                      {files.airtableFile && <p className="text-xs text-muted-foreground mt-1">{files.airtableFile.name}</p>}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
                               </div>
                             </CollapsibleContent>
                           </div>
