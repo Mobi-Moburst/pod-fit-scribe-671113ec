@@ -1,189 +1,99 @@
 
-# Airtable API Integration Plan
+
+# Simplify Airtable Setup with Shared PAT
 
 ## Overview
-Replace manual CSV uploads with direct Airtable API fetches for speaker activity data, enabling on-demand syncing during report generation and updates.
+Store a single Airtable Personal Access Token (PAT) as a Supabase secret so users only need to provide the Base ID and Table ID when setting up a connection. This is perfect for your setup where one Airtable account has access to all campaign manager bases.
 
-## Implementation Status
+## Changes Required
 
-### ✅ Phase 1: Foundation (COMPLETE)
-- [x] Created `airtable_connections` table with RLS policies
-- [x] Built `fetch-airtable-data` edge function with date filtering and field mapping
-- [x] Created `useAirtableConnection` hook for managing connections
-- [x] Created `AirtableConnectionDialog` component for setup
-- [x] Created `AirtableSyncButton` component for triggering syncs
-- [x] Integrated sync option into `UpdateCSVDialog`
+### 1. Add Supabase Secret
+- Add `AIRTABLE_PAT` (Personal Access Token) as a Supabase edge function secret
+- This token should have `data.records:read` scope for all bases it needs to access
 
-### 🔄 Phase 2: UI Integration (IN PROGRESS)
-- [x] "Sync from Airtable" button in UpdateCSVDialog
-- [ ] Add "Connect Airtable" button in Companies page (company/speaker settings)
-- [ ] Add field mapping configuration UI
-- [ ] Add connection status indicator in report generation flow
+### 2. Update Edge Function (`fetch-airtable-data`)
+- Read the PAT from `Deno.env.get('AIRTABLE_PAT')` instead of from the database
+- Fall back to per-connection token if the global one isn't set (backward compatibility)
 
-### ⏳ Phase 3: Report Generation Integration
-- [ ] Modify initial report generation to optionally fetch from Airtable
-- [ ] Add last synced timestamp display
-- [ ] Handle multi-speaker filtering with speaker column
-
-## Proposed Architecture
-
-### Data Flow
-```text
-+------------------+     +----------------------+     +-------------------+
-|   Reports UI     | --> |  Supabase Edge Fn    | --> |   Airtable API    |
-|  (Sync Button)   |     |  fetch-airtable-data |     |   (Read Records)  |
-+------------------+     +----------------------+     +-------------------+
-        |                         |
-        v                         v
-  +-------------+         +------------------+
-  | Report Gen  |  <--    | Parsed activity  |
-  | Pipeline    |         | data (same shape |
-  +-------------+         | as CSV parser)   |
-                          +------------------+
-```
-
-### New Components
-
-1. **Airtable Connection Storage** (Database)
-   - New table `airtable_connections` to store API credentials per campaign manager or company
-   - Fields: `id`, `org_id`, `name`, `personal_access_token` (encrypted), `base_id`, `table_id`, `speaker_id` (optional), `company_id` (optional)
-   - RLS policies matching existing org-based access
-
-2. **Edge Function: `fetch-airtable-data`**
-   - Accepts: `connection_id`, `date_range_start`, `date_range_end`, `speaker_filter` (optional)
-   - Uses Airtable REST API to fetch records with date filtering
-   - Maps Airtable field names to our `AirtableCSVRow` interface
-   - Returns data in same format as `parseAirtableCSV` output
-
-3. **UI Components**
-   - **Airtable Connection Setup Dialog**: One-time setup per speaker/company to configure API access
-   - **Sync Button** in `UpdateCSVDialog` and report generation: Fetches latest data instead of requiring file upload
-   - Connection status indicator showing when Airtable is linked
-
-### Implementation Phases
-
-**Phase 1: Foundation**
-- Add `AIRTABLE_API_KEY` secret (or per-user tokens stored encrypted in DB)
-- Create `airtable_connections` table with RLS
-- Build `fetch-airtable-data` edge function with field mapping
-
-**Phase 2: UI Integration**
-- Add "Connect Airtable" flow in speaker/company settings
-- Add field mapping configuration (map your column names to our expected fields)
-- Add "Sync from Airtable" button alongside CSV upload option
-
-**Phase 3: Report Integration**
-- Modify `generateReportData` to optionally fetch from Airtable instead of requiring CSV
-- Update `UpdateCSVDialog` to show sync option when connection exists
-- Add last synced timestamp display
-
-### Technical Details
-
-**Airtable API Requirements**
-- Personal Access Token (PAT) with `data.records:read` scope
-- Base ID and Table ID from the Airtable URL
-- Field name mapping configuration
-
-**Edge Function Implementation**
+**Before:**
 ```typescript
-// fetch-airtable-data/index.ts (conceptual)
-const AIRTABLE_API_URL = 'https://api.airtable.com/v0';
-
-// Fetch records with date filtering
-const records = await fetch(
-  `${AIRTABLE_API_URL}/${baseId}/${tableId}?filterByFormula=...`,
-  {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    }
-  }
+const records = await fetchAllRecords(
+  connection.base_id,
+  connection.table_id,
+  connection.personal_access_token,  // From database
+  filterFormula
 );
-
-// Map to AirtableCSVRow format
-return records.map(record => ({
-  podcast_name: record.fields['Podcast Name'],
-  action: record.fields['Action'],
-  scheduled_date_time: record.fields['Recording Date'],
-  date_booked: record.fields['Date Booked'],
-  date_published: record.fields['Date Published'],
-  link_to_episode: record.fields['Episode Link'],
-  // ... etc
-}));
 ```
 
-**Field Mapping Configuration**
-Users configure which Airtable column maps to which field:
-| Our Field | Airtable Column (configurable) |
-|-----------|-------------------------------|
-| podcast_name | "Podcast Name" |
-| action | "Action" |
-| scheduled_date_time | "Recording Date" |
-| date_booked | "Date Booked" |
-| date_published | "Date Published" |
-| link_to_episode | "Episode Link" |
-
-**Multi-Speaker Filtering**
-For multi-speaker tables, filter by speaker column:
-```
-filterByFormula=AND({Speaker}='Maya Reynolds', OR(IS_AFTER({Recording Date}, DATETIME_PARSE('2025-01-01')), ...))
+**After:**
+```typescript
+// Use global secret, fallback to per-connection if needed
+const accessToken = Deno.env.get('AIRTABLE_PAT') || connection.personal_access_token;
+const records = await fetchAllRecords(
+  connection.base_id,
+  connection.table_id,
+  accessToken,
+  filterFormula
+);
 ```
 
-### Security Considerations
-- Personal Access Tokens stored encrypted in Supabase
-- RLS ensures users only access their org's connections
-- Edge function validates org_id before using stored credentials
-- Tokens never exposed to frontend
+### 3. Simplify UI Dialog
+- Hide the Personal Access Token field (since it's now optional/backend-managed)
+- Show a small info note: "Using shared Airtable API access"
+- Keep the field available as an "advanced" option if users want to use a different token for specific connections
+
+### 4. Update Database Column (Optional)
+- Make `personal_access_token` nullable in the database
+- This allows connections to be created without a per-connection token
+
+## Technical Details
 
 ### Database Migration
 ```sql
-CREATE TABLE airtable_connections (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID NOT NULL,
-  name TEXT NOT NULL,
-  company_id UUID REFERENCES companies(id),
-  speaker_id UUID REFERENCES speakers(id),
-  base_id TEXT NOT NULL,
-  table_id TEXT NOT NULL,
-  personal_access_token TEXT NOT NULL, -- encrypted
-  field_mapping JSONB NOT NULL DEFAULT '{}',
-  speaker_column_name TEXT, -- for multi-speaker tables
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- RLS policies
-ALTER TABLE airtable_connections ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Enable access for org" ON airtable_connections
-  FOR ALL USING (org_id = get_team_org_id());
+-- Make personal_access_token nullable for connections using global token
+ALTER TABLE airtable_connections 
+  ALTER COLUMN personal_access_token DROP NOT NULL;
 ```
 
-### User Experience Flow
+### Edge Function Logic
+```typescript
+// Prefer global secret, allow per-connection override
+const globalToken = Deno.env.get('AIRTABLE_PAT');
+const accessToken = connection.personal_access_token || globalToken;
 
-1. **Setup (one-time per company/speaker)**
-   - User clicks "Connect Airtable" in company/speaker settings
-   - Enters Personal Access Token, Base ID, Table ID
-   - Configures field mapping (with auto-detection from column names)
-   - For multi-speaker tables, specifies which column contains speaker names
+if (!accessToken) {
+  throw new Error('No Airtable access token configured');
+}
+```
 
-2. **During Report Generation**
-   - If Airtable connected: "Sync from Airtable" button appears
-   - Click syncs latest data within date range
-   - Falls back to CSV upload if sync fails
+### UI Changes
+- Remove "Personal Access Token" as a required field
+- Add optional "Advanced: Custom Token" collapsible section
+- Simplify the main form to just:
+  - Connection Name
+  - Base ID (required)
+  - Table ID (required)
+  - Speaker Column (optional)
+  - Field Mapping (collapsible)
 
-3. **During Report Updates**
-   - Same "Sync from Airtable" option in UpdateCSVDialog
-   - Can refresh just Airtable data without re-uploading other CSVs
+## User Experience After Changes
 
-### Benefits
-- Eliminates manual CSV export/upload workflow
-- Always-fresh data on demand
-- Reduces user friction for quarterly reports
-- Maintains backward compatibility with CSV uploads
+**Setup Flow (one-time per company/speaker):**
+1. Click "Connect Airtable" button
+2. Enter Base ID (from Airtable URL)
+3. Enter Table ID (from Airtable URL)
+4. Optionally configure field mapping
+5. Done - no token needed
 
-### Next Steps After Approval
-1. Create database migration for `airtable_connections` table
-2. Add `AIRTABLE_API_KEY` secret capability (or use per-connection tokens)
-3. Build `fetch-airtable-data` edge function
-4. Create Airtable connection setup UI
-5. Integrate sync option into existing report flows
+## Benefits
+- Much simpler setup for users
+- Single token to manage/rotate
+- Users don't need to understand Airtable API tokens
+- Maintains flexibility for custom tokens if ever needed
+
+## Implementation Steps
+1. Add `AIRTABLE_PAT` secret via Supabase secrets
+2. Database migration to make `personal_access_token` nullable
+3. Update edge function to use global token
+4. Simplify the connection dialog UI
+
