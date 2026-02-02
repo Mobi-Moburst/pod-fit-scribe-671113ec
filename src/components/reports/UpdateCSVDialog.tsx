@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, FileText, Check, RefreshCw, Upload, ChevronDown, ChevronRight, User } from "lucide-react";
+import { Loader2, FileText, Check, RefreshCw, Upload, ChevronDown, ChevronRight, User, Link2 } from "lucide-react";
 import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { mergeUpdatedReportData } from "@/utils/reportGenerator";
 import { ReportData, SpeakerBreakdown } from "@/types/reports";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AirtableSyncButton } from "@/components/airtable/AirtableSyncButton";
+import { AirtableCSVRow } from "@/hooks/use-airtable-connection";
 
 // Helper to read File as text
 const readFileAsText = (file: File): Promise<string> => {
@@ -38,6 +40,7 @@ interface CSVStatus {
 interface SpeakerCSVFiles {
   batchFile: File | null;
   airtableFile: File | null;
+  airtableSyncedData: AirtableCSVRow[] | null;
 }
 
 export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: UpdateCSVDialogProps) {
@@ -57,6 +60,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
   const [singleSpeakerFiles, setSingleSpeakerFiles] = useState<SpeakerCSVFiles>({
     batchFile: null,
     airtableFile: null,
+    airtableSyncedData: null,
   });
 
   // Multi-speaker mode files (keyed by speaker_id)
@@ -96,6 +100,16 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
     setSingleSpeakerFiles(prev => ({
       ...prev,
       [type === 'batch' ? 'batchFile' : 'airtableFile']: file,
+      // Clear synced data if uploading a file
+      ...(type === 'airtable' && file ? { airtableSyncedData: null } : {}),
+    }));
+  };
+
+  const handleSingleSpeakerAirtableSync = (data: AirtableCSVRow[]) => {
+    setSingleSpeakerFiles(prev => ({
+      ...prev,
+      airtableFile: null, // Clear any uploaded file
+      airtableSyncedData: data,
     }));
   };
 
@@ -105,6 +119,19 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
       [speakerId]: {
         ...prev[speakerId],
         [type === 'batch' ? 'batchFile' : 'airtableFile']: file,
+        // Clear synced data if uploading a file
+        ...(type === 'airtable' && file ? { airtableSyncedData: null } : {}),
+      },
+    }));
+  };
+
+  const handleSpeakerAirtableSync = (speakerId: string, data: AirtableCSVRow[]) => {
+    setSpeakerFiles(prev => ({
+      ...prev,
+      [speakerId]: {
+        ...prev[speakerId],
+        airtableFile: null, // Clear any uploaded file
+        airtableSyncedData: data,
       },
     }));
   };
@@ -126,14 +153,17 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
     const hasOptionalFile = Object.values(csvFiles).some(s => s.newFile !== null);
     
     if (isMultiSpeaker) {
-      // Check speaker files
+      // Check speaker files (including synced data)
       const hasSpeakerFile = Object.values(speakerFiles).some(
-        sf => sf.batchFile !== null || sf.airtableFile !== null
+        sf => sf.batchFile !== null || sf.airtableFile !== null || sf.airtableSyncedData !== null
       );
       return hasOptionalFile || hasSpeakerFile;
     } else {
-      // Check single speaker files
-      return hasOptionalFile || singleSpeakerFiles.batchFile !== null || singleSpeakerFiles.airtableFile !== null;
+      // Check single speaker files (including synced data)
+      return hasOptionalFile || 
+        singleSpeakerFiles.batchFile !== null || 
+        singleSpeakerFiles.airtableFile !== null ||
+        singleSpeakerFiles.airtableSyncedData !== null;
     }
   }, [csvFiles, speakerFiles, singleSpeakerFiles, isMultiSpeaker]);
 
@@ -178,7 +208,11 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
             allBatchData.push(...parsed);
             if (!updatedCSVTypes.includes('batch')) updatedCSVTypes.push('batch');
           }
-          if (files?.airtableFile) {
+          // Check for synced data first, then fall back to file upload
+          if (files?.airtableSyncedData && files.airtableSyncedData.length > 0) {
+            allAirtableData.push(...files.airtableSyncedData);
+            if (!updatedCSVTypes.includes('airtable')) updatedCSVTypes.push('airtable');
+          } else if (files?.airtableFile) {
             const csvText = await readFileAsText(files.airtableFile);
             const parsed = parseAirtableCSV(csvText, dateRangeStart, dateRangeEnd);
             allAirtableData.push(...parsed);
@@ -196,7 +230,11 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
           updatedCSVTypes.push('batch');
         }
         
-        if (singleSpeakerFiles.airtableFile) {
+        // Check for synced data first, then fall back to file upload
+        if (singleSpeakerFiles.airtableSyncedData && singleSpeakerFiles.airtableSyncedData.length > 0) {
+          newAirtableData = singleSpeakerFiles.airtableSyncedData;
+          updatedCSVTypes.push('airtable');
+        } else if (singleSpeakerFiles.airtableFile) {
           const csvText = await readFileAsText(singleSpeakerFiles.airtableFile);
           newAirtableData = parseAirtableCSV(csvText, dateRangeStart, dateRangeEnd);
           updatedCSVTypes.push('airtable');
@@ -290,7 +328,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
       content_gap: { hasData: false, newFile: null },
       rephonic: { hasData: false, newFile: null },
     });
-    setSingleSpeakerFiles({ batchFile: null, airtableFile: null });
+    setSingleSpeakerFiles({ batchFile: null, airtableFile: null, airtableSyncedData: null });
     setSpeakerFiles({});
     setExpandedSpeakers(new Set());
   };
@@ -393,7 +431,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
                 ))}
               </div>
             ) : (
-              // Single-speaker: simple file inputs
+              // Single-speaker: simple file inputs with Airtable sync option
               <>
                 <CSVUploadRow
                   label="Batch CSV"
@@ -402,12 +440,19 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
                   file={singleSpeakerFiles.batchFile}
                   onFileChange={(file) => handleSingleSpeakerFileChange('batch', file)}
                 />
-                <CSVUploadRow
-                  label="Airtable CSV"
+                <AirtableUploadRow
+                  label="Airtable Data"
                   description="Booking status and episode links"
                   hasExistingData={true}
                   file={singleSpeakerFiles.airtableFile}
+                  syncedData={singleSpeakerFiles.airtableSyncedData}
                   onFileChange={(file) => handleSingleSpeakerFileChange('airtable', file)}
+                  companyId={report?.company_id}
+                  speakerId={report?.speaker_id}
+                  entityName={reportData?.client?.name || reportData?.company_name || 'Speaker'}
+                  dateRangeStart={report?.date_range_start}
+                  dateRangeEnd={report?.date_range_end}
+                  onDataSynced={handleSingleSpeakerAirtableSync}
                 />
               </>
             )}
@@ -475,7 +520,7 @@ function CSVUploadRow({ label, description, hasExistingData, file, onFileChange 
       
       <div className="flex items-center gap-2">
         {hasExistingData ? (
-          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
             <Check className="h-3 w-3 mr-1" />
             Has data
           </Badge>
@@ -509,6 +554,121 @@ function CSVUploadRow({ label, description, hasExistingData, file, onFileChange 
         
         {file && (
           <Button variant="ghost" size="sm" onClick={() => onFileChange(null)}>
+            ✕
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface AirtableUploadRowProps {
+  label: string;
+  description: string;
+  hasExistingData: boolean;
+  file: File | null;
+  syncedData: AirtableCSVRow[] | null;
+  onFileChange: (file: File | null) => void;
+  companyId?: string;
+  speakerId?: string;
+  entityName: string;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  onDataSynced: (data: AirtableCSVRow[]) => void;
+}
+
+function AirtableUploadRow({
+  label,
+  description,
+  hasExistingData,
+  file,
+  syncedData,
+  onFileChange,
+  companyId,
+  speakerId,
+  entityName,
+  dateRangeStart,
+  dateRangeEnd,
+  onDataSynced,
+}: AirtableUploadRowProps) {
+  const hasSyncedData = syncedData && syncedData.length > 0;
+
+  return (
+    <div className="flex items-center justify-between p-3 border rounded-lg">
+      <div className="flex items-center gap-3">
+        <Link2 className="h-4 w-4 text-muted-foreground" />
+        <div>
+          <p className="text-sm font-medium">{label}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        {hasSyncedData ? (
+          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+            <Check className="h-3 w-3 mr-1" />
+            {syncedData.length} synced
+          </Badge>
+        ) : hasExistingData ? (
+          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+            <Check className="h-3 w-3 mr-1" />
+            Has data
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-muted-foreground">
+            No data
+          </Badge>
+        )}
+        
+        {/* Airtable Sync Button */}
+        <AirtableSyncButton
+          companyId={companyId}
+          speakerId={speakerId}
+          entityName={entityName}
+          dateRangeStart={dateRangeStart}
+          dateRangeEnd={dateRangeEnd}
+          onDataSynced={onDataSynced}
+          variant="compact"
+        />
+
+        {/* Divider */}
+        <span className="text-muted-foreground">or</span>
+        
+        {/* File upload fallback */}
+        <div className="relative">
+          <Input
+            type="file"
+            accept=".csv"
+            className="absolute inset-0 opacity-0 cursor-pointer"
+            onChange={(e) => onFileChange(e.target.files?.[0] || null)}
+          />
+          <Button variant={file ? "default" : "outline"} size="sm" className="pointer-events-none">
+            {file ? (
+              <>
+                <Check className="h-3 w-3 mr-1" />
+                {file.name.length > 15 ? file.name.slice(0, 12) + '...' : file.name}
+              </>
+            ) : (
+              <>
+                <Upload className="h-3 w-3 mr-1" />
+                CSV
+              </>
+            )}
+          </Button>
+        </div>
+        
+        {(file || hasSyncedData) && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              onFileChange(null);
+              if (hasSyncedData) {
+                // Clear synced data by syncing empty array
+                onDataSynced([]);
+              }
+            }}
+          >
             ✕
           </Button>
         )}
