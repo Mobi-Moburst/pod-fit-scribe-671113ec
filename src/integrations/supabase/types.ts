@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      airtable_connections: {
+        Row: {
+          base_id: string
+          company_id: string | null
+          created_at: string
+          field_mapping: Json
+          id: string
+          last_synced_at: string | null
+          name: string
+          org_id: string
+          personal_access_token: string
+          speaker_column_name: string | null
+          speaker_id: string | null
+          table_id: string
+          updated_at: string
+        }
+        Insert: {
+          base_id: string
+          company_id?: string | null
+          created_at?: string
+          field_mapping?: Json
+          id?: string
+          last_synced_at?: string | null
+          name: string
+          org_id: string
+          personal_access_token: string
+          speaker_column_name?: string | null
+          speaker_id?: string | null
+          table_id: string
+          updated_at?: string
+        }
+        Update: {
+          base_id?: string
+          company_id?: string | null
+          created_at?: string
+          field_mapping?: Json
+          id?: string
+          last_synced_at?: string | null
+          name?: string
+          org_id?: string
+          personal_access_token?: string
+          speaker_column_name?: string | null
+          speaker_id?: string | null
+          table_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "airtable_connections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "airtable_connections_speaker_id_fkey"
+            columns: ["speaker_id"]
+            isOneToOne: false
+            referencedRelation: "speakers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_sessions: {
         Row: {
           client_id: string
