@@ -24,7 +24,7 @@ export type Database = {
           last_synced_at: string | null
           name: string
           org_id: string
-          personal_access_token: string
+          personal_access_token: string | null
           speaker_column_name: string | null
           speaker_id: string | null
           table_id: string
@@ -39,7 +39,7 @@ export type Database = {
           last_synced_at?: string | null
           name: string
           org_id: string
-          personal_access_token: string
+          personal_access_token?: string | null
           speaker_column_name?: string | null
           speaker_id?: string | null
           table_id: string
@@ -54,7 +54,7 @@ export type Database = {
           last_synced_at?: string | null
           name?: string
           org_id?: string
-          personal_access_token?: string
+          personal_access_token?: string | null
           speaker_column_name?: string | null
           speaker_id?: string | null
           table_id?: string

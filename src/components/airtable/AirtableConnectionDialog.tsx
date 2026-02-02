@@ -82,6 +82,7 @@ export function AirtableConnectionDialog({
   const [speakerColumnName, setSpeakerColumnName] = useState('');
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>(DEFAULT_FIELD_MAPPING);
   const [showFieldMapping, setShowFieldMapping] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Populate form when connection loads
@@ -104,14 +105,14 @@ export function AirtableConnectionDialog({
   }, [connection, entityName]);
 
   const handleSave = async () => {
-    if (!baseId.trim() || !tableId.trim() || !token.trim()) return;
+    if (!baseId.trim() || !tableId.trim()) return;
 
     setIsSaving(true);
     const success = await saveConnection({
       name: name.trim() || `${entityName} Activity`,
       base_id: baseId.trim(),
       table_id: tableId.trim(),
-      personal_access_token: token.trim(),
+      personal_access_token: token.trim() || undefined,
       field_mapping: fieldMapping,
       speaker_column_name: speakerColumnName.trim() || undefined,
     });
@@ -133,7 +134,7 @@ export function AirtableConnectionDialog({
     setFieldMapping(prev => ({ ...prev, [ourField]: airtableColumn }));
   };
 
-  const isValid = baseId.trim() && tableId.trim() && token.trim();
+  const isValid = baseId.trim() && tableId.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -167,34 +168,13 @@ export function AirtableConnectionDialog({
               />
             </div>
 
-            {/* Airtable Credentials */}
+            {/* Airtable Connection Details */}
             <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium">Airtable API Credentials</h4>
-                <a
-                  href="https://airtable.com/create/tokens"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
-                >
-                  Get API Token <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="token">
-                  Personal Access Token <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="token"
-                  type="password"
-                  placeholder="pat..."
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Needs <code>data.records:read</code> scope for your base.
-                </p>
+                <h4 className="text-sm font-medium">Airtable Connection</h4>
+                <Badge variant="secondary" className="text-xs">
+                  Using shared API access
+                </Badge>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -229,6 +209,43 @@ export function AirtableConnectionDialog({
                 </div>
               </div>
             </div>
+
+            {/* Advanced: Custom Token (Collapsible) */}
+            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground">
+                  <span>Advanced: Custom API Token</span>
+                  {showAdvanced ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-3 px-1">
+                <div className="space-y-2">
+                  <Label htmlFor="token">Personal Access Token</Label>
+                  <Input
+                    id="token"
+                    type="password"
+                    placeholder="pat... (optional - uses shared token if empty)"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Only needed if you want to use a different Airtable account for this connection.{' '}
+                    <a
+                      href="https://airtable.com/create/tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline inline-flex items-center gap-0.5"
+                    >
+                      Get token <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Multi-Speaker Column */}
             <div className="space-y-2">

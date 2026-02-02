@@ -10,7 +10,7 @@ export interface AirtableConnection {
   speaker_id?: string;
   base_id: string;
   table_id: string;
-  personal_access_token: string;
+  personal_access_token?: string;
   field_mapping: Record<string, string>;
   speaker_column_name?: string;
   last_synced_at?: string;
@@ -80,7 +80,7 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
     name: string;
     base_id: string;
     table_id: string;
-    personal_access_token: string;
+    personal_access_token?: string;
     field_mapping: Record<string, string>;
     speaker_column_name?: string;
   }) => {
