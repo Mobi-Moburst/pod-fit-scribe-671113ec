@@ -42,3 +42,5 @@ verify_jwt = false
 [functions.generate-podcast-categories]
 verify_jwt = false
 
+[functions.fetch-airtable-data]
+verify_jwt = false
