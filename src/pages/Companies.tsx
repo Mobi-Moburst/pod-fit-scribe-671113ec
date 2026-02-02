@@ -12,8 +12,9 @@ import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe, ImageIcon, Pencil, Check, Upload } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
 
 // Deterministic color classes for CM badge using design tokens
 const cmColor = (name?: string) => {
@@ -74,6 +75,7 @@ const Companies = () => {
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const [showManualLogoInput, setShowManualLogoInput] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [airtableDialog, setAirtableDialog] = useState<{ companyId?: string; speakerId?: string; entityName: string } | null>(null);
   const { toast } = useToast();
 
   const fetchCompanyBrand = async () => {
@@ -810,6 +812,14 @@ const Companies = () => {
                       </div>
                     </CollapsibleTrigger>
                     <div className="flex items-center gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={(e) => { e.stopPropagation(); setAirtableDialog({ companyId: company.id, entityName: company.name }); }}
+                        title="Connect Airtable API"
+                      >
+                        <Link2 className="h-4 w-4 mr-1" />Airtable
+                      </Button>
                       <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); startNewSpeaker(company.id); }}>
                         <Plus className="h-4 w-4 mr-1" />Speaker
                       </Button>
@@ -859,6 +869,14 @@ const Companies = () => {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
+                                title="Connect Airtable API"
+                              >
+                                <Link2 className="h-4 w-4" />
+                              </Button>
                               <Button size="sm" variant="outline" onClick={() => startEditSpeaker(speaker)}>Edit</Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -889,6 +907,15 @@ const Companies = () => {
             {!filtered.length && <div className="text-sm text-muted-foreground">No companies yet.</div>}
           </div>
         </Card>
+
+        {/* Airtable Connection Dialog */}
+        <AirtableConnectionDialog
+          open={!!airtableDialog}
+          onOpenChange={(open) => !open && setAirtableDialog(null)}
+          companyId={airtableDialog?.companyId}
+          speakerId={airtableDialog?.speakerId}
+          entityName={airtableDialog?.entityName || ''}
+        />
       </main>
     </div>
   );
