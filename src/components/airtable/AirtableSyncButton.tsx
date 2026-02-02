@@ -13,7 +13,8 @@ interface AirtableSyncButtonProps {
   dateRangeEnd: string;
   speakerName?: string; // For multi-speaker table filtering
   onDataSynced: (data: AirtableCSVRow[]) => void;
-  variant?: 'default' | 'compact';
+  variant?: 'default' | 'compact' | 'inline';
+  size?: 'default' | 'sm';
 }
 
 export function AirtableSyncButton({
@@ -25,6 +26,7 @@ export function AirtableSyncButton({
   speakerName,
   onDataSynced,
   variant = 'default',
+  size = 'default',
 }: AirtableSyncButtonProps) {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const { connection, hasConnection, isSyncing, syncData } = useAirtableConnection({
@@ -43,6 +45,45 @@ export function AirtableSyncButton({
       onDataSynced(data);
     }
   };
+
+  // Inline variant - just a sync button, no connection UI
+  if (variant === 'inline') {
+    if (!hasConnection) {
+      return (
+        <Button
+          variant="outline"
+          size={size}
+          onClick={() => setShowConnectionDialog(true)}
+          className="gap-1"
+        >
+          <Link2 className="h-4 w-4" />
+          Connect Airtable
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        variant="outline"
+        size={size}
+        onClick={handleSync}
+        disabled={isSyncing}
+        className="gap-1"
+      >
+        {isSyncing ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Syncing...
+          </>
+        ) : (
+          <>
+            <RefreshCw className="h-4 w-4" />
+            Sync from Airtable
+          </>
+        )}
+      </Button>
+    );
+  }
 
   if (variant === 'compact') {
     if (!hasConnection) {

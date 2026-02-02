@@ -33,7 +33,10 @@ import { ContentGapRecommendations } from "@/components/reports/ContentGapRecomm
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2 } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2 } from "lucide-react";
+import { AirtableSyncButton } from "@/components/airtable/AirtableSyncButton";
+import { AirtableConnectionDialog } from "@/components/airtable/AirtableConnectionDialog";
+import { AirtableCSVRow } from "@/hooks/use-airtable-connection";
 import { useToast } from "@/hooks/use-toast";
 import { HighlightClip } from "@/types/reports";
 import HighlightUploadDialog from "@/components/reports/HighlightUploadDialog";
@@ -62,6 +65,8 @@ export default function Reports() {
   // Single-speaker file uploads
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [airtableFile, setAirtableFile] = useState<File | null>(null);
+  const [airtableSyncedData, setAirtableSyncedData] = useState<AirtableCSVRow[] | null>(null);
+  const [airtableConnectionDialogOpen, setAirtableConnectionDialogOpen] = useState(false);
   
   // Company-level file uploads (shared for multi-speaker)
   const [sovFile, setSOVFile] = useState<File | null>(null);
@@ -544,10 +549,10 @@ export default function Reports() {
       });
       return;
     }
-    if (!airtableFile) {
+    if (!airtableFile && !airtableSyncedData) {
       toast({
-        title: "Missing required CSV",
-        description: "Airtable Report CSV is required.",
+        title: "Missing Airtable data",
+        description: "Sync from Airtable or upload a CSV file.",
         variant: "destructive",
       });
       return;
@@ -558,15 +563,23 @@ export default function Reports() {
     try {
       // Read CSV files
       const batchText = await batchFile.text();
-      const airtableText = await airtableFile.text();
       const sovText = sovFile ? await sovFile.text() : null;
       const geoText = geoFile ? await geoFile.text() : null;
       const contentGapText = contentGapFile ? await contentGapFile.text() : null;
       const rephonicEmvText = rephonicEmvFile ? await rephonicEmvFile.text() : null;
       
-      // Parse CSVs
+      // Parse CSVs - use synced Airtable data first, fall back to file
       const batchRows = parseBatchCSV(batchText);
-      const airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
+      let airtableRows: any[];
+      if (airtableSyncedData && airtableSyncedData.length > 0) {
+        // Use synced data directly (already filtered by date range on the backend)
+        airtableRows = airtableSyncedData;
+      } else if (airtableFile) {
+        const airtableText = await airtableFile.text();
+        airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
+      } else {
+        airtableRows = [];
+      }
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
       const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
@@ -1898,13 +1911,59 @@ export default function Reports() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <Label>Airtable Report CSV *</Label>
-                        <Badge variant={airtableFile ? "default" : "secondary"}>
-                          {airtableFile ? "Uploaded" : "Required"}
+                        <Label>Airtable Data *</Label>
+                        <Badge variant={airtableSyncedData ? "default" : airtableFile ? "default" : "secondary"}>
+                          {airtableSyncedData ? `Synced (${airtableSyncedData.length})` : airtableFile ? "CSV Uploaded" : "Required"}
                         </Badge>
                       </div>
-                      <Input type="file" accept=".csv" onChange={(e) => setAirtableFile(e.target.files?.[0] || null)} />
-                      {airtableFile && <p className="text-xs text-muted-foreground mt-1">{airtableFile.name}</p>}
+                      
+                      {/* Sync from Airtable - primary option */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <AirtableSyncButton
+                          companyId={selectedCompanyId || undefined}
+                          speakerId={selectedSpeakerId || undefined}
+                          entityName={speakerAsClient?.name || 'Speaker'}
+                          dateRangeStart={dateRangeStart}
+                          dateRangeEnd={dateRangeEnd}
+                          onDataSynced={(data) => {
+                            setAirtableSyncedData(data);
+                            setAirtableFile(null); // Clear file if syncing
+                          }}
+                          variant="inline"
+                          size="sm"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setAirtableConnectionDialogOpen(true)}
+                          title="Configure Airtable connection"
+                        >
+                          <Link2 className="h-4 w-4" />
+                        </Button>
+                        {airtableSyncedData && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setAirtableSyncedData(null)}
+                            title="Clear synced data"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {/* CSV fallback */}
+                      {!airtableSyncedData && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Or upload CSV as fallback:</p>
+                          <Input 
+                            type="file" 
+                            accept=".csv" 
+                            onChange={(e) => setAirtableFile(e.target.files?.[0] || null)} 
+                          />
+                          {airtableFile && <p className="text-xs text-muted-foreground">{airtableFile.name}</p>}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
@@ -2563,6 +2622,15 @@ export default function Reports() {
                 refreshReport();
               }
             }}
+          />
+
+          {/* Airtable Connection Dialog for initial report creation */}
+          <AirtableConnectionDialog
+            open={airtableConnectionDialogOpen}
+            onOpenChange={setAirtableConnectionDialogOpen}
+            companyId={selectedCompanyId || undefined}
+            speakerId={selectedSpeakerId || undefined}
+            entityName={speakerAsClient?.name || selectedCompany?.name || 'Company'}
           />
         </div>
       </main>
