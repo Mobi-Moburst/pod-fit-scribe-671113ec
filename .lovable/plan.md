@@ -4,10 +4,26 @@
 ## Overview
 Replace manual CSV uploads with direct Airtable API fetches for speaker activity data, enabling on-demand syncing during report generation and updates.
 
-## Current State
-- Users manually export CSVs from Airtable and upload them via `UpdateCSVDialog` or during initial report generation
-- The `parseAirtableCSV` function processes these files to extract booking activity
-- Each speaker/company stores an `airtable_embed_url` for iframe display (not API access)
+## Implementation Status
+
+### ✅ Phase 1: Foundation (COMPLETE)
+- [x] Created `airtable_connections` table with RLS policies
+- [x] Built `fetch-airtable-data` edge function with date filtering and field mapping
+- [x] Created `useAirtableConnection` hook for managing connections
+- [x] Created `AirtableConnectionDialog` component for setup
+- [x] Created `AirtableSyncButton` component for triggering syncs
+- [x] Integrated sync option into `UpdateCSVDialog`
+
+### 🔄 Phase 2: UI Integration (IN PROGRESS)
+- [x] "Sync from Airtable" button in UpdateCSVDialog
+- [ ] Add "Connect Airtable" button in Companies page (company/speaker settings)
+- [ ] Add field mapping configuration UI
+- [ ] Add connection status indicator in report generation flow
+
+### ⏳ Phase 3: Report Generation Integration
+- [ ] Modify initial report generation to optionally fetch from Airtable
+- [ ] Add last synced timestamp display
+- [ ] Handle multi-speaker filtering with speaker column
 
 ## Proposed Architecture
 
