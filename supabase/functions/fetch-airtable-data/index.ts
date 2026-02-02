@@ -184,11 +184,19 @@ Deno.serve(async (req) => {
       console.log(`Filter formula: ${filterFormula}`);
     }
 
+    // Use global secret if available, fallback to per-connection token
+    const globalToken = Deno.env.get('AIRTABLE_PAT');
+    const accessToken = connection.personal_access_token || globalToken;
+
+    if (!accessToken) {
+      throw new Error('No Airtable access token configured. Please add AIRTABLE_PAT secret or provide a per-connection token.');
+    }
+
     // Fetch records from Airtable
     const records = await fetchAllRecords(
       connection.base_id,
       connection.table_id,
-      connection.personal_access_token,
+      accessToken,
       filterFormula
     );
 
