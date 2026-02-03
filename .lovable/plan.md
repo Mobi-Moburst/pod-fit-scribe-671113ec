@@ -1,35 +1,80 @@
 
-# Fix: Update Airtable Field Mapping
 
-## Problem
-The Airtable sync is failing because the field mapping has the wrong column name:
-- **Current mapping**: `scheduled_date_time` → `"Recording Date"` 
-- **Actual Airtable field**: `"Scheduled Date / Time"`
+# Fix: Generate Button Should Allow Airtable-Only Mode
+
+## Problem Identified
+The **Generate Report** button is permanently disabled when no Batch Results CSV is uploaded, even though Airtable data has been successfully synced. This prevents testing the "Airtable-only" placeholder mode that was already implemented in the backend logic.
+
+**Root cause:** Line 2188 in `src/pages/Reports.tsx`:
+```tsx
+disabled={... || !batchFile || !airtableFile}
+```
+The button checks `!batchFile` directly instead of accounting for the Airtable-only fallback mode.
 
 ## Solution
+Update the button's `disabled` condition to allow generation when Airtable synced data is available, even without a Batch CSV.
 
-### Database Update
-Update the SmartLab Learning connection to use the correct field name:
+## Changes Required
 
-```sql
-UPDATE airtable_connections 
-SET field_mapping = jsonb_set(
-  field_mapping::jsonb, 
-  '{scheduled_date_time}', 
-  '"Scheduled Date / Time"'::jsonb
-)
-WHERE id = 'e9e63a1d-bce6-43f5-963e-12b5fc6da316';
+### File: `src/pages/Reports.tsx`
+
+**Change 1: Button disabled logic (lines 2183-2190)**
+
+```text
+Before:
+  disabled={
+    isProcessing || !dateRangeStart || !dateRangeEnd || 
+    (isMultiSpeakerMode 
+      ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => !speakerFiles[id]?.batchFile || !speakerFiles[id]?.airtableFile)
+      : !selectedSpeakerId || !batchFile || !airtableFile
+    )
+  }
+
+After:
+  disabled={
+    isProcessing || !dateRangeStart || !dateRangeEnd || 
+    (isMultiSpeakerMode 
+      ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => {
+          const syncedData = speakerSyncedData[id];
+          const hasAirtable = !!syncedData || !!speakerFiles[id]?.airtableFile;
+          // Allow either batch file OR synced Airtable data
+          return (!speakerFiles[id]?.batchFile && !syncedData) || !hasAirtable;
+        })
+      : !selectedSpeakerId || (!batchFile && !airtableSyncedData?.length) || (!airtableFile && !airtableSyncedData?.length)
+    )
+  }
 ```
 
-### After the Fix
-Once the field mapping is corrected:
-1. The Airtable sync should succeed
-2. The `airtableSyncedData` state will be populated
-3. Report generation without a Batch CSV will work (using the placeholder mode we implemented)
+For single-speaker mode, the key change is:
+- `!batchFile` becomes `!batchFile && !airtableSyncedData?.length`
+- `!airtableFile` becomes `!airtableFile && !airtableSyncedData?.length`
 
-## Technical Note
-The Airtable API filter formula will correctly handle the field name with spaces and special characters because we wrap field names in curly braces: `{Scheduled Date / Time}`.
+This means the button is enabled if:
+- Batch CSV is uploaded, OR
+- Airtable data has been synced (which provides both the activity data AND can generate placeholder batch rows)
 
----
+**Change 2: Update the Batch CSV badge (lines 2015-2019)**
 
-**No code changes needed** - this is a data fix only. Once approved, I'll run the database update and you can retry the sync.
+Make the badge reflect that Batch CSV is optional when Airtable is synced:
+
+```text
+Before:
+  <Badge variant={batchFile ? "default" : "secondary"}>
+    {batchFile ? "Uploaded" : "Required"}
+  </Badge>
+
+After:
+  <Badge variant={batchFile || airtableSyncedData?.length ? "default" : "secondary"}>
+    {batchFile ? "Uploaded" : airtableSyncedData?.length ? "Using Airtable" : "Required"}
+  </Badge>
+```
+
+## Testing Plan
+After this change:
+1. Select Dr. Jennifer Berry as the speaker
+2. Set a date range (e.g., Q4 2025)
+3. Click "Sync from Airtable" - should succeed
+4. **Do NOT upload a Batch Results CSV**
+5. The Generate Report button should now be **enabled**
+6. Click Generate - report should generate with placeholder metrics and show "Estimated Metrics" badge
+
