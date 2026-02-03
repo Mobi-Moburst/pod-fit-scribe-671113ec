@@ -1,99 +1,79 @@
 
-
-# Simplify Airtable Setup with Shared PAT
+# Plan: Enable Airtable-Only Report Generation (Test Mode)
 
 ## Overview
-Store a single Airtable Personal Access Token (PAT) as a Supabase secret so users only need to provide the Base ID and Table ID when setting up a connection. This is perfect for your setup where one Airtable account has access to all campaign manager bases.
+Add the ability to generate reports using only Airtable data when no Batch Results CSV is available. This is useful for testing the Airtable sync flow and for campaigns where batch evaluation hasn't been completed yet.
 
-## Changes Required
+## How It Will Work
+When generating a report:
+- If Airtable data is available but no Batch CSV is uploaded, the system will auto-generate placeholder batch entries from the Airtable podcasts
+- These placeholder entries will have reasonable default values so the report doesn't look broken
+- A visual indicator will show that the report contains placeholder data
 
-### 1. Add Supabase Secret
-- Add `AIRTABLE_PAT` (Personal Access Token) as a Supabase edge function secret
-- This token should have `data.records:read` scope for all bases it needs to access
+## Technical Changes
 
-### 2. Update Edge Function (`fetch-airtable-data`)
-- Read the PAT from `Deno.env.get('AIRTABLE_PAT')` instead of from the database
-- Fall back to per-connection token if the global one isn't set (backward compatibility)
+### 1. Update Reports.tsx Validation (lines 559-566)
+**Current behavior**: Blocks report generation if `batchFile` is missing
 
-**Before:**
-```typescript
-const records = await fetchAllRecords(
-  connection.base_id,
-  connection.table_id,
-  connection.personal_access_token,  // From database
-  filterFormula
-);
+**New behavior**: 
+- If `airtableSyncedData` exists with podcasts, allow generation without batch file
+- Show an informational toast noting that placeholder metrics are being used
+
+```text
+Before:
+  if (!batchFile) → show error, return
+
+After:
+  if (!batchFile && !airtableSyncedData?.length) → show error, return
+  if (!batchFile && airtableSyncedData?.length) → continue with placeholder mode
 ```
 
-**After:**
-```typescript
-// Use global secret, fallback to per-connection if needed
-const accessToken = Deno.env.get('AIRTABLE_PAT') || connection.personal_access_token;
-const records = await fetchAllRecords(
-  connection.base_id,
-  connection.table_id,
-  accessToken,
-  filterFormula
-);
+### 2. Generate Mock Batch Data from Airtable
+Create a helper function that converts Airtable rows into placeholder batch entries:
+
+```text
+function generateMockBatchFromAirtable(airtableRows):
+  For each Airtable row with "podcast recording" action:
+    - show_title: row.podcast_name
+    - verdict: "Consider" (neutral default)
+    - overall_score: 7.5 (reasonable middle score)
+    - listeners_per_episode: 5000 (typical podcast)
+    - monthly_listens: 20000
+    - categories: "Podcast" (generic)
+    - status: "success"
 ```
 
-### 3. Simplify UI Dialog
-- Hide the Personal Access Token field (since it's now optional/backend-managed)
-- Show a small info note: "Using shared Airtable API access"
-- Keep the field available as an "advanced" option if users want to use a different token for specific connections
+### 3. Add Placeholder Indicator to Report
+Add a flag to the report data so the UI can optionally display a "Contains estimated data" badge:
 
-### 4. Update Database Column (Optional)
-- Make `personal_access_token` nullable in the database
-- This allows connections to be created without a per-connection token
-
-## Technical Details
-
-### Database Migration
-```sql
--- Make personal_access_token nullable for connections using global token
-ALTER TABLE airtable_connections 
-  ALTER COLUMN personal_access_token DROP NOT NULL;
-```
-
-### Edge Function Logic
-```typescript
-// Prefer global secret, allow per-connection override
-const globalToken = Deno.env.get('AIRTABLE_PAT');
-const accessToken = connection.personal_access_token || globalToken;
-
-if (!accessToken) {
-  throw new Error('No Airtable access token configured');
+```text
+report_data: {
+  ...existing fields,
+  contains_placeholder_data?: boolean
 }
 ```
 
-### UI Changes
-- Remove "Personal Access Token" as a required field
-- Add optional "Advanced: Custom Token" collapsible section
-- Simplify the main form to just:
-  - Connection Name
-  - Base ID (required)
-  - Table ID (required)
-  - Speaker Column (optional)
-  - Field Mapping (collapsible)
+## Files to Modify
 
-## User Experience After Changes
+| File | Change |
+|------|--------|
+| `src/pages/Reports.tsx` | Relax batch file validation, generate mock batch rows when missing |
+| `src/utils/reportGenerator.ts` | Add `generateMockBatchFromAirtable()` helper function |
+| `src/types/reports.ts` | Add `contains_placeholder_data?: boolean` to ReportData interface |
 
-**Setup Flow (one-time per company/speaker):**
-1. Click "Connect Airtable" button
-2. Enter Base ID (from Airtable URL)
-3. Enter Table ID (from Airtable URL)
-4. Optionally configure field mapping
-5. Done - no token needed
+## What You'll Be Able to Test
+With this change, you can:
+1. Sync Dr. Jennifer Berry's Airtable data
+2. Generate a report without uploading a batch CSV
+3. Verify that the following populate correctly from Airtable:
+   - Published Episodes Carousel (podcasts with episode links)
+   - Total Booked count
+   - Total Published count
+   - Categories (AI-generated from booked podcasts)
+4. See placeholder values for:
+   - Fit/Consider/Not breakdown
+   - Total Reach
+   - Average Score
 
-## Benefits
-- Much simpler setup for users
-- Single token to manage/rotate
-- Users don't need to understand Airtable API tokens
-- Maintains flexibility for custom tokens if ever needed
-
-## Implementation Steps
-1. Add `AIRTABLE_PAT` secret via Supabase secrets
-2. Database migration to make `personal_access_token` nullable
-3. Update edge function to use global token
-4. Simplify the connection dialog UI
-
+## Alternative: Simpler Approach
+If you just want to quickly test without code changes, you could create a minimal "mock" batch CSV with the same podcast names from Airtable. I can generate this for you if you share the podcast names from the Airtable sync.
