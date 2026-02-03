@@ -47,17 +47,49 @@ function buildDateFilterFormula(
   fieldMapping: FieldMapping,
   speakerColumnName?: string,
   speakerName?: string
-): string {
-  const scheduledField = fieldMapping.scheduled_date_time || 'Recording Date';
-  const publishedField = fieldMapping.date_published || 'Date Published';
-  const bookedField = fieldMapping.date_booked || 'Date Booked';
+): string | null {
+  // If no valid date range, skip filtering
+  if (!dateRangeStart || !dateRangeEnd) {
+    console.log('No date range provided, skipping date filter');
+    
+    // If speaker filter is needed without date range
+    if (speakerColumnName && speakerName) {
+      return `{${speakerColumnName}}='${speakerName}'`;
+    }
+    return null;
+  }
 
-  // Date range conditions - include if ANY date falls in range
-  const dateConditions = [
-    `AND(IS_AFTER({${scheduledField}}, DATETIME_PARSE('${dateRangeStart}')), IS_BEFORE({${scheduledField}}, DATETIME_PARSE('${dateRangeEnd}')))`,
-    `AND(IS_AFTER({${publishedField}}, DATETIME_PARSE('${dateRangeStart}')), IS_BEFORE({${publishedField}}, DATETIME_PARSE('${dateRangeEnd}')))`,
-    `AND(IS_AFTER({${bookedField}}, DATETIME_PARSE('${dateRangeStart}')), IS_BEFORE({${bookedField}}, DATETIME_PARSE('${dateRangeEnd}')))`,
-  ];
+  const scheduledField = fieldMapping.scheduled_date_time;
+  const publishedField = fieldMapping.date_published;
+  const bookedField = fieldMapping.date_booked;
+
+  // Build date conditions only for fields that are mapped
+  const dateConditions: string[] = [];
+  
+  if (scheduledField) {
+    dateConditions.push(
+      `AND(IS_AFTER({${scheduledField}}, DATETIME_PARSE('${dateRangeStart}')), IS_BEFORE({${scheduledField}}, DATETIME_PARSE('${dateRangeEnd}')))`
+    );
+  }
+  if (publishedField) {
+    dateConditions.push(
+      `AND(IS_AFTER({${publishedField}}, DATETIME_PARSE('${dateRangeStart}')), IS_BEFORE({${publishedField}}, DATETIME_PARSE('${dateRangeEnd}')))`
+    );
+  }
+  if (bookedField) {
+    dateConditions.push(
+      `AND(IS_AFTER({${bookedField}}, DATETIME_PARSE('${dateRangeStart}')), IS_BEFORE({${bookedField}}, DATETIME_PARSE('${dateRangeEnd}')))`
+    );
+  }
+
+  // If no date fields are mapped, skip date filtering
+  if (dateConditions.length === 0) {
+    console.log('No date fields mapped, skipping date filter');
+    if (speakerColumnName && speakerName) {
+      return `{${speakerColumnName}}='${speakerName}'`;
+    }
+    return null;
+  }
 
   let formula = `OR(${dateConditions.join(', ')})`;
 
@@ -171,17 +203,19 @@ Deno.serve(async (req) => {
 
     const fieldMapping: FieldMapping = connection.field_mapping as FieldMapping;
 
-    // Build filter formula
-    let filterFormula: string | undefined;
-    if (date_range_start && date_range_end) {
-      filterFormula = buildDateFilterFormula(
-        date_range_start,
-        date_range_end,
-        fieldMapping,
-        connection.speaker_column_name,
-        speaker_name
-      );
+    // Build filter formula (may return null if no filtering needed)
+    const filterFormula = buildDateFilterFormula(
+      date_range_start,
+      date_range_end,
+      fieldMapping,
+      connection.speaker_column_name,
+      speaker_name
+    );
+    
+    if (filterFormula) {
       console.log(`Filter formula: ${filterFormula}`);
+    } else {
+      console.log('No filter formula - fetching all records');
     }
 
     // Use global secret if available, fallback to per-connection token
