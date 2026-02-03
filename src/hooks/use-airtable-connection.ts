@@ -41,6 +41,7 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
   const { toast } = useToast();
 
   // Fetch connection for company or speaker
+  // Priority: speaker-level connection > company-level connection (fallback)
   const fetchConnection = useCallback(async () => {
     if (!companyId && !speakerId) {
       setConnection(null);
@@ -49,20 +50,34 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
 
     setIsLoading(true);
     try {
-      let query = supabase
-        .from('airtable_connections')
-        .select('*');
-      
+      let foundConnection: AirtableConnection | null = null;
+
+      // If speakerId provided, first try speaker-specific connection
       if (speakerId) {
-        query = query.eq('speaker_id', speakerId);
-      } else if (companyId) {
-        query = query.eq('company_id', companyId).is('speaker_id', null);
+        const { data: speakerConn, error: speakerErr } = await supabase
+          .from('airtable_connections')
+          .select('*')
+          .eq('speaker_id', speakerId)
+          .maybeSingle();
+        
+        if (speakerErr) throw speakerErr;
+        foundConnection = speakerConn as AirtableConnection | null;
       }
 
-      const { data, error } = await query.maybeSingle();
+      // Fallback to company-level connection if no speaker connection found
+      if (!foundConnection && companyId) {
+        const { data: companyConn, error: companyErr } = await supabase
+          .from('airtable_connections')
+          .select('*')
+          .eq('company_id', companyId)
+          .is('speaker_id', null)
+          .maybeSingle();
+        
+        if (companyErr) throw companyErr;
+        foundConnection = companyConn as AirtableConnection | null;
+      }
 
-      if (error) throw error;
-      setConnection(data as AirtableConnection | null);
+      setConnection(foundConnection);
     } catch (error) {
       console.error('Failed to fetch Airtable connection:', error);
       setConnection(null);
