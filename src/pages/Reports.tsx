@@ -2014,8 +2014,8 @@ export default function Reports() {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <Label>Batch Results CSV *</Label>
-                        <Badge variant={batchFile ? "default" : "secondary"}>
-                          {batchFile ? "Uploaded" : "Required"}
+                        <Badge variant={batchFile || airtableSyncedData?.length ? "default" : "secondary"}>
+                          {batchFile ? "Uploaded" : airtableSyncedData?.length ? "Using Airtable" : "Required"}
                         </Badge>
                       </div>
                       <Input type="file" accept=".csv" onChange={(e) => setBatchFile(e.target.files?.[0] || null)} />
@@ -2184,8 +2184,12 @@ export default function Reports() {
                 onClick={handleGenerateReport}
                 disabled={isProcessing || !dateRangeStart || !dateRangeEnd || 
                   (isMultiSpeakerMode 
-                    ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => !speakerFiles[id]?.batchFile || !speakerFiles[id]?.airtableFile)
-                    : !selectedSpeakerId || !batchFile || !airtableFile
+                    ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => {
+                        const syncedData = speakerSyncedData[id];
+                        const hasAirtable = !!syncedData || !!speakerFiles[id]?.airtableFile;
+                        return (!speakerFiles[id]?.batchFile && !syncedData) || !hasAirtable;
+                      })
+                    : !selectedSpeakerId || (!batchFile && !airtableSyncedData?.length) || (!airtableFile && !airtableSyncedData?.length)
                   )
                 }
                 className="w-full"
