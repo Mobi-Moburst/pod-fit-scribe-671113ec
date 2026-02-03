@@ -6,31 +6,6 @@ import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
 
-/**
- * Generate placeholder batch rows from Airtable data when no Batch CSV is available.
- * This enables report generation using only Airtable synced data for testing purposes.
- * Placeholder rows use neutral default values for fit scores and estimated reach.
- */
-export function generateMockBatchFromAirtable(airtableRows: AirtableCSVRow[]): BatchCSVRow[] {
-  // Filter to only include podcast recording actions
-  const recordingRows = airtableRows.filter(row => 
-    row.action?.toLowerCase().includes('podcast recording')
-  );
-  
-  return recordingRows.map(row => ({
-    show_title: row.podcast_name,
-    podcast_url: row.apple_podcast_link || '',
-    verdict: 'Consider' as const, // Neutral default
-    overall_score: 7.5, // Reasonable middle score
-    listeners_per_episode: 5000, // Typical podcast estimate
-    monthly_listens: 20000, // Estimated monthly reach
-    social_reach: 10000, // Estimated social reach
-    categories: 'Podcast', // Generic category
-    rationale_short: 'Placeholder data - no batch evaluation available',
-    status: 'success',
-  }));
-}
-
 // Generate AI-powered pitch hooks for a speaker
 export async function generatePitchHooksForSpeaker(speaker: {
   name: string;

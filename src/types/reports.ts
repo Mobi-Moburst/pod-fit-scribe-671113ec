@@ -255,9 +255,6 @@ content_gap_csv_uploaded?: boolean;
 // Interview Highlights (video/audio clips from published interviews)
 highlight_clips?: HighlightClip[];
 
-// Placeholder data indicator (when report generated without batch CSV)
-contains_placeholder_data?: boolean;
-
 // Social Value Analysis
 social_value_analysis?: {
   total_social_value: number;

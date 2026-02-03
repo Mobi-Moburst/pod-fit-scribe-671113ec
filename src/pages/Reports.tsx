@@ -15,7 +15,7 @@ import { CompanySpeakerSelector } from "@/components/CompanySpeakerSelector";
 import type { Company, Speaker, MinimalClient, Competitor } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
-import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints, generatePodcastCategories, generateMockBatchFromAirtable } from "@/utils/reportGenerator";
+import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints, generatePodcastCategories } from "@/utils/reportGenerator";
 import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
@@ -556,23 +556,13 @@ export default function Reports() {
       });
       return;
     }
-    // Batch CSV is required UNLESS Airtable synced data exists (placeholder mode)
-    const hasAirtableData = airtableSyncedData && airtableSyncedData.length > 0;
-    if (!batchFile && !hasAirtableData) {
+    if (!batchFile) {
       toast({
-        title: "Missing required data",
-        description: "Upload a Batch Results CSV or sync from Airtable.",
+        title: "Missing required CSV",
+        description: "Batch Results CSV is required.",
         variant: "destructive",
       });
       return;
-    }
-    
-    // Show informational toast when using placeholder mode
-    if (!batchFile && hasAirtableData) {
-      toast({
-        title: "Using placeholder metrics",
-        description: "Report will use estimated Fit scores and reach data from Airtable podcasts.",
-      });
     }
     if (!airtableFile && !airtableSyncedData) {
       toast({
@@ -586,18 +576,16 @@ export default function Reports() {
     setIsProcessing(true);
     
     try {
-      // Read CSV files (batchFile may be null in placeholder mode)
-      const batchText = batchFile ? await batchFile.text() : null;
+      // Read CSV files
+      const batchText = await batchFile.text();
       const sovText = sovFile ? await sovFile.text() : null;
       const geoText = geoFile ? await geoFile.text() : null;
       const contentGapText = contentGapFile ? await contentGapFile.text() : null;
       const rephonicEmvText = rephonicEmvFile ? await rephonicEmvFile.text() : null;
       
-      // Determine if using placeholder mode (Airtable only, no batch CSV)
-      const usePlaceholderMode = !batchFile && hasAirtableData;
-      
       // Parse CSVs - use synced Airtable data first, fall back to file
-      let airtableRows: AirtableCSVRow[];
+      const batchRows = parseBatchCSV(batchText);
+      let airtableRows: any[];
       if (airtableSyncedData && airtableSyncedData.length > 0) {
         // Use synced data directly (already filtered by date range on the backend)
         airtableRows = airtableSyncedData;
@@ -607,18 +595,6 @@ export default function Reports() {
       } else {
         airtableRows = [];
       }
-      
-      // Generate batch rows - from CSV or mock from Airtable
-      let batchRows;
-      if (batchText) {
-        batchRows = parseBatchCSV(batchText);
-      } else if (usePlaceholderMode) {
-        batchRows = generateMockBatchFromAirtable(airtableRows);
-        console.log(`Generated ${batchRows.length} placeholder batch rows from Airtable data`);
-      } else {
-        batchRows = [];
-      }
-      
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
       const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
@@ -648,17 +624,10 @@ export default function Reports() {
         !!contentGapFile // contentGapCsvProvided
       );
       
-      // Add placeholder flag if using Airtable-only mode
-      if (usePlaceholderMode) {
-        report.contains_placeholder_data = true;
-      }
-      
       setReportData(report);
       toast({
         title: "Report generated",
-        description: usePlaceholderMode 
-          ? `Generated report with ${report.kpis.total_booked} booked podcasts using placeholder fit metrics.`
-          : `Successfully processed ${report.kpis.total_evaluated} podcasts with ${report.kpis.total_interviews} interviews.`,
+        description: `Successfully processed ${report.kpis.total_evaluated} podcasts with ${report.kpis.total_interviews} interviews.`,
       });
     } catch (error) {
       console.error("Error generating report:", error);
@@ -2014,8 +1983,8 @@ export default function Reports() {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <Label>Batch Results CSV *</Label>
-                        <Badge variant={batchFile || airtableSyncedData?.length ? "default" : "secondary"}>
-                          {batchFile ? "Uploaded" : airtableSyncedData?.length ? "Using Airtable" : "Required"}
+                        <Badge variant={batchFile ? "default" : "secondary"}>
+                          {batchFile ? "Uploaded" : "Required"}
                         </Badge>
                       </div>
                       <Input type="file" accept=".csv" onChange={(e) => setBatchFile(e.target.files?.[0] || null)} />
@@ -2184,12 +2153,8 @@ export default function Reports() {
                 onClick={handleGenerateReport}
                 disabled={isProcessing || !dateRangeStart || !dateRangeEnd || 
                   (isMultiSpeakerMode 
-                    ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => {
-                        const syncedData = speakerSyncedData[id];
-                        const hasAirtable = !!syncedData || !!speakerFiles[id]?.airtableFile;
-                        return (!speakerFiles[id]?.batchFile && !syncedData) || !hasAirtable;
-                      })
-                    : !selectedSpeakerId || (!batchFile && !airtableSyncedData?.length) || (!airtableFile && !airtableSyncedData?.length)
+                    ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => !speakerFiles[id]?.batchFile || !speakerFiles[id]?.airtableFile)
+                    : !selectedSpeakerId || !batchFile || !airtableFile
                   )
                 }
                 className="w-full"
@@ -2254,7 +2219,6 @@ export default function Reports() {
                 client={reportData.client}
                 generated_at={reportData.generated_at}
                 batch_name={reportData.batch_name}
-                isPlaceholder={reportData.contains_placeholder_data}
               />
 
               {/* Hidden Items Restore Bar */}

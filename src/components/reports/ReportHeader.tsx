@@ -2,17 +2,14 @@ import { format } from "date-fns";
 import { MinimalClient } from "@/types/clients";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { AlertTriangle } from "lucide-react";
 
 interface ReportHeaderProps {
   client: MinimalClient;
   generated_at: string;
   batch_name: string;
-  isPlaceholder?: boolean;
 }
 
-export const ReportHeader = ({ client, generated_at, batch_name, isPlaceholder }: ReportHeaderProps) => {
+export const ReportHeader = ({ client, generated_at, batch_name }: ReportHeaderProps) => {
   const clientPrimaryColor = client.brand_colors?.primary;
   
   // Generate initials for avatar fallback
@@ -58,15 +55,7 @@ export const ReportHeader = ({ client, generated_at, batch_name, isPlaceholder }
 
       {/* Report Title and Metadata */}
       <div className="space-y-2">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-4xl font-bold">Podcast Campaign Report</h1>
-          {isPlaceholder && (
-            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              Estimated Metrics
-            </Badge>
-          )}
-        </div>
+        <h1 className="text-4xl font-bold">Podcast Campaign Report</h1>
         <div className="flex items-center gap-4 text-muted-foreground flex-wrap">
           <div className="flex items-center gap-2">
             {client.headshot_url && (
