@@ -321,6 +321,48 @@ export type Database = {
           },
         ]
       }
+      podcast_metadata_cache: {
+        Row: {
+          apple_podcast_url: string
+          categories: string | null
+          created_at: string
+          description: string | null
+          fetched_at: string
+          id: string
+          listeners_per_episode: number | null
+          monthly_listens: number | null
+          org_id: string
+          podcast_name: string | null
+          social_reach: number | null
+        }
+        Insert: {
+          apple_podcast_url: string
+          categories?: string | null
+          created_at?: string
+          description?: string | null
+          fetched_at?: string
+          id?: string
+          listeners_per_episode?: number | null
+          monthly_listens?: number | null
+          org_id: string
+          podcast_name?: string | null
+          social_reach?: number | null
+        }
+        Update: {
+          apple_podcast_url?: string
+          categories?: string | null
+          created_at?: string
+          description?: string | null
+          fetched_at?: string
+          id?: string
+          listeners_per_episode?: number | null
+          monthly_listens?: number | null
+          org_id?: string
+          podcast_name?: string | null
+          social_reach?: number | null
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           batch_session_id: string | null

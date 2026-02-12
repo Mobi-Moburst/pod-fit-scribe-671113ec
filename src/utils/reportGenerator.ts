@@ -7,6 +7,125 @@ import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
 import { callScrape, callAnalyze } from '@/utils/api';
 
+// Fetch podcast metrics from Podchaser API with caching
+export async function fetchPodchaserMetrics(
+  applePodcastUrls: string[]
+): Promise<RephonicCSVRow[]> {
+  if (!applePodcastUrls || applePodcastUrls.length === 0) return [];
+  
+  // Deduplicate URLs
+  const uniqueUrls = [...new Set(applePodcastUrls.filter(u => u && u.trim()))];
+  if (uniqueUrls.length === 0) return [];
+  
+  console.log(`[fetchPodchaserMetrics] Fetching metrics for ${uniqueUrls.length} podcasts`);
+  
+  const results: RephonicCSVRow[] = [];
+  const urlsToFetch: string[] = [];
+  
+  // Step 1: Check cache first
+  try {
+    const { data: cached, error } = await supabase
+      .from('podcast_metadata_cache')
+      .select('*')
+      .in('apple_podcast_url', uniqueUrls);
+    
+    if (!error && cached && cached.length > 0) {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      const cachedUrls = new Set<string>();
+      for (const row of cached) {
+        const fetchedAt = new Date(row.fetched_at);
+        if (fetchedAt >= thirtyDaysAgo) {
+          // Cache hit - use cached data
+          results.push({
+            podcast_name: row.podcast_name || '',
+            listeners_per_episode: row.listeners_per_episode || undefined,
+            monthly_listens: row.monthly_listens || undefined,
+            social_reach: row.social_reach || undefined,
+            categories: row.categories || undefined,
+            description: row.description || undefined,
+            apple_podcast_link: row.apple_podcast_url,
+          });
+          cachedUrls.add(row.apple_podcast_url);
+        }
+      }
+      
+      console.log(`[fetchPodchaserMetrics] Cache hits: ${cachedUrls.size}/${uniqueUrls.length}`);
+      
+      // Determine URLs needing fresh fetch
+      for (const url of uniqueUrls) {
+        if (!cachedUrls.has(url)) urlsToFetch.push(url);
+      }
+    } else {
+      urlsToFetch.push(...uniqueUrls);
+    }
+  } catch (err) {
+    console.warn('[fetchPodchaserMetrics] Cache check failed, fetching all:', err);
+    urlsToFetch.push(...uniqueUrls);
+  }
+  
+  // Step 2: Fetch missing from Podchaser API
+  if (urlsToFetch.length > 0) {
+    console.log(`[fetchPodchaserMetrics] Fetching ${urlsToFetch.length} from Podchaser API`);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-podchaser-metrics', {
+        body: { apple_podcast_urls: urlsToFetch }
+      });
+      
+      if (error) {
+        console.error('[fetchPodchaserMetrics] Edge function error:', error);
+      } else if (data?.results) {
+        const fetchedResults = data.results as Record<string, any>;
+        
+        for (const [url, metrics] of Object.entries(fetchedResults)) {
+          if (metrics.error) {
+            console.warn(`[fetchPodchaserMetrics] No data for ${url}: ${metrics.error}`);
+            continue;
+          }
+          
+          const row: RephonicCSVRow = {
+            podcast_name: metrics.podcast_name || '',
+            listeners_per_episode: metrics.listeners_per_episode || undefined,
+            monthly_listens: metrics.monthly_listens || undefined,
+            social_reach: metrics.social_reach || undefined,
+            categories: metrics.categories || undefined,
+            description: metrics.description || undefined,
+            apple_podcast_link: url,
+          };
+          results.push(row);
+          
+          // Step 3: Cache the result (fire-and-forget)
+          supabase
+            .from('podcast_metadata_cache')
+            .upsert({
+              apple_podcast_url: url,
+              podcast_name: row.podcast_name,
+              listeners_per_episode: row.listeners_per_episode || null,
+              monthly_listens: row.monthly_listens || null,
+              social_reach: row.social_reach || null,
+              categories: row.categories || null,
+              description: row.description || null,
+              fetched_at: new Date().toISOString(),
+              org_id: '11111111-1111-1111-1111-111111111111',
+            }, { onConflict: 'apple_podcast_url,org_id' })
+            .then(({ error: upsertError }) => {
+              if (upsertError) console.warn('[fetchPodchaserMetrics] Cache upsert error:', upsertError);
+            });
+        }
+        
+        console.log(`[fetchPodchaserMetrics] Fetched ${Object.keys(fetchedResults).length} results from Podchaser`);
+      }
+    } catch (err) {
+      console.error('[fetchPodchaserMetrics] Failed to call edge function:', err);
+    }
+  }
+  
+  console.log(`[fetchPodchaserMetrics] Total results: ${results.length}`);
+  return results;
+}
+
 // Safely get action as a string (Airtable API may return arrays for select fields)
 function getActionString(action: any): string {
   if (!action) return '';
@@ -1653,7 +1772,27 @@ export async function generateReportFromMultipleCSVs(
   // Step 3: Apply EMV calculations (scraped data first)
   let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
   
-  // Step 3b: Apply Rephonic EMV data if provided (overrides/supplements scraped data)
+  // Step 3a: Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
+  const applePodcastUrls = podcastsWithEMV
+    .map(p => p.apple_podcast_link)
+    .filter((url): url is string => !!url && url.trim() !== '');
+  
+  let podchaserRows: RephonicCSVRow[] = [];
+  if (applePodcastUrls.length > 0) {
+    try {
+      podchaserRows = await fetchPodchaserMetrics(applePodcastUrls);
+      console.log(`[generateReportFromMultipleCSVs] Podchaser returned ${podchaserRows.length} results`);
+    } catch (err) {
+      console.warn('[generateReportFromMultipleCSVs] Podchaser fetch failed, continuing without:', err);
+    }
+  }
+  
+  // Apply Podchaser data first (as baseline)
+  if (podchaserRows.length > 0) {
+    podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, podchaserRows, cpm);
+  }
+  
+  // Step 3b: Apply Rephonic CSV data if provided (overrides Podchaser data)
   if (rephonicRows && rephonicRows.length > 0) {
     podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm);
   }
@@ -1661,8 +1800,8 @@ export async function generateReportFromMultipleCSVs(
   // Step 4: Calculate enhanced KPIs (now includes total EMV)
   const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
   
-  // Step 4a: Recalculate reach/social KPIs from enriched podcast entries (Rephonic data)
-  if (rephonicRows && rephonicRows.length > 0) {
+  // Step 4a: Recalculate reach/social KPIs from enriched podcast entries (Podchaser + Rephonic)
+  {
     const enrichedReach = podcastsWithEMV.reduce((sum, p) => {
       const monthly = p.monthly_listens || 0;
       return sum + (typeof monthly === 'number' ? monthly : parseFloat(String(monthly)) || 0);
@@ -1978,7 +2117,23 @@ export async function generateMultiSpeakerReport(
     const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
     let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
     
-    // Apply Rephonic data if provided
+    // Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
+    const speakerAppleUrls = podcastsWithEMV
+      .map(p => p.apple_podcast_link)
+      .filter((url): url is string => !!url && url.trim() !== '');
+    
+    if (speakerAppleUrls.length > 0) {
+      try {
+        const speakerPodchaserRows = await fetchPodchaserMetrics(speakerAppleUrls);
+        if (speakerPodchaserRows.length > 0) {
+          podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, speakerPodchaserRows, cpm);
+        }
+      } catch (err) {
+        console.warn(`[generateMultiSpeakerReport] Podchaser fetch failed for ${speaker.name}:`, err);
+      }
+    }
+    
+    // Apply Rephonic CSV data if provided (overrides Podchaser)
     if (rephonicRows && rephonicRows.length > 0) {
       podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm);
     }
@@ -1990,8 +2145,8 @@ export async function generateMultiSpeakerReport(
     // Calculate per-speaker KPIs
     const speakerKpis = calculateSpeakerKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
     
-    // Recalculate reach/social from enriched podcast entries
-    if (rephonicRows && rephonicRows.length > 0) {
+    // Recalculate reach/social from enriched podcast entries (Podchaser + Rephonic)
+    {
       const enrichedReach = podcastsWithEMV.reduce((sum, p) => sum + (typeof p.monthly_listens === 'number' ? p.monthly_listens : 0), 0);
       const enrichedSocial = podcastsWithEMV.reduce((sum, p) => sum + (typeof p.social_reach === 'number' ? p.social_reach : 0), 0);
       const enrichedListeners = podcastsWithEMV.reduce((sum, p) => sum + (typeof p.listeners_per_episode === 'number' ? p.listeners_per_episode : 0), 0);
