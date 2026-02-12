@@ -1,68 +1,68 @@
 
 
-# Plan: Expand Rephonic CSV Parser to Supply All Podcast Metadata
+# Fix EMV Metric Mapping from Rephonic CSV
 
-## Overview
-The Rephonic CSV now serves as the primary source for podcast metadata (listeners, reach, categories, etc.) that previously came from the Batch Results CSV. The fit scores come from live scoring via Airtable show notes, but all other podcast data needs to come from the Rephonic CSV.
+## Problem
 
-## What the Rephonic CSV Contains (from your example)
+The EMV (Earned Media Value) metric shows as 0 because of two compounding issues:
 
-| Column | Maps To | Currently Parsed? |
-|--------|---------|-------------------|
-| Name | podcast_name | Yes |
-| Listeners Per Episode | listeners_per_episode | Yes |
-| Monthly Listens | monthly_listens | **No** |
-| Social Reach | social_reach | **No** |
-| Categories | categories | **No** |
-| Apple Podcasts | apple_podcast_link | **No** |
-| Description | description (new) | **No** |
-| Publisher | publisher (new) | **No** |
-| Engagement | engagement (new) | **No** |
-| Episode Duration | episode_duration_minutes | Yes |
-| EMV | emv | Yes |
+1. **Episode duration not being parsed from Rephonic CSV**: The CSV header "Episode Duration" normalizes to `episode_duration`, but the parser only checks for `episode_duration_minutes` -- missing the match
+2. **EMV calculation requires both listeners AND duration**: The `calculateEMV()` function needs `listeners_per_episode` and `episode_duration_minutes` to compute EMV. Since duration isn't parsed, EMV can't be calculated even though listener data is present
+
+## How EMV Was Calculated Before (Working Flow)
+
+The original flow was:
+1. Merge batch + Airtable data (batch CSV had listener data)
+2. Scrape episode durations from episode links
+3. Calculate EMV = (listeners/1000) x CPM x (duration x 0.40)
+4. Rephonic CSV applied as supplemental override
+
+Now with the new Airtable-only flow:
+1. Airtable stubs have no episode links, so duration scraping returns nothing
+2. Rephonic CSV has the duration data but it's not being parsed due to the header mismatch
+3. Result: no duration data anywhere, so EMV can't be calculated
 
 ## Changes
 
-### 1. Expand `RephonicCSVRow` type (`src/types/csv.ts`)
-Add the missing fields to the interface:
-- `monthly_listens?: number`
-- `social_reach?: number`
-- `categories?: string`
-- `apple_podcast_link?: string`
-- `description?: string`
-- `publisher?: string`
+### 1. Fix Rephonic CSV Duration Parsing (`src/utils/csvParsers.ts`)
 
-### 2. Update `parseRephonicCSV()` (`src/utils/csvParsers.ts`)
-Map the new columns from the Rephonic CSV, handling header name variations:
-- `monthly_listens` from "Monthly Listens" / "monthly_listens"
-- `social_reach` from "Social Reach" / "social_reach"
-- `categories` from "Categories" / "categories"
-- `apple_podcast_link` from "Apple Podcasts" / "apple_podcasts" / "apple_podcast_link"
-- `description` from "Description"
-- `publisher` from "Publisher"
+Add `episode_duration` as a header variation in the parser (line ~352):
 
-### 3. Expand `applyRephonicEMVData()` (`src/utils/reportGenerator.ts`)
-Currently this function only applies `listeners_per_episode`, `episode_duration_minutes`, and `emv` from Rephonic data onto merged podcasts. Expand it to also apply:
-- `monthly_listens` (if not already set from batch)
-- `social_reach` (if not already set)
-- `categories` (if not already set)
-- `apple_podcast_link` (if not already set)
+```
+const durationRaw = row.episode_duration_minutes || row.episode_duration || 
+                    row.duration || row.avg_duration || row.episode_length || row.length || '';
+```
 
-This way, when reports are generated with live scores (no batch CSV), the Rephonic CSV fills in all the metadata that would have come from the batch CSV.
+### 2. Ensure Rephonic Data Overrides Even When Values Exist (`src/utils/reportGenerator.ts`)
 
-### 4. Update KPI calculations (`src/utils/reportGenerator.ts`)
-Ensure `calculateEnhancedKPIs()` properly sums `monthly_listens` and `social_reach` from the merged podcast entries (it already does this from the `PodcastReportEntry` objects, so this should work automatically once `applyRephonicEMVData` populates those fields).
+In `applyRephonicEMVData()`, the current logic skips applying Rephonic data if the podcast already has a value (e.g., `!podcast.listeners_per_episode`). For stub entries from Airtable, values default to 0 which is falsy, so this works. But the `episode_duration_minutes` check at line 1569 should also apply when the existing value is 0:
+
+```typescript
+// Apply duration if provided by Rephonic (override 0 values too)
+if (rephonicData.episode_duration_minutes && !podcast.episode_duration_minutes) {
+```
+This already works since 0 is falsy. No change needed here -- just the parser fix.
+
+### 3. Recalculate EMV After Rephonic Data Is Applied (`src/utils/reportGenerator.ts`)
+
+After applying Rephonic data (which now includes duration), ensure EMV is recalculated for podcasts that gained both listeners and duration from Rephonic. The existing code at lines 1604-1608 already does this:
+
+```typescript
+else if (updatedPodcast.listeners_per_episode && updatedPodcast.episode_duration_minutes) {
+  const emvData = calculateEMV(updatedPodcast, cpm);
+  if (emvData) Object.assign(updatedPodcast, emvData);
+}
+```
+
+This will now fire correctly once `episode_duration_minutes` is properly parsed from the CSV.
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/types/csv.ts` | Add `monthly_listens`, `social_reach`, `categories`, `apple_podcast_link`, `description`, `publisher` to `RephonicCSVRow` |
-| `src/utils/csvParsers.ts` | Parse new columns in `parseRephonicCSV()` |
-| `src/utils/reportGenerator.ts` | Apply new Rephonic fields in `applyRephonicEMVData()` |
+| `src/utils/csvParsers.ts` | Add `episode_duration` to the duration header variations (~1 line) |
 
-## What Stays the Same
-- All existing report logic, KPI calculations, and merge logic remain unchanged
-- The Batch CSV path still works identically if provided
-- EMV calculations from Rephonic data stay the same
-- The live scoring flow (from the previous plan) remains intact
+## Summary
+
+This is a one-line fix. The Rephonic CSV column "Episode Duration" normalizes to `episode_duration` but the parser only checks `episode_duration_minutes`. Adding `row.episode_duration` to the fallback chain will allow duration data to be parsed, which unblocks the EMV calculation formula that already exists downstream.
+
