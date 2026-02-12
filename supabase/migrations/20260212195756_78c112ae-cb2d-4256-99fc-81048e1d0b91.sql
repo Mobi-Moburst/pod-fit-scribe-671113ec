@@ -1,0 +1,1 @@
+UPDATE public.airtable_connections SET field_mapping = jsonb_set(field_mapping, '{link_to_episode}', '"Link to episode"') WHERE id = 'e9e63a1d-bce6-43f5-963e-12b5fc6da316';

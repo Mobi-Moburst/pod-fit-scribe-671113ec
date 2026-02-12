@@ -36,7 +36,7 @@ const DEFAULT_FIELD_MAPPING: Record<string, string> = {
   scheduled_date_time: 'Recording Date',
   date_booked: 'Date Booked',
   date_published: 'Date Published',
-  link_to_episode: 'Episode Link',
+  link_to_episode: 'Link to episode',
   show_notes: 'Show Notes',
   apple_podcast_link: 'Apple Podcast Link',
 };
