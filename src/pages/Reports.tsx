@@ -1777,7 +1777,7 @@ export default function Reports() {
             <CardHeader>
               <CardTitle>Generate Client Report</CardTitle>
               <CardDescription>
-                Upload CSVs to generate a comprehensive campaign report with KPIs and metrics
+                Generate a comprehensive campaign report with KPIs and metrics
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1981,7 +1981,7 @@ export default function Reports() {
                             </CollapsibleTrigger>
                             <CollapsibleContent className="px-4 pb-4 space-y-3">
                               <div>
-                                <Label className="text-xs">Rephonic CSV *</Label>
+                                <Label className="text-xs">Rephonic CSV</Label>
                                 <Input
                                   type="file"
                                   accept=".csv"
@@ -1993,7 +1993,8 @@ export default function Reports() {
                                     }));
                                   }}
                                 />
-                                {files.batchFile && <p className="text-xs text-muted-foreground mt-1">{files.batchFile.name}</p>}
+                {files.batchFile && <p className="text-xs text-muted-foreground mt-1">{files.batchFile.name}</p>}
+                                <p className="text-xs text-muted-foreground mt-1">Auto-fetched via Podchaser. Upload CSV only to override.</p>
                               </div>
                               
                               {/* Airtable data section */}
@@ -2082,13 +2083,14 @@ export default function Reports() {
                   <>
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <Label>Rephonic CSV *</Label>
-                        <Badge variant={batchFile ? "default" : "secondary"}>
-                          {batchFile ? "Uploaded" : "Required"}
+                        <Label>Rephonic CSV</Label>
+                        <Badge variant={batchFile ? "default" : "outline"}>
+                          {batchFile ? "Uploaded" : "Optional"}
                         </Badge>
                       </div>
                       <Input type="file" accept=".csv" onChange={(e) => setBatchFile(e.target.files?.[0] || null)} />
                       {batchFile && <p className="text-xs text-muted-foreground mt-1">{batchFile.name}</p>}
+                      <p className="text-xs text-muted-foreground mt-1">Podcast metrics are auto-fetched via Podchaser. Upload a CSV only to override.</p>
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-2">
