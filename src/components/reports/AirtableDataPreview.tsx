@@ -30,7 +30,7 @@ export const AirtableDataPreview = ({ data, className }: AirtableDataPreviewProp
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <ScrollArea className="max-h-[300px] mt-2 border rounded-md">
+        <div className="mt-2 border rounded-md overflow-auto max-h-[300px]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -63,7 +63,7 @@ export const AirtableDataPreview = ({ data, className }: AirtableDataPreviewProp
               ))}
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
