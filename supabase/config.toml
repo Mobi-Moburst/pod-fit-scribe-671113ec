@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.fetch-airtable-data]
 verify_jwt = false
+
+[functions.fetch-podchaser-metrics]
+verify_jwt = false
