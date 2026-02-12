@@ -1550,7 +1550,12 @@ function applyRephonicEMVData(
       }
     }
     
-    if (!rephonicData) return podcast;
+    if (!rephonicData) {
+      console.log('[applyRephonicEMVData] No match for:', podcast.show_title, '| Rephonic keys:', Array.from(rephonicMap.keys()).slice(0, 5));
+      return podcast;
+    }
+    
+    console.log('[applyRephonicEMVData] Matched:', podcast.show_title, '→', rephonicData.podcast_name, '| EMV:', rephonicData.emv, '| Listeners:', rephonicData.listeners_per_episode);
     
     // Apply Rephonic data
     const updatedPodcast = { ...podcast };
@@ -1652,7 +1657,9 @@ export async function generateReportFromMultipleCSVs(
   // Step 4: Calculate enhanced KPIs (now includes total EMV)
   const kpis = calculateEnhancedKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
   
-  // Step 4a: Recalculate reach/social KPIs from enriched podcast entries (Rephonic data)
+  // Step 4a: Recalculate ALL KPIs from enriched podcast entries (Rephonic data)
+  // This is critical because stub batch rows (score=0) are filtered out by calculateEnhancedKPIs,
+  // so reach/social/EMV data from Rephonic never makes it into the initial KPI calculation.
   if (rephonicRows && rephonicRows.length > 0) {
     const enrichedReach = podcastsWithEMV.reduce((sum, p) => {
       const monthly = p.monthly_listens || 0;
@@ -1666,9 +1673,13 @@ export async function generateReportFromMultipleCSVs(
       const listeners = p.listeners_per_episode || 0;
       return sum + (typeof listeners === 'number' ? listeners : parseFloat(String(listeners)) || 0);
     }, 0);
-    if (enrichedReach > kpis.total_reach) kpis.total_reach = enrichedReach;
-    if (enrichedSocial > kpis.total_social_reach) kpis.total_social_reach = enrichedSocial;
-    if (enrichedListeners > (kpis.total_listeners_per_episode || 0)) kpis.total_listeners_per_episode = enrichedListeners;
+    const enrichedEMV = podcastsWithEMV.reduce((sum, p) => sum + (p.true_emv || 0), 0);
+    
+    // Always use enriched values when they're non-zero (stubs produce 0 in initial calc)
+    if (enrichedReach > 0) kpis.total_reach = enrichedReach;
+    if (enrichedSocial > 0) kpis.total_social_reach = enrichedSocial;
+    if (enrichedListeners > 0) kpis.total_listeners_per_episode = enrichedListeners;
+    if (enrichedEMV > 0) kpis.total_emv = enrichedEMV;
   }
   
   // Step 4b: Calculate accurate categories from booked podcasts using AI + target audiences
@@ -1971,13 +1982,16 @@ export async function generateMultiSpeakerReport(
     // Calculate per-speaker KPIs
     const speakerKpis = calculateSpeakerKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
     
-    // Recalculate reach/social from enriched podcast entries
+    // Recalculate reach/social/EMV from enriched podcast entries
     if (rephonicRows && rephonicRows.length > 0) {
       const enrichedReach = podcastsWithEMV.reduce((sum, p) => sum + (typeof p.monthly_listens === 'number' ? p.monthly_listens : 0), 0);
       const enrichedSocial = podcastsWithEMV.reduce((sum, p) => sum + (typeof p.social_reach === 'number' ? p.social_reach : 0), 0);
       const enrichedListeners = podcastsWithEMV.reduce((sum, p) => sum + (typeof p.listeners_per_episode === 'number' ? p.listeners_per_episode : 0), 0);
-      if (enrichedReach > speakerKpis.total_reach) speakerKpis.total_reach = enrichedReach;
-      if (enrichedSocial > speakerKpis.total_social_reach) speakerKpis.total_social_reach = enrichedSocial;
+      const enrichedEMV = podcastsWithEMV.reduce((sum, p) => sum + (p.true_emv || 0), 0);
+      if (enrichedReach > 0) speakerKpis.total_reach = enrichedReach;
+      if (enrichedSocial > 0) speakerKpis.total_social_reach = enrichedSocial;
+      if (enrichedListeners > 0) (speakerKpis as any).total_listeners_per_episode = enrichedListeners;
+      if (enrichedEMV > 0) speakerKpis.total_emv = enrichedEMV;
     }
     
     speakerBreakdowns.push({
