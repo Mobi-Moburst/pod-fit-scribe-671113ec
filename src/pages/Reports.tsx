@@ -33,7 +33,7 @@ import { ContentGapRecommendations } from "@/components/reports/ContentGapRecomm
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2 } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2, Loader2 } from "lucide-react";
 import { AirtableSyncButton } from "@/components/airtable/AirtableSyncButton";
 import { AirtableConnectionDialog } from "@/components/airtable/AirtableConnectionDialog";
 import { AirtableCSVRow } from "@/hooks/use-airtable-connection";
@@ -112,6 +112,7 @@ export default function Reports() {
   const [isRegeneratingTalkingPoints, setIsRegeneratingTalkingPoints] = useState(false);
   const [isRegeneratingCategories, setIsRegeneratingCategories] = useState(false);
   const [scoringProgress, setScoringProgress] = useState<{ completed: number; total: number } | null>(null);
+  const [isScoringFit, setIsScoringFit] = useState(false);
   
   // Visibility state for report sections
   const [visibleSections, setVisibleSections] = useState({
@@ -487,29 +488,16 @@ export default function Reports() {
             continue;
           }
 
-          // Always live-score from Airtable show notes
-          const speakerCompany = companies.find(c => c.id === speaker.company_id);
-          const speakerClient: MinimalClient = {
-            id: speaker.id,
-            name: speaker.name,
-            company: speakerCompany?.name || '',
-            media_kit_url: speaker.media_kit_url || '',
-            target_audiences: speaker.target_audiences || [],
-            talking_points: speaker.talking_points || [],
-            avoid: speaker.avoid || [],
-            campaign_strategy: speaker.campaign_strategy || '',
-            title: speaker.title || '',
-            gender: speaker.gender as any,
-            guest_identity_tags: speaker.guest_identity_tags || [],
-            professional_credentials: speaker.professional_credentials || [],
-          };
-          setScoringProgress({ completed: 0, total: airtableRows.length });
-          const batchRows = await scoreAirtablePodcasts(
-            airtableRows,
-            speakerClient,
-            (completed, total) => setScoringProgress({ completed, total })
-          );
-          setScoringProgress(null);
+          // Create stub batch rows from Airtable (no scoring - can be done post-generation)
+          const batchRows = airtableRows
+            .filter((r: any) => String(Array.isArray(r.action) ? r.action[0] : r.action || '').toLowerCase().includes('podcast recording'))
+            .map((r: any) => ({
+              show_title: r.podcast_name || '',
+              verdict: 'Consider' as const,
+              overall_score: 0,
+              status: 'success',
+              rationale_short: 'Score not yet generated',
+            }));
           
           speakerDataInputs.push({
             speaker: speaker as Speaker,
@@ -614,20 +602,16 @@ export default function Reports() {
       // Parse Rephonic CSV (uploaded in the "Rephonic CSV" field, formerly "Batch Results CSV")
       const rephonicRows = batchFile ? parseRephonicCSV(await batchFile.text()) : undefined;
 
-      // Always live-score from Airtable show notes for fit scores
-      let batchRows: any[];
-      const isLiveScored = true;
-      toast({
-        title: "Scoring podcasts from show notes",
-        description: `Analyzing ${airtableRows.filter((r: any) => String(r.action || '').toLowerCase().includes('podcast recording')).length} podcasts...`,
-      });
-      setScoringProgress({ completed: 0, total: airtableRows.length });
-      batchRows = await scoreAirtablePodcasts(
-        airtableRows,
-        speakerAsClient,
-        (completed, total) => setScoringProgress({ completed, total })
-      );
-      setScoringProgress(null);
+      // Create stub batch rows from Airtable data (no scoring - can be done post-generation)
+      const batchRows: any[] = airtableRows
+        .filter((r: any) => String(Array.isArray(r.action) ? r.action[0] : r.action || '').toLowerCase().includes('podcast recording'))
+        .map((r: any) => ({
+          show_title: r.podcast_name || '',
+          verdict: 'Consider' as const,
+          overall_score: 0,
+          status: 'success',
+          rationale_short: 'Score not yet generated',
+        }));
 
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
@@ -657,10 +641,8 @@ export default function Reports() {
         !!contentGapFile // contentGapCsvProvided
       );
 
-      // Flag live-scored reports
-      if (isLiveScored) {
-        report.contains_live_scores = true;
-      }
+      // Flag as needing scoring
+      report.contains_live_scores = true;
       
       setReportData(report);
       toast({
@@ -676,6 +658,82 @@ export default function Reports() {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Post-generation fit score calculation
+  
+  const handleGenerateFitScores = async () => {
+    if (!reportData || !speakerAsClient) return;
+    
+    setIsScoringFit(true);
+    setScoringProgress({ completed: 0, total: reportData.podcasts.length });
+    
+    try {
+      // Build AirtableCSVRow-like objects from existing podcast entries
+      const airtableRows: AirtableCSVRow[] = reportData.podcasts.map(p => ({
+        podcast_name: p.show_title,
+        action: 'podcast recording',
+        scheduled_date_time: p.scheduled_date_time || '',
+        show_notes: p.show_notes || '',
+        date_booked: p.date_booked || '',
+        date_published: p.date_published || '',
+        link_to_episode: p.episode_link || '',
+        apple_podcast_link: p.apple_podcast_link || '',
+      }));
+      
+      const scoredRows = await scoreAirtablePodcasts(
+        airtableRows,
+        speakerAsClient,
+        (completed, total) => setScoringProgress({ completed, total })
+      );
+      
+      // Merge scores back into podcast entries
+      const updatedPodcasts = reportData.podcasts.map(podcast => {
+        const scored = scoredRows.find(s => 
+          s.show_title?.toLowerCase() === podcast.show_title?.toLowerCase()
+        );
+        if (scored && scored.overall_score > 0) {
+          return {
+            ...podcast,
+            overall_score: scored.overall_score,
+            verdict: scored.verdict,
+            rationale_short: scored.rationale_short || podcast.rationale_short,
+          };
+        }
+        return podcast;
+      });
+      
+      // Recalculate average score
+      const scoredPodcasts = updatedPodcasts.filter(p => p.overall_score > 0);
+      const avgScore = scoredPodcasts.length > 0
+        ? scoredPodcasts.reduce((sum, p) => sum + p.overall_score, 0) / scoredPodcasts.length
+        : 0;
+      
+      setReportData({
+        ...reportData,
+        podcasts: updatedPodcasts,
+        contains_live_scores: true,
+        kpis: {
+          ...reportData.kpis,
+          avg_score: avgScore,
+        },
+      });
+      
+      toast({
+        title: "Fit scores generated",
+        description: `Scored ${scoredRows.filter(r => r.overall_score > 0).length} of ${scoredRows.length} podcasts.`,
+      });
+    } catch (error) {
+      console.error("Error generating fit scores:", error);
+      toast({
+        title: "Error generating fit scores",
+        description: error instanceof Error ? error.message : "Failed to score podcasts",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScoringFit(false);
+      setScoringProgress(null);
     }
   };
 
@@ -2345,13 +2403,38 @@ export default function Reports() {
                       />
                     )}
                     {visibleSections.averageScore && (
-                      <KPICard
-                        title="Average Score"
-                        value={reportData.kpis.avg_score.toFixed(1)}
-                        subtitle="Overall fit rating"
-                        icon={TrendingUp}
-                        onHide={() => toggleSection('averageScore')}
-                      />
+                      reportData.kpis.avg_score === 0 && reportData.contains_live_scores ? (
+                        <div className="relative rounded-xl border border-border bg-card p-4 flex flex-col items-center justify-center gap-2 min-h-[120px]">
+                          <p className="text-sm font-medium text-foreground">Fit Scores</p>
+                          <Button
+                            size="sm"
+                            onClick={handleGenerateFitScores}
+                            disabled={isScoringFit}
+                            className="gap-1"
+                          >
+                            {isScoringFit ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                {scoringProgress ? `${scoringProgress.completed}/${scoringProgress.total}` : 'Scoring...'}
+                              </>
+                            ) : (
+                              <>
+                                <TrendingUp className="h-3 w-3" />
+                                Generate Scores
+                              </>
+                            )}
+                          </Button>
+                          <p className="text-xs text-muted-foreground">Score from show notes</p>
+                        </div>
+                      ) : (
+                        <KPICard
+                          title="Average Score"
+                          value={reportData.kpis.avg_score.toFixed(1)}
+                          subtitle="Overall fit rating"
+                          icon={TrendingUp}
+                          onHide={() => toggleSection('averageScore')}
+                        />
+                      )
                     )}
                   </div>
                 </div>
