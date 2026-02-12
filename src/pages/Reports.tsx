@@ -487,36 +487,29 @@ export default function Reports() {
             continue;
           }
 
-          // Batch rows: from CSV or live-scored
-          let batchRows: any[];
-          if (files?.batchFile) {
-            const batchText = await files.batchFile.text();
-            batchRows = parseBatchCSV(batchText);
-          } else {
-            // Build a MinimalClient for this speaker to use in scoring
-            const speakerCompany = companies.find(c => c.id === speaker.company_id);
-            const speakerClient: MinimalClient = {
-              id: speaker.id,
-              name: speaker.name,
-              company: speakerCompany?.name || '',
-              media_kit_url: speaker.media_kit_url || '',
-              target_audiences: speaker.target_audiences || [],
-              talking_points: speaker.talking_points || [],
-              avoid: speaker.avoid || [],
-              campaign_strategy: speaker.campaign_strategy || '',
-              title: speaker.title || '',
-              gender: speaker.gender as any,
-              guest_identity_tags: speaker.guest_identity_tags || [],
-              professional_credentials: speaker.professional_credentials || [],
-            };
-            setScoringProgress({ completed: 0, total: airtableRows.length });
-            batchRows = await scoreAirtablePodcasts(
-              airtableRows,
-              speakerClient,
-              (completed, total) => setScoringProgress({ completed, total })
-            );
-            setScoringProgress(null);
-          }
+          // Always live-score from Airtable show notes
+          const speakerCompany = companies.find(c => c.id === speaker.company_id);
+          const speakerClient: MinimalClient = {
+            id: speaker.id,
+            name: speaker.name,
+            company: speakerCompany?.name || '',
+            media_kit_url: speaker.media_kit_url || '',
+            target_audiences: speaker.target_audiences || [],
+            talking_points: speaker.talking_points || [],
+            avoid: speaker.avoid || [],
+            campaign_strategy: speaker.campaign_strategy || '',
+            title: speaker.title || '',
+            gender: speaker.gender as any,
+            guest_identity_tags: speaker.guest_identity_tags || [],
+            professional_credentials: speaker.professional_credentials || [],
+          };
+          setScoringProgress({ completed: 0, total: airtableRows.length });
+          const batchRows = await scoreAirtablePodcasts(
+            airtableRows,
+            speakerClient,
+            (completed, total) => setScoringProgress({ completed, total })
+          );
+          setScoringProgress(null);
           
           speakerDataInputs.push({
             speaker: speaker as Speaker,
@@ -529,12 +522,17 @@ export default function Reports() {
         const sovText = sovFile ? await sovFile.text() : null;
         const geoText = geoFile ? await geoFile.text() : null;
         const contentGapText = contentGapFile ? await contentGapFile.text() : null;
-        const rephonicEmvText = rephonicEmvFile ? await rephonicEmvFile.text() : null;
+        
+        // Parse Rephonic CSV from per-speaker batchFile uploads
+        let rephonicRows: ReturnType<typeof parseRephonicCSV> | undefined;
+        const firstSpeakerFiles = speakerFiles[selectedSpeakerIds[0]];
+        if (firstSpeakerFiles?.batchFile) {
+          rephonicRows = parseRephonicCSV(await firstSpeakerFiles.batchFile.text());
+        }
         
         const sovRows = sovText ? parseSOVCSV(sovText) : null;
         const geoRows = geoText ? parseGEOCSV(geoText) : [];
         const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
-        const rephonicRows = rephonicEmvText ? parseRephonicCSV(rephonicEmvText) : undefined;
         
         // Prepare manual SOV data
         const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -585,18 +583,10 @@ export default function Reports() {
       });
       return;
     }
-    if (!batchFile && !airtableSyncedData?.length && !airtableFile) {
-      toast({
-        title: "Missing data",
-        description: "Upload a Rephonic CSV or sync Airtable data to generate a report.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!airtableFile && !airtableSyncedData) {
+    if (!airtableSyncedData?.length && !airtableFile) {
       toast({
         title: "Missing Airtable data",
-        description: "Sync from Airtable or upload a CSV file.",
+        description: "Sync from Airtable or upload an Airtable CSV to generate a report.",
         variant: "destructive",
       });
       return;
@@ -609,7 +599,6 @@ export default function Reports() {
       const sovText = sovFile ? await sovFile.text() : null;
       const geoText = geoFile ? await geoFile.text() : null;
       const contentGapText = contentGapFile ? await contentGapFile.text() : null;
-      const rephonicEmvText = rephonicEmvFile ? await rephonicEmvFile.text() : null;
       
       // Parse Airtable data - use synced data first, fall back to file
       let airtableRows: any[];
@@ -622,33 +611,27 @@ export default function Reports() {
         airtableRows = [];
       }
 
-      // Determine batch rows: from CSV or live-scored from Airtable show notes
-      let batchRows: any[];
-      let isLiveScored = false;
+      // Parse Rephonic CSV (uploaded in the "Rephonic CSV" field, formerly "Batch Results CSV")
+      const rephonicRows = batchFile ? parseRephonicCSV(await batchFile.text()) : undefined;
 
-      if (batchFile) {
-        const batchText = await batchFile.text();
-        batchRows = parseBatchCSV(batchText);
-      } else {
-        // No batch CSV - score from Airtable show notes
-        isLiveScored = true;
-        toast({
-          title: "Scoring podcasts from show notes",
-          description: `Analyzing ${airtableRows.filter((r: any) => r.action?.toLowerCase().includes('podcast recording')).length} podcasts...`,
-        });
-        setScoringProgress({ completed: 0, total: airtableRows.length });
-        batchRows = await scoreAirtablePodcasts(
-          airtableRows,
-          speakerAsClient,
-          (completed, total) => setScoringProgress({ completed, total })
-        );
-        setScoringProgress(null);
-      }
+      // Always live-score from Airtable show notes for fit scores
+      let batchRows: any[];
+      const isLiveScored = true;
+      toast({
+        title: "Scoring podcasts from show notes",
+        description: `Analyzing ${airtableRows.filter((r: any) => r.action?.toLowerCase().includes('podcast recording')).length} podcasts...`,
+      });
+      setScoringProgress({ completed: 0, total: airtableRows.length });
+      batchRows = await scoreAirtablePodcasts(
+        airtableRows,
+        speakerAsClient,
+        (completed, total) => setScoringProgress({ completed, total })
+      );
+      setScoringProgress(null);
 
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
       const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
-      const rephonicRows = rephonicEmvText ? parseRephonicCSV(rephonicEmvText) : undefined;
       
       // Prepare manual SOV data if in manual mode
       const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -2188,18 +2171,7 @@ export default function Reports() {
                     <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
                   </div>
                   
-                  {/* Rephonic EMV */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Label className="text-sm">Rephonic EMV CSV</Label>
-                      <Badge variant={rephonicEmvFile ? "default" : "outline"}>{rephonicEmvFile ? "Uploaded" : "Optional"}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Upload a Rephonic export with podcast EMV data. For multi-speaker reports, all EMV values will be combined.
-                    </p>
-                    <Input type="file" accept=".csv" onChange={(e) => setRephonicEmvFile(e.target.files?.[0] || null)} />
-                    {rephonicEmvFile && <p className="text-xs text-muted-foreground mt-1">{rephonicEmvFile.name}</p>}
-                  </div>
+                  {/* Rephonic EMV upload removed - now handled by the main Rephonic CSV upload */}
                 </div>
               </div>
 
@@ -2213,7 +2185,7 @@ export default function Reports() {
                         const hasAirtable = !!syncedData || !!speakerFiles[id]?.airtableFile;
                         return !hasAirtable;
                       })
-                    : !selectedSpeakerId || (!batchFile && !airtableSyncedData?.length && !airtableFile)
+                    : !selectedSpeakerId || (!airtableSyncedData?.length && !airtableFile)
                   )
                 }
                 className="w-full"
