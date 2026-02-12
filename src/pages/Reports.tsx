@@ -44,6 +44,7 @@ import ClientReportHighlights from "@/components/client-report/ClientReportHighl
 import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOverviewEditDialog";
 import { NextQuarterEditDialog } from "@/components/reports/NextQuarterEditDialog";
 import { UpdateCSVDialog } from "@/components/reports/UpdateCSVDialog";
+import { AirtableDataPreview } from "@/components/reports/AirtableDataPreview";
 
 export default function Reports() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -2040,6 +2041,9 @@ export default function Reports() {
                                     </Button>
                                   )}
                                 </div>
+                                {syncedData && (
+                                  <AirtableDataPreview data={syncedData} />
+                                )}
                                 
                                 {/* Fallback to CSV upload */}
                                 {!syncedData && (
@@ -2128,6 +2132,9 @@ export default function Reports() {
                           </Button>
                         )}
                       </div>
+                      {airtableSyncedData && (
+                        <AirtableDataPreview data={airtableSyncedData} />
+                      )}
                       
                       {/* CSV fallback */}
                       {!airtableSyncedData && (
