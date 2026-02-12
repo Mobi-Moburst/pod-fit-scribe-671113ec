@@ -1,126 +1,68 @@
 
 
-# Plan: Generate Fit Scores at Report Time from Airtable Show Notes
+# Plan: Expand Rephonic CSV Parser to Supply All Podcast Metadata
 
 ## Overview
-Replace the dependency on the Batch Results CSV for podcast fit scores by generating them on-the-fly during report creation. For each podcast in the Airtable data (within the selected date range), the system will use the "Show Notes" column to scrape/fetch the show notes content and then run it through the existing `analyze` edge function to produce a fit score and verdict.
+The Rephonic CSV now serves as the primary source for podcast metadata (listeners, reach, categories, etc.) that previously came from the Batch Results CSV. The fit scores come from live scoring via Airtable show notes, but all other podcast data needs to come from the Rephonic CSV.
 
-## Current Flow
-1. User uploads a **Batch Results CSV** containing pre-computed `overall_score`, `verdict`, `listeners_per_episode`, etc.
-2. User syncs or uploads **Airtable data** containing booking/publishing info
-3. The two are merged by podcast title in `mergePodcastData()`
-4. KPIs (avg score, fit/consider/not counts) are calculated from the batch CSV rows
+## What the Rephonic CSV Contains (from your example)
 
-## New Flow
-1. User syncs **Airtable data** (which includes a `show_notes` column -- this could be a URL or text)
-2. At report generation time, for each Airtable podcast with a "podcast recording" action:
-   - If `show_notes` looks like a URL, scrape it via the existing `scrape` edge function to get text content
-   - Pass the show notes text + client profile to the `analyze` edge function (same logic used in the Evaluate/Batch pages)
-   - Receive back `overall_score`, `verdict`, rubric breakdown, etc.
-3. These scores replace what would have come from the batch CSV
-4. The Batch CSV becomes **optional** -- if provided, its scores take precedence; if not, live-scored data is used
+| Column | Maps To | Currently Parsed? |
+|--------|---------|-------------------|
+| Name | podcast_name | Yes |
+| Listeners Per Episode | listeners_per_episode | Yes |
+| Monthly Listens | monthly_listens | **No** |
+| Social Reach | social_reach | **No** |
+| Categories | categories | **No** |
+| Apple Podcasts | apple_podcast_link | **No** |
+| Description | description (new) | **No** |
+| Publisher | publisher (new) | **No** |
+| Engagement | engagement (new) | **No** |
+| Episode Duration | episode_duration_minutes | Yes |
+| EMV | emv | Yes |
 
-## Technical Changes
+## Changes
 
-### 1. New Utility: `scoreAirtablePodcasts()` in `src/utils/reportGenerator.ts`
+### 1. Expand `RephonicCSVRow` type (`src/types/csv.ts`)
+Add the missing fields to the interface:
+- `monthly_listens?: number`
+- `social_reach?: number`
+- `categories?: string`
+- `apple_podcast_link?: string`
+- `description?: string`
+- `publisher?: string`
 
-```text
-async function scoreAirtablePodcasts(
-  airtableRows: AirtableCSVRow[],
-  client: MinimalClient,
-  onProgress?: (completed: number, total: number) => void
-): Promise<BatchCSVRow[]>
+### 2. Update `parseRephonicCSV()` (`src/utils/csvParsers.ts`)
+Map the new columns from the Rephonic CSV, handling header name variations:
+- `monthly_listens` from "Monthly Listens" / "monthly_listens"
+- `social_reach` from "Social Reach" / "social_reach"
+- `categories` from "Categories" / "categories"
+- `apple_podcast_link` from "Apple Podcasts" / "apple_podcasts" / "apple_podcast_link"
+- `description` from "Description"
+- `publisher` from "Publisher"
 
-For each row with "podcast recording" action:
-  1. Get show_notes content:
-     - If show_notes starts with "http", call scrape edge function
-     - Otherwise use the text directly
-  2. Call analyze edge function with { client, show_notes }
-  3. Map result to BatchCSVRow format:
-     - show_title: row.podcast_name
-     - verdict: mapped from analyze result (recommend->Fit, consider->Consider, not_recommended->Not)
-     - overall_score: from analyze result
-     - listeners_per_episode: undefined (not available from show notes)
-     - status: 'success' or 'failed'
-  4. Process in batches of 3-5 to avoid overwhelming the API
-  5. Return array of BatchCSVRow
-```
+### 3. Expand `applyRephonicEMVData()` (`src/utils/reportGenerator.ts`)
+Currently this function only applies `listeners_per_episode`, `episode_duration_minutes`, and `emv` from Rephonic data onto merged podcasts. Expand it to also apply:
+- `monthly_listens` (if not already set from batch)
+- `social_reach` (if not already set)
+- `categories` (if not already set)
+- `apple_podcast_link` (if not already set)
 
-### 2. Update `src/pages/Reports.tsx` - Report Generation Flow
+This way, when reports are generated with live scores (no batch CSV), the Rephonic CSV fills in all the metadata that would have come from the batch CSV.
 
-- Remove the hard requirement for `batchFile`
-- When `batchFile` is not provided but Airtable data exists:
-  - Call `scoreAirtablePodcasts()` to generate scores on the fly
-  - Show a progress indicator ("Scoring podcast 3 of 12...")
-  - Pass the generated batch rows into `generateReportFromMultipleCSVs()`
-- When `batchFile` IS provided, use existing flow (batch CSV scores take priority)
-- Add a progress state variable for scoring feedback
-
-### 3. Update Validation Logic in `Reports.tsx` (around line 559)
-
-```text
-Current:
-  if (!batchFile) -> error "Batch Results CSV is required"
-
-New:
-  if (!batchFile && !airtableSyncedData?.length) -> error "Upload batch CSV or sync Airtable data"
-  if (!batchFile && airtableSyncedData?.length) -> proceed with live scoring
-```
-
-### 4. Add `contains_live_scores` Flag to `ReportData` in `src/types/reports.ts`
-
-Add an optional field to indicate scores were generated at report time rather than from a pre-computed batch:
-- `contains_live_scores?: boolean` -- allows UI to optionally show an indicator
-
-### 5. Airtable Show Notes Handling
-
-The `show_notes` field from Airtable may contain:
-- A URL to the podcast's show notes page -- needs scraping via the `scrape` edge function first
-- Raw text content -- can be passed directly to `analyze`
-- Empty/missing -- skip scoring for that podcast, assign default values
-
-The detection is simple: if the value starts with `http://` or `https://`, treat it as a URL and scrape it.
-
-## Processing Flow
-
-```text
-User clicks "Generate Report" (no batch CSV uploaded)
-  |
-  v
-Filter Airtable rows -> only "podcast recording" actions
-  |
-  v
-For each podcast (batches of 3):
-  |-> If show_notes is URL -> call scrape() -> get text
-  |-> If show_notes is text -> use directly
-  |-> If show_notes empty -> skip (assign score 0, verdict "Not")
-  |
-  v
-Call analyze() with { client profile, show_notes text }
-  |
-  v
-Collect results as BatchCSVRow[]
-  |
-  v
-Pass to generateReportFromMultipleCSVs() (existing flow)
-  |
-  v
-Report generated with live scores
-```
+### 4. Update KPI calculations (`src/utils/reportGenerator.ts`)
+Ensure `calculateEnhancedKPIs()` properly sums `monthly_listens` and `social_reach` from the merged podcast entries (it already does this from the `PodcastReportEntry` objects, so this should work automatically once `applyRephonicEMVData` populates those fields).
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/utils/reportGenerator.ts` | Add `scoreAirtablePodcasts()` function |
-| `src/pages/Reports.tsx` | Relax batch file validation, call scoring when no batch CSV, add progress state |
-| `src/types/reports.ts` | Add `contains_live_scores?: boolean` to `ReportData` |
+| `src/types/csv.ts` | Add `monthly_listens`, `social_reach`, `categories`, `apple_podcast_link`, `description`, `publisher` to `RephonicCSVRow` |
+| `src/utils/csvParsers.ts` | Parse new columns in `parseRephonicCSV()` |
+| `src/utils/reportGenerator.ts` | Apply new Rephonic fields in `applyRephonicEMVData()` |
 
-## Edge Cases and Considerations
-
-- **Rate limiting**: Process podcasts in batches of 3 with small delays between batches to avoid overwhelming the analyze edge function
-- **Timeout**: Each analyze call may take 2-5 seconds; for 15 podcasts this could be 30-75 seconds total. The progress indicator keeps the user informed.
-- **Failed scrapes**: If a show notes URL fails to scrape, the podcast gets a default score of 0 with verdict "Not" and a note explaining the failure
-- **No show notes**: Podcasts without show notes content skip scoring
-- **Listeners/reach data**: Not available from show notes alone -- these fields will be empty. If a Rephonic CSV is uploaded, those values supplement the data as they do today.
-- **Batch CSV override**: If both a batch CSV and Airtable data are provided, the batch CSV scores take priority (existing behavior preserved)
+## What Stays the Same
+- All existing report logic, KPI calculations, and merge logic remain unchanged
+- The Batch CSV path still works identically if provided
+- EMV calculations from Rephonic data stay the same
+- The live scoring flow (from the previous plan) remains intact
