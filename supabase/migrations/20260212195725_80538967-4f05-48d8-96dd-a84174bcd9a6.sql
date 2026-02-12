@@ -1,0 +1,1 @@
+ALTER TABLE public.airtable_connections ALTER COLUMN field_mapping SET DEFAULT '{"action": "Action", "show_notes": "Show Notes", "date_booked": "Date Booked", "podcast_name": "Podcast Name", "date_published": "Date Published", "link_to_episode": "Link to episode", "apple_podcast_link": "Apple Podcast Link", "scheduled_date_time": "Recording Date"}'::jsonb;
