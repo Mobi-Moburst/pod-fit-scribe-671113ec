@@ -349,8 +349,8 @@ export function parseRephonicCSV(csvText: string): RephonicCSVRow[] {
     const listeners = listenersRaw ? parseInt(String(listenersRaw).replace(/[^0-9]/g, '')) || 0 : 0;
     
     // Try different header variations for duration
-    const durationRaw = row.episode_duration_minutes || row.duration || row.avg_duration || 
-                        row.episode_length || row.length || '';
+    const durationRaw = row.episode_duration_minutes || row.episode_duration || 
+                        row.duration || row.avg_duration || row.episode_length || row.length || '';
     const duration = durationRaw ? parseFloat(String(durationRaw).replace(/[^0-9.]/g, '')) || 0 : 0;
     
     // Monthly listens
