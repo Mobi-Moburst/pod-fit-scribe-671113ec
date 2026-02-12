@@ -353,6 +353,24 @@ export function parseRephonicCSV(csvText: string): RephonicCSVRow[] {
                         row.episode_length || row.length || '';
     const duration = durationRaw ? parseFloat(String(durationRaw).replace(/[^0-9.]/g, '')) || 0 : 0;
     
+    // Monthly listens
+    const monthlyListensRaw = row.monthly_listens || row.monthly_listeners || '';
+    const monthlyListens = monthlyListensRaw ? parseInt(String(monthlyListensRaw).replace(/[^0-9]/g, '')) || 0 : 0;
+    
+    // Social reach
+    const socialReachRaw = row.social_reach || row.social_followers || '';
+    const socialReach = socialReachRaw ? parseInt(String(socialReachRaw).replace(/[^0-9]/g, '')) || 0 : 0;
+    
+    // Categories
+    const categories = row.categories || '';
+    
+    // Apple Podcasts link
+    const applePodcastLink = row.apple_podcasts || row.apple_podcast_link || row.apple_link || '';
+    
+    // Description & Publisher
+    const description = row.description || '';
+    const publisher = row.publisher || '';
+    
     // Episode link
     const episodeLink = row.episode_link || row.episode_url || row.url || row.link || '';
     
@@ -363,6 +381,12 @@ export function parseRephonicCSV(csvText: string): RephonicCSVRow[] {
     return {
       podcast_name: podcastName,
       listeners_per_episode: listeners > 0 ? listeners : undefined,
+      monthly_listens: monthlyListens > 0 ? monthlyListens : undefined,
+      social_reach: socialReach > 0 ? socialReach : undefined,
+      categories: categories || undefined,
+      apple_podcast_link: applePodcastLink || undefined,
+      description: description || undefined,
+      publisher: publisher || undefined,
       episode_duration_minutes: duration > 0 ? duration : undefined,
       episode_link: episodeLink || undefined,
       emv: emv > 0 ? emv : undefined,

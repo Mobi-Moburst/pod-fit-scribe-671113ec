@@ -1548,6 +1548,26 @@ function applyRephonicEMVData(
       updatedPodcast.episode_duration_minutes = rephonicData.episode_duration_minutes;
     }
     
+    // Apply monthly listens if provided by Rephonic
+    if (rephonicData.monthly_listens && !podcast.monthly_listens) {
+      updatedPodcast.monthly_listens = rephonicData.monthly_listens;
+    }
+    
+    // Apply social reach if provided by Rephonic
+    if (rephonicData.social_reach && !podcast.social_reach) {
+      updatedPodcast.social_reach = rephonicData.social_reach;
+    }
+    
+    // Apply categories if provided by Rephonic
+    if (rephonicData.categories && !podcast.categories) {
+      updatedPodcast.categories = rephonicData.categories;
+    }
+    
+    // Apply Apple Podcasts link if provided by Rephonic
+    if (rephonicData.apple_podcast_link && !podcast.apple_podcast_link) {
+      updatedPodcast.apple_podcast_link = rephonicData.apple_podcast_link;
+    }
+    
     // If Rephonic provides pre-calculated EMV, use it directly
     if (rephonicData.emv && rephonicData.emv > 0) {
       updatedPodcast.true_emv = rephonicData.emv;
