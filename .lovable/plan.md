@@ -1,37 +1,23 @@
 
 
-# Add Synced Airtable Data Preview Table
+# Fix Episode Link Column Mapping
 
-## Overview
-After syncing Airtable data, add a collapsible preview table that shows the actual records returned. This will help you verify that fields like `podcast_name`, `action`, `date_published`, `date_booked`, etc. are mapping correctly before generating a report.
+## Problem
+The Airtable column for episode links is named **"Link to episode"** in the actual Airtable base, but the field mapping stored in the database is set to **"Episode Link"**. Since Airtable field names are case-sensitive, the edge function finds no match and returns empty values.
 
-## What You'll See
-- After a successful Airtable sync, a small expandable section appears below the "Synced (8)" badge
-- Clicking it reveals a scrollable table showing all synced records with their key fields
-- The table will display: Podcast Name, Action, Recording Date, Date Booked, Date Published, Episode Link, and Show Notes (truncated)
-- This works for both single-speaker and multi-speaker report flows
+## Fix
+Update the field mapping for Dr. Berry's connection (SmartLab Learning Activity) in the `airtable_connections` table so that `link_to_episode` points to the correct column name: `"Link to episode"`.
+
+Additionally, update the **default field mapping** in the database schema and the connection dialog so that new connections default to `"Link to episode"` instead of `"Episode Link"`, preventing this issue for future setups.
 
 ## Technical Details
 
-### Changes to `src/pages/Reports.tsx`
+### 1. Update existing connection (database)
+Run an update on the `airtable_connections` table for connection `e9e63a1d-bce6-43f5-963e-12b5fc6da316` to change the `link_to_episode` value in `field_mapping` from `"Episode Link"` to `"Link to episode"`.
 
-1. **Add an "eyeball" toggle** next to the Synced badge (or make the badge itself clickable) that expands/collapses a preview panel.
+### 2. Update default field mapping
+In the database column default for `field_mapping` and in the `AirtableConnectionDialog` component, change the default value for `link_to_episode` from `"Episode Link"` to `"Link to episode"` so new connections use the correct column name out of the box.
 
-2. **Add state** to track whether the preview is expanded:
-   - `airtablePreviewOpen` (boolean) for single-speaker flow
-   - `speakerAirtablePreviewOpen` (Record of speakerId to boolean) for multi-speaker flow
-
-3. **Render a preview table** when expanded, using the existing synced data arrays (`airtableSyncedData` / `speakerSyncedData[speakerId]`). The table will show columns:
-   - Podcast Name
-   - Action
-   - Recording Date
-   - Date Booked
-   - Date Published
-   - Episode Link (truncated/linked)
-   - Show Notes (first ~50 chars)
-
-4. **Wrap in a Collapsible** component (already available via Radix) or a simple conditional render with a max-height scroll container so it doesn't overwhelm the form layout.
-
-### No backend changes needed
-The data is already fully available in the component state after sync. This is purely a UI addition to surface what's already there.
+### 3. Verify
+Re-sync Dr. Berry's data and confirm the Episode Link column now populates in the preview table.
 
