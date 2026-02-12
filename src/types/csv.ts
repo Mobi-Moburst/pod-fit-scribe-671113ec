@@ -69,6 +69,12 @@ export interface ContentGapCSVRow {
 export interface RephonicCSVRow {
   podcast_name: string;
   listeners_per_episode?: number;
+  monthly_listens?: number;
+  social_reach?: number;
+  categories?: string;
+  apple_podcast_link?: string;
+  description?: string;
+  publisher?: string;
   episode_duration_minutes?: number;
   episode_link?: string;
   emv?: number; // Pre-calculated EMV if provided
