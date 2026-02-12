@@ -588,7 +588,7 @@ export default function Reports() {
     if (!batchFile && !airtableSyncedData?.length && !airtableFile) {
       toast({
         title: "Missing data",
-        description: "Upload a Batch Results CSV or sync Airtable data to generate a report.",
+        description: "Upload a Rephonic CSV or sync Airtable data to generate a report.",
         variant: "destructive",
       });
       return;
@@ -1939,7 +1939,7 @@ export default function Reports() {
                             </CollapsibleTrigger>
                             <CollapsibleContent className="px-4 pb-4 space-y-3">
                               <div>
-                                <Label className="text-xs">Batch Results CSV *</Label>
+                                <Label className="text-xs">Rephonic CSV *</Label>
                                 <Input
                                   type="file"
                                   accept=".csv"
@@ -2037,7 +2037,7 @@ export default function Reports() {
                   <>
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <Label>Batch Results CSV *</Label>
+                        <Label>Rephonic CSV *</Label>
                         <Badge variant={batchFile ? "default" : "secondary"}>
                           {batchFile ? "Uploaded" : "Required"}
                         </Badge>
