@@ -15,7 +15,7 @@ import { CompanySpeakerSelector } from "@/components/CompanySpeakerSelector";
 import type { Company, Speaker, MinimalClient, Competitor } from "@/types/clients";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
-import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints, generatePodcastCategories } from "@/utils/reportGenerator";
+import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints, generatePodcastCategories, scoreAirtablePodcasts } from "@/utils/reportGenerator";
 import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
@@ -111,6 +111,7 @@ export default function Reports() {
   const [reportToUpdate, setReportToUpdate] = useState<any>(null);
   const [isRegeneratingTalkingPoints, setIsRegeneratingTalkingPoints] = useState(false);
   const [isRegeneratingCategories, setIsRegeneratingCategories] = useState(false);
+  const [scoringProgress, setScoringProgress] = useState<{ completed: number; total: number } | null>(null);
   
   // Visibility state for report sections
   const [visibleSections, setVisibleSections] = useState({
@@ -436,17 +437,17 @@ export default function Reports() {
         return;
       }
       
-      // Validate all speakers have batch file and either synced data or airtable file
+      // Validate all speakers have airtable data (batch file is now optional)
       for (const speakerId of selectedSpeakerIds) {
         const files = speakerFiles[speakerId];
         const syncedData = speakerSyncedData[speakerId];
         const hasAirtableData = !!syncedData || !!files?.airtableFile;
         
-        if (!files?.batchFile || !hasAirtableData) {
+        if (!hasAirtableData) {
           const speaker = speakers.find(s => s.id === speakerId);
           toast({
             title: "Missing data",
-            description: `${speaker?.name || 'Speaker'} is missing required Batch CSV or Airtable data.`,
+            description: `${speaker?.name || 'Speaker'} is missing Airtable data. Sync or upload a CSV.`,
             variant: "destructive",
           });
           return;
@@ -473,10 +474,7 @@ export default function Reports() {
           const files = speakerFiles[speakerId];
           const syncedData = speakerSyncedData[speakerId];
           
-          if (!speaker || !files?.batchFile) continue;
-          
-          const batchText = await files.batchFile.text();
-          const batchRows = parseBatchCSV(batchText);
+          if (!speaker) continue;
           
           // Use synced data if available, otherwise parse CSV
           let airtableRows: any[];
@@ -486,7 +484,38 @@ export default function Reports() {
             const airtableText = await files.airtableFile.text();
             airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
           } else {
-            continue; // Skip if no airtable data (validation should catch this)
+            continue;
+          }
+
+          // Batch rows: from CSV or live-scored
+          let batchRows: any[];
+          if (files?.batchFile) {
+            const batchText = await files.batchFile.text();
+            batchRows = parseBatchCSV(batchText);
+          } else {
+            // Build a MinimalClient for this speaker to use in scoring
+            const speakerCompany = companies.find(c => c.id === speaker.company_id);
+            const speakerClient: MinimalClient = {
+              id: speaker.id,
+              name: speaker.name,
+              company: speakerCompany?.name || '',
+              media_kit_url: speaker.media_kit_url || '',
+              target_audiences: speaker.target_audiences || [],
+              talking_points: speaker.talking_points || [],
+              avoid: speaker.avoid || [],
+              campaign_strategy: speaker.campaign_strategy || '',
+              title: speaker.title || '',
+              gender: speaker.gender as any,
+              guest_identity_tags: speaker.guest_identity_tags || [],
+              professional_credentials: speaker.professional_credentials || [],
+            };
+            setScoringProgress({ completed: 0, total: airtableRows.length });
+            batchRows = await scoreAirtablePodcasts(
+              airtableRows,
+              speakerClient,
+              (completed, total) => setScoringProgress({ completed, total })
+            );
+            setScoringProgress(null);
           }
           
           speakerDataInputs.push({
@@ -556,10 +585,10 @@ export default function Reports() {
       });
       return;
     }
-    if (!batchFile) {
+    if (!batchFile && !airtableSyncedData?.length && !airtableFile) {
       toast({
-        title: "Missing required CSV",
-        description: "Batch Results CSV is required.",
+        title: "Missing data",
+        description: "Upload a Batch Results CSV or sync Airtable data to generate a report.",
         variant: "destructive",
       });
       return;
@@ -577,17 +606,14 @@ export default function Reports() {
     
     try {
       // Read CSV files
-      const batchText = await batchFile.text();
       const sovText = sovFile ? await sovFile.text() : null;
       const geoText = geoFile ? await geoFile.text() : null;
       const contentGapText = contentGapFile ? await contentGapFile.text() : null;
       const rephonicEmvText = rephonicEmvFile ? await rephonicEmvFile.text() : null;
       
-      // Parse CSVs - use synced Airtable data first, fall back to file
-      const batchRows = parseBatchCSV(batchText);
+      // Parse Airtable data - use synced data first, fall back to file
       let airtableRows: any[];
       if (airtableSyncedData && airtableSyncedData.length > 0) {
-        // Use synced data directly (already filtered by date range on the backend)
         airtableRows = airtableSyncedData;
       } else if (airtableFile) {
         const airtableText = await airtableFile.text();
@@ -595,6 +621,30 @@ export default function Reports() {
       } else {
         airtableRows = [];
       }
+
+      // Determine batch rows: from CSV or live-scored from Airtable show notes
+      let batchRows: any[];
+      let isLiveScored = false;
+
+      if (batchFile) {
+        const batchText = await batchFile.text();
+        batchRows = parseBatchCSV(batchText);
+      } else {
+        // No batch CSV - score from Airtable show notes
+        isLiveScored = true;
+        toast({
+          title: "Scoring podcasts from show notes",
+          description: `Analyzing ${airtableRows.filter((r: any) => r.action?.toLowerCase().includes('podcast recording')).length} podcasts...`,
+        });
+        setScoringProgress({ completed: 0, total: airtableRows.length });
+        batchRows = await scoreAirtablePodcasts(
+          airtableRows,
+          speakerAsClient,
+          (completed, total) => setScoringProgress({ completed, total })
+        );
+        setScoringProgress(null);
+      }
+
       const sovRows = sovText ? parseSOVCSV(sovText) : null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
       const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
@@ -623,6 +673,11 @@ export default function Reports() {
         !!geoFile, // geoCsvProvided
         !!contentGapFile // contentGapCsvProvided
       );
+
+      // Flag live-scored reports
+      if (isLiveScored) {
+        report.contains_live_scores = true;
+      }
       
       setReportData(report);
       toast({
@@ -2153,15 +2208,23 @@ export default function Reports() {
                 onClick={handleGenerateReport}
                 disabled={isProcessing || !dateRangeStart || !dateRangeEnd || 
                   (isMultiSpeakerMode 
-                    ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => !speakerFiles[id]?.batchFile || !speakerFiles[id]?.airtableFile)
-                    : !selectedSpeakerId || !batchFile || !airtableFile
+                    ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => {
+                        const syncedData = speakerSyncedData[id];
+                        const hasAirtable = !!syncedData || !!speakerFiles[id]?.airtableFile;
+                        return !hasAirtable;
+                      })
+                    : !selectedSpeakerId || (!batchFile && !airtableSyncedData?.length && !airtableFile)
                   )
                 }
                 className="w-full"
                 size="lg"
               >
                 <Upload className="mr-2 h-5 w-5" />
-                {isProcessing ? 'Processing...' : isMultiSpeakerMode ? 'Generate Multi-Speaker Report' : 'Generate Report'}
+                {isProcessing 
+                  ? scoringProgress 
+                    ? `Scoring podcast ${scoringProgress.completed} of ${scoringProgress.total}...`
+                    : 'Processing...' 
+                  : isMultiSpeakerMode ? 'Generate Multi-Speaker Report' : 'Generate Report'}
               </Button>
             </CardContent>
           </Card>

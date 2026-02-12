@@ -5,6 +5,125 @@ import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow, Re
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
+import { callScrape, callAnalyze } from '@/utils/api';
+
+// Score Airtable podcasts by scraping show notes and running through analyze engine
+export async function scoreAirtablePodcasts(
+  airtableRows: AirtableCSVRow[],
+  client: MinimalClient,
+  onProgress?: (completed: number, total: number) => void
+): Promise<BatchCSVRow[]> {
+  // Filter to podcast recordings only
+  const podcastRows = airtableRows.filter(
+    row => row.action?.toLowerCase().includes('podcast recording')
+  );
+
+  if (podcastRows.length === 0) return [];
+
+  const results: BatchCSVRow[] = [];
+  const BATCH_SIZE = 3;
+
+  for (let i = 0; i < podcastRows.length; i += BATCH_SIZE) {
+    const batch = podcastRows.slice(i, i + BATCH_SIZE);
+
+    const batchResults = await Promise.all(
+      batch.map(async (row): Promise<BatchCSVRow> => {
+        try {
+          let showNotesText = row.show_notes || '';
+
+          // If show_notes is a URL, scrape it
+          if (showNotesText.match(/^https?:\/\//i)) {
+            const scrapeResult = await callScrape(showNotesText);
+            if (scrapeResult?.success && scrapeResult?.text) {
+              showNotesText = scrapeResult.text;
+            } else {
+              console.warn(`Failed to scrape show notes for ${row.podcast_name}:`, scrapeResult?.error);
+              // Use URL as fallback text
+              showNotesText = `Podcast: ${row.podcast_name}`;
+            }
+          }
+
+          // Skip if no show notes content
+          if (!showNotesText.trim()) {
+            return {
+              show_title: row.podcast_name,
+              verdict: 'Consider' as const,
+              overall_score: 5,
+              status: 'success',
+              rationale_short: 'No show notes available for scoring',
+            };
+          }
+
+          // Call analyze with client profile + show notes
+          const analyzeResult = await callAnalyze({
+            client,
+            show_notes: showNotesText,
+          });
+
+          if (analyzeResult?.success && analyzeResult?.data) {
+            const data = analyzeResult.data;
+            // Map verdict from analyze format to report format
+            let verdict: 'Fit' | 'Consider' | 'Not' = 'Consider';
+            if (data.verdict === 'recommend') verdict = 'Fit';
+            else if (data.verdict === 'not_recommended') verdict = 'Not';
+            else if (data.verdict === 'consider') verdict = 'Consider';
+            // Fallback: derive from score if no verdict field
+            else if (data.overall_score >= 7.5) verdict = 'Fit';
+            else if (data.overall_score >= 5) verdict = 'Consider';
+            else verdict = 'Not';
+
+            return {
+              show_title: row.podcast_name,
+              verdict,
+              overall_score: data.overall_score,
+              rationale_short: data.verdict_reason || data.summary_text || '',
+              status: 'success',
+            };
+          }
+
+          // Fallback data if analyze returned fallback
+          if (analyzeResult?.fallback_data) {
+            const fb = analyzeResult.fallback_data;
+            return {
+              show_title: row.podcast_name,
+              verdict: fb.overall_score >= 7.5 ? 'Fit' : fb.overall_score >= 5 ? 'Consider' : 'Not',
+              overall_score: fb.overall_score,
+              rationale_short: fb.verdict_reason || 'Scored via fallback heuristic',
+              status: 'success',
+            };
+          }
+
+          return {
+            show_title: row.podcast_name,
+            verdict: 'Consider' as const,
+            overall_score: 5,
+            status: 'failed',
+            rationale_short: analyzeResult?.error || 'Analysis failed',
+          };
+        } catch (err) {
+          console.error(`Error scoring ${row.podcast_name}:`, err);
+          return {
+            show_title: row.podcast_name,
+            verdict: 'Consider' as const,
+            overall_score: 5,
+            status: 'failed',
+            rationale_short: err instanceof Error ? err.message : 'Scoring error',
+          };
+        }
+      })
+    );
+
+    results.push(...batchResults);
+    onProgress?.(results.length, podcastRows.length);
+
+    // Small delay between batches to avoid rate limiting
+    if (i + BATCH_SIZE < podcastRows.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  return results;
+}
 
 // Generate AI-powered pitch hooks for a speaker
 export async function generatePitchHooksForSpeaker(speaker: {
