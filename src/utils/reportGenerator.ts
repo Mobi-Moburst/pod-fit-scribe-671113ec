@@ -7,6 +7,13 @@ import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
 import { callScrape, callAnalyze } from '@/utils/api';
 
+// Safely get action as a string (Airtable API may return arrays for select fields)
+function getActionString(action: any): string {
+  if (!action) return '';
+  if (Array.isArray(action)) return action[0] || '';
+  return String(action);
+}
+
 // Score Airtable podcasts by scraping show notes and running through analyze engine
 export async function scoreAirtablePodcasts(
   airtableRows: AirtableCSVRow[],
@@ -15,7 +22,7 @@ export async function scoreAirtablePodcasts(
 ): Promise<BatchCSVRow[]> {
   // Filter to podcast recordings only
   const podcastRows = airtableRows.filter(
-    row => row.action?.toLowerCase().includes('podcast recording')
+    row => getActionString(row.action).toLowerCase().includes('podcast recording')
   );
 
   if (podcastRows.length === 0) return [];
@@ -1037,7 +1044,7 @@ function mergeAllAirtableMatches(
   
   // Merge all data - take first non-empty value for each field
   // Prioritize "podcast recording" action rows for action field
-  const podcastRecordingRow = allMatches.find(r => r.action?.toLowerCase().includes('podcast recording'));
+  const podcastRecordingRow = allMatches.find(r => getActionString(r.action).toLowerCase().includes('podcast recording'));
   
   return {
     podcast_name: allMatches[0].podcast_name,
@@ -1130,7 +1137,7 @@ function mergePodcastData(
       );
     
     // Include if NOT already processed AND (has "podcast recording" action OR has date_published)
-    const hasPodcastRecordingAction = airtableRow.action?.toLowerCase().includes('podcast recording');
+    const hasPodcastRecordingAction = getActionString(airtableRow.action).toLowerCase().includes('podcast recording');
     const hasPublishedDate = airtableRow.date_published && airtableRow.date_published.trim() !== '';
     
     if (!alreadyProcessed && (hasPodcastRecordingAction || hasPublishedDate)) {
@@ -1172,7 +1179,7 @@ function calculateEnhancedKPIs(
 ): ReportData['kpis'] {
   console.log('[calculateEnhancedKPIs] Airtable summary', {
     totalRows: airtableRows.length,
-    interviewActions: airtableRows.filter(r => r.action?.toLowerCase().includes('podcast recording')).length,
+    interviewActions: airtableRows.filter(r => getActionString(r.action).toLowerCase().includes('podcast recording')).length,
     booked: airtableRows.filter(r => r.date_booked && r.date_booked.trim() !== '').length,
     published: airtableRows.filter(r => r.date_published && r.date_published.trim() !== '').length,
     sample: airtableRows.slice(0, 3),
@@ -1234,12 +1241,12 @@ function calculateEnhancedKPIs(
   
   // New Airtable KPIs
   const total_interviews = airtableRows.filter(r => 
-    r.action?.toLowerCase().includes('podcast recording')
+    getActionString(r.action).toLowerCase().includes('podcast recording')
   ).length;
   
   const total_booked = airtableRows.filter(r => {
     // Only count "podcast recording" actions
-    const isPodcastRecording = r.action?.toLowerCase().includes('podcast recording');
+    const isPodcastRecording = getActionString(r.action).toLowerCase().includes('podcast recording');
     if (!isPodcastRecording) return false;
     
     // Must have a date_booked
@@ -1856,7 +1863,7 @@ function calculateSpeakerKPIs(
   
   const total_booked = airtableRows.filter(r => {
     // Only count "podcast recording" actions
-    const isPodcastRecording = r.action?.toLowerCase().includes('podcast recording');
+    const isPodcastRecording = getActionString(r.action).toLowerCase().includes('podcast recording');
     if (!isPodcastRecording) return false;
     
     // Must have a date_booked
@@ -2164,7 +2171,7 @@ function calculateAggregatedKPIs(
   
   // Count total interviews
   const total_interviews = allAirtableRows.filter(r => 
-    r.action?.toLowerCase().includes('podcast recording')
+    getActionString(r.action).toLowerCase().includes('podcast recording')
   ).length;
   
   // Calculate total_listeners_per_episode from all batch rows (sum for the quarter)
@@ -2380,7 +2387,7 @@ export async function mergeUpdatedReportData(
       // Booked count: only "podcast recording" actions with date_booked within the date range
       const bookedCount = newData.airtableData.filter(r => {
         // Only count "podcast recording" actions
-        const isPodcastRecording = r.action?.toLowerCase().includes('podcast recording');
+        const isPodcastRecording = getActionString(r.action).toLowerCase().includes('podcast recording');
         if (!isPodcastRecording) return false;
         
         // Must have a date_booked
@@ -2394,7 +2401,7 @@ export async function mergeUpdatedReportData(
       }).length;
       
       const interviewCount = newData.airtableData.filter(r => 
-        r.action?.toLowerCase().includes('podcast recording')
+        getActionString(r.action).toLowerCase().includes('podcast recording')
       ).length;
       
       updatedReport.kpis.total_published = publishedCount;
