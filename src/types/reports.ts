@@ -252,6 +252,9 @@ target_podcasts?: TargetPodcast[];
 geo_csv_uploaded?: boolean;
 content_gap_csv_uploaded?: boolean;
 
+// Flag to indicate scores were generated at report time from show notes
+contains_live_scores?: boolean;
+
 // Interview Highlights (video/audio clips from published interviews)
 highlight_clips?: HighlightClip[];
 
