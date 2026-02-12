@@ -1259,9 +1259,12 @@ function calculateEnhancedKPIs(
     return bookedDate >= dateRange.start && bookedDate <= dateRange.end;
   }).length;
   
-  const total_published = airtableRows.filter(r => 
-    r.date_published && r.date_published.trim() !== ''
-  ).length;
+  const total_published = airtableRows.filter(r => {
+    if (!r.date_published || r.date_published.trim() === '') return false;
+    const pubDate = parseAirtableDate(r.date_published);
+    if (!pubDate) return false;
+    return pubDate >= dateRange.start && pubDate <= dateRange.end;
+  }).length;
   
   // Calculate total EMV from podcasts
   const total_emv = podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
@@ -1298,7 +1301,13 @@ function calculateSOVAnalysis(
   // NOTE: This intentionally mirrors the "Total Published" KPI logic.
   // NOTE: This intentionally mirrors the "Total Published" KPI logic.
   const clientCount = airtableRows.filter((row) => {
-    return !!row.date_published && row.date_published.trim() !== '';
+    if (!row.date_published || row.date_published.trim() === '') return false;
+    if (dateRange) {
+      const pubDate = parseAirtableDate(row.date_published);
+      if (!pubDate) return false;
+      return pubDate >= dateRange.start && pubDate <= dateRange.end;
+    }
+    return true;
   }).length;
 
   let competitors: { name: string; role?: string; peer_reason?: string; linkedin_url?: string; interview_count: number }[] = [];
@@ -1800,12 +1809,19 @@ export async function generateReportFromMultipleCSVs(
 // Build published podcasts directly from airtable rows (same source as KPI)
 function buildPublishedPodcastsFromAirtable(
   airtableRows: AirtableCSVRow[],
-  mergedPodcasts: PodcastReportEntry[]
+  mergedPodcasts: PodcastReportEntry[],
+  dateRange?: { start: Date; end: Date }
 ): PodcastReportEntry[] {
-  // Get all airtable rows with date_published (same filter as KPI)
-  const publishedAirtableRows = airtableRows.filter(r => 
-    r.date_published && r.date_published.trim() !== ''
-  );
+  // Get airtable rows with date_published within the report date range
+  const publishedAirtableRows = airtableRows.filter(r => {
+    if (!r.date_published || r.date_published.trim() === '') return false;
+    if (dateRange) {
+      const pubDate = parseAirtableDate(r.date_published);
+      if (!pubDate) return false;
+      return pubDate >= dateRange.start && pubDate <= dateRange.end;
+    }
+    return true;
+  });
   
   // For each published airtable row, find matching merged podcast or create new entry
   const publishedPodcasts: PodcastReportEntry[] = [];
@@ -1905,9 +1921,12 @@ function calculateSpeakerKPIs(
     return bookedDate >= dateRange.start && bookedDate <= dateRange.end;
   }).length;
   
-  const total_published = airtableRows.filter(r => 
-    r.date_published && r.date_published.trim() !== ''
-  ).length;
+  const total_published = airtableRows.filter(r => {
+    if (!r.date_published || r.date_published.trim() === '') return false;
+    const pubDate = parseAirtableDate(r.date_published);
+    if (!pubDate) return false;
+    return pubDate >= dateRange.start && pubDate <= dateRange.end;
+  }).length;
   
   const total_emv = podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
   
@@ -1966,7 +1985,7 @@ export async function generateMultiSpeakerReport(
     
     // Build published podcasts directly from airtable (same source as KPI)
     // This ensures the carousel matches the KPI count exactly
-    const publishedPodcasts = buildPublishedPodcastsFromAirtable(airtableRows, podcastsWithEMV);
+    const publishedPodcasts = buildPublishedPodcastsFromAirtable(airtableRows, podcastsWithEMV, dateRange);
     
     // Calculate per-speaker KPIs
     const speakerKpis = calculateSpeakerKPIs(batchRows, airtableRows, podcastsWithEMV, dateRange);
