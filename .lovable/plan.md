@@ -1,68 +1,37 @@
 
 
-# Plan: Expand Rephonic CSV Parser to Supply All Podcast Metadata
+# Add Synced Airtable Data Preview Table
 
 ## Overview
-The Rephonic CSV now serves as the primary source for podcast metadata (listeners, reach, categories, etc.) that previously came from the Batch Results CSV. The fit scores come from live scoring via Airtable show notes, but all other podcast data needs to come from the Rephonic CSV.
+After syncing Airtable data, add a collapsible preview table that shows the actual records returned. This will help you verify that fields like `podcast_name`, `action`, `date_published`, `date_booked`, etc. are mapping correctly before generating a report.
 
-## What the Rephonic CSV Contains (from your example)
+## What You'll See
+- After a successful Airtable sync, a small expandable section appears below the "Synced (8)" badge
+- Clicking it reveals a scrollable table showing all synced records with their key fields
+- The table will display: Podcast Name, Action, Recording Date, Date Booked, Date Published, Episode Link, and Show Notes (truncated)
+- This works for both single-speaker and multi-speaker report flows
 
-| Column | Maps To | Currently Parsed? |
-|--------|---------|-------------------|
-| Name | podcast_name | Yes |
-| Listeners Per Episode | listeners_per_episode | Yes |
-| Monthly Listens | monthly_listens | **No** |
-| Social Reach | social_reach | **No** |
-| Categories | categories | **No** |
-| Apple Podcasts | apple_podcast_link | **No** |
-| Description | description (new) | **No** |
-| Publisher | publisher (new) | **No** |
-| Engagement | engagement (new) | **No** |
-| Episode Duration | episode_duration_minutes | Yes |
-| EMV | emv | Yes |
+## Technical Details
 
-## Changes
+### Changes to `src/pages/Reports.tsx`
 
-### 1. Expand `RephonicCSVRow` type (`src/types/csv.ts`)
-Add the missing fields to the interface:
-- `monthly_listens?: number`
-- `social_reach?: number`
-- `categories?: string`
-- `apple_podcast_link?: string`
-- `description?: string`
-- `publisher?: string`
+1. **Add an "eyeball" toggle** next to the Synced badge (or make the badge itself clickable) that expands/collapses a preview panel.
 
-### 2. Update `parseRephonicCSV()` (`src/utils/csvParsers.ts`)
-Map the new columns from the Rephonic CSV, handling header name variations:
-- `monthly_listens` from "Monthly Listens" / "monthly_listens"
-- `social_reach` from "Social Reach" / "social_reach"
-- `categories` from "Categories" / "categories"
-- `apple_podcast_link` from "Apple Podcasts" / "apple_podcasts" / "apple_podcast_link"
-- `description` from "Description"
-- `publisher` from "Publisher"
+2. **Add state** to track whether the preview is expanded:
+   - `airtablePreviewOpen` (boolean) for single-speaker flow
+   - `speakerAirtablePreviewOpen` (Record of speakerId to boolean) for multi-speaker flow
 
-### 3. Expand `applyRephonicEMVData()` (`src/utils/reportGenerator.ts`)
-Currently this function only applies `listeners_per_episode`, `episode_duration_minutes`, and `emv` from Rephonic data onto merged podcasts. Expand it to also apply:
-- `monthly_listens` (if not already set from batch)
-- `social_reach` (if not already set)
-- `categories` (if not already set)
-- `apple_podcast_link` (if not already set)
+3. **Render a preview table** when expanded, using the existing synced data arrays (`airtableSyncedData` / `speakerSyncedData[speakerId]`). The table will show columns:
+   - Podcast Name
+   - Action
+   - Recording Date
+   - Date Booked
+   - Date Published
+   - Episode Link (truncated/linked)
+   - Show Notes (first ~50 chars)
 
-This way, when reports are generated with live scores (no batch CSV), the Rephonic CSV fills in all the metadata that would have come from the batch CSV.
+4. **Wrap in a Collapsible** component (already available via Radix) or a simple conditional render with a max-height scroll container so it doesn't overwhelm the form layout.
 
-### 4. Update KPI calculations (`src/utils/reportGenerator.ts`)
-Ensure `calculateEnhancedKPIs()` properly sums `monthly_listens` and `social_reach` from the merged podcast entries (it already does this from the `PodcastReportEntry` objects, so this should work automatically once `applyRephonicEMVData` populates those fields).
+### No backend changes needed
+The data is already fully available in the component state after sync. This is purely a UI addition to surface what's already there.
 
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/types/csv.ts` | Add `monthly_listens`, `social_reach`, `categories`, `apple_podcast_link`, `description`, `publisher` to `RephonicCSVRow` |
-| `src/utils/csvParsers.ts` | Parse new columns in `parseRephonicCSV()` |
-| `src/utils/reportGenerator.ts` | Apply new Rephonic fields in `applyRephonicEMVData()` |
-
-## What Stays the Same
-- All existing report logic, KPI calculations, and merge logic remain unchanged
-- The Batch CSV path still works identically if provided
-- EMV calculations from Rephonic data stay the same
-- The live scoring flow (from the previous plan) remains intact
