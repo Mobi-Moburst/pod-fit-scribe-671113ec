@@ -619,7 +619,7 @@ export default function Reports() {
       const isLiveScored = true;
       toast({
         title: "Scoring podcasts from show notes",
-        description: `Analyzing ${airtableRows.filter((r: any) => r.action?.toLowerCase().includes('podcast recording')).length} podcasts...`,
+        description: `Analyzing ${airtableRows.filter((r: any) => String(r.action || '').toLowerCase().includes('podcast recording')).length} podcasts...`,
       });
       setScoringProgress({ completed: 0, total: airtableRows.length });
       batchRows = await scoreAirtablePodcasts(
