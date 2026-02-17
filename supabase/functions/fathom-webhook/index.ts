@@ -81,30 +81,41 @@ serve(async (req) => {
     let speakerId: string | null = null;
     let companyId: string | null = null;
 
-    if (participantNames.length > 0) {
-      const { data: speakers } = await supabase
-        .from("speakers")
-        .select("id, name, company_id")
-        .eq("org_id", ORG_ID);
+    const { data: speakers } = await supabase
+      .from("speakers")
+      .select("id, name, company_id")
+      .eq("org_id", ORG_ID);
 
-      if (speakers && speakers.length > 0) {
-        for (const pName of participantNames) {
-          const lower = pName.toLowerCase().trim();
-          // Exact match
-          const exact = speakers.find((s: any) => s.name.toLowerCase().trim() === lower);
-          if (exact) {
-            speakerId = exact.id;
-            companyId = exact.company_id;
-            break;
-          }
-          // Partial match (participant name contains speaker name or vice versa)
-          const partial = speakers.find((s: any) => {
-            const sLower = s.name.toLowerCase().trim();
-            return lower.includes(sLower) || sLower.includes(lower);
-          });
-          if (partial) {
-            speakerId = partial.id;
-            companyId = partial.company_id;
+    if (speakers && speakers.length > 0) {
+      // 1. Match by participant names
+      for (const pName of participantNames) {
+        const lower = pName.toLowerCase().trim();
+        const exact = speakers.find((s: any) => s.name.toLowerCase().trim() === lower);
+        if (exact) {
+          speakerId = exact.id;
+          companyId = exact.company_id;
+          break;
+        }
+        const partial = speakers.find((s: any) => {
+          const sLower = s.name.toLowerCase().trim();
+          return lower.includes(sLower) || sLower.includes(lower);
+        });
+        if (partial) {
+          speakerId = partial.id;
+          companyId = partial.company_id;
+          break;
+        }
+      }
+
+      // 2. Fallback: scan meeting title and summary for speaker names
+      if (!speakerId) {
+        const searchText = `${meetingTitle} ${summary || ""}`.toLowerCase();
+        for (const s of speakers) {
+          const sLower = (s as any).name.toLowerCase().trim();
+          if (sLower.length >= 3 && searchText.includes(sLower)) {
+            speakerId = (s as any).id;
+            companyId = (s as any).company_id;
+            console.log(`Matched speaker "${(s as any).name}" from title/summary`);
             break;
           }
         }
