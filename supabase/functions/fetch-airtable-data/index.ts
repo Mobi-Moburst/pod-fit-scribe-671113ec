@@ -70,6 +70,19 @@ function buildDateFilterFormula(
 }
 
 // Map Airtable record to our standard format
+// Try multiple field name variations for a given mapping key
+function getFieldValue(fields: Record<string, any>, mappedName: string | undefined, ...fallbacks: string[]): string | undefined {
+  if (mappedName && fields[mappedName] !== undefined && fields[mappedName] !== null) {
+    return fields[mappedName];
+  }
+  for (const fallback of fallbacks) {
+    if (fields[fallback] !== undefined && fields[fallback] !== null) {
+      return fields[fallback];
+    }
+  }
+  return undefined;
+}
+
 function mapRecordToRow(record: AirtableRecord, fieldMapping: FieldMapping): AirtableCSVRow {
   const fields = record.fields;
   
@@ -79,7 +92,7 @@ function mapRecordToRow(record: AirtableRecord, fieldMapping: FieldMapping): Air
     scheduled_date_time: fields[fieldMapping.scheduled_date_time] || '',
     date_booked: fieldMapping.date_booked ? fields[fieldMapping.date_booked] : undefined,
     date_published: fieldMapping.date_published ? fields[fieldMapping.date_published] : undefined,
-    link_to_episode: fieldMapping.link_to_episode ? fields[fieldMapping.link_to_episode] : undefined,
+    link_to_episode: getFieldValue(fields, fieldMapping.link_to_episode, 'Link to episode', 'Episode Link', 'link_to_episode', 'Episode link'),
     show_notes: fieldMapping.show_notes ? fields[fieldMapping.show_notes] : undefined,
     apple_podcast_link: fieldMapping.apple_podcast_link ? fields[fieldMapping.apple_podcast_link] : undefined,
   };
