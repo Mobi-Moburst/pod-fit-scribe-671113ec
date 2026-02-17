@@ -334,7 +334,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
   };
 
   const optionalCsvConfigs: { type: Exclude<CSVType, 'batch' | 'airtable'>; label: string; description: string }[] = [
-    { type: 'sov', label: 'SOV CSV', description: 'Share of Voice data' },
+    { type: 'geo', label: 'GEO CSV', description: 'AI visibility data' },
     { type: 'geo', label: 'GEO CSV', description: 'AI visibility data' },
     { type: 'content_gap', label: 'Content Gap CSV', description: 'Content gap analysis' },
     { type: 'rephonic', label: 'Rephonic EMV CSV', description: 'Earned media value data' },

@@ -16,7 +16,7 @@ import type { Company, Speaker, MinimalClient, Competitor } from "@/types/client
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints, generatePodcastCategories, scoreAirtablePodcasts } from "@/utils/reportGenerator";
-import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
+import { parseBatchCSV, parseAirtableCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
@@ -73,7 +73,7 @@ export default function Reports() {
   const [airtableConnectionDialogOpen, setAirtableConnectionDialogOpen] = useState(false);
   
   // Company-level file uploads (shared for multi-speaker)
-  const [sovFile, setSOVFile] = useState<File | null>(null);
+  const [sovFile, setSOVFile] = useState<File | null>(null); // kept for backward compat, always null
   const [geoFile, setGeoFile] = useState<File | null>(null);
   const [contentGapFile, setContentGapFile] = useState<File | null>(null);
   const [rephonicEmvFile, setRephonicEmvFile] = useState<File | null>(null);
@@ -569,7 +569,7 @@ export default function Reports() {
         }
         
         // Parse company-level CSVs
-        const sovText = sovFile ? await sovFile.text() : null;
+        const sovText: string | null = null;
         const geoText = geoFile ? await geoFile.text() : null;
         const contentGapText = contentGapFile ? await contentGapFile.text() : null;
         
@@ -580,7 +580,7 @@ export default function Reports() {
           rephonicRows = parseRephonicCSV(await firstSpeakerFiles.batchFile.text());
         }
         
-        const sovRows = sovText ? parseSOVCSV(sovText) : null;
+        const sovRows = null;
         const geoRows = geoText ? parseGEOCSV(geoText) : [];
         const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
         
@@ -646,7 +646,7 @@ export default function Reports() {
     
     try {
       // Read CSV files
-      const sovText = sovFile ? await sovFile.text() : null;
+      const sovText: string | null = null;
       const geoText = geoFile ? await geoFile.text() : null;
       const contentGapText = contentGapFile ? await contentGapFile.text() : null;
       
@@ -675,7 +675,7 @@ export default function Reports() {
           rationale_short: 'Score not yet generated',
         }));
 
-      const sovRows = sovText ? parseSOVCSV(sovText) : null;
+      const sovRows = null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
       const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
       
@@ -2224,12 +2224,10 @@ export default function Reports() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Label className="text-sm font-medium">Peer Comparison</Label>
-                        <Badge variant={manualSOVMode && competitorInterviews.some(c => c.count > 0) ? "default" : sovFile ? "default" : "outline"}>
+                        <Badge variant={manualSOVMode && competitorInterviews.some(c => c.count > 0) ? "default" : "outline"}>
                           {manualSOVMode && competitorInterviews.some(c => c.count > 0) 
                             ? "Manual Entry" 
-                            : sovFile 
-                              ? "CSV Uploaded" 
-                              : "Optional"}
+                            : "Optional"}
                         </Badge>
                       </div>
                       {manualSOVMode && competitorInterviews.length > 0 && (
@@ -2292,21 +2290,13 @@ export default function Reports() {
                           </div>
                         ))}
                         
-                        {/* CSV upload fallback */}
-                        <div className="pt-2 border-t mt-3">
-                          <p className="text-xs text-muted-foreground mb-2">Or upload CSV instead:</p>
-                          <Input type="file" accept=".csv" onChange={(e) => setSOVFile(e.target.files?.[0] || null)} />
-                          {sovFile && <p className="text-xs text-muted-foreground mt-1">{sovFile.name}</p>}
-                        </div>
                       </div>
                     ) : (
                       <>
                         <p className="text-xs text-muted-foreground mb-2">
                           No competitors defined for {isMultiSpeakerMode ? 'selected speakers' : 'this speaker'}. 
-                          Upload a SOV CSV or add competitors to the speaker profile.
+                          Add competitors to the speaker profile to enable peer comparison.
                         </p>
-                        <Input type="file" accept=".csv" onChange={(e) => setSOVFile(e.target.files?.[0] || null)} />
-                        {sovFile && <p className="text-xs text-muted-foreground mt-1">{sovFile.name}</p>}
                       </>
                     )}
                   </div>
