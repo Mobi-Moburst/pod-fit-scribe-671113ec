@@ -12,10 +12,12 @@ import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, FileText } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
 import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtableDialog';
+import { CallNotesList } from '@/components/call-notes/CallNotesList';
+import { SyncFathomButton } from '@/components/call-notes/SyncFathomButton';
 
 // Deterministic color classes for CM badge using design tokens
 const cmColor = (name?: string) => {
@@ -387,6 +389,7 @@ const Companies = () => {
             <p className="text-sm text-muted-foreground">Manage companies and their speakers for podcast campaigns.</p>
           </div>
           <div className="flex items-center gap-2">
+            <SyncFathomButton onSyncComplete={loadData} />
             <Button variant="outline" onClick={() => setShowImportDialog(true)}>
               <Download className="h-4 w-4 mr-2" />
               Import from Airtable
@@ -866,51 +869,63 @@ const Companies = () => {
                         <div className="p-4 text-sm text-muted-foreground">No speakers yet. Add one to get started.</div>
                       ) : (
                         company.speakers.map(speaker => (
-                          <div key={speaker.id} className="flex items-center justify-between p-4 border-b border-border/50 last:border-b-0 hover:bg-muted/20">
-                            <div className="flex items-center gap-3">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <div>
-                                <div className="font-medium">
-                                  {speaker.media_kit_url ? (
-                                    <a href={speaker.media_kit_url} target="_blank" rel="noreferrer" className="hover:underline">{speaker.name}</a>
-                                  ) : speaker.name}
-                                  {speaker.title && <span className="text-muted-foreground ml-2">— {speaker.title}</span>}
-                                </div>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {pickTopAudienceTags({ strategyText: speaker.campaign_strategy || '', audiences: speaker.target_audiences || [], max: 3 }).map(tag => (
-                                    <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                                  ))}
+                          <div key={speaker.id} className="border-b border-border/50 last:border-b-0">
+                            <div className="flex items-center justify-between p-4 hover:bg-muted/20">
+                              <div className="flex items-center gap-3">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <div className="font-medium">
+                                    {speaker.media_kit_url ? (
+                                      <a href={speaker.media_kit_url} target="_blank" rel="noreferrer" className="hover:underline">{speaker.name}</a>
+                                    ) : speaker.name}
+                                    {speaker.title && <span className="text-muted-foreground ml-2">— {speaker.title}</span>}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {pickTopAudienceTags({ strategyText: speaker.campaign_strategy || '', audiences: speaker.target_audiences || [], max: 3 }).map(tag => (
+                                      <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
+                                  title="Connect Airtable API"
+                                >
+                                  <Link2 className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => startEditSpeaker(speaker)}>Edit</Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="icon" variant="ghost"><Trash className="h-4 w-4" /></Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will permanently remove {speaker.name}. This cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => removeSpeaker(speaker.id)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
-                                title="Connect Airtable API"
-                              >
-                                <Link2 className="h-4 w-4" />
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => startEditSpeaker(speaker)}>Edit</Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button size="icon" variant="ghost"><Trash className="h-4 w-4" /></Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will permanently remove {speaker.name}. This cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => removeSpeaker(speaker.id)}>Delete</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
+                            {/* Call Notes for this speaker */}
+                            <Collapsible>
+                              <CollapsibleTrigger className="w-full text-left px-4 py-2 flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/20 transition-colors border-t border-border/30">
+                                <FileText className="h-3.5 w-3.5" />
+                                Call Notes
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="px-4 pb-3">
+                                <CallNotesList speakerId={speaker.id} maxHeight="300px" />
+                              </CollapsibleContent>
+                            </Collapsible>
                           </div>
                         ))
                       )}
