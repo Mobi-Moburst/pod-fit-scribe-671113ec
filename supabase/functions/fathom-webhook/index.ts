@@ -23,15 +23,24 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Extract fields from Fathom webhook payload
-    const meetingId = payload.id || payload.meeting?.id || payload.call_id;
-    const meetingTitle = payload.title || payload.meeting?.title || "Untitled Meeting";
-    const meetingDate = payload.created_at || payload.meeting?.created_at || new Date().toISOString();
-    const duration = payload.duration || payload.meeting?.duration || null;
-    const summary = payload.summary || payload.meeting?.summary || null;
-    const transcript = payload.transcript || payload.meeting?.transcript || null;
-    const actionItems = payload.action_items || payload.meeting?.action_items || [];
-    const attendees = payload.attendees || payload.participants || payload.meeting?.attendees || [];
+    // Extract fields from Fathom webhook payload (real Fathom structure)
+    const meetingId = payload.id || payload.call_id || payload.share_url || payload.created_at;
+    const meetingTitle = payload.title || payload.meeting_title || "Untitled Meeting";
+    const meetingDate = payload.created_at || new Date().toISOString();
+    const duration = payload.duration || payload.duration_seconds || null;
+    
+    // Fathom sends summary in default_summary.markdown_formatted
+    const summary = typeof payload.summary === "string" 
+      ? payload.summary 
+      : payload.default_summary?.markdown_formatted 
+        || payload.default_summary?.text 
+        || (typeof payload.default_summary === "string" ? payload.default_summary : null);
+    
+    const transcript = payload.transcript || null;
+    const actionItems = payload.action_items || [];
+    
+    // Fathom uses calendar_invitees for attendees
+    const attendees = payload.attendees || payload.participants || payload.calendar_invitees || [];
 
     if (!meetingId) {
       return new Response(
