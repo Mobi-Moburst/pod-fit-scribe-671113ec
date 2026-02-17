@@ -53,3 +53,9 @@ verify_jwt = false
 
 [functions.import-airtable-clients]
 verify_jwt = false
+
+[functions.fathom-webhook]
+verify_jwt = false
+
+[functions.sync-fathom-meetings]
+verify_jwt = false
