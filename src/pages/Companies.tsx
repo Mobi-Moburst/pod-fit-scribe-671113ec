@@ -12,9 +12,10 @@ import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2 } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, ChevronDown, ChevronRight, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
+import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtableDialog';
 
 // Deterministic color classes for CM badge using design tokens
 const cmColor = (name?: string) => {
@@ -76,6 +77,7 @@ const Companies = () => {
   const [showManualLogoInput, setShowManualLogoInput] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [airtableDialog, setAirtableDialog] = useState<{ companyId?: string; speakerId?: string; entityName: string } | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const { toast } = useToast();
 
   const fetchCompanyBrand = async () => {
@@ -384,11 +386,24 @@ const Companies = () => {
             <h1 className="text-xl font-semibold">Companies</h1>
             <p className="text-sm text-muted-foreground">Manage companies and their speakers for podcast campaigns.</p>
           </div>
-          <Button variant="hero" onClick={startNewCompany}>
-            <Building2 className="h-4 w-4 mr-2" />
-            New Company
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+              <Download className="h-4 w-4 mr-2" />
+              Import from Airtable
+            </Button>
+            <Button variant="hero" onClick={startNewCompany}>
+              <Building2 className="h-4 w-4 mr-2" />
+              New Company
+            </Button>
+          </div>
         </Card>
+
+        <ImportFromAirtableDialog
+          open={showImportDialog}
+          onOpenChange={setShowImportDialog}
+          existingCompanyNames={companies.map(c => c.name)}
+          onImportComplete={loadData}
+        />
 
         {/* Company Edit Form */}
         {editingCompany && (
