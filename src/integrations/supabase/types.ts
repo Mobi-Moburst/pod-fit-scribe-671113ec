@@ -124,6 +124,72 @@ export type Database = {
           },
         ]
       }
+      call_notes: {
+        Row: {
+          action_items: Json | null
+          company_id: string | null
+          created_at: string
+          duration_seconds: number | null
+          fathom_meeting_id: string | null
+          id: string
+          meeting_date: string | null
+          meeting_title: string | null
+          org_id: string
+          participants: Json | null
+          source: string
+          speaker_id: string | null
+          summary: string | null
+          transcript: string | null
+        }
+        Insert: {
+          action_items?: Json | null
+          company_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          fathom_meeting_id?: string | null
+          id?: string
+          meeting_date?: string | null
+          meeting_title?: string | null
+          org_id: string
+          participants?: Json | null
+          source?: string
+          speaker_id?: string | null
+          summary?: string | null
+          transcript?: string | null
+        }
+        Update: {
+          action_items?: Json | null
+          company_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          fathom_meeting_id?: string | null
+          id?: string
+          meeting_date?: string | null
+          meeting_title?: string | null
+          org_id?: string
+          participants?: Json | null
+          source?: string
+          speaker_id?: string | null
+          summary?: string | null
+          transcript?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_notes_speaker_id_fkey"
+            columns: ["speaker_id"]
+            isOneToOne: false
+            referencedRelation: "speakers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           airtable_embed_url: string | null
