@@ -110,13 +110,45 @@ serve(async (req) => {
       // 2. Fallback: scan meeting title and summary for speaker names
       if (!speakerId) {
         const searchText = `${meetingTitle} ${summary || ""}`.toLowerCase();
+        
+        // Try full name match first
         for (const s of speakers) {
-          const sLower = (s as any).name.toLowerCase().trim();
-          if (sLower.length >= 3 && searchText.includes(sLower)) {
+          const sName = (s as any).name.toLowerCase().trim();
+          if (sName.length >= 3 && searchText.includes(sName)) {
             speakerId = (s as any).id;
             companyId = (s as any).company_id;
-            console.log(`Matched speaker "${(s as any).name}" from title/summary`);
+            console.log(`Matched speaker "${(s as any).name}" from title/summary (full name)`);
             break;
+          }
+        }
+
+        // Try first+last name parts match
+        if (!speakerId) {
+          for (const s of speakers) {
+            const sName = (s as any).name.toLowerCase().trim();
+            const nameParts = sName.split(/\s+/).filter((p: string) => p.length >= 3);
+            if (nameParts.length >= 2 && nameParts.every((p: string) => searchText.includes(p))) {
+              speakerId = (s as any).id;
+              companyId = (s as any).company_id;
+              console.log(`Matched speaker "${(s as any).name}" from title/summary (name parts)`);
+              break;
+            }
+          }
+        }
+
+        // Try first-name-only match (only if exactly one speaker has that first name)
+        if (!speakerId) {
+          const firstNameMatches: any[] = [];
+          for (const s of speakers) {
+            const firstName = (s as any).name.toLowerCase().trim().split(/\s+/)[0];
+            if (firstName.length >= 3 && searchText.includes(firstName)) {
+              firstNameMatches.push(s);
+            }
+          }
+          if (firstNameMatches.length === 1) {
+            speakerId = firstNameMatches[0].id;
+            companyId = firstNameMatches[0].company_id;
+            console.log(`Matched speaker "${firstNameMatches[0].name}" from title/summary (first name unique)`);
           }
         }
       }
