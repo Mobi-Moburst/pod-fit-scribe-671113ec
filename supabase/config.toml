@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.fetch-podchaser-metrics]
 verify_jwt = false
+
+[functions.fetch-podchaser-credits]
+verify_jwt = false
