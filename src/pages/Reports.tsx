@@ -114,6 +114,8 @@ export default function Reports() {
   const [isRegeneratingCategories, setIsRegeneratingCategories] = useState(false);
   const [scoringProgress, setScoringProgress] = useState<{ completed: number; total: number } | null>(null);
   const [isScoringFit, setIsScoringFit] = useState(false);
+  const [isFetchingSOV, setIsFetchingSOV] = useState(false);
+  const [sovFetchError, setSovFetchError] = useState<string | null>(null);
   
   // Visibility state for report sections
   const [visibleSections, setVisibleSections] = useState({
@@ -382,6 +384,65 @@ export default function Reports() {
     setCompetitorInterviews(prev => 
       prev.map((comp, i) => i === index ? { ...comp, count } : comp)
     );
+  };
+
+  const autoFetchPeerComparison = async () => {
+    if (!dateRangeStart || !dateRangeEnd) {
+      toast({
+        title: "Select date range first",
+        description: "Please set the report date range before auto-fetching.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (competitorInterviews.length === 0) return;
+
+    setIsFetchingSOV(true);
+    setSovFetchError(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-podchaser-credits', {
+        body: {
+          competitors: competitorInterviews.map(c => ({ name: c.name, role: c.role })),
+          date_range: { start: dateRangeStart, end: dateRangeEnd },
+        },
+      });
+
+      if (error) throw new Error(error.message || 'Failed to fetch credits');
+      if (data?.error) throw new Error(data.error);
+
+      const results = data?.results;
+      if (results) {
+        setCompetitorInterviews(prev =>
+          prev.map(comp => {
+            const result = results[comp.name];
+            if (result && !result.error) {
+              return { ...comp, count: result.interview_count };
+            }
+            return comp;
+          })
+        );
+
+        const successCount = Object.values(results).filter((r: any) => !r.error).length;
+        const errorCount = Object.values(results).filter((r: any) => r.error).length;
+
+        toast({
+          title: "Peer data fetched",
+          description: `${successCount} competitor(s) updated${errorCount > 0 ? `, ${errorCount} failed` : ''}.`,
+        });
+      }
+    } catch (err: any) {
+      console.error('Auto-fetch SOV error:', err);
+      const msg = err.message || 'Failed to fetch peer comparison data';
+      setSovFetchError(msg);
+      toast({
+        title: "Auto-fetch failed",
+        description: msg.includes('credits') ? "Credits API may not be available on your Podchaser plan. Use manual entry or CSV instead." : msg,
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetchingSOV(false);
+    }
   };
 
   const loadSavedReports = async () => {
@@ -2171,14 +2232,40 @@ export default function Reports() {
                               : "Optional"}
                         </Badge>
                       </div>
+                      {manualSOVMode && competitorInterviews.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={autoFetchPeerComparison}
+                          disabled={isFetchingSOV || !dateRangeStart || !dateRangeEnd}
+                        >
+                          {isFetchingSOV ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              Fetching...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Auto-Fetch via Podchaser
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                     
                     {manualSOVMode && competitorInterviews.length > 0 ? (
                       <div className="space-y-3">
                         <p className="text-xs text-muted-foreground">
-                          Enter podcast appearance counts for each competitor in this period. 
+                          Use "Auto-Fetch via Podchaser" to populate counts automatically, or enter manually. 
                           Click the copy button to get a pre-filled ListenNotes search URL.
                         </p>
+                        {sovFetchError && (
+                          <p className="text-xs text-destructive flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {sovFetchError}
+                          </p>
+                        )}
                         
                         {competitorInterviews.map((comp, index) => (
                           <div key={index} className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg border">
