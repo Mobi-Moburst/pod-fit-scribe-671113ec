@@ -32,7 +32,7 @@ serve(async (req) => {
     // Fetch speaker
     const { data: speaker, error: spErr } = await sb
       .from("speakers")
-      .select("name, title, campaign_strategy, target_audiences, talking_points, avoid, guest_identity_tags, professional_credentials, company_id")
+      .select("name, title, campaign_strategy, target_audiences, talking_points, avoid, guest_identity_tags, professional_credentials, company_id, pitch_template")
       .eq("id", speaker_id)
       .single();
 
@@ -94,7 +94,7 @@ ${speaker.campaign_strategy || "No strategy set yet"}
 
 Current Target Audiences: ${(speaker.target_audiences || []).join(", ") || "None set"}
 Current Talking Points: ${(speaker.talking_points || []).join(", ") || "None set"}
-Topics to Avoid: ${(speaker.avoid || []).join(", ") || "None set"}
+Topics to Avoid: ${(speaker.avoid || []).join(", ") || "None set"}${speaker.pitch_template ? `\nExample Pitch:\n${speaker.pitch_template}` : ""}
 
 Recent Call Notes (${callNotes.length} calls, last 90 days):
 
