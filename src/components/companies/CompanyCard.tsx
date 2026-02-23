@@ -1,22 +1,9 @@
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Building2, ChevronDown, ChevronRight, Plus, Pencil, Trash, Link2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { Company, Speaker } from "@/types/clients";
-
-const cmColor = (name?: string) => {
-  if (!name) return "bg-muted/50 text-muted-foreground border-muted";
-  const palette = [
-    "bg-primary text-primary-foreground border-transparent",
-    "bg-secondary text-secondary-foreground border-transparent",
-    "bg-accent text-accent-foreground border-transparent",
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  return palette[hash % palette.length];
-};
 
 interface CompanyCardProps {
   company: Company & { speakers: Speaker[] };
@@ -41,18 +28,20 @@ export function CompanyCard({
 }: CompanyCardProps) {
   return (
     <div className={isExpanded ? "col-span-full" : ""}>
-      <Card
-        className={`card-surface overflow-hidden transition-all duration-300 ${
-          isExpanded ? "ring-1 ring-primary/30" : "cursor-pointer hover:ring-1 hover:ring-border"
+      <div
+        className={`group rounded-xl border bg-card transition-all duration-200 ${
+          isExpanded
+            ? "shadow-sm border-border"
+            : "border-border/60 hover:shadow-md hover:border-border cursor-pointer"
         }`}
       >
         {/* Card Header */}
         <div
-          className="flex items-center gap-4 p-4 cursor-pointer"
+          className="flex items-center gap-3 p-3.5 cursor-pointer"
           onClick={onToggle}
         >
           {/* Logo */}
-          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden border border-border">
+          <div className="w-10 h-10 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
             {company.logo_url ? (
               <img
                 src={company.logo_url}
@@ -64,13 +53,13 @@ export function CompanyCard({
                 }}
               />
             ) : null}
-            <Building2 className={`h-6 w-6 text-muted-foreground ${company.logo_url ? "hidden" : ""}`} />
+            <Building2 className={`h-5 w-5 text-muted-foreground ${company.logo_url ? "hidden" : ""}`} />
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-base truncate">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-[15px] tracking-tight truncate">
                 {company.company_url ? (
                   <a
                     href={company.company_url}
@@ -85,58 +74,68 @@ export function CompanyCard({
                   company.name
                 )}
               </h3>
-              <Badge variant="secondary" className="text-xs shrink-0">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {company.speakers.length} speaker{company.speakers.length !== 1 ? "s" : ""}
-              </Badge>
+              </span>
             </div>
             {company.campaign_manager && (
-              <Badge variant="default" className={`mt-1 text-xs ${cmColor(company.campaign_manager)}`}>
+              <span className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-muted-foreground border border-border">
                 CM: {company.campaign_manager}
-              </Badge>
+              </span>
             )}
           </div>
 
           {/* Speaker Thumbnails */}
-          <div className="hidden sm:flex items-center -space-x-2">
+          <div className="hidden sm:flex items-center -space-x-2.5">
             {company.speakers.slice(0, 4).map((s) => (
-              <Avatar key={s.id} className="w-8 h-8 border-2 border-card">
+              <Avatar key={s.id} className="w-7 h-7 ring-2 ring-background">
                 <AvatarImage src={s.headshot_url || undefined} alt={s.name} />
-                <AvatarFallback className="text-xs bg-muted">
+                <AvatarFallback className="text-[10px] bg-muted">
                   {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             ))}
             {company.speakers.length > 4 && (
-              <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-xs text-muted-foreground">
+              <div className="w-7 h-7 rounded-full bg-muted ring-2 ring-background flex items-center justify-center text-[10px] text-muted-foreground">
                 +{company.speakers.length - 4}
               </div>
             )}
           </div>
 
+          {/* Hover-reveal actions (collapsed only) */}
+          {!isExpanded && (
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Edit">
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+
           {/* Expand icon */}
           <div className="shrink-0 text-muted-foreground">
-            {isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </div>
         </div>
 
         {/* Expanded content */}
         {isExpanded && (
-          <div className="border-t border-border">
-            {/* Action bar */}
-            <div className="flex items-center gap-2 px-4 py-3 bg-muted/20 border-b border-border/50">
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onAddSpeaker(); }}>
-                <Plus className="h-4 w-4 mr-1" />Speaker
+          <div className="border-t border-border/50">
+            {/* Action bar — hover-reveal in header area */}
+            <div className="group/actions flex items-center gap-1 px-4 py-2 border-b border-border/30">
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onAddSpeaker(); }}>
+                <Plus className="h-3.5 w-3.5 mr-1" />Speaker
               </Button>
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onAirtable(); }}>
-                <Link2 className="h-4 w-4 mr-1" />Airtable
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onAirtable(); }}>
+                <Link2 className="h-3.5 w-3.5 mr-1" />Airtable
               </Button>
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-                <Pencil className="h-4 w-4 mr-1" />Edit
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                <Pencil className="h-3.5 w-3.5 mr-1" />Edit
               </Button>
+              <div className="flex-1" />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={(e) => e.stopPropagation()}>
-                    <Trash className="h-4 w-4 mr-1" />Delete
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive opacity-0 group-hover/actions:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                    <Trash className="h-3.5 w-3.5 mr-1" />Delete
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -154,10 +153,10 @@ export function CompanyCard({
               </AlertDialog>
             </div>
 
-            {/* Speaker cards */}
-            <div className="p-4 space-y-3">
+            {/* Speaker list — divider-based */}
+            <div className="divide-y divide-border/40">
               {company.speakers.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
+                <p className="text-sm text-muted-foreground py-6 text-center">
                   No speakers yet. Add one to get started.
                 </p>
               ) : (
@@ -166,7 +165,7 @@ export function CompanyCard({
             </div>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
