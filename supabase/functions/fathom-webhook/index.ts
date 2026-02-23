@@ -152,6 +152,59 @@ serve(async (req) => {
           }
         }
       }
+
+      // 5. Email local-part match against speaker first names
+      if (!speakerId) {
+        const emails = participantNames.filter((p: string) => p.includes("@"));
+        for (const email of emails) {
+          const localPart = email.split("@")[0].toLowerCase().replace(/[^a-z]/g, "");
+          if (localPart.length < 3) continue;
+          const matches = speakers.filter((s: any) => {
+            const firstName = s.name.toLowerCase().trim().split(/\s+/)[0];
+            return firstName === localPart;
+          });
+          if (matches.length === 1) {
+            speakerId = matches[0].id;
+            companyId = matches[0].company_id;
+            console.log(`Matched speaker "${matches[0].name}" via email local-part "${localPart}"`);
+            break;
+          }
+        }
+      }
+
+      // 6. Email domain match against company URLs
+      if (!companyId) {
+        const { data: companies } = await supabase
+          .from("companies")
+          .select("id, company_url")
+          .eq("org_id", ORG_ID)
+          .not("company_url", "is", null);
+
+        if (companies && companies.length > 0) {
+          const emails = participantNames.filter((p: string) => p.includes("@"));
+          for (const email of emails) {
+            const domain = email.split("@")[1]?.toLowerCase();
+            if (!domain) continue;
+            const match = companies.find((c: any) => {
+              if (!c.company_url) return false;
+              const urlDomain = c.company_url.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+              return urlDomain === domain || domain === urlDomain;
+            });
+            if (match) {
+              companyId = match.id;
+              // If we matched company but not speaker, try to find a speaker in that company
+              if (!speakerId) {
+                const compSpeaker = speakers.find((s: any) => s.company_id === match.id);
+                if (compSpeaker) {
+                  speakerId = (compSpeaker as any).id;
+                }
+              }
+              console.log(`Matched company "${match.id}" via email domain "${domain}"`);
+              break;
+            }
+          }
+        }
+      }
     }
 
     // Upsert the call note

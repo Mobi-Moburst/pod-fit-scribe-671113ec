@@ -69,8 +69,17 @@ serve(async (req) => {
       .select("id, name, company_id")
       .eq("org_id", ORG_ID);
 
-    const matchSpeaker = (participantNames: string[]) => {
+    // Fetch companies for email domain matching
+    const { data: companies } = await supabase
+      .from("companies")
+      .select("id, company_url")
+      .eq("org_id", ORG_ID)
+      .not("company_url", "is", null);
+
+    const matchSpeaker = (participantNames: string[], meetingTitle: string, summary: string | null) => {
       if (!speakers || speakers.length === 0) return { speakerId: null, companyId: null };
+      
+      // 1. Exact/partial name match from participants
       for (const pName of participantNames) {
         const lower = pName.toLowerCase().trim();
         const exact = speakers.find((s: any) => s.name.toLowerCase().trim() === lower);
@@ -81,6 +90,75 @@ serve(async (req) => {
         });
         if (partial) return { speakerId: partial.id, companyId: partial.company_id };
       }
+
+      // 2-4. Title/summary scanning
+      const searchText = `${meetingTitle} ${summary || ""}`.toLowerCase();
+      
+      // 2. Full name match
+      for (const s of speakers) {
+        const sName = (s as any).name.toLowerCase().trim();
+        if (sName.length >= 3 && searchText.includes(sName)) {
+          return { speakerId: (s as any).id, companyId: (s as any).company_id };
+        }
+      }
+
+      // 3. Name parts match
+      for (const s of speakers) {
+        const sName = (s as any).name.toLowerCase().trim();
+        const nameParts = sName.split(/\s+/).filter((p: string) => p.length >= 3);
+        if (nameParts.length >= 2 && nameParts.every((p: string) => searchText.includes(p))) {
+          return { speakerId: (s as any).id, companyId: (s as any).company_id };
+        }
+      }
+
+      // 4. Unique first-name match
+      const firstNameMatches: any[] = [];
+      for (const s of speakers) {
+        const firstName = (s as any).name.toLowerCase().trim().split(/\s+/)[0];
+        if (firstName.length >= 3 && searchText.includes(firstName)) {
+          firstNameMatches.push(s);
+        }
+      }
+      if (firstNameMatches.length === 1) {
+        return { speakerId: firstNameMatches[0].id, companyId: firstNameMatches[0].company_id };
+      }
+
+      // 5. Email local-part match against speaker first names
+      const emails = participantNames.filter((p: string) => p.includes("@"));
+      for (const email of emails) {
+        const localPart = email.split("@")[0].toLowerCase().replace(/[^a-z]/g, "");
+        if (localPart.length < 3) continue;
+        const matches = speakers.filter((s: any) => {
+          const firstName = s.name.toLowerCase().trim().split(/\s+/)[0];
+          return firstName === localPart;
+        });
+        if (matches.length === 1) {
+          return { speakerId: matches[0].id, companyId: matches[0].company_id };
+        }
+      }
+
+      // 6. Email domain match against company URLs
+      let matchedCompanyId: string | null = null;
+      let matchedSpeakerId: string | null = null;
+      if (companies && companies.length > 0) {
+        for (const email of emails) {
+          const domain = email.split("@")[1]?.toLowerCase();
+          if (!domain) continue;
+          const match = companies.find((c: any) => {
+            if (!c.company_url) return false;
+            const urlDomain = c.company_url.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+            return urlDomain === domain;
+          });
+          if (match) {
+            matchedCompanyId = match.id;
+            const compSpeaker = speakers.find((s: any) => s.company_id === match.id);
+            if (compSpeaker) matchedSpeakerId = (compSpeaker as any).id;
+            break;
+          }
+        }
+      }
+      if (matchedCompanyId) return { speakerId: matchedSpeakerId, companyId: matchedCompanyId };
+
       return { speakerId: null, companyId: null };
     };
 
@@ -104,7 +182,9 @@ serve(async (req) => {
         }
       }
 
-      const { speakerId, companyId } = matchSpeaker(participantNames);
+      const meetingTitle = meeting.title || "Untitled Meeting";
+      const summaryText = typeof meeting.summary === "string" ? meeting.summary : (meeting.summary ? JSON.stringify(meeting.summary) : null);
+      const { speakerId, companyId } = matchSpeaker(participantNames, meetingTitle, summaryText);
 
       let transcriptText = "";
       const transcript = meeting.transcript;
