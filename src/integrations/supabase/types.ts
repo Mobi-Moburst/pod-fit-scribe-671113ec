@@ -522,6 +522,7 @@ export type Database = {
           org_id: string
           pitch_template: string | null
           professional_credentials: string[] | null
+          quarterly_notes: Json | null
           talking_points: string[] | null
           target_audiences: string[] | null
           title: string | null
@@ -543,6 +544,7 @@ export type Database = {
           org_id: string
           pitch_template?: string | null
           professional_credentials?: string[] | null
+          quarterly_notes?: Json | null
           talking_points?: string[] | null
           target_audiences?: string[] | null
           title?: string | null
@@ -564,6 +566,7 @@ export type Database = {
           org_id?: string
           pitch_template?: string | null
           professional_credentials?: string[] | null
+          quarterly_notes?: Json | null
           talking_points?: string[] | null
           target_audiences?: string[] | null
           title?: string | null
