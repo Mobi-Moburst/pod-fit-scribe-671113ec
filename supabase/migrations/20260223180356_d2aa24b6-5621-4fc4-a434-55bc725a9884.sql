@@ -1,0 +1,1 @@
+ALTER TABLE speakers ADD COLUMN quarterly_notes jsonb DEFAULT '[]'::jsonb;
