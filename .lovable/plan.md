@@ -1,87 +1,66 @@
 
+# Companies Page Visual Polish: Premium Internal Tool Aesthetic
 
-# Companies Page Redesign: Card-Based Speaker Profiles
+## Summary
+Refine the visual design of CompanyCard and SpeakerProfileCard to feel like a premium internal tool (Folk CRM / Stripe dashboard style) -- calmer surfaces, tighter spacing, hover-reveal actions, and cleaner typography hierarchy.
 
-## Problem
-The current Companies page is a stack of collapsible rows inside collapsible rows. Viewing a speaker's full context requires clicking through multiple nested dropdowns (company expand, then call notes expand, then strategy insights expand). Edit forms render inline as cards that push content around. This discourages browsing and daily interaction.
+## Changes
 
-## New Layout
+### 1. CompanyCard.tsx -- Surface and hover treatment
 
-### Company Level: Grid of Company Cards
-- Replace the collapsible list with a **grid of company cards** (2-3 columns on desktop, 1 on mobile)
-- Each card shows: logo, company name, campaign manager badge, speaker count, and a row of speaker avatar thumbnails
-- Clicking a company card **expands it inline** (full-width, pushes other cards down) to reveal speaker cards inside -- not a tiny collapsible row, but a spacious panel
+**Card surface**: Replace `card-surface` (which applies `--shadow-elevated`, a colored glow) with a flat, quiet style:
+- Light: `bg-zinc-50/80 border border-zinc-200` with no shadow
+- Dark: keep `bg-card border-border`
+- On hover (collapsed only): add a gentle lift shadow (`shadow-md`) instead of a ring color change
+- Expanded state: subtle `shadow-sm` instead of `ring-1 ring-primary/30`
 
-### Speaker Level: Rich Profile Cards
-When a company is expanded, speakers appear as **horizontal cards** with two interaction modes:
+**Typography hierarchy**:
+- Company name: `font-semibold text-[15px] tracking-tight` (slightly larger, tighter)
+- Speaker count badge: switch to plain text -- `text-xs text-muted-foreground` instead of a Badge component. Just render as `{count} speakers` inline.
 
-**Collapsed (default):** A compact card showing:
-- Headshot (or avatar placeholder)
-- Name and title
-- Top 3 audience tags as badges
-- Quick-action icon buttons: Edit, Call Notes, Strategy Insights, Airtable
+**CM badge**: Replace the colorful `cmColor()` hash-based palette with a single muted pill:
+- `bg-secondary text-muted-foreground text-[11px] font-medium border border-border`
+- Remove the `cmColor` function entirely
 
-**Expanded (click the card):** The card expands into a **scrollable profile view** with tabbed sections:
+**Avatar stack**: Tighter overlap (`-space-x-2.5`), white ring border (`ring-2 ring-background`), slightly smaller `w-7 h-7`
 
-```text
-+-----------------------------------------------+
-|  [Headshot]  Speaker Name                      |
-|              Title at Company        [Edit] [X] |
-|                                                 |
-|  [Overview] [Strategy] [Call Notes] [Insights]  |
-|  ─────────────────────────────────────────────  |
-|                                                 |
-|  Overview tab:                                  |
-|    - Target audiences (badges)                  |
-|    - Talking points (bullet list)               |
-|    - Things to avoid                            |
-|    - Guest identity tags                        |
-|    - Competitors list                           |
-|    - Media kit link, Airtable link              |
-|                                                 |
-|  Strategy tab:                                  |
-|    - Full campaign strategy (markdown rendered) |
-|    - Pitch template (if exists)                 |
-|                                                 |
-|  Call Notes tab:                                |
-|    - CallNotesList component (existing)         |
-|                                                 |
-|  Insights tab:                                  |
-|    - StrategyInsightsPanel (existing)           |
-+-----------------------------------------------+
-```
+**Action buttons (expanded state)**: Replace the always-visible action bar with a `group-hover` pattern:
+- Move Add Speaker, Edit, Airtable, Delete to the card header row, right-aligned
+- Use `opacity-0 group-hover:opacity-100 transition-opacity` so they appear only on hover
+- All buttons become `variant="ghost"` with small icon-only or text style
+- Delete stays `text-destructive` but also hover-only
 
-### Edit Mode
-- Company and speaker edit forms open in a **Sheet (slide-over panel)** from the right instead of rendering inline. This keeps the page context visible and avoids layout shifts.
+**Expanded speaker area**: Remove the `bg-muted/20 border-b` action bar wrapper. The speaker list gets `divide-y divide-border/40` instead of `space-y-3` with card wrappers per speaker.
 
-## Technical Changes
+### 2. SpeakerProfileCard.tsx -- Collapsed row refinement
 
-### New Component: `SpeakerProfileCard.tsx`
-A new component (`src/components/companies/SpeakerProfileCard.tsx`) that encapsulates the expanded speaker view with tabs (Overview, Strategy, Call Notes, Insights). Reuses existing `CallNotesList` and `StrategyInsightsPanel` components.
+**Collapsed state**: Replace the Card wrapper with a simple `div` row:
+- No card border or background -- just a row in the divide-y list
+- `py-3 px-1` padding, flex layout
+- On hover: `bg-muted/30 rounded-lg` subtle highlight
+- Remove the `ChevronRight` icon (the whole row is clickable, cursor-pointer is enough)
 
-### New Component: `CompanyCard.tsx`
-A new component (`src/components/companies/CompanyCard.tsx`) that renders the company card with logo, name, CM badge, and speaker thumbnails. Handles expand/collapse.
+**Expanded state**: Keep the tabbed card but refine:
+- Remove `ring-1 ring-primary/20` -- use `shadow-sm border border-border` instead
+- Header padding tightened to `p-3`
+- Action buttons in header: `opacity-0 group-hover:opacity-100` pattern (Edit, Airtable, Delete appear on hover of the header area)
+- Keep the close (X) button always visible
 
-### Modified: `Companies.tsx`
-- Replace the single `Collapsible` list with the new card grid layout
-- Move company edit form into a `Sheet` (right slide-over)
-- Move speaker edit form into a `Sheet` (right slide-over)
-- Wire up the new card components with existing state and CRUD functions
+### 3. index.css -- Card surface utility update
 
-### Files Created
-- `src/components/companies/CompanyCard.tsx` -- company card with expand/collapse
-- `src/components/companies/SpeakerProfileCard.tsx` -- speaker card with tabbed profile view
+Update `.card-surface` to be calmer:
+- Remove `box-shadow: var(--shadow-elevated)` (the cyan glow)
+- Replace with `box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04)`
+- Remove the `:hover { transform: translateY(-1px) }` (we handle hover per-component now)
 
-### Files Modified
-- `src/pages/Companies.tsx` -- replace list layout with card grid, move edit forms to Sheets
+---
 
-### No Backend Changes
-All existing data fetching, CRUD operations, and edge function integrations remain unchanged. This is purely a UI restructure.
+## Technical Details
 
-## Key Design Decisions
-- **Tabs over collapsibles**: Each speaker's context (strategy, call notes, insights) lives in tabs within the expanded card rather than stacked collapsibles. One click to switch views.
-- **Sheet for editing**: Edit forms slide in from the right, keeping the main page visible so managers don't lose context.
-- **Company grid**: Visual scanning is faster with cards than with a flat list of collapsible rows.
-- **Speaker headshots prominent**: Headshots appear on the card face, making the page feel more personal and browsable.
-- **Existing components reused**: `CallNotesList`, `StrategyInsightsPanel`, `MarkdownRenderer` all slot directly into the new tab views.
+### Files modified:
+- `src/components/companies/CompanyCard.tsx` -- surface classes, remove cmColor, hover-reveal actions, divider-based speaker list
+- `src/components/companies/SpeakerProfileCard.tsx` -- collapsed row as plain div, expanded card refinements, hover-reveal actions
+- `src/index.css` -- tone down `.card-surface` utility
 
+### No functionality changes
+All click handlers, CRUD operations, AlertDialog confirmations, Sheet edit forms, and data flow remain identical. This is purely a CSS/className refactor.
