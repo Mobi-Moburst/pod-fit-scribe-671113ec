@@ -1,0 +1,1 @@
+UPDATE call_notes SET speaker_id = '75ed4fdf-f681-4373-bb4f-57ea20b41cdf', company_id = '2794f9f2-5da5-4db6-9798-85ba85dba626' WHERE id = 'b777b9e3-f478-4f93-b5c9-41f92db4fcdb';
