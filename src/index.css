@@ -122,10 +122,9 @@
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);
-    box-shadow: var(--shadow-elevated);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04);
     transition: var(--transition-smooth);
   }
-  .card-surface:hover { transform: translateY(-1px); }
 
   .gradient-text {
     background: var(--gradient-primary);

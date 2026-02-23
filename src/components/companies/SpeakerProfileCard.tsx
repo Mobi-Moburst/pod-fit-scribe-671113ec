@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,7 +17,6 @@ import {
   FileText,
   Sparkles,
   BookOpen,
-  ChevronRight,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { pickTopAudienceTags } from "@/lib/campaignStrategy";
@@ -56,105 +54,112 @@ export function SpeakerProfileCard({
 
   if (!expanded) {
     return (
-      <Card
-        className="p-3 bg-muted/20 border-border/50 cursor-pointer hover:bg-muted/40 transition-colors"
+      <div
+        className="flex items-center gap-3 py-3 px-3 cursor-pointer hover:bg-muted/30 rounded-lg transition-colors group/row"
         onClick={() => setExpanded(true)}
       >
-        <div className="flex items-center gap-3">
-          <Avatar className="w-10 h-10 border border-border">
-            <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
-            <AvatarFallback className="text-xs bg-muted">{initials}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-sm truncate">{speaker.name}</span>
-              {speaker.title && (
-                <span className="text-xs text-muted-foreground truncate">— {speaker.title}</span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {topTags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-[10px] py-0">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
+        <Avatar className="w-9 h-9 ring-1 ring-border shrink-0">
+          <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
+          <AvatarFallback className="text-[10px] bg-muted">{initials}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm truncate">{speaker.name}</span>
+            {speaker.title && (
+              <span className="text-xs text-muted-foreground truncate hidden sm:inline">— {speaker.title}</span>
+            )}
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {topTags.map((tag) => (
+              <span key={tag} className="inline-flex items-center px-1.5 py-0 rounded text-[10px] text-muted-foreground bg-muted/60">
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
-      </Card>
+        {/* Hover-reveal actions */}
+        <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Edit">
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onAirtable(); }} title="Airtable">
+            <Link2 className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="card-surface overflow-hidden ring-1 ring-primary/20">
+    <div className="mx-2 my-2 rounded-xl shadow-sm border border-border bg-card overflow-hidden">
       {/* Header */}
-      <div className="flex items-start gap-4 p-4 border-b border-border/50">
-        <Avatar className="w-14 h-14 border-2 border-border shrink-0">
+      <div className="group/header flex items-start gap-3 p-3 border-b border-border/50">
+        <Avatar className="w-12 h-12 ring-1 ring-border shrink-0">
           <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
           <AvatarFallback className="bg-muted">{initials}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-base">{speaker.name}</h4>
+          <h4 className="font-semibold text-sm tracking-tight">{speaker.name}</h4>
           {speaker.title && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {speaker.title} at {companyName}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button size="sm" variant="outline" onClick={onEdit}>
-            <Pencil className="h-3.5 w-3.5 mr-1" />Edit
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onAirtable} title="Airtable">
-            <Link2 className="h-3.5 w-3.5" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
-                <Trash className="h-3.5 w-3.5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently remove {speaker.name}. This cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <Button size="icon" variant="ghost" onClick={() => setExpanded(false)}>
-            <X className="h-4 w-4" />
+        <div className="flex items-center gap-0.5 shrink-0">
+          <div className="flex items-center gap-0.5 opacity-0 group-hover/header:opacity-100 transition-opacity">
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit">
+              <Pencil className="h-3 w-3" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAirtable} title="Airtable">
+              <Link2 className="h-3 w-3" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive">
+                  <Trash className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently remove {speaker.name}. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setExpanded(false)}>
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
       {/* Tabbed Content */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full justify-start rounded-none border-b border-border/50 bg-transparent px-4 h-auto py-0">
-          <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2.5 text-xs">
-            <User className="h-3.5 w-3.5 mr-1.5" />Overview
+        <TabsList className="w-full justify-start rounded-none border-b border-border/50 bg-transparent px-3 h-auto py-0">
+          <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
+            <User className="h-3 w-3 mr-1.5" />Overview
           </TabsTrigger>
-          <TabsTrigger value="strategy" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2.5 text-xs">
-            <BookOpen className="h-3.5 w-3.5 mr-1.5" />Strategy
+          <TabsTrigger value="strategy" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
+            <BookOpen className="h-3 w-3 mr-1.5" />Strategy
           </TabsTrigger>
-          <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2.5 text-xs">
-            <FileText className="h-3.5 w-3.5 mr-1.5" />Call Notes
+          <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
+            <FileText className="h-3 w-3 mr-1.5" />Call Notes
           </TabsTrigger>
-          <TabsTrigger value="insights" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2.5 text-xs">
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" />Insights
+          <TabsTrigger value="insights" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
+            <Sparkles className="h-3 w-3 mr-1.5" />Insights
           </TabsTrigger>
         </TabsList>
 
         <ScrollArea className="max-h-[500px]">
           {/* Overview */}
           <TabsContent value="overview" className="p-4 space-y-4 mt-0">
-            {/* Target Audiences */}
             {(speaker.target_audiences?.length ?? 0) > 0 && (
               <Section title="Target Audiences">
                 <div className="flex flex-wrap gap-1.5">
@@ -165,7 +170,6 @@ export function SpeakerProfileCard({
               </Section>
             )}
 
-            {/* Talking Points */}
             {(speaker.talking_points?.length ?? 0) > 0 && (
               <Section title="Talking Points">
                 <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
@@ -174,7 +178,6 @@ export function SpeakerProfileCard({
               </Section>
             )}
 
-            {/* Things to Avoid */}
             {(speaker.avoid?.length ?? 0) > 0 && (
               <Section title="Things to Avoid">
                 <div className="flex flex-wrap gap-1.5">
@@ -185,7 +188,6 @@ export function SpeakerProfileCard({
               </Section>
             )}
 
-            {/* Guest Identity Tags */}
             {(speaker.guest_identity_tags?.length ?? 0) > 0 && (
               <Section title="Guest Identity Tags">
                 <div className="flex flex-wrap gap-1.5">
@@ -196,7 +198,6 @@ export function SpeakerProfileCard({
               </Section>
             )}
 
-            {/* Competitors */}
             {(speaker.competitors?.length ?? 0) > 0 && (
               <Section title="Competitors">
                 <div className="space-y-2">
@@ -211,19 +212,18 @@ export function SpeakerProfileCard({
               </Section>
             )}
 
-            {/* Links */}
             <div className="flex flex-wrap gap-2 pt-2">
               {speaker.media_kit_url && (
                 <a href={speaker.media_kit_url} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline">
-                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />Media Kit
+                  <Button size="sm" variant="outline" className="h-7 text-xs">
+                    <ExternalLink className="h-3 w-3 mr-1.5" />Media Kit
                   </Button>
                 </a>
               )}
               {speaker.airtable_embed_url && (
                 <a href={speaker.airtable_embed_url} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline">
-                    <Link2 className="h-3.5 w-3.5 mr-1.5" />Airtable
+                  <Button size="sm" variant="outline" className="h-7 text-xs">
+                    <Link2 className="h-3 w-3 mr-1.5" />Airtable
                   </Button>
                 </a>
               )}
@@ -258,7 +258,7 @@ export function SpeakerProfileCard({
           </TabsContent>
         </ScrollArea>
       </Tabs>
-    </Card>
+    </div>
   );
 }
 
