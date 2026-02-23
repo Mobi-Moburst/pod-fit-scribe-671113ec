@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown, ChevronRight, FileText, Calendar, Clock, CheckSquare } from "lucide-react";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { format } from "date-fns";
 
 interface CallNote {
@@ -133,7 +134,9 @@ export function CallNotesList({ speakerId, companyId, maxHeight = "400px" }: Cal
                   {note.summary && (
                     <div>
                       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Summary</h4>
-                      <p className="text-sm whitespace-pre-wrap">{note.summary}</p>
+                      <div className="max-h-48 overflow-y-auto rounded border border-border/20 p-2">
+                        <MarkdownRenderer content={note.summary} className="text-sm" />
+                      </div>
                     </div>
                   )}
 
