@@ -33,7 +33,9 @@ import { ContentGapRecommendations } from "@/components/reports/ContentGapRecomm
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2, Loader2 } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2, Loader2, Building2, Check } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AirtableSyncButton } from "@/components/airtable/AirtableSyncButton";
 import { AirtableConnectionDialog } from "@/components/airtable/AirtableConnectionDialog";
 import { AirtableCSVRow } from "@/hooks/use-airtable-connection";
@@ -96,6 +98,8 @@ export default function Reports() {
   const [allReports, setAllReports] = useState<any[]>([]);
   const [allReportsSearchQuery, setAllReportsSearchQuery] = useState('');
   const [allReportsExpanded, setAllReportsExpanded] = useState(false);
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const [dataSourcesOpen, setDataSourcesOpen] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -263,7 +267,13 @@ export default function Reports() {
     speakers.filter(s => s.company_id === selectedCompanyId),
     [speakers, selectedCompanyId]
   );
-  
+
+  const filteredCompanies = useMemo(() => {
+    if (!companySearchQuery.trim()) return companies;
+    const q = companySearchQuery.toLowerCase();
+    return companies.filter(c => c.name.toLowerCase().includes(q));
+  }, [companies, companySearchQuery]);
+
   const speakerAsClient: MinimalClient | null = useMemo(() => {
     if (!selectedSpeaker || !selectedCompany) return null;
     return {
@@ -1844,488 +1854,463 @@ export default function Reports() {
             <CardHeader>
               <CardTitle className="text-[15px] font-semibold tracking-tight">Generate Client Report</CardTitle>
               <CardDescription>
-                Generate a comprehensive campaign report with KPIs and metrics
+                Select a company, speaker, and period to generate a campaign report
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Company/Speaker Selection */}
-              <div className="space-y-4">
-                <Label className="mb-2 block">Select Company{!isMultiSpeakerMode && ' & Speaker'} *</Label>
-                
-                {!isMultiSpeakerMode ? (
-                  <CompanySpeakerSelector
-                    companies={companies}
-                    speakers={speakers}
-                    selectedCompanyId={selectedCompanyId}
-                    selectedSpeakerId={selectedSpeakerId}
-                    onCompanyChange={(id) => {
-                      setSelectedCompanyId(id);
-                      setSelectedSpeakerId(null);
-                    }}
-                    onSpeakerChange={setSelectedSpeakerId}
+
+              {/* ── Section 1: Company Selection ── */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Company</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search companies..."
+                    value={companySearchQuery}
+                    onChange={(e) => setCompanySearchQuery(e.target.value)}
+                    className="pl-9 h-9"
                   />
-                ) : (
-                  <Select
-                    value={selectedCompanyId || ''}
-                    onValueChange={(id) => {
-                      setSelectedCompanyId(id);
-                      setSelectedSpeakerIds([]);
-                      setSpeakerFiles({});
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Company" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {companies.map(company => (
-                        <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                
-                {/* Multi-speaker toggle - only show when company has 2+ speakers */}
-                {selectedCompanyId && companySpeakers.length >= 2 && (
-                  <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm font-medium">Multi-Speaker Report</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Generate a single report combining multiple speakers
-                      </p>
-                    </div>
-                    <Switch
-                      checked={isMultiSpeakerMode}
-                      onCheckedChange={(checked) => {
-                        setIsMultiSpeakerMode(checked);
-                        if (checked) {
-                        setSelectedSpeakerId(null);
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[240px] overflow-y-auto">
+                  {filteredCompanies.map((company) => {
+                    const speakerCount = speakers.filter(s => s.company_id === company.id).length;
+                    const isSelected = selectedCompanyId === company.id;
+                    return (
+                      <button
+                        key={company.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCompanyId(company.id);
+                          setSelectedSpeakerId(null);
                           setSelectedSpeakerIds([]);
                           setSpeakerFiles({});
                           setSpeakerSyncedData({});
-                          setBatchFile(null);
-                          setAirtableFile(null);
-                        } else {
-                          setSelectedSpeakerIds([]);
-                          setSpeakerFiles({});
-                          setSpeakerSyncedData({});
-                        }
-                      }}
-                    />
-                  </div>
-                )}
-                
-                {/* Multi-speaker selection checkboxes */}
-                {isMultiSpeakerMode && selectedCompanyId && companySpeakers.length >= 2 && (
-                  <div className="space-y-3 border rounded-lg p-4">
-                    <Label className="text-sm">Select Speakers (minimum 2)</Label>
-                    <div className="space-y-2">
-                      {companySpeakers.map(speaker => (
-                        <div key={speaker.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`speaker-${speaker.id}`}
-                            checked={selectedSpeakerIds.includes(speaker.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedSpeakerIds(prev => [...prev, speaker.id]);
-                                setSpeakerFileExpanded(prev => ({ ...prev, [speaker.id]: true }));
-                              } else {
-                                setSelectedSpeakerIds(prev => prev.filter(id => id !== speaker.id));
-                                setSpeakerFiles(prev => {
-                                  const updated = { ...prev };
-                                  delete updated[speaker.id];
-                                  return updated;
-                                });
-                                setSpeakerSyncedData(prev => {
-                                  const updated = { ...prev };
-                                  delete updated[speaker.id];
-                                  return updated;
-                                });
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor={`speaker-${speaker.id}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
-                            {speaker.name}
-                            {speaker.title && <span className="text-muted-foreground"> – {speaker.title}</span>}
-                          </label>
+                          setIsMultiSpeakerMode(false);
+                        }}
+                        className={`flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all ${
+                          isSelected
+                            ? 'border-primary bg-primary/5 shadow-sm'
+                            : 'border-border/60 hover:border-border hover:shadow-sm bg-card'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
+                          {company.logo_url ? (
+                            <img src={company.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
+                          ) : (
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                          )}
                         </div>
-                      ))}
-                    </div>
-                    {selectedSpeakerIds.length > 0 && selectedSpeakerIds.length < 2 && (
-                      <p className="text-xs text-destructive">Select at least 2 speakers for a multi-speaker report</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{company.name}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {speakerCount} speaker{speakerCount !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                      </button>
+                    );
+                  })}
+                  {filteredCompanies.length === 0 && (
+                    <p className="col-span-full text-sm text-muted-foreground text-center py-6">No companies found.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Section 2: Speaker Selection ── */}
+              {selectedCompanyId && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                      {isMultiSpeakerMode ? 'Speakers (select 2+)' : 'Speaker'}
+                    </Label>
+                    {companySpeakers.length >= 2 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Multi-speaker</span>
+                        <Switch
+                          checked={isMultiSpeakerMode}
+                          onCheckedChange={(checked) => {
+                            setIsMultiSpeakerMode(checked);
+                            if (checked) {
+                              setSelectedSpeakerId(null);
+                              setSelectedSpeakerIds([]);
+                              setSpeakerFiles({});
+                              setSpeakerSyncedData({});
+                              setBatchFile(null);
+                              setAirtableFile(null);
+                            } else {
+                              setSelectedSpeakerIds([]);
+                              setSpeakerFiles({});
+                              setSpeakerSyncedData({});
+                            }
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-
-              {/* Date Range */}
-              <div className="space-y-4">
-                <Label>Report Period *</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Year Selector */}
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Year</Label>
-                    <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[selectedYear - 1, selectedYear, selectedYear + 1].map(year => (
-                          <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* Quarter Selector */}
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Quarter</Label>
-                    <Select value={selectedQuarter} onValueChange={handleQuarterChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Quarter" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Q1">Q1 (Jan - Mar)</SelectItem>
-                        <SelectItem value="Q2">Q2 (Apr - Jun)</SelectItem>
-                        <SelectItem value="Q3">Q3 (Jul - Sep)</SelectItem>
-                        <SelectItem value="Q4">Q4 (Oct - Dec)</SelectItem>
-                        <SelectItem value="custom">Custom Date Range</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                {/* Custom Date Pickers - Only shown when "custom" selected */}
-                {selectedQuarter === 'custom' && (
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <Label>Start Date</Label>
-                      <Input
-                        type="date"
-                        value={dateRangeStart}
-                        onChange={(e) => setDateRangeStart(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>End Date</Label>
-                      <Input
-                        type="date"
-                        value={dateRangeEnd}
-                        onChange={(e) => setDateRangeEnd(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* CSV Uploads */}
-              <div className="space-y-4">
-                {/* Multi-speaker per-speaker CSV uploads */}
-                {isMultiSpeakerMode && selectedSpeakerIds.length > 0 && (
-                  <div className="space-y-3">
-                    <Label className="font-medium">Per-Speaker Data</Label>
-                    {selectedSpeakerIds.map(speakerId => {
-                      const speaker = speakers.find(s => s.id === speakerId);
-                      const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
-                      const syncedData = speakerSyncedData[speakerId];
-                      const isExpanded = speakerFileExpanded[speakerId] ?? true;
-                      const hasAirtableData = !!syncedData || !!files.airtableFile;
-                      const isReady = files.batchFile && hasAirtableData;
-                      
+                  <div className="space-y-1">
+                    {companySpeakers.map((speaker) => {
+                      const isSelected = isMultiSpeakerMode
+                        ? selectedSpeakerIds.includes(speaker.id)
+                        : selectedSpeakerId === speaker.id;
                       return (
-                        <Collapsible key={speakerId} open={isExpanded} onOpenChange={(open) => setSpeakerFileExpanded(prev => ({ ...prev, [speakerId]: open }))}>
-                          <div className="border rounded-lg">
-                            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50">
-                              <div className="flex items-center gap-2">
-                                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                <span className="font-medium">{speaker?.name}</span>
-                                {isReady && (
-                                  <Badge variant="default" className="ml-2">Ready</Badge>
-                                )}
-                              </div>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="px-4 pb-4 space-y-3">
-                              <div>
-                                <Label className="text-xs">Rephonic CSV</Label>
-                                <Input
-                                  type="file"
-                                  accept=".csv"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0] || null;
-                                    setSpeakerFiles(prev => ({
-                                      ...prev,
-                                      [speakerId]: { ...prev[speakerId], batchFile: file }
-                                    }));
-                                  }}
-                                />
-                {files.batchFile && <p className="text-xs text-muted-foreground mt-1">{files.batchFile.name}</p>}
-                                <p className="text-xs text-muted-foreground mt-1">Auto-fetched via Podchaser. Upload CSV only to override.</p>
-                              </div>
-                              
-                              {/* Airtable data section */}
-                              <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Label className="text-xs">Airtable Data *</Label>
-                                  <Badge variant={syncedData ? "default" : files.airtableFile ? "default" : "secondary"} className="text-[10px]">
-                                    {syncedData ? `Synced (${syncedData.length})` : files.airtableFile ? "CSV" : "Required"}
-                                  </Badge>
-                                </div>
-                                
-                                {/* Sync from Airtable - primary option */}
-                                <div className="flex items-center gap-2 mb-2">
-                                  <AirtableSyncButton
-                                    companyId={selectedCompanyId || undefined}
-                                    speakerId={speakerId}
-                                    entityName={speaker?.name || 'Speaker'}
-                                    dateRangeStart={dateRangeStart}
-                                    dateRangeEnd={dateRangeEnd}
-                                    onDataSynced={(data) => {
-                                      setSpeakerSyncedData(prev => ({
-                                        ...prev,
-                                        [speakerId]: data
-                                      }));
-                                      // Clear file if syncing
-                                      setSpeakerFiles(prev => ({
-                                        ...prev,
-                                        [speakerId]: { ...prev[speakerId], airtableFile: null }
-                                      }));
-                                    }}
-                                    variant="inline"
-                                    size="sm"
-                                  />
-                                  {syncedData && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setSpeakerSyncedData(prev => ({
-                                        ...prev,
-                                        [speakerId]: null
-                                      }))}
-                                      title="Clear synced data"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                </div>
-                                {syncedData && (
-                                  <AirtableDataPreview data={syncedData} />
-                                )}
-                                
-                                {/* Fallback to CSV upload */}
-                                {!syncedData && (
-                                  <Collapsible>
-                                    <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                                      <ChevronRight className="h-3 w-3" />
-                                      Or upload CSV manually
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="pt-2">
-                                      <Input
-                                        type="file"
-                                        accept=".csv"
-                                        onChange={(e) => {
-                                          const file = e.target.files?.[0] || null;
-                                          setSpeakerFiles(prev => ({
-                                            ...prev,
-                                            [speakerId]: { ...prev[speakerId], airtableFile: file }
-                                          }));
-                                        }}
-                                      />
-                                      {files.airtableFile && <p className="text-xs text-muted-foreground mt-1">{files.airtableFile.name}</p>}
-                                    </CollapsibleContent>
-                                  </Collapsible>
-                                )}
-                              </div>
-                            </CollapsibleContent>
+                        <button
+                          key={speaker.id}
+                          type="button"
+                          onClick={() => {
+                            if (isMultiSpeakerMode) {
+                              if (selectedSpeakerIds.includes(speaker.id)) {
+                                setSelectedSpeakerIds(prev => prev.filter(id => id !== speaker.id));
+                                setSpeakerFiles(prev => { const u = { ...prev }; delete u[speaker.id]; return u; });
+                                setSpeakerSyncedData(prev => { const u = { ...prev }; delete u[speaker.id]; return u; });
+                              } else {
+                                setSelectedSpeakerIds(prev => [...prev, speaker.id]);
+                                setSpeakerFileExpanded(prev => ({ ...prev, [speaker.id]: true }));
+                              }
+                            } else {
+                              setSelectedSpeakerId(speaker.id);
+                            }
+                          }}
+                          className={`flex items-center gap-3 w-full p-2.5 rounded-lg border text-left transition-all ${
+                            isSelected
+                              ? 'border-primary bg-primary/5'
+                              : 'border-transparent hover:bg-muted/50'
+                          }`}
+                        >
+                          {isMultiSpeakerMode && (
+                            <Checkbox checked={isSelected} className="pointer-events-none" />
+                          )}
+                          <Avatar className="w-7 h-7">
+                            <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
+                            <AvatarFallback className="text-[10px] bg-muted">
+                              {speaker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-sm font-medium">{speaker.name}</span>
+                            {speaker.title && (
+                              <span className="text-xs text-muted-foreground ml-2">— {speaker.title}</span>
+                            )}
                           </div>
-                        </Collapsible>
+                          {!isMultiSpeakerMode && isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                        </button>
                       );
                     })}
+                    {isMultiSpeakerMode && selectedSpeakerIds.length > 0 && selectedSpeakerIds.length < 2 && (
+                      <p className="text-xs text-destructive pt-1">Select at least 2 speakers for a multi-speaker report</p>
+                    )}
                   </div>
-                )}
-                
-                {/* Single-speaker CSV uploads */}
-                {!isMultiSpeakerMode && (
-                  <>
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Label>Rephonic CSV</Label>
-                        <Badge variant={batchFile ? "default" : "outline"}>
-                          {batchFile ? "Uploaded" : "Optional"}
-                        </Badge>
-                      </div>
-                      <Input type="file" accept=".csv" onChange={(e) => setBatchFile(e.target.files?.[0] || null)} />
-                      {batchFile && <p className="text-xs text-muted-foreground mt-1">{batchFile.name}</p>}
-                      <p className="text-xs text-muted-foreground mt-1">Podcast metrics are auto-fetched via Podchaser. Upload a CSV only to override.</p>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Label>Airtable Data *</Label>
-                        <Badge variant={airtableSyncedData ? "default" : airtableFile ? "default" : "secondary"}>
-                          {airtableSyncedData ? `Synced (${airtableSyncedData.length})` : airtableFile ? "CSV Uploaded" : "Required"}
-                        </Badge>
-                      </div>
-                      
-                      {/* Sync from Airtable - primary option */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <AirtableSyncButton
-                          companyId={selectedCompanyId || undefined}
-                          speakerId={selectedSpeakerId || undefined}
-                          entityName={speakerAsClient?.name || 'Speaker'}
-                          dateRangeStart={dateRangeStart}
-                          dateRangeEnd={dateRangeEnd}
-                          onDataSynced={(data) => {
-                            setAirtableSyncedData(data);
-                            setAirtableFile(null); // Clear file if syncing
-                          }}
-                          variant="inline"
-                          size="sm"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setAirtableConnectionDialogOpen(true)}
-                          title="Configure Airtable connection"
-                        >
-                          <Link2 className="h-4 w-4" />
-                        </Button>
-                        {airtableSyncedData && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setAirtableSyncedData(null)}
-                            title="Clear synced data"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      {airtableSyncedData && (
-                        <AirtableDataPreview data={airtableSyncedData} />
-                      )}
-                      
-                      {/* CSV fallback */}
-                      {!airtableSyncedData && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Or upload CSV as fallback:</p>
-                          <Input 
-                            type="file" 
-                            accept=".csv" 
-                            onChange={(e) => setAirtableFile(e.target.files?.[0] || null)} 
-                          />
-                          {airtableFile && <p className="text-xs text-muted-foreground">{airtableFile.name}</p>}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
+                </div>
+              )}
 
-                {/* Company-level CSVs (shared) */}
-                <div className="pt-4 border-t">
-                  <Label className="font-medium mb-3 block">{isMultiSpeakerMode ? 'Company-Level Data (Shared)' : 'Optional Data'}</Label>
-                  
-                  {/* SOV/Peer Comparison */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm font-medium">Peer Comparison</Label>
-                        <Badge variant={manualSOVMode && competitorInterviews.some(c => c.count > 0) ? "default" : "outline"}>
-                          {manualSOVMode && competitorInterviews.some(c => c.count > 0) 
-                            ? "Manual Entry" 
-                            : "Optional"}
-                        </Badge>
-                      </div>
-                      {manualSOVMode && competitorInterviews.length > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={autoFetchPeerComparison}
-                          disabled={isFetchingSOV || !dateRangeStart || !dateRangeEnd}
-                        >
-                          {isFetchingSOV ? (
-                            <>
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              Fetching...
-                            </>
-                          ) : (
-                            <>
-                              <RefreshCw className="h-3 w-3 mr-1" />
-                              Auto-Fetch via Podchaser
-                            </>
-                          )}
-                        </Button>
-                      )}
+              {/* ── Section 3: Report Period ── */}
+              {(selectedSpeakerId || (isMultiSpeakerMode && selectedSpeakerIds.length >= 2)) && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Report Period</Label>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Year</Label>
+                      <ToggleGroup
+                        type="single"
+                        value={selectedYear.toString()}
+                        onValueChange={(val) => { if (val) handleYearChange(val); }}
+                        className="justify-start"
+                      >
+                        {[selectedYear - 1, selectedYear, selectedYear + 1].map(year => (
+                          <ToggleGroupItem key={year} value={year.toString()} className="px-4 h-8 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                            {year}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
                     </div>
-                    
-                    {manualSOVMode && competitorInterviews.length > 0 ? (
-                      <div className="space-y-3">
-                        <p className="text-xs text-muted-foreground">
-                          Use "Auto-Fetch via Podchaser" to populate counts automatically, or enter manually. 
-                          Click the copy button to get a pre-filled ListenNotes search URL.
-                        </p>
-                        {sovFetchError && (
-                          <p className="text-xs text-destructive flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            {sovFetchError}
-                          </p>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Quarter</Label>
+                      <ToggleGroup
+                        type="single"
+                        value={selectedQuarter}
+                        onValueChange={(val) => { if (val) handleQuarterChange(val); }}
+                        className="justify-start"
+                      >
+                        {['Q1', 'Q2', 'Q3', 'Q4'].map(q => (
+                          <ToggleGroupItem key={q} value={q} className="px-4 h-8 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                            {q}
+                          </ToggleGroupItem>
+                        ))}
+                        <ToggleGroupItem value="custom" className="px-4 h-8 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                          Custom
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    </div>
+                    {selectedQuarter === 'custom' && (
+                      <div className="grid grid-cols-2 gap-4 pt-1">
+                        <div>
+                          <Label className="text-xs">Start Date</Label>
+                          <Input type="date" value={dateRangeStart} onChange={(e) => setDateRangeStart(e.target.value)} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">End Date</Label>
+                          <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Section 4: Data Sources (collapsible) ── */}
+              {(selectedSpeakerId || (isMultiSpeakerMode && selectedSpeakerIds.length >= 2)) && dateRangeStart && dateRangeEnd && (
+                <Collapsible open={dataSourcesOpen} onOpenChange={setDataSourcesOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full text-left group">
+                    <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground cursor-pointer">Data Sources</Label>
+                    <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${dataSourcesOpen ? 'rotate-90' : ''}`} />
+                    {/* Status indicators */}
+                    {!dataSourcesOpen && (
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        {(airtableSyncedData || airtableFile || Object.values(speakerSyncedData).some(Boolean)) && (
+                          <span className="w-2 h-2 rounded-full bg-green-500" title="Airtable data ready" />
                         )}
-                        
-                        {competitorInterviews.map((comp, index) => (
-                          <div key={index} className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg border">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{comp.name}</p>
-                              <p className="text-xs text-muted-foreground truncate">{comp.role}</p>
-                            </div>
-                            <Input
-                              type="number"
-                              min="0"
-                              className="w-20"
-                              placeholder="0"
-                              value={comp.count || ''}
-                              onChange={(e) => updateCompetitorCount(index, parseInt(e.target.value) || 0)}
+                        {(batchFile || geoFile || contentGapFile) && (
+                          <span className="w-2 h-2 rounded-full bg-green-500" title="CSV data uploaded" />
+                        )}
+                      </div>
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4 space-y-4">
+                    {/* Multi-speaker per-speaker CSV uploads */}
+                    {isMultiSpeakerMode && selectedSpeakerIds.length > 0 && (
+                      <div className="space-y-3">
+                        <Label className="text-xs font-medium text-muted-foreground">Per-Speaker Data</Label>
+                        {selectedSpeakerIds.map(speakerId => {
+                          const speaker = speakers.find(s => s.id === speakerId);
+                          const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
+                          const syncedData = speakerSyncedData[speakerId];
+                          const isExpanded = speakerFileExpanded[speakerId] ?? true;
+                          const hasAirtableData = !!syncedData || !!files.airtableFile;
+                          const isReady = files.batchFile && hasAirtableData;
+                          
+                          return (
+                            <Collapsible key={speakerId} open={isExpanded} onOpenChange={(open) => setSpeakerFileExpanded(prev => ({ ...prev, [speakerId]: open }))}>
+                              <div className="border border-border/60 rounded-lg">
+                                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 rounded-t-lg">
+                                  <div className="flex items-center gap-2">
+                                    {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                    <span className="text-sm font-medium">{speaker?.name}</span>
+                                    {isReady ? (
+                                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                                    ) : (
+                                      <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                                    )}
+                                  </div>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="px-3 pb-3 space-y-3">
+                                  <div>
+                                    <Label className="text-xs">Rephonic CSV</Label>
+                                    <Input
+                                      type="file"
+                                      accept=".csv"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        setSpeakerFiles(prev => ({
+                                          ...prev,
+                                          [speakerId]: { ...prev[speakerId], batchFile: file }
+                                        }));
+                                      }}
+                                    />
+                                    {files.batchFile && <p className="text-xs text-muted-foreground mt-1">{files.batchFile.name}</p>}
+                                    <p className="text-xs text-muted-foreground mt-1">Auto-fetched via Podchaser. Upload CSV only to override.</p>
+                                  </div>
+                                  
+                                  <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Label className="text-xs">Airtable Data *</Label>
+                                      <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
+                                        {syncedData ? `Synced (${syncedData.length})` : files.airtableFile ? "CSV" : "Required"}
+                                      </Badge>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <AirtableSyncButton
+                                        companyId={selectedCompanyId || undefined}
+                                        speakerId={speakerId}
+                                        entityName={speaker?.name || 'Speaker'}
+                                        dateRangeStart={dateRangeStart}
+                                        dateRangeEnd={dateRangeEnd}
+                                        onDataSynced={(data) => {
+                                          setSpeakerSyncedData(prev => ({ ...prev, [speakerId]: data }));
+                                          setSpeakerFiles(prev => ({ ...prev, [speakerId]: { ...prev[speakerId], airtableFile: null } }));
+                                        }}
+                                        variant="inline"
+                                        size="sm"
+                                      />
+                                      {syncedData && (
+                                        <Button variant="ghost" size="sm" onClick={() => setSpeakerSyncedData(prev => ({ ...prev, [speakerId]: null }))} title="Clear synced data">
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                    {syncedData && <AirtableDataPreview data={syncedData} />}
+                                    
+                                    {!syncedData && (
+                                      <Collapsible>
+                                        <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                                          <ChevronRight className="h-3 w-3" />
+                                          Or upload CSV manually
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="pt-2">
+                                          <Input type="file" accept=".csv" onChange={(e) => {
+                                            const file = e.target.files?.[0] || null;
+                                            setSpeakerFiles(prev => ({ ...prev, [speakerId]: { ...prev[speakerId], airtableFile: file } }));
+                                          }} />
+                                          {files.airtableFile && <p className="text-xs text-muted-foreground mt-1">{files.airtableFile.name}</p>}
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    )}
+                                  </div>
+                                </CollapsibleContent>
+                              </div>
+                            </Collapsible>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    {/* Single-speaker CSV uploads */}
+                    {!isMultiSpeakerMode && (
+                      <>
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Label className="text-xs">Rephonic CSV</Label>
+                            <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
+                              {batchFile ? "Uploaded" : "Optional"}
+                            </Badge>
+                          </div>
+                          <Input type="file" accept=".csv" onChange={(e) => setBatchFile(e.target.files?.[0] || null)} />
+                          {batchFile && <p className="text-xs text-muted-foreground mt-1">{batchFile.name}</p>}
+                          <p className="text-xs text-muted-foreground mt-1">Auto-fetched via Podchaser. Upload CSV only to override.</p>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Label className="text-xs">Airtable Data *</Label>
+                            <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
+                              {airtableSyncedData ? `Synced (${airtableSyncedData.length})` : airtableFile ? "CSV Uploaded" : "Required"}
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 mb-2">
+                            <AirtableSyncButton
+                              companyId={selectedCompanyId || undefined}
+                              speakerId={selectedSpeakerId || undefined}
+                              entityName={speakerAsClient?.name || 'Speaker'}
+                              dateRangeStart={dateRangeStart}
+                              dateRangeEnd={dateRangeEnd}
+                              onDataSynced={(data) => { setAirtableSyncedData(data); setAirtableFile(null); }}
+                              variant="inline"
+                              size="sm"
                             />
+                            <Button variant="ghost" size="sm" onClick={() => setAirtableConnectionDialogOpen(true)} title="Configure Airtable connection">
+                              <Link2 className="h-4 w-4" />
+                            </Button>
+                            {airtableSyncedData && (
+                              <Button variant="ghost" size="sm" onClick={() => setAirtableSyncedData(null)} title="Clear synced data">
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          {airtableSyncedData && <AirtableDataPreview data={airtableSyncedData} />}
+                          
+                          {!airtableSyncedData && (
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">Or upload CSV as fallback:</p>
+                              <Input type="file" accept=".csv" onChange={(e) => setAirtableFile(e.target.files?.[0] || null)} />
+                              {airtableFile && <p className="text-xs text-muted-foreground">{airtableFile.name}</p>}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Company-level CSVs (shared) */}
+                    <div className="pt-3 border-t border-border/40">
+                      <Label className="text-xs font-medium text-muted-foreground mb-3 block">{isMultiSpeakerMode ? 'Company-Level Data (Shared)' : 'Optional Data'}</Label>
+                      
+                      {/* SOV/Peer Comparison */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs font-medium">Peer Comparison</Label>
+                            <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
+                              {manualSOVMode && competitorInterviews.some(c => c.count > 0) ? "Manual Entry" : "Optional"}
+                            </Badge>
+                          </div>
+                          {manualSOVMode && competitorInterviews.length > 0 && (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => copyListenNotesURL(comp.name)}
-                              title="Copy ListenNotes search URL"
+                              className="h-7 text-xs"
+                              onClick={autoFetchPeerComparison}
+                              disabled={isFetchingSOV || !dateRangeStart || !dateRangeEnd}
                             >
-                              <Clipboard className="h-4 w-4" />
+                              {isFetchingSOV ? (
+                                <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Fetching...</>
+                              ) : (
+                                <><RefreshCw className="h-3 w-3 mr-1" />Auto-Fetch</>
+                              )}
                             </Button>
-                          </div>
-                        ))}
+                          )}
+                        </div>
                         
+                        {manualSOVMode && competitorInterviews.length > 0 ? (
+                          <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground">
+                              Use "Auto-Fetch" to populate counts, or enter manually.
+                            </p>
+                            {sovFetchError && (
+                              <p className="text-xs text-destructive flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />{sovFetchError}
+                              </p>
+                            )}
+                            {competitorInterviews.map((comp, index) => (
+                              <div key={index} className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-xs truncate">{comp.name}</p>
+                                  <p className="text-[11px] text-muted-foreground truncate">{comp.role}</p>
+                                </div>
+                                <Input type="number" min="0" className="w-16 h-7 text-xs" placeholder="0" value={comp.count || ''} onChange={(e) => updateCompetitorCount(index, parseInt(e.target.value) || 0)} />
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyListenNotesURL(comp.name)} title="Copy ListenNotes URL">
+                                  <Clipboard className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            No competitors defined. Add competitors to the speaker profile to enable peer comparison.
+                          </p>
+                        )}
                       </div>
-                    ) : (
-                      <>
-                        <p className="text-xs text-muted-foreground mb-2">
-                          No competitors defined for {isMultiSpeakerMode ? 'selected speakers' : 'this speaker'}. 
-                          Add competitors to the speaker profile to enable peer comparison.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                  
-                  {/* GEO */}
-                  <div className="mb-4">
-                    <Label className="text-sm">GEO CSV</Label>
-                    <Badge variant={geoFile ? "default" : "outline"} className="ml-2 mb-2">{geoFile ? "Uploaded" : "Optional"}</Badge>
-                    <Input type="file" accept=".csv" onChange={(e) => setGeoFile(e.target.files?.[0] || null)} />
-                  </div>
-                  
-                  {/* Content Gap */}
-                  <div className="mb-4">
-                    <Label className="text-sm">Content Gap Analysis CSV</Label>
-                    <Badge variant={contentGapFile ? "default" : "outline"} className="ml-2 mb-2">{contentGapFile ? "Uploaded" : "Optional"}</Badge>
-                    <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
-                  </div>
-                  
-                  {/* Rephonic EMV upload removed - now handled by the main Rephonic CSV upload */}
-                </div>
-              </div>
+                      
+                      {/* GEO */}
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Label className="text-xs">GEO CSV</Label>
+                          <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{geoFile ? "Uploaded" : "Optional"}</Badge>
+                        </div>
+                        <Input type="file" accept=".csv" onChange={(e) => setGeoFile(e.target.files?.[0] || null)} />
+                      </div>
+                      
+                      {/* Content Gap */}
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Label className="text-xs">Content Gap CSV</Label>
+                          <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{contentGapFile ? "Uploaded" : "Optional"}</Badge>
+                        </div>
+                        <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
-              {/* Generate Button */}
+              {/* ── Section 5: Generate Button ── */}
               <Button
                 onClick={handleGenerateReport}
                 disabled={isProcessing || !dateRangeStart || !dateRangeEnd || 
