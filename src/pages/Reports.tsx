@@ -82,7 +82,7 @@ export default function Reports() {
   
   // Manual SOV inputs
   const [manualSOVMode, setManualSOVMode] = useState(false);
-  const [competitorInterviews, setCompetitorInterviews] = useState<{ name: string; role: string; count: number }[]>([]);
+  const [competitorInterviews, setCompetitorInterviews] = useState<{ name: string; role: string; count: number; episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }> }[]>([]);
   
   // Report metadata
   const [reportName, setReportName] = useState<string>('');
@@ -427,7 +427,7 @@ export default function Reports() {
           prev.map(comp => {
             const result = results[comp.name];
             if (result && !result.error) {
-              return { ...comp, count: result.interview_count };
+              return { ...comp, count: result.interview_count, episodes: result.episodes || [] };
             }
             return comp;
           })

@@ -1413,7 +1413,7 @@ function calculateSOVAnalysis(
   airtableRows: AirtableCSVRow[],
   sovRows: SOVCSVRow[] | null,
   competitorName: string | null,
-  manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string }[] | null,
+  manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string; episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }> }[] | null,
   dateRange?: { start: Date; end: Date }
 ): ReportData['sov_analysis'] {
   // Count client interviews as episodes published within the report range.
@@ -1429,7 +1429,7 @@ function calculateSOVAnalysis(
     return true;
   }).length;
 
-  let competitors: { name: string; role?: string; peer_reason?: string; linkedin_url?: string; interview_count: number }[] = [];
+  let competitors: ReportData['sov_analysis']['competitors'] = [];
 
   // Use manual input if provided
   if (manualCompetitors && manualCompetitors.length > 0) {
@@ -1438,7 +1438,8 @@ function calculateSOVAnalysis(
       role: c.role,
       peer_reason: c.peer_reason,
       linkedin_url: c.linkedin_url,
-      interview_count: c.count
+      interview_count: c.count,
+      episodes: c.episodes,
     }));
   }
   // Otherwise use CSV data

@@ -169,11 +169,17 @@ export interface ReportData {
   sov_analysis?: {
     client_interview_count: number; // From Airtable
     competitors: Array<{
-      name: string; // Extracted from CSV filename or metadata
+      name: string;
       role?: string;
       peer_reason?: string;
       linkedin_url?: string;
       interview_count: number;
+      episodes?: Array<{
+        title: string;
+        podcast_name: string;
+        air_date: string;
+        role: string;
+      }>;
     }>;
     client_percentage: number; // Client count / total count
   };
