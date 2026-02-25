@@ -1,62 +1,87 @@
 
 
-# Reports Page Visual Polish: Match Companies Page Aesthetic
+# Reports Intake Form Redesign: Reduce Dropdown Friction
 
-## Summary
-Apply the same "premium internal tool" design language from the Companies page redesign to the Reports page. The changes target surface treatments, typography hierarchy, KPI cards, section headers, and the saved reports table -- making them calmer, tighter, and more refined.
+## Problem
+The "Generate Client Report" form is a long vertical stack of dropdowns, file inputs, collapsibles, and badges. Selecting a company requires a dropdown, then a speaker dropdown, then year dropdown, then quarter dropdown, then expanding collapsibles for CSV uploads. Every step feels like a form field rather than a guided flow. This discourages daily use.
 
-## Changes
+## New Approach: Stepped Visual Selection
 
-### 1. KPICard.tsx -- Refined surface and spacing
+Replace the monolithic form with a progressive, visual intake flow. Each section reveals only after the previous one is completed, keeping the interface focused. Company and speaker selection become clickable cards rather than dropdowns. Date selection becomes inline button groups rather than Select components.
 
-**Current**: Uses the default `<Card>` component with `p-6` padding, `text-3xl font-bold` value, and `bg-primary/10` icon circle.
+### Section 1: Company Selection -- Clickable Card Grid
 
-**Updated**:
-- Card surface: explicit `bg-card border border-border/60 hover:shadow-md hover:border-border` (matching CompanyCard pattern) instead of relying on the default Card shadow
-- Tighter padding: `p-4` instead of `p-6`
-- Value typography: `text-2xl font-bold tracking-tight` (slightly smaller, tighter)
-- Icon circle: `bg-muted/60` instead of `bg-primary/10`, icon color `text-muted-foreground` instead of `text-primary` -- calmer, less colorful
-- Hide button: already has hover-reveal, no change needed
-- Clickable cards: keep `hover:shadow-md` but remove `hover:scale-[1.02]` (the scale transform feels SaaS-template-y)
+Replace the `CompanySpeakerSelector` combobox with a searchable grid of company cards (similar to the Companies page cards but smaller). Each card shows company name and speaker count. Clicking one selects it (highlighted border). A search input at the top filters the list.
 
-### 2. Reports.tsx -- Section headers and layout
+```text
+  [Search companies...]
 
-**Section headers** ("Core KPIs", "Additional Value Metrics"):
-- Change from `text-lg font-semibold` with colored icon to `text-sm font-medium uppercase tracking-wide text-muted-foreground` -- a quieter label style, no icon. This matches how Stripe labels dashboard sections.
+  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+  │  Acme Corp   │  │  SignalForge  │  │  AtlasBridge │
+  │  2 speakers  │  │  1 speaker    │  │  3 speakers  │
+  └──────────────┘  └──────────────┘  └──────────────┘
+```
 
-**All Saved Reports card** (lines 1631-1832):
-- Replace `<Card>` wrapper with the same flat surface treatment: `rounded-xl border border-border/60 bg-card`
-- CardTitle: `text-[15px] font-semibold tracking-tight` (matching company card name style)
-- Table action buttons: make View, Highlights, Update, Publish smaller and quieter -- `variant="ghost"` with `text-xs` instead of `variant="outline"` with full borders. Delete button gets hover-reveal via the table row `group` pattern.
+When a company is selected, the card stays highlighted and speakers appear below it.
 
-**Generate Report card** (lines 1837-2346):
-- Same flat surface treatment on the card
-- CardTitle: `text-[15px] font-semibold tracking-tight`
-- File upload labels and badges: muted pill style for badges (`bg-secondary text-muted-foreground border border-border` instead of colorful variants)
+### Section 2: Speaker Selection -- Inline Chips / Rows
 
-**Save Report card** (lines 2352-2385):
-- Same surface refinement
+Once a company is selected, speakers appear as clickable rows (single-speaker mode) or checkbox rows (multi-speaker mode) directly below -- no dropdown. Each row shows name, title, and a headshot thumbnail if available.
 
-**Report content sections** (Campaign Overview, Interview Highlights, Top Categories, Next Quarter, etc.):
-- These already use `<Card className="group relative">` -- update to add `border-border/60` for the subtler border treatment
-- Section hide buttons (the X) are already hover-reveal -- no change
+The multi-speaker toggle stays as a Switch but is inline with the speaker list header.
 
-### 3. SpeakerAccordion.tsx -- Calmer accordion treatment
+### Section 3: Report Period -- Button Group Instead of Dropdowns
 
-- Section header: `text-sm font-medium uppercase tracking-wide text-muted-foreground` (no icon)
-- Accordion item border: `border-border/60` instead of `border`
-- Inner KPI mini-cards: already using `bg-muted/30`, keep as-is (they're already calm)
-- Trigger badges (booked/published pills): muted style -- `bg-secondary text-muted-foreground` instead of `bg-primary/10` and `bg-accent/10`
+Replace the Year and Quarter `<Select>` dropdowns with inline button groups:
 
-### 4. ReportHeader.tsx -- Quick check
+```text
+  Year:     [2025]  [2026]  [2027]
+  Quarter:  [Q1]  [Q2]  [Q3]  [Q4]  [Custom]
+```
 
-- Keep existing layout but ensure it uses the same border/surface patterns
+These are `ToggleGroup` components -- one click to select, no dropdown opening/closing. The "Custom" option reveals date inputs inline (same as current behavior).
 
-## Files Modified
-- `src/components/reports/KPICard.tsx` -- surface, padding, typography, icon treatment
-- `src/pages/Reports.tsx` -- section headers, card surfaces, table action buttons
-- `src/components/reports/SpeakerAccordion.tsx` -- header style, accordion borders, badge colors
+### Section 4: Data Sources -- Collapsible "Advanced" Section
 
-## No Functionality Changes
-All click handlers, dialogs, CRUD operations, visibility toggles, and data flow remain identical. This is purely a className/styling refactor.
+The CSV upload section (Rephonic, Airtable sync, GEO, Content Gap, Peer Comparison) collapses into a single "Data Sources" section that auto-expands only when needed. The Airtable sync button becomes the primary action (prominent), with CSV upload as a quiet fallback.
+
+For multi-speaker mode, per-speaker data sections use a compact accordion with status indicators (green dot = ready, gray = pending).
+
+### Section 5: Generate Button
+
+Same as current, but now it sits at the bottom of a shorter, cleaner form.
+
+## Technical Changes
+
+### Modified: `src/pages/Reports.tsx` (Generate Report section only, lines ~1842-2352)
+
+- Replace `CompanySpeakerSelector` combobox usage with inline company card grid + speaker row selection
+- Replace Year/Quarter `<Select>` components with `ToggleGroup` button groups
+- Wrap CSV uploads in a collapsible "Data Sources" section
+- Add search input for company filtering
+- Keep all state variables and handlers identical -- only the rendering changes
+
+### Modified: `src/components/CompanySpeakerSelector.tsx`
+
+This component is no longer needed for the Reports page (it may still be used elsewhere). No deletion, but Reports.tsx will stop importing it for the generate form.
+
+### No new files needed
+
+All changes are within the existing Reports.tsx generate section. The ToggleGroup component (`@/components/ui/toggle-group`) already exists in the project.
+
+## What stays the same
+
+- All state management, CRUD operations, CSV parsing, report generation logic
+- The saved reports table section
+- The report display section
+- Multi-speaker mode logic (toggle, checkboxes, per-speaker files)
+- Airtable sync integration
+- Peer comparison auto-fetch
+
+## Key Design Decisions
+
+- **Cards over comboboxes** for company selection: When there are <20 companies (typical), a visual grid is faster than open-dropdown-type-search-select. A search input handles scale.
+- **Toggle groups over dropdowns** for year/quarter: These are small, fixed option sets (3 years, 5 quarter options). Dropdowns add unnecessary clicks for a known set of choices.
+- **Progressive disclosure**: Data sources section defaults collapsed since Airtable sync handles most cases automatically. Power users expand when needed.
+- **Consistent with Companies page**: The selection cards echo the CompanyCard grid pattern, creating visual coherence across the app.
 
