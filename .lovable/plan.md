@@ -1,66 +1,62 @@
 
-# Companies Page Visual Polish: Premium Internal Tool Aesthetic
+
+# Reports Page Visual Polish: Match Companies Page Aesthetic
 
 ## Summary
-Refine the visual design of CompanyCard and SpeakerProfileCard to feel like a premium internal tool (Folk CRM / Stripe dashboard style) -- calmer surfaces, tighter spacing, hover-reveal actions, and cleaner typography hierarchy.
+Apply the same "premium internal tool" design language from the Companies page redesign to the Reports page. The changes target surface treatments, typography hierarchy, KPI cards, section headers, and the saved reports table -- making them calmer, tighter, and more refined.
 
 ## Changes
 
-### 1. CompanyCard.tsx -- Surface and hover treatment
+### 1. KPICard.tsx -- Refined surface and spacing
 
-**Card surface**: Replace `card-surface` (which applies `--shadow-elevated`, a colored glow) with a flat, quiet style:
-- Light: `bg-zinc-50/80 border border-zinc-200` with no shadow
-- Dark: keep `bg-card border-border`
-- On hover (collapsed only): add a gentle lift shadow (`shadow-md`) instead of a ring color change
-- Expanded state: subtle `shadow-sm` instead of `ring-1 ring-primary/30`
+**Current**: Uses the default `<Card>` component with `p-6` padding, `text-3xl font-bold` value, and `bg-primary/10` icon circle.
 
-**Typography hierarchy**:
-- Company name: `font-semibold text-[15px] tracking-tight` (slightly larger, tighter)
-- Speaker count badge: switch to plain text -- `text-xs text-muted-foreground` instead of a Badge component. Just render as `{count} speakers` inline.
+**Updated**:
+- Card surface: explicit `bg-card border border-border/60 hover:shadow-md hover:border-border` (matching CompanyCard pattern) instead of relying on the default Card shadow
+- Tighter padding: `p-4` instead of `p-6`
+- Value typography: `text-2xl font-bold tracking-tight` (slightly smaller, tighter)
+- Icon circle: `bg-muted/60` instead of `bg-primary/10`, icon color `text-muted-foreground` instead of `text-primary` -- calmer, less colorful
+- Hide button: already has hover-reveal, no change needed
+- Clickable cards: keep `hover:shadow-md` but remove `hover:scale-[1.02]` (the scale transform feels SaaS-template-y)
 
-**CM badge**: Replace the colorful `cmColor()` hash-based palette with a single muted pill:
-- `bg-secondary text-muted-foreground text-[11px] font-medium border border-border`
-- Remove the `cmColor` function entirely
+### 2. Reports.tsx -- Section headers and layout
 
-**Avatar stack**: Tighter overlap (`-space-x-2.5`), white ring border (`ring-2 ring-background`), slightly smaller `w-7 h-7`
+**Section headers** ("Core KPIs", "Additional Value Metrics"):
+- Change from `text-lg font-semibold` with colored icon to `text-sm font-medium uppercase tracking-wide text-muted-foreground` -- a quieter label style, no icon. This matches how Stripe labels dashboard sections.
 
-**Action buttons (expanded state)**: Replace the always-visible action bar with a `group-hover` pattern:
-- Move Add Speaker, Edit, Airtable, Delete to the card header row, right-aligned
-- Use `opacity-0 group-hover:opacity-100 transition-opacity` so they appear only on hover
-- All buttons become `variant="ghost"` with small icon-only or text style
-- Delete stays `text-destructive` but also hover-only
+**All Saved Reports card** (lines 1631-1832):
+- Replace `<Card>` wrapper with the same flat surface treatment: `rounded-xl border border-border/60 bg-card`
+- CardTitle: `text-[15px] font-semibold tracking-tight` (matching company card name style)
+- Table action buttons: make View, Highlights, Update, Publish smaller and quieter -- `variant="ghost"` with `text-xs` instead of `variant="outline"` with full borders. Delete button gets hover-reveal via the table row `group` pattern.
 
-**Expanded speaker area**: Remove the `bg-muted/20 border-b` action bar wrapper. The speaker list gets `divide-y divide-border/40` instead of `space-y-3` with card wrappers per speaker.
+**Generate Report card** (lines 1837-2346):
+- Same flat surface treatment on the card
+- CardTitle: `text-[15px] font-semibold tracking-tight`
+- File upload labels and badges: muted pill style for badges (`bg-secondary text-muted-foreground border border-border` instead of colorful variants)
 
-### 2. SpeakerProfileCard.tsx -- Collapsed row refinement
+**Save Report card** (lines 2352-2385):
+- Same surface refinement
 
-**Collapsed state**: Replace the Card wrapper with a simple `div` row:
-- No card border or background -- just a row in the divide-y list
-- `py-3 px-1` padding, flex layout
-- On hover: `bg-muted/30 rounded-lg` subtle highlight
-- Remove the `ChevronRight` icon (the whole row is clickable, cursor-pointer is enough)
+**Report content sections** (Campaign Overview, Interview Highlights, Top Categories, Next Quarter, etc.):
+- These already use `<Card className="group relative">` -- update to add `border-border/60` for the subtler border treatment
+- Section hide buttons (the X) are already hover-reveal -- no change
 
-**Expanded state**: Keep the tabbed card but refine:
-- Remove `ring-1 ring-primary/20` -- use `shadow-sm border border-border` instead
-- Header padding tightened to `p-3`
-- Action buttons in header: `opacity-0 group-hover:opacity-100` pattern (Edit, Airtable, Delete appear on hover of the header area)
-- Keep the close (X) button always visible
+### 3. SpeakerAccordion.tsx -- Calmer accordion treatment
 
-### 3. index.css -- Card surface utility update
+- Section header: `text-sm font-medium uppercase tracking-wide text-muted-foreground` (no icon)
+- Accordion item border: `border-border/60` instead of `border`
+- Inner KPI mini-cards: already using `bg-muted/30`, keep as-is (they're already calm)
+- Trigger badges (booked/published pills): muted style -- `bg-secondary text-muted-foreground` instead of `bg-primary/10` and `bg-accent/10`
 
-Update `.card-surface` to be calmer:
-- Remove `box-shadow: var(--shadow-elevated)` (the cyan glow)
-- Replace with `box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04)`
-- Remove the `:hover { transform: translateY(-1px) }` (we handle hover per-component now)
+### 4. ReportHeader.tsx -- Quick check
 
----
+- Keep existing layout but ensure it uses the same border/surface patterns
 
-## Technical Details
+## Files Modified
+- `src/components/reports/KPICard.tsx` -- surface, padding, typography, icon treatment
+- `src/pages/Reports.tsx` -- section headers, card surfaces, table action buttons
+- `src/components/reports/SpeakerAccordion.tsx` -- header style, accordion borders, badge colors
 
-### Files modified:
-- `src/components/companies/CompanyCard.tsx` -- surface classes, remove cmColor, hover-reveal actions, divider-based speaker list
-- `src/components/companies/SpeakerProfileCard.tsx` -- collapsed row as plain div, expanded card refinements, hover-reveal actions
-- `src/index.css` -- tone down `.card-surface` utility
+## No Functionality Changes
+All click handlers, dialogs, CRUD operations, visibility toggles, and data flow remain identical. This is purely a className/styling refactor.
 
-### No functionality changes
-All click handlers, CRUD operations, AlertDialog confirmations, Sheet edit forms, and data flow remain identical. This is purely a CSS/className refactor.
