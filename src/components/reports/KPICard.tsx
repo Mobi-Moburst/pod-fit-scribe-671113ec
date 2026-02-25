@@ -15,8 +15,8 @@ export const KPICard = ({ title, value, subtitle, icon: Icon, onClick, onHide }:
   return (
     <Card 
       className={cn(
-        "group relative",
-        onClick && "cursor-pointer transition-all hover:shadow-md hover:scale-[1.02]"
+        "group relative bg-card border border-border/60 shadow-none transition-all",
+        onClick && "cursor-pointer hover:shadow-md hover:border-border"
       )}
       onClick={onClick}
     >
@@ -32,18 +32,18 @@ export const KPICard = ({ title, value, subtitle, icon: Icon, onClick, onHide }:
           <X className="h-3 w-3" />
         </button>
       )}
-      <CardContent className="p-6">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold">{value}</p>
+            <p className="text-2xl font-bold tracking-tight">{value}</p>
             {subtitle && (
               <p className="text-xs text-muted-foreground">{subtitle}</p>
             )}
           </div>
           {Icon && (
-            <div className="rounded-full bg-primary/10 p-3">
-              <Icon className="h-5 w-5 text-primary" />
+            <div className="rounded-full bg-muted/60 p-3">
+              <Icon className="h-5 w-5 text-muted-foreground" />
             </div>
           )}
         </div>
