@@ -10,12 +10,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { ReportData } from '@/types/reports';
-import { Linkedin, ExternalLink, RefreshCw } from 'lucide-react';
+import { Linkedin, ExternalLink, RefreshCw, Mic, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { parseAirtableDate } from "@/utils/csvParsers";
+import { format } from 'date-fns';
 
 interface SOVChartDialogProps {
   open: boolean;
@@ -24,7 +26,6 @@ interface SOVChartDialogProps {
   clientName?: string;
   dateRange?: { start: string; end: string };
   podcasts?: ReportData['podcasts'];
-  /** Prefer passing the report's existing published count so this matches the "Total Published" KPI exactly */
   publishedCount?: number;
   onRefresh?: (updatedSOV: ReportData['sov_analysis']) => Promise<void>;
 }
@@ -46,9 +47,12 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 // Competitor info popover content
-const CompetitorInfoCard = ({ competitor }: { competitor: { name: string; role?: string; peer_reason?: string; linkedin_url?: string; interview_count: number; color: string } }) => {
+const CompetitorInfoCard = ({ competitor }: { competitor: { 
+  name: string; role?: string; peer_reason?: string; linkedin_url?: string; interview_count: number; color: string;
+  episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>;
+} }) => {
   return (
-    <div className="space-y-3 min-w-[240px]">
+    <div className="space-y-3 min-w-[320px]">
       <div className="flex items-start gap-3">
         <div 
           className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
@@ -89,6 +93,42 @@ const CompetitorInfoCard = ({ competitor }: { competitor: { name: string; role?:
           </Button>
         )}
       </div>
+
+      {/* Episode details */}
+      {competitor.episodes && competitor.episodes.length > 0 ? (
+        <div className="border-t border-border pt-3">
+          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+            <Mic className="h-3 w-3" />
+            Episode Details
+          </p>
+          <ScrollArea className="max-h-[200px]">
+            <div className="space-y-2 pr-2">
+              {competitor.episodes.map((ep, i) => (
+                <div key={i} className="bg-muted/30 rounded-md p-2.5 space-y-0.5">
+                  <p className="text-sm font-medium text-foreground leading-tight">{ep.podcast_name}</p>
+                  <p className="text-xs text-muted-foreground leading-tight">{ep.title}</p>
+                  {ep.air_date && (
+                    <p className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-1">
+                      <Calendar className="h-3 w-3" />
+                      {(() => {
+                        try {
+                          return format(new Date(ep.air_date), 'MMM d, yyyy');
+                        } catch {
+                          return ep.air_date;
+                        }
+                      })()}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground/60 italic border-t border-border pt-2">
+          Episode details unavailable — data entered manually or Podchaser plan limited.
+        </p>
+      )}
     </div>
   );
 };
@@ -160,6 +200,7 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
     peer_reason?: string;
     linkedin_url?: string;
     interview_count?: number;
+    episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>;
   }
   
   const data: ChartDataItem[] = [
@@ -177,6 +218,7 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
       peer_reason: comp.peer_reason,
       linkedin_url: comp.linkedin_url,
       interview_count: comp.interview_count,
+      episodes: comp.episodes,
       isClient: false
     }))
   ];
@@ -211,6 +253,7 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
                       peer_reason: dataItem.peer_reason,
                       linkedin_url: dataItem.linkedin_url,
                       interview_count: dataItem.interview_count || dataItem.value,
+                      episodes: dataItem.episodes,
                       color: dataItem.color
                     }} 
                   />
