@@ -1628,7 +1628,7 @@ export default function Reports() {
           {/* All Saved Reports Section */}
           {allReports.length > 0 && (
             <Collapsible open={allReportsExpanded} onOpenChange={setAllReportsExpanded}>
-              <Card className="print:hidden">
+              <Card className="print:hidden border-border/60 shadow-none">
                 <CardHeader className="pb-3">
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center justify-between cursor-pointer">
@@ -1639,7 +1639,7 @@ export default function Reports() {
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         )}
                         <div>
-                          <CardTitle className="text-base">All Saved Reports</CardTitle>
+                          <CardTitle className="text-[15px] font-semibold tracking-tight">All Saved Reports</CardTitle>
                           <CardDescription className="text-sm">
                             {allReports.length} reports across all companies
                           </CardDescription>
@@ -1687,7 +1687,7 @@ export default function Reports() {
                           })
                           .slice(0, 20)
                           .map(report => (
-                            <TableRow key={report.id}>
+                            <TableRow key={report.id} className="group">
                               <TableCell className="font-medium">
                                 {report.companies?.name || '-'}
                               </TableCell>
@@ -1736,7 +1736,8 @@ export default function Reports() {
                                 <div className="flex justify-end gap-2">
                                   <Button
                                     size="sm"
-                                    variant="outline"
+                                    variant="ghost"
+                                    className="text-xs"
                                     onClick={() => {
                                       if (report.company_id) {
                                         setSelectedCompanyId(report.company_id);
@@ -1751,12 +1752,13 @@ export default function Reports() {
                                       loadReport(report);
                                     }}
                                   >
-                                    <Eye className="h-4 w-4 mr-1" />
+                                    <Eye className="h-3.5 w-3.5 mr-1" />
                                     View
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant="outline"
+                                    variant="ghost"
+                                    className="text-xs"
                                     onClick={() => {
                                       if (report.company_id) {
                                         setSelectedCompanyId(report.company_id);
@@ -1772,25 +1774,27 @@ export default function Reports() {
                                       setHighlightsDialogOpen(true);
                                     }}
                                   >
-                                    <Video className="h-4 w-4 mr-1" />
+                                    <Video className="h-3.5 w-3.5 mr-1" />
                                     Highlights
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant="outline"
+                                    variant="ghost"
+                                    className="text-xs"
                                     onClick={() => {
                                       setReportToUpdate(report);
                                       setUpdateCSVDialogOpen(true);
                                     }}
                                     title="Update CSV data"
                                   >
-                                    <RefreshCw className="h-4 w-4 mr-1" />
+                                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
                                     Update
                                   </Button>
                                   {report.is_published ? (
                                     <Button
                                       size="sm"
-                                      variant="outline"
+                                      variant="ghost"
+                                      className="text-xs"
                                       onClick={() => handleUnpublishReport(report.id)}
                                     >
                                       Unpublish
@@ -1798,22 +1802,24 @@ export default function Reports() {
                                   ) : (
                                     <Button
                                       size="sm"
-                                      variant="default"
+                                      variant="ghost"
+                                      className="text-xs"
                                       onClick={() => handlePublishReport(report.id)}
                                     >
-                                      <Globe className="h-4 w-4 mr-1" />
+                                      <Globe className="h-3.5 w-3.5 mr-1" />
                                       Publish
                                     </Button>
                                   )}
                                   <Button
                                     size="sm"
-                                    variant="destructive"
+                                    variant="ghost"
+                                    className="text-xs text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                                     onClick={() => {
                                       deleteReport(report.id);
                                       loadAllReports();
                                     }}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               </TableCell>
@@ -1834,9 +1840,9 @@ export default function Reports() {
 
 
           {/* Generate Report Section */}
-          <Card className="print:hidden">
+          <Card className="print:hidden border-border/60 shadow-none">
             <CardHeader>
-              <CardTitle>Generate Client Report</CardTitle>
+              <CardTitle className="text-[15px] font-semibold tracking-tight">Generate Client Report</CardTitle>
               <CardDescription>
                 Generate a comprehensive campaign report with KPIs and metrics
               </CardDescription>
@@ -2349,9 +2355,9 @@ export default function Reports() {
           {reportData && (
             <>
               {/* Save Report Section */}
-              <Card className="print:hidden">
+              <Card className="print:hidden border-border/60 shadow-none">
                 <CardHeader>
-                  <CardTitle>Save Report</CardTitle>
+                  <CardTitle className="text-[15px] font-semibold tracking-tight">Save Report</CardTitle>
                   <CardDescription>Save this report for future reference</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -2446,8 +2452,7 @@ export default function Reports() {
               {/* Core KPIs Section */}
               {coreKPIsVisible && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-                    <TrendingUp className="h-5 w-5 text-primary" />
+                  <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     Core KPIs
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -2529,8 +2534,7 @@ export default function Reports() {
               {/* Additional Value Metrics Section */}
               {additionalMetricsVisible && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-                    <Sparkles className="h-5 w-5 text-accent" />
+                  <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     Additional Value Metrics
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2634,7 +2638,7 @@ export default function Reports() {
 
               {/* Interview Highlights */}
               {visibleSections.highlights && (
-                <Card className="relative group">
+                <Card className="relative group border-border/60 shadow-none">
                   <button
                     onClick={() => toggleSection('highlights')}
                     className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
@@ -2706,7 +2710,7 @@ export default function Reports() {
 
               {/* Top Categories */}
               {visibleSections.topCategories && reportData.kpis.top_categories.length > 0 && (
-                <Card className="relative group">
+                <Card className="relative group border-border/60 shadow-none">
                   <button
                     onClick={() => toggleSection('topCategories')}
                     className="absolute top-4 right-12 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"

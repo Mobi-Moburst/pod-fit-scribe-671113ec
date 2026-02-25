@@ -46,8 +46,7 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-        <User className="h-5 w-5 text-primary" />
+      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
         Speaker Breakdowns
       </h3>
       
@@ -60,7 +59,7 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
           <AccordionItem 
             key={speaker.speaker_id} 
             value={speaker.speaker_id}
-            className="border rounded-lg bg-card overflow-hidden"
+            className="border border-border/60 rounded-lg bg-card overflow-hidden"
           >
             <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between w-full gap-4 text-left">
@@ -80,15 +79,15 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
                 </div>
                 <div className="flex items-center gap-3 shrink-0 mr-2">
                   {sections.totalBooked && (
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-sm">
-                      <Calendar className="h-3.5 w-3.5 text-primary" />
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-sm">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium text-foreground">{speaker.kpis.total_booked}</span>
                       <span className="text-muted-foreground">booked</span>
                     </div>
                   )}
                   {sections.totalPublished && (
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-sm">
-                      <Radio className="h-3.5 w-3.5 text-accent" />
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-sm">
+                      <Radio className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium text-foreground">{speaker.kpis.total_published}</span>
                       <span className="text-muted-foreground">published</span>
                     </div>
