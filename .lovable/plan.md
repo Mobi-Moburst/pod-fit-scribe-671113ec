@@ -1,87 +1,79 @@
 
 
-# Reports Intake Form Redesign: Reduce Dropdown Friction
+# Surface Competitor Episode Details in Peer Comparison Dialog
 
-## Problem
-The "Generate Client Report" form is a long vertical stack of dropdowns, file inputs, collapsibles, and badges. Selecting a company requires a dropdown, then a speaker dropdown, then year dropdown, then quarter dropdown, then expanding collapsibles for CSV uploads. Every step feels like a form field rather than a guided flow. This discourages daily use.
+## Summary
+The `fetch-podchaser-credits` edge function already returns full episode data (title, podcast name, air date, role) per competitor, but the frontend discards it -- only `interview_count` is stored. This plan threads the episode data through to the `SOVChartDialog` and displays it when a user clicks on a competitor in the chart legend.
 
-## New Approach: Stepped Visual Selection
+## Changes
 
-Replace the monolithic form with a progressive, visual intake flow. Each section reveals only after the previous one is completed, keeping the interface focused. Company and speaker selection become clickable cards rather than dropdowns. Date selection becomes inline button groups rather than Select components.
+### 1. Store episode data alongside competitor counts
 
-### Section 1: Company Selection -- Clickable Card Grid
+**`src/pages/Reports.tsx`**
 
-Replace the `CompanySpeakerSelector` combobox with a searchable grid of company cards (similar to the Companies page cards but smaller). Each card shows company name and speaker count. Clicking one selects it (highlighted border). A search input at the top filters the list.
+- Expand the `competitorInterviews` state type from `{ name; role; count }` to include an optional `episodes` array:
+  ```ts
+  episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>
+  ```
+- In `autoFetchPeerComparison`, when mapping results back to state, also store `result.episodes` alongside `result.interview_count`.
+- When building `sov_analysis` for the report (in `generateReport` / `generateMultiSpeakerReport`), pass the episodes array into each competitor entry.
 
+### 2. Extend the `sov_analysis` type to include episodes
+
+**`src/types/reports.ts`**
+
+- Add an optional `episodes` field to the competitor entries in `sov_analysis`:
+  ```ts
+  competitors: Array<{
+    name: string;
+    role?: string;
+    peer_reason?: string;
+    linkedin_url?: string;
+    interview_count: number;
+    episodes?: Array<{
+      title: string;
+      podcast_name: string;
+      air_date: string;
+      role: string;
+    }>;
+  }>;
+  ```
+
+### 3. Display episode details in the Peer Comparison dialog
+
+**`src/components/reports/SOVChartDialog.tsx`**
+
+- Expand the `CompetitorInfoCard` popover to show an episode list below the existing peer reason and interview count:
+  - If `episodes` array exists and has entries, render a scrollable list (max-height ~200px) showing each episode as a compact row: podcast name (bold), episode title, and formatted air date.
+  - If no episodes (manual entry or Podchaser plan limitation), show the existing count-only view with a subtle note: "Episode details unavailable -- data entered manually or Podchaser plan limited."
+- The popover width increases slightly to accommodate the episode list (`min-w-[320px]`).
+
+### 4. Thread episodes through report generation
+
+**`src/utils/reportGenerator.ts`** (or wherever `sov_analysis` is assembled)
+
+- When building the `sov_analysis` object from `manualSOVCompetitors`, include the `episodes` field if present. Manual-entry competitors will simply have no `episodes` array.
+
+## Technical Details
+
+### Data flow:
 ```text
-  [Search companies...]
-
-  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-  │  Acme Corp   │  │  SignalForge  │  │  AtlasBridge │
-  │  2 speakers  │  │  1 speaker    │  │  3 speakers  │
-  └──────────────┘  └──────────────┘  └──────────────┘
+Podchaser API → fetch-podchaser-credits (already returns episodes)
+  → autoFetchPeerComparison in Reports.tsx (currently discards episodes → will now store them)
+    → competitorInterviews state (gains episodes field)
+      → report generation (episodes passed into sov_analysis.competitors)
+        → SOVChartDialog → CompetitorInfoCard (renders episode list)
 ```
 
-When a company is selected, the card stays highlighted and speakers appear below it.
+### Files modified:
+- `src/types/reports.ts` -- add `episodes` to competitor type
+- `src/pages/Reports.tsx` -- store episodes from Podchaser response, pass through to report
+- `src/components/reports/SOVChartDialog.tsx` -- render episode list in CompetitorInfoCard
+- `src/utils/reportGenerator.ts` -- thread episodes into sov_analysis assembly
 
-### Section 2: Speaker Selection -- Inline Chips / Rows
+### No backend changes needed
+The edge function already returns the episode data. This is purely a frontend data-threading and UI addition.
 
-Once a company is selected, speakers appear as clickable rows (single-speaker mode) or checkbox rows (multi-speaker mode) directly below -- no dropdown. Each row shows name, title, and a headshot thumbnail if available.
-
-The multi-speaker toggle stays as a Switch but is inline with the speaker list header.
-
-### Section 3: Report Period -- Button Group Instead of Dropdowns
-
-Replace the Year and Quarter `<Select>` dropdowns with inline button groups:
-
-```text
-  Year:     [2025]  [2026]  [2027]
-  Quarter:  [Q1]  [Q2]  [Q3]  [Q4]  [Custom]
-```
-
-These are `ToggleGroup` components -- one click to select, no dropdown opening/closing. The "Custom" option reveals date inputs inline (same as current behavior).
-
-### Section 4: Data Sources -- Collapsible "Advanced" Section
-
-The CSV upload section (Rephonic, Airtable sync, GEO, Content Gap, Peer Comparison) collapses into a single "Data Sources" section that auto-expands only when needed. The Airtable sync button becomes the primary action (prominent), with CSV upload as a quiet fallback.
-
-For multi-speaker mode, per-speaker data sections use a compact accordion with status indicators (green dot = ready, gray = pending).
-
-### Section 5: Generate Button
-
-Same as current, but now it sits at the bottom of a shorter, cleaner form.
-
-## Technical Changes
-
-### Modified: `src/pages/Reports.tsx` (Generate Report section only, lines ~1842-2352)
-
-- Replace `CompanySpeakerSelector` combobox usage with inline company card grid + speaker row selection
-- Replace Year/Quarter `<Select>` components with `ToggleGroup` button groups
-- Wrap CSV uploads in a collapsible "Data Sources" section
-- Add search input for company filtering
-- Keep all state variables and handlers identical -- only the rendering changes
-
-### Modified: `src/components/CompanySpeakerSelector.tsx`
-
-This component is no longer needed for the Reports page (it may still be used elsewhere). No deletion, but Reports.tsx will stop importing it for the generate form.
-
-### No new files needed
-
-All changes are within the existing Reports.tsx generate section. The ToggleGroup component (`@/components/ui/toggle-group`) already exists in the project.
-
-## What stays the same
-
-- All state management, CRUD operations, CSV parsing, report generation logic
-- The saved reports table section
-- The report display section
-- Multi-speaker mode logic (toggle, checkboxes, per-speaker files)
-- Airtable sync integration
-- Peer comparison auto-fetch
-
-## Key Design Decisions
-
-- **Cards over comboboxes** for company selection: When there are <20 companies (typical), a visual grid is faster than open-dropdown-type-search-select. A search input handles scale.
-- **Toggle groups over dropdowns** for year/quarter: These are small, fixed option sets (3 years, 5 quarter options). Dropdowns add unnecessary clicks for a known set of choices.
-- **Progressive disclosure**: Data sources section defaults collapsed since Airtable sync handles most cases automatically. Power users expand when needed.
-- **Consistent with Companies page**: The selection cards echo the CompanyCard grid pattern, creating visual coherence across the app.
+### Backward compatibility
+Existing saved reports without episode data will simply show the count-only view -- the `episodes` field is optional throughout.
 
