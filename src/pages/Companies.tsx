@@ -44,6 +44,7 @@ const Companies = () => {
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const [isScrapingStrategy, setIsScrapingStrategy] = useState(false);
+  const [isFetchingHeadshot, setIsFetchingHeadshot] = useState(false);
   const [showManualLogoInput, setShowManualLogoInput] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [airtableDialog, setAirtableDialog] = useState<{ companyId?: string; speakerId?: string; entityName: string } | null>(null);
@@ -88,6 +89,22 @@ const Companies = () => {
     } catch (error) {
       toast({ title: 'Failed to generate strategy', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     } finally { setIsScrapingStrategy(false); }
+  };
+
+  const fetchHeadshotFromMediaKit = async () => {
+    if (!editingSpeaker?.media_kit_url) { toast({ title: 'Enter a media kit URL first', variant: 'destructive' }); return; }
+    setIsFetchingHeadshot(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-speaker-headshot', {
+        body: { url: editingSpeaker.media_kit_url },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'No headshot found');
+      setEditingSpeaker({ ...editingSpeaker, headshot_url: data.headshot_url });
+      toast({ title: 'Headshot found', description: 'Image loaded from media kit.' });
+    } catch (error) {
+      toast({ title: 'No headshot found', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    } finally { setIsFetchingHeadshot(false); }
   };
 
   const managers = useMemo(() => Array.from(new Set(companies.map((c) => (c.campaign_manager || '').trim()).filter(Boolean))).sort(), [companies]);
@@ -423,6 +440,9 @@ const Companies = () => {
                           <label htmlFor="headshot-upload" className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-secondary hover:bg-secondary/80 rounded-md cursor-pointer transition-colors">
                             <Upload className="w-4 h-4" />{editingSpeaker.headshot_url ? 'Change Photo' : 'Upload Photo'}
                           </label>
+                          <Button type="button" variant="outline" size="sm" onClick={fetchHeadshotFromMediaKit} disabled={isFetchingHeadshot || !editingSpeaker.media_kit_url?.trim()} className="ml-2">
+                            {isFetchingHeadshot ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Fetching...</> : <><Globe className="h-3 w-3 mr-1" />Fetch from Media Kit</>}
+                          </Button>
                           <p className="text-xs text-muted-foreground mt-1">Square image recommended</p>
                         </div>
                       </div>
