@@ -2479,7 +2479,7 @@ export default function Reports() {
                         title="Total Recorded"
                         value={reportData.kpis.total_recorded || 0}
                         subtitle="Interviews completed"
-                        icon={Radio}
+                        icon={Mic}
                         onClick={() => setRecordedDialogOpen(true)}
                         onHide={() => toggleSection('totalRecorded')}
                       />
