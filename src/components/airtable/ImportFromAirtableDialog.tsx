@@ -92,7 +92,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
       // Auto-select names that don't already exist
       const autoSelected = new Set<string>();
       parsed.forEach(c => {
-        if (!findExistingCompany(c.companyName, existingCompanies)) {
+        if (!findExistingCompanyFromParsed(c, existingCompanies)) {
           autoSelected.add(c.raw);
         }
       });
