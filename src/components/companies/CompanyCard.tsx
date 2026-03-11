@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, ChevronDown, ChevronRight, Plus, Pencil, Trash, Link2 } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, Plus, Pencil, Trash, Link2, Archive, RotateCcw } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { Company, Speaker } from "@/types/clients";
 
@@ -13,6 +13,9 @@ interface CompanyCardProps {
   onDelete: () => void;
   onAddSpeaker: () => void;
   onAirtable: () => void;
+  isArchived?: boolean;
+  onArchive?: () => void;
+  onRestore?: () => void;
   children?: React.ReactNode;
 }
 
