@@ -1818,7 +1818,8 @@ export async function generateReportFromMultipleCSVs(
   rephonicRows?: RephonicCSVRow[],
   geoCsvProvided: boolean = false,
   contentGapCsvProvided: boolean = false,
-  speakingTimePct: number = 0.40
+  speakingTimePct: number = 0.40,
+  quarterlyNotes?: Array<{ quarter: string; notes: string }>
 ): Promise<ReportData> {
   
   // Step 1: Merge Batch + Airtable data by podcast title
