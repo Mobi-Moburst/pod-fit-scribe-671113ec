@@ -1737,7 +1737,7 @@ function applyRephonicEMVData(
     } 
     // Otherwise recalculate EMV with the new data
     else if (updatedPodcast.listeners_per_episode && updatedPodcast.episode_duration_minutes) {
-      const emvData = calculateEMV(updatedPodcast, cpm);
+      const emvData = calculateEMV(updatedPodcast, cpm, speakingTimePct);
       if (emvData) {
         Object.assign(updatedPodcast, emvData);
       }
