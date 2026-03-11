@@ -1934,6 +1934,7 @@ export async function generateReportFromMultipleCSVs(
       end: dateRange.end.toISOString(),
     },
     cpm,
+    speaking_time_pct: speakingTimePct,
     kpis,
     campaign_overview: {
       strategy: generateStrategyParagraph(client),
