@@ -186,6 +186,9 @@ export function SpeakerProfileCard({
           <TabsTrigger value="insights" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
             <Sparkles className="h-3 w-3 mr-1.5" />Insights
           </TabsTrigger>
+          <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
+            <Clock className="h-3 w-3 mr-1.5" />History
+          </TabsTrigger>
         </TabsList>
 
         <ScrollArea className="h-[400px]">
