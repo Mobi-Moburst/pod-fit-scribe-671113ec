@@ -63,7 +63,7 @@ export const PodcastListDialog = ({ open, onOpenChange, title, description, icon
             <TableHeader>
               <TableRow>
                 <TableHead>Podcast</TableHead>
-                <TableHead>{dateField === 'date_booked' ? 'Date Booked' : 'Date Published'}</TableHead>
+                <TableHead>{dateField === 'date_booked' ? 'Date Booked' : dateField === 'date_published' ? 'Date Published' : 'Recording Date'}</TableHead>
                 <TableHead className="text-right">Link</TableHead>
               </TableRow>
             </TableHeader>
