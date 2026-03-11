@@ -2121,7 +2121,8 @@ export async function generateMultiSpeakerReport(
   cpm: number = 50,
   rephonicRows?: RephonicCSVRow[],
   geoCsvProvided: boolean = false,
-  contentGapCsvProvided: boolean = false
+  contentGapCsvProvided: boolean = false,
+  speakingTimePct: number = 0.40
 ): Promise<ReportData> {
   
   // Process each speaker's data
