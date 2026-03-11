@@ -620,7 +620,7 @@ function generateNextQuarterStrategy(
   const nextQuarter = getNextQuarter(currentQuarter);
   const topicSpace = deriveTopicSpaceFromCategories(kpis);
   const pronoun = client.gender === 'female' ? 'her' : client.gender === 'male' ? 'his' : 'their';
-  const firstName = client.name.split(' ')[0];
+  const firstName = extractFirstName(client.name);
   
   // Generate intro paragraph
   const intro_paragraph = `As we move into ${nextQuarter}, our focus is on building on the momentum of ${currentQuarter} by targeting larger, more prominent podcasts in the ${topicSpace} space — continuing to position ${firstName} as a go-to voice on ${client.talking_points?.[0]?.toLowerCase() || 'industry thought leadership'}.`;
