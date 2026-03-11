@@ -338,7 +338,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-type QuarterlyNote = { quarter: string; notes: string; created_at: string };
+type QuarterlyNote = { quarter: string; notes: string; created_at: string; report_id?: string; report_slug?: string };
 
 function QuarterlyNotesHistory({ speakerId, notes, onUpdate }: { speakerId: string; notes?: QuarterlyNote[] | null; onUpdate: () => Promise<void> }) {
   const items = Array.isArray(notes) ? notes : [];
