@@ -52,11 +52,11 @@ function buildDateFilterFormula(
   const publishedField = fieldMapping.date_published || 'Date Published';
   const bookedField = fieldMapping.date_booked || 'Date Booked';
 
-  // Date range conditions - include if ANY date falls in range
+  // Date range conditions - include if ANY date falls in range (inclusive)
   const dateConditions = [
-    `AND(IS_AFTER({${scheduledField}}, DATETIME_PARSE('${dateRangeStart}')), IS_BEFORE({${scheduledField}}, DATETIME_PARSE('${dateRangeEnd}')))`,
-    `AND(IS_AFTER({${publishedField}}, DATETIME_PARSE('${dateRangeStart}')), IS_BEFORE({${publishedField}}, DATETIME_PARSE('${dateRangeEnd}')))`,
-    `AND(IS_AFTER({${bookedField}}, DATETIME_PARSE('${dateRangeStart}')), IS_BEFORE({${bookedField}}, DATETIME_PARSE('${dateRangeEnd}')))`,
+    `AND(OR(IS_AFTER({${scheduledField}}, DATETIME_PARSE('${dateRangeStart}')), IS_SAME({${scheduledField}}, DATETIME_PARSE('${dateRangeStart}'), 'day')), OR(IS_BEFORE({${scheduledField}}, DATETIME_PARSE('${dateRangeEnd}')), IS_SAME({${scheduledField}}, DATETIME_PARSE('${dateRangeEnd}'), 'day')))`,
+    `AND(OR(IS_AFTER({${publishedField}}, DATETIME_PARSE('${dateRangeStart}')), IS_SAME({${publishedField}}, DATETIME_PARSE('${dateRangeStart}'), 'day')), OR(IS_BEFORE({${publishedField}}, DATETIME_PARSE('${dateRangeEnd}')), IS_SAME({${publishedField}}, DATETIME_PARSE('${dateRangeEnd}'), 'day')))`,
+    `AND(OR(IS_AFTER({${bookedField}}, DATETIME_PARSE('${dateRangeStart}')), IS_SAME({${bookedField}}, DATETIME_PARSE('${dateRangeStart}'), 'day')), OR(IS_BEFORE({${bookedField}}, DATETIME_PARSE('${dateRangeEnd}')), IS_SAME({${bookedField}}, DATETIME_PARSE('${dateRangeEnd}'), 'day')))`,
   ];
 
   let formula = `OR(${dateConditions.join(', ')})`;
