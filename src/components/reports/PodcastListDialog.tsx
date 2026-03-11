@@ -1,9 +1,10 @@
+import { useMemo } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Calendar, Radio } from "lucide-react";
 import { PodcastReportEntry } from "@/types/reports";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isWithinInterval } from "date-fns";
 
 interface PodcastListDialogProps {
   open: boolean;
@@ -13,6 +14,7 @@ interface PodcastListDialogProps {
   icon: typeof Calendar;
   podcasts: PodcastReportEntry[];
   dateField: 'date_booked' | 'date_published';
+  dateRange?: { start: string; end: string };
 }
 
 function formatDate(dateStr?: string): string {
@@ -24,7 +26,25 @@ function formatDate(dateStr?: string): string {
   }
 }
 
-export const PodcastListDialog = ({ open, onOpenChange, title, description, icon: Icon, podcasts, dateField }: PodcastListDialogProps) => {
+function isDateInRange(dateStr: string | undefined, range: { start: string; end: string }): boolean {
+  if (!dateStr) return false;
+  try {
+    const date = parseISO(dateStr);
+    return isWithinInterval(date, { start: parseISO(range.start), end: parseISO(range.end) });
+  } catch {
+    return false;
+  }
+}
+
+export const PodcastListDialog = ({ open, onOpenChange, title, description, icon: Icon, podcasts, dateField, dateRange }: PodcastListDialogProps) => {
+  const filtered = useMemo(() => {
+    if (!dateRange) return podcasts;
+    return podcasts.filter(p => {
+      const dateVal = dateField === 'date_booked' ? p.date_booked : p.date_published;
+      return isDateInRange(dateVal, dateRange);
+    });
+  }, [podcasts, dateField, dateRange]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -36,7 +56,7 @@ export const PodcastListDialog = ({ open, onOpenChange, title, description, icon
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        {podcasts.length === 0 ? (
+        {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">No podcasts found.</p>
         ) : (
           <Table>
@@ -48,7 +68,7 @@ export const PodcastListDialog = ({ open, onOpenChange, title, description, icon
               </TableRow>
             </TableHeader>
             <TableBody>
-              {podcasts.map((podcast, i) => (
+              {filtered.map((podcast, i) => (
                 <TableRow key={i}>
                   <TableCell>
                     <div className="font-medium">{podcast.show_title}</div>
