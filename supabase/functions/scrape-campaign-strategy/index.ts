@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
                     description: 'Identity descriptors in snake_case (e.g., "woman_entrepreneur", "black_founder", "veteran")',
                   },
                 },
-                required: ['target_audiences', 'talking_points', 'avoid', 'guest_identity_tags'],
+                required: ['speaker_title', 'target_audiences', 'talking_points', 'avoid', 'guest_identity_tags'],
                 additionalProperties: false,
               },
             },
