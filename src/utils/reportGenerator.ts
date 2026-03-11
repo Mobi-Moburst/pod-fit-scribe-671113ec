@@ -2595,7 +2595,7 @@ function generateMultiSpeakerExecutiveSummary(
   
   // Add speaker breakdown summary
   const speakerSummaries = speakerBreakdowns
-    .map(s => `${s.speaker_name.split(' ')[0]} (${s.kpis.total_booked} bookings)`)
+    .map(s => `${extractFirstName(s.speaker_name)} (${s.kpis.total_booked} bookings)`)
     .join(', ');
   
   summary += `Speaker breakdown: ${speakerSummaries}.`;
