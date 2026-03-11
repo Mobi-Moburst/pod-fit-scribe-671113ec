@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { LucideIcon, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { LucideIcon, X, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface KPICardProps {
@@ -7,11 +8,12 @@ interface KPICardProps {
   value: string | number;
   subtitle?: string;
   icon?: LucideIcon;
+  tooltip?: string;
   onClick?: () => void;
   onHide?: () => void;
 }
 
-export const KPICard = ({ title, value, subtitle, icon: Icon, onClick, onHide }: KPICardProps) => {
+export const KPICard = ({ title, value, subtitle, icon: Icon, tooltip, onClick, onHide }: KPICardProps) => {
   return (
     <Card 
       className={cn(
@@ -35,7 +37,19 @@ export const KPICard = ({ title, value, subtitle, icon: Icon, onClick, onHide }:
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{title}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-sm text-muted-foreground">{title}</p>
+              {tooltip && (
+                <Tooltip>
+                  <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-xs">
+                    {tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
             <p className="text-2xl font-bold tracking-tight">{value}</p>
             {subtitle && (
               <p className="text-xs text-muted-foreground">{subtitle}</p>
