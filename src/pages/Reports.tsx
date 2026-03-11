@@ -724,10 +724,11 @@ export default function Reports() {
         quarter,
         { start: startDate, end: endDate },
         manualSOVCompetitors,
-          cpmRate, // CPM
+        cpmRate,
         rephonicRows,
         !!geoFile, // geoCsvProvided
-        !!contentGapFile // contentGapCsvProvided
+        !!contentGapFile, // contentGapCsvProvided
+        speakingTimePct / 100 // Convert percentage to decimal
       );
 
       // Flag as needing scoring
