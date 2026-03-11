@@ -469,7 +469,7 @@ export function TargetPodcastsSection({
                   <>
                     {/* Title and Link */}
                     <div className="flex items-start gap-2 mb-2">
-                      <h3 className="font-semibold text-lg leading-tight">
+                      <h3 className="font-semibold text-sm leading-tight">
                         {podcast.apple_podcast_url ? (
                           <a
                             href={podcast.apple_podcast_url}
