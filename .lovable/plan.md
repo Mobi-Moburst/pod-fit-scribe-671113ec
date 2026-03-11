@@ -1,79 +1,46 @@
 
 
-# Surface Competitor Episode Details in Peer Comparison Dialog
+# Decouple Target Audiences and Talking Points from Campaign Strategy Text
 
-## Summary
-The `fetch-podchaser-credits` edge function already returns full episode data (title, podcast name, air date, role) per competitor, but the frontend discards it -- only `interview_count` is stored. This plan threads the episode data through to the `SOVChartDialog` and displays it when a user clicks on a competitor in the chart legend.
+## Problem
+When the Campaign Strategy textarea is edited, `parseCampaignStrategy` re-parses the text and **overwrites** `target_audiences` and `talking_points` arrays — destroying any items added via Insights or manual edits.
 
-## Changes
-
-### 1. Store episode data alongside competitor counts
-
-**`src/pages/Reports.tsx`**
-
-- Expand the `competitorInterviews` state type from `{ name; role; count }` to include an optional `episodes` array:
-  ```ts
-  episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>
-  ```
-- In `autoFetchPeerComparison`, when mapping results back to state, also store `result.episodes` alongside `result.interview_count`.
-- When building `sov_analysis` for the report (in `generateReport` / `generateMultiSpeakerReport`), pass the episodes array into each competitor entry.
-
-### 2. Extend the `sov_analysis` type to include episodes
-
-**`src/types/reports.ts`**
-
-- Add an optional `episodes` field to the competitor entries in `sov_analysis`:
-  ```ts
-  competitors: Array<{
-    name: string;
-    role?: string;
-    peer_reason?: string;
-    linkedin_url?: string;
-    interview_count: number;
-    episodes?: Array<{
-      title: string;
-      podcast_name: string;
-      air_date: string;
-      role: string;
-    }>;
-  }>;
-  ```
-
-### 3. Display episode details in the Peer Comparison dialog
-
-**`src/components/reports/SOVChartDialog.tsx`**
-
-- Expand the `CompetitorInfoCard` popover to show an episode list below the existing peer reason and interview count:
-  - If `episodes` array exists and has entries, render a scrollable list (max-height ~200px) showing each episode as a compact row: podcast name (bold), episode title, and formatted air date.
-  - If no episodes (manual entry or Podchaser plan limitation), show the existing count-only view with a subtle note: "Episode details unavailable -- data entered manually or Podchaser plan limited."
-- The popover width increases slightly to accommodate the episode list (`min-w-[320px]`).
-
-### 4. Thread episodes through report generation
-
-**`src/utils/reportGenerator.ts`** (or wherever `sov_analysis` is assembled)
-
-- When building the `sov_analysis` object from `manualSOVCompetitors`, include the `episodes` field if present. Manual-entry competitors will simply have no `episodes` array.
-
-## Technical Details
-
-### Data flow:
+## Current flow
 ```text
-Podchaser API → fetch-podchaser-credits (already returns episodes)
-  → autoFetchPeerComparison in Reports.tsx (currently discards episodes → will now store them)
-    → competitorInterviews state (gains episodes field)
-      → report generation (episodes passed into sov_analysis.competitors)
-        → SOVChartDialog → CompetitorInfoCard (renders episode list)
+Edit strategy text → parseCampaignStrategy() → overwrites target_audiences & talking_points arrays
+Insights "Accept" → appends to arrays directly
+Next strategy text edit → arrays reset from text again (insight additions lost)
 ```
 
-### Files modified:
-- `src/types/reports.ts` -- add `episodes` to competitor type
-- `src/pages/Reports.tsx` -- store episodes from Podchaser response, pass through to report
-- `src/components/reports/SOVChartDialog.tsx` -- render episode list in CompetitorInfoCard
-- `src/utils/reportGenerator.ts` -- thread episodes into sov_analysis assembly
+## Solution
+Stop auto-deriving arrays from the strategy text. Instead, give target_audiences and talking_points their own editable inputs in the speaker edit form, and treat campaign_strategy as a separate freeform notes/narrative field.
 
-### No backend changes needed
-The edge function already returns the episode data. This is purely a frontend data-threading and UI addition.
+### Changes to `src/pages/Companies.tsx`
 
-### Backward compatibility
-Existing saved reports without episode data will simply show the count-only view -- the `episodes` field is optional throughout.
+1. **Remove the `parseCampaignStrategy` call** from the Campaign Strategy textarea's `onChange` — just update `campaign_strategy` text without touching the arrays.
+
+2. **Add separate editable fields** for Target Audiences and Talking Points above or below Campaign Strategy in the edit form:
+   - Target Audiences: comma-separated textarea (same pattern as "Things to Avoid" and "Guest Identity Tags")
+   - Talking Points: comma-separated textarea
+
+3. **Update "Generate from Media Kit"** (`scrapeStrategyFromMediaKit`): instead of building a strategy text blob, populate the three fields independently — set `target_audiences` array, `talking_points` array, and `campaign_strategy` text (for any remaining narrative).
+
+### Changes to `src/lib/campaignStrategy.ts`
+- Keep `parseCampaignStrategy` and `buildCampaignStrategyFromArrays` for backward compatibility (used in reports/other places), but they are no longer called on every keystroke in the edit form.
+
+### Strategy tab display (`SpeakerProfileCard.tsx`)
+- Currently renders raw `campaign_strategy` text via MarkdownRenderer. Update to show the structured arrays (audiences as badges, talking points as list) followed by any additional strategy narrative — matching what the Overview tab already shows.
+
+### Result
+```text
+Edit strategy text → only updates campaign_strategy field
+Edit audiences → only updates target_audiences array  
+Edit talking points → only updates talking_points array
+Insights "Accept" → appends to arrays (preserved across edits)
+Generate from Media Kit → populates all three independently
+```
+
+### Files to edit
+- `src/pages/Companies.tsx` — edit form changes, scrape handler update
+- `src/components/companies/SpeakerProfileCard.tsx` — Strategy tab rendering
 
