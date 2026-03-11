@@ -302,16 +302,26 @@ const Companies = () => {
 
         <ImportFromAirtableDialog open={showImportDialog} onOpenChange={setShowImportDialog} existingCompanies={companies.map(c => ({ id: c.id, name: c.name }))} onImportComplete={loadData} />
 
-        {/* Filter */}
-        {managers.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Label className="text-sm shrink-0">Campaign Manager</Label>
-            <select className="h-9 rounded-md border bg-background px-3 text-sm" value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)}>
-              <option value="">All</option>
-              {managers.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-        )}
+        {/* View mode tabs + Filter */}
+        <div className="flex items-center gap-4 flex-wrap">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'active' | 'archived')} className="w-auto">
+            <TabsList className="h-9">
+              <TabsTrigger value="active" className="text-xs px-3">Active</TabsTrigger>
+              <TabsTrigger value="archived" className="text-xs px-3">
+                <Archive className="h-3 w-3 mr-1.5" />Archived{archivedCount > 0 && ` (${archivedCount})`}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {managers.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-sm shrink-0">Campaign Manager</Label>
+              <select className="h-9 rounded-md border bg-background px-3 text-sm" value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)}>
+                <option value="">All</option>
+                {managers.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
 
         {/* Company Card Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
