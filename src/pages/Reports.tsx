@@ -865,9 +865,11 @@ export default function Reports() {
     setIsSaving(true);
     
     try {
-      const { error } = await supabase.from('reports').insert({
+      // 1. Insert report and get back the ID
+      const slug = generateSlug();
+      const { data: insertedReport, error } = await supabase.from('reports').insert({
         org_id: TEAM_ORG_ID,
-        speaker_id: isMultiSpeakerMode ? null : selectedSpeakerId, // null for multi-speaker
+        speaker_id: isMultiSpeakerMode ? null : selectedSpeakerId,
         company_id: selectedCompanyId,
         report_name: reportName,
         quarter: quarter || null,
@@ -876,15 +878,41 @@ export default function Reports() {
         report_data: {
           ...reportData,
           selected_speaker_ids: isMultiSpeakerMode ? selectedSpeakerIds : undefined,
-          visibleSections, // Include visible sections for public view
+          visibleSections,
         } as any,
-      });
+        is_published: true,
+        public_slug: slug,
+        published_at: new Date().toISOString(),
+      }).select('id').single();
       
       if (error) throw error;
+
+      // 2. Log to speaker history (quarterly_notes)
+      const speakerIdsToLog = isMultiSpeakerMode ? selectedSpeakerIds : (selectedSpeakerId ? [selectedSpeakerId] : []);
+      const historyEntry = {
+        quarter: quarter || 'N/A',
+        notes: `📊 Campaign report saved: ${reportName}`,
+        created_at: new Date().toISOString(),
+        report_id: insertedReport?.id || null,
+        report_slug: slug,
+      };
+
+      for (const spkId of speakerIdsToLog) {
+        const { data: spk } = await supabase
+          .from('speakers')
+          .select('quarterly_notes')
+          .eq('id', spkId)
+          .single();
+        const existing = Array.isArray(spk?.quarterly_notes) ? spk.quarterly_notes : [];
+        await supabase
+          .from('speakers')
+          .update({ quarterly_notes: [...existing, historyEntry] } as any)
+          .eq('id', spkId);
+      }
       
       toast({
-        title: "Report saved",
-        description: "Your report has been saved successfully.",
+        title: "Report saved & published",
+        description: "Your report has been saved with a shareable link.",
       });
       await loadSavedReports();
       await loadAllReports();

@@ -338,7 +338,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-type QuarterlyNote = { quarter: string; notes: string; created_at: string };
+type QuarterlyNote = { quarter: string; notes: string; created_at: string; report_id?: string; report_slug?: string };
 
 function QuarterlyNotesHistory({ speakerId, notes, onUpdate }: { speakerId: string; notes?: QuarterlyNote[] | null; onUpdate: () => Promise<void> }) {
   const items = Array.isArray(notes) ? notes : [];
@@ -397,7 +397,10 @@ function QuarterlyNotesHistory({ speakerId, notes, onUpdate }: { speakerId: stri
       {sorted.map((entry, i) => (
         <div key={entry.created_at} className="group/note border border-border/50 rounded-lg p-3 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">{entry.quarter}</span>
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+              {entry.report_slug && <FileText className="h-3 w-3 text-primary" />}
+              {entry.quarter}
+            </span>
             <div className="flex items-center gap-1">
               <span className="text-[10px] text-muted-foreground mr-1">
                 {new Date(entry.created_at).toLocaleDateString()}
@@ -444,7 +447,21 @@ function QuarterlyNotesHistory({ speakerId, notes, onUpdate }: { speakerId: stri
           {editingIdx === i ? (
             <Textarea rows={3} value={editText} onChange={(e) => setEditText(e.target.value)} className="text-sm" />
           ) : (
-            <p className="text-sm text-foreground/90">{entry.notes}</p>
+            <div className="space-y-1">
+              <p className="text-sm text-foreground/90">{entry.notes}</p>
+              {entry.report_slug && (
+                <a
+                  href={`/report/${entry.report_slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  View Report
+                </a>
+              )}
+            </div>
           )}
         </div>
       ))}

@@ -1,44 +1,79 @@
 
 
-## Link Saved Reports to Speaker History
+# Surface Competitor Episode Details in Peer Comparison Dialog
 
-### What exists today
-- **Saved reports** are stored in the `reports` table with `company_id`, `speaker_id`, quarter, etc.
-- **Publishing** already generates a `public_slug` and makes the report accessible at `/report/{slug}` — this is the shareable client-facing URL.
-- **Speaker History** tab shows `quarterly_notes` (JSONB array of `{ quarter, notes, created_at }`).
+## Summary
+The `fetch-podchaser-credits` edge function already returns full episode data (title, podcast name, air date, role) per competitor, but the frontend discards it -- only `interview_count` is stored. This plan threads the episode data through to the `SOVChartDialog` and displays it when a user clicks on a competitor in the chart legend.
 
-### What we'll add
+## Changes
 
-#### 1. Auto-log a report entry to speaker history on save
-When a report is saved (`handleSaveReport` in `Reports.tsx`), automatically append a quarterly note entry to the speaker's `quarterly_notes` with:
-- The quarter string
-- A note like: `"📊 Campaign report saved: {reportName}"` with a link to the report once published
-- The report ID stored in the entry so it can be linked
+### 1. Store episode data alongside competitor counts
 
-We'll extend the `QuarterlyNote` type to optionally include `report_id` and `report_slug`:
+**`src/pages/Reports.tsx`**
+
+- Expand the `competitorInterviews` state type from `{ name; role; count }` to include an optional `episodes` array:
+  ```ts
+  episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>
+  ```
+- In `autoFetchPeerComparison`, when mapping results back to state, also store `result.episodes` alongside `result.interview_count`.
+- When building `sov_analysis` for the report (in `generateReport` / `generateMultiSpeakerReport`), pass the episodes array into each competitor entry.
+
+### 2. Extend the `sov_analysis` type to include episodes
+
+**`src/types/reports.ts`**
+
+- Add an optional `episodes` field to the competitor entries in `sov_analysis`:
+  ```ts
+  competitors: Array<{
+    name: string;
+    role?: string;
+    peer_reason?: string;
+    linkedin_url?: string;
+    interview_count: number;
+    episodes?: Array<{
+      title: string;
+      podcast_name: string;
+      air_date: string;
+      role: string;
+    }>;
+  }>;
+  ```
+
+### 3. Display episode details in the Peer Comparison dialog
+
+**`src/components/reports/SOVChartDialog.tsx`**
+
+- Expand the `CompetitorInfoCard` popover to show an episode list below the existing peer reason and interview count:
+  - If `episodes` array exists and has entries, render a scrollable list (max-height ~200px) showing each episode as a compact row: podcast name (bold), episode title, and formatted air date.
+  - If no episodes (manual entry or Podchaser plan limitation), show the existing count-only view with a subtle note: "Episode details unavailable -- data entered manually or Podchaser plan limited."
+- The popover width increases slightly to accommodate the episode list (`min-w-[320px]`).
+
+### 4. Thread episodes through report generation
+
+**`src/utils/reportGenerator.ts`** (or wherever `sov_analysis` is assembled)
+
+- When building the `sov_analysis` object from `manualSOVCompetitors`, include the `episodes` field if present. Manual-entry competitors will simply have no `episodes` array.
+
+## Technical Details
+
+### Data flow:
+```text
+Podchaser API → fetch-podchaser-credits (already returns episodes)
+  → autoFetchPeerComparison in Reports.tsx (currently discards episodes → will now store them)
+    → competitorInterviews state (gains episodes field)
+      → report generation (episodes passed into sov_analysis.competitors)
+        → SOVChartDialog → CompetitorInfoCard (renders episode list)
 ```
-{ quarter, notes, created_at, report_id?, report_slug? }
-```
 
-For multi-speaker reports, the entry gets added to each selected speaker's history.
+### Files modified:
+- `src/types/reports.ts` -- add `episodes` to competitor type
+- `src/pages/Reports.tsx` -- store episodes from Podchaser response, pass through to report
+- `src/components/reports/SOVChartDialog.tsx` -- render episode list in CompetitorInfoCard
+- `src/utils/reportGenerator.ts` -- thread episodes into sov_analysis assembly
 
-#### 2. Auto-publish on save (generate public slug)
-Currently saving and publishing are separate steps. We'll auto-generate the `public_slug` at save time so the report immediately has a shareable URL. The user can still unpublish later if needed.
+### No backend changes needed
+The edge function already returns the episode data. This is purely a frontend data-threading and UI addition.
 
-This means the report link in the speaker history is immediately functional.
-
-#### 3. Display report links in History tab
-Update `QuarterlyNotesHistory` in `SpeakerProfileCard.tsx` to detect entries with `report_id` and render them with a clickable link to `/report/{slug}` (opens in new tab). These entries get a distinct visual treatment (report icon instead of plain note).
-
-### Files to change
-
-1. **`src/pages/Reports.tsx`** — In `handleSaveReport`: after inserting the report, auto-publish it (generate slug, set `is_published = true`), then append a quarterly note entry with report_id and public_slug to the speaker(s)' `quarterly_notes`.
-
-2. **`src/components/companies/SpeakerProfileCard.tsx`** — Extend `QuarterlyNote` type to include optional `report_id` and `report_slug`. Render report-linked entries with a link icon and clickable URL.
-
-### Technical detail
-- The save flow becomes: insert report → get back the report ID → generate slug → update report with slug → append note to speaker(s) quarterly_notes
-- For multi-speaker reports, iterate over `selectedSpeakerIds` and append the note to each speaker's history
-- The note text will be concise: `"Campaign report saved: {reportName} — {quarter}"`
-- Report-linked history entries are visually distinct with a FileText icon and "View Report" link
+### Backward compatibility
+Existing saved reports without episode data will simply show the count-only view -- the `episodes` field is optional throughout.
 
