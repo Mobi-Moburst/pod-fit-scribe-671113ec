@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.scrape-speaker-headshot]
 verify_jwt = false
+
+[functions.rematch-call-notes]
+verify_jwt = false
