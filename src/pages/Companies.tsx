@@ -43,6 +43,7 @@ const Companies = () => {
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
+  const [isScrapingStrategy, setIsScrapingStrategy] = useState(false);
   const [showManualLogoInput, setShowManualLogoInput] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [airtableDialog, setAirtableDialog] = useState<{ companyId?: string; speakerId?: string; entityName: string } | null>(null);
