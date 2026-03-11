@@ -197,7 +197,7 @@ export function NextQuarterStrategy({
           {/* Next Quarter KPIs */}
           {next_quarter_kpis && (next_quarter_kpis.high_impact_podcasts_goal > 0 || next_quarter_kpis.listenership_goal > 0) && (
             <div className="space-y-3 pt-4 border-t border-border">
-              <h4 className="font-semibold text-foreground">{nextQuarterLabel} Goals</h4>
+              <h4 className="text-sm font-semibold text-foreground">{nextQuarterLabel} Goals</h4>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setPodcastsDialogOpen(true)}
