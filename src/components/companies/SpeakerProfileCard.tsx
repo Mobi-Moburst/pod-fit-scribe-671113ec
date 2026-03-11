@@ -5,8 +5,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { Textarea } from "@/components/ui/textarea";
 import { CallNotesList } from "@/components/call-notes/CallNotesList";
 import { StrategyInsightsPanel } from "@/components/call-notes/StrategyInsightsPanel";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Pencil,
   X,
