@@ -49,6 +49,7 @@ export interface Speaker {
   campaign_strategy?: string;
   pitch_template?: string;
   competitors?: Competitor[];
+  archived_at?: string | null;
 }
 
 // Combined view for reports and UI convenience
