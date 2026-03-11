@@ -114,6 +114,7 @@ export interface ReportData {
     end: string; // ISO date
   };
   cpm: number; // Default 50
+  speaking_time_pct?: number; // Default 0.40 (40%)
   
   // Multi-speaker report fields
   report_type?: 'single' | 'multi';

@@ -93,6 +93,11 @@ export default function Reports() {
   const [selectedQuarter, setSelectedQuarter] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   
+  // Advanced EMV settings
+  const [cpmRate, setCpmRate] = useState<number>(50);
+  const [speakingTimePct, setSpeakingTimePct] = useState<number>(40);
+  const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+  
   // State
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [savedReports, setSavedReports] = useState<any[]>([]);
@@ -615,10 +620,11 @@ export default function Reports() {
           quarter,
           { start: startDate, end: endDate },
           manualSOVCompetitors,
-          50, // CPM
+          cpmRate,
           rephonicRows,
           !!geoFile, // geoCsvProvided
-          !!contentGapFile // contentGapCsvProvided
+          !!contentGapFile, // contentGapCsvProvided
+          speakingTimePct / 100 // Convert percentage to decimal
         );
         
         setReportData(report);
@@ -715,10 +721,11 @@ export default function Reports() {
         quarter,
         { start: startDate, end: endDate },
         manualSOVCompetitors,
-        50, // CPM
+        cpmRate,
         rephonicRows,
         !!geoFile, // geoCsvProvided
-        !!contentGapFile // contentGapCsvProvided
+        !!contentGapFile, // contentGapCsvProvided
+        speakingTimePct / 100 // Convert percentage to decimal
       );
 
       // Flag as needing scoring
@@ -2322,6 +2329,42 @@ export default function Reports() {
                 </Collapsible>
               )}
 
+              {/* ── Advanced Settings ── */}
+              <Collapsible open={advancedSettingsOpen} onOpenChange={setAdvancedSettingsOpen}>
+                <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-between py-2">
+                  <span className="font-medium">Advanced Settings</span>
+                  {advancedSettingsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 pt-1 pb-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">CPM Rate ($)</Label>
+                      <Input 
+                        type="number" 
+                        min={25} 
+                        max={150} 
+                        value={cpmRate} 
+                        onChange={(e) => setCpmRate(Math.max(25, Math.min(150, parseInt(e.target.value) || 50)))}
+                        className="h-8 text-xs mt-1"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Industry range: $25–$150</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Speaking Time %</Label>
+                      <Input 
+                        type="number" 
+                        min={20} 
+                        max={60} 
+                        value={speakingTimePct} 
+                        onChange={(e) => setSpeakingTimePct(Math.max(20, Math.min(60, parseInt(e.target.value) || 40)))}
+                        className="h-8 text-xs mt-1"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Guest airtime: 20–60%</p>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
               {/* ── Section 5: Generate Button ── */}
               <Button
                 onClick={handleGenerateReport}
@@ -2542,19 +2585,53 @@ export default function Reports() {
                 </div>
               )}
 
-              {/* Additional Value Metrics Section */}
+               {/* Additional Value Metrics Section */}
               {additionalMetricsVisible && (
                 <div className="space-y-4">
                   <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     Additional Value Metrics
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Total Campaign Value - rollup of EMV + Social Value */}
+                    {visibleSections.emv && visibleSections.socialValue && reportData.kpis.total_social_reach > 0 && (reportData.kpis.total_emv || 0) > 0 && (() => {
+                      const emv = reportData.kpis.total_emv || 0;
+                      const totalSocialReach = reportData.kpis.total_social_reach;
+                      const platformData = {
+                        linkedin: { cpm: 60.00, allocation: 0.60 },
+                        meta: { cpm: 10.50, allocation: 0.20 },
+                        youtube: { cpm: 4.50, allocation: 0.10 },
+                        tiktok: { cpm: 5.50, allocation: 0.07 },
+                        x: { cpm: 1.50, allocation: 0.03 },
+                      };
+                      const visibilityFactor = 1.5;
+                      const premiumFactor = 1.2;
+                      const socialValue = Object.values(platformData).reduce((sum, p) => {
+                        const allocatedReach = totalSocialReach * p.allocation;
+                        const baseValue = (allocatedReach / 1000) * p.cpm;
+                        return sum + baseValue * visibilityFactor * premiumFactor;
+                      }, 0);
+                      const totalCampaignValue = emv + socialValue;
+                      let formatted: string;
+                      if (totalCampaignValue >= 1000000) formatted = `$${(totalCampaignValue / 1000000).toFixed(1)}M`;
+                      else if (totalCampaignValue >= 1000) formatted = `$${(totalCampaignValue / 1000).toFixed(0)}K`;
+                      else formatted = `$${totalCampaignValue.toFixed(0)}`;
+                      return (
+                        <KPICard
+                          title="Total Campaign Value"
+                          value={formatted}
+                          subtitle="EMV + Social Value combined"
+                          icon={TrendingUp}
+                          tooltip="Combined earned media value and social amplification value generated by this campaign."
+                        />
+                      );
+                    })()}
                     {visibleSections.emv && (
                       <KPICard
                         title="Earned Media Value"
                         value={`$${reportData.kpis.total_emv?.toLocaleString() || '0'}`}
                         subtitle="Total campaign EMV • Click to view analysis"
                         icon={DollarSign}
+                        tooltip="Based on audience size × industry CPM rate × guest speaking time. Reflects the equivalent cost to reach this audience through paid podcast advertising."
                         onClick={() => setEmvDialogOpen(true)}
                         onHide={() => toggleSection('emv')}
                       />
@@ -2565,6 +2642,7 @@ export default function Reports() {
                         value={`${reportData.kpis.sov_percentage || reportData.sov_analysis?.client_percentage || 0}%`}
                         subtitle="vs. selected peers • Click to view analysis"
                         icon={PieChart}
+                        tooltip="Compares podcast interview volume against selected industry peers over the same period."
                         onClick={() => setSOVDialogOpen(true)}
                         onHide={() => toggleSection('sov')}
                       />
@@ -2581,6 +2659,7 @@ export default function Reports() {
                               : "Upload GEO CSV to analyze"
                         }
                         icon={Sparkles}
+                        tooltip="Generative Engine Optimization score measuring how often your podcast appearances surface in AI search engines like Perplexity, Gemini, and ChatGPT."
                         onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
                         onHide={() => toggleSection('geoScore')}
                       />
@@ -2597,6 +2676,7 @@ export default function Reports() {
                               : "Upload Content Gap CSV to analyze"
                         }
                         icon={AlertTriangle}
+                        tooltip="Analyzes AI search prompts where competitors appear but you don't, identifying content opportunities to close visibility gaps."
                         onClick={reportData.content_gap_analysis ? () => setContentGapDialogOpen(true) : undefined}
                         onHide={() => toggleSection('contentGap')}
                       />
@@ -2626,6 +2706,7 @@ export default function Reports() {
                         })()}
                         subtitle="Equivalent ad spend • Click to view breakdown"
                         icon={Share2}
+                        tooltip="Calculated from follower reach across LinkedIn, Meta, YouTube, TikTok, and X using platform-specific ad rates with visibility and premium content multipliers."
                         onClick={() => setSocialValueDialogOpen(true)}
                         onHide={() => toggleSection('socialValue')}
                       />
@@ -2810,6 +2891,8 @@ export default function Reports() {
                 open={emvDialogOpen}
                 onOpenChange={setEmvDialogOpen}
                 podcasts={reportData.podcasts}
+                cpm={reportData.cpm || 50}
+                speakingTimePct={reportData.speaking_time_pct || 0.40}
               />
               
               <SOVChartDialog
