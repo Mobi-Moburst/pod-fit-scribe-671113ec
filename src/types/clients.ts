@@ -28,6 +28,7 @@ export interface Company {
   product_type?: string;
   tags?: string[];
   notes?: string;
+  archived_at?: string | null;
 }
 
 // New Speaker type (speaker-level fields)
