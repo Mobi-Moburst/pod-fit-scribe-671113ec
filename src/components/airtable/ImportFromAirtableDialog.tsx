@@ -137,7 +137,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
       const linkToExisting: { client: ParsedClient; existingCompanyId: string }[] = [];
 
       for (const c of toImport) {
-        const match = findExistingCompany(c.companyName, existingCompanies);
+        const match = findExistingCompanyFromParsed(c, existingCompanies);
         if (match) {
           linkToExisting.push({ client: c, existingCompanyId: match.id });
         } else {
