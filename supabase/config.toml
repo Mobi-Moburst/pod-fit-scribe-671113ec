@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.analyze-call-notes-strategy]
 verify_jwt = false
+
+[functions.scrape-campaign-strategy]
+verify_jwt = false

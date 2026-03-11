@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
-import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
+import { parseCampaignStrategy, pickTopAudienceTags, buildCampaignStrategyFromArrays } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download } from 'lucide-react';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
@@ -43,6 +43,7 @@ const Companies = () => {
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
+  const [isScrapingStrategy, setIsScrapingStrategy] = useState(false);
   const [showManualLogoInput, setShowManualLogoInput] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [airtableDialog, setAirtableDialog] = useState<{ companyId?: string; speakerId?: string; entityName: string } | null>(null);
@@ -66,6 +67,25 @@ const Companies = () => {
     } catch (error) {
       toast({ title: 'Failed to fetch brand', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     } finally { setIsFetchingBrand(false); }
+  };
+
+  const scrapeStrategyFromMediaKit = async () => {
+    if (!editingSpeaker?.media_kit_url) { toast({ title: 'Enter a media kit URL first', variant: 'destructive' }); return; }
+    setIsScrapingStrategy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-campaign-strategy', {
+        body: { url: editingSpeaker.media_kit_url, speaker_name: editingSpeaker.name, speaker_title: editingSpeaker.title },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to extract strategy');
+      const audiences = data.target_audiences || [];
+      const talking = data.talking_points || [];
+      const campaign_strategy = buildCampaignStrategyFromArrays(audiences, talking);
+      setEditingSpeaker({ ...editingSpeaker, campaign_strategy, target_audiences: audiences, talking_points: talking });
+      toast({ title: 'Strategy generated', description: `${audiences.length} audiences, ${talking.length} talking points extracted.` });
+    } catch (error) {
+      toast({ title: 'Failed to generate strategy', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    } finally { setIsScrapingStrategy(false); }
   };
 
   const managers = useMemo(() => Array.from(new Set(companies.map((c) => (c.campaign_manager || '').trim()).filter(Boolean))).sort(), [companies]);
@@ -410,7 +430,12 @@ const Companies = () => {
                       <Input placeholder="https://airtable.com/..." value={editingSpeaker.airtable_embed_url || ''} onChange={(e) => setEditingSpeaker({ ...editingSpeaker, airtable_embed_url: e.target.value })} />
                     </div>
                     <div>
-                      <Label className="flex items-center gap-1">Campaign Strategy <span className="text-destructive">*</span></Label>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="flex items-center gap-1">Campaign Strategy <span className="text-destructive">*</span></Label>
+                        <Button type="button" variant="outline" size="sm" onClick={scrapeStrategyFromMediaKit} disabled={isScrapingStrategy || !editingSpeaker.media_kit_url?.trim()}>
+                          {isScrapingStrategy ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="h-3 w-3 mr-1" />Generate from Media Kit</>}
+                        </Button>
+                      </div>
                       <Textarea rows={10} placeholder="Target Audiences:&#10;- Founders & Startup Leaders..." value={editingSpeaker.campaign_strategy || ''} onChange={(e) => {
                         const campaign_strategy = e.target.value;
                         const { audiences, talking } = parseCampaignStrategy(campaign_strategy);
