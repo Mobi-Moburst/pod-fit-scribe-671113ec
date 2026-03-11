@@ -2353,7 +2353,10 @@ export async function generateMultiSpeakerReport(
   const speakerNames = speakerData.map(s => s.speaker.name);
   let next_quarter_strategy = generateNextQuarterStrategy(companyClient, aggregatedKpis, quarter, speakerData.length, speakerNames);
   
-  // Enhance with AI-generated per-speaker talking points (3 per speaker for multi-speaker)
+  // Enhance with AI-generated looking-ahead content (multi-speaker)
+  const allPodcastsForLookingAhead = speakerBreakdowns.flatMap(s => 
+    (s.podcasts || []).map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes }))
+  );
   try {
     const speakersForAI = speakerData.map(s => ({
       name: s.speaker.name,
@@ -2367,26 +2370,36 @@ export async function generateMultiSpeakerReport(
     }));
     
     const nextQuarter = getNextQuarter(quarter);
-    const aiTalkingPoints = await generateAITalkingPoints(
+    const aiLookingAhead = await generateAITalkingPoints(
       speakersForAI,
-      nextQuarter, // The quarter these talking points are FOR
+      nextQuarter,
       {
         total_booked: aggregatedKpis.total_booked,
         total_published: aggregatedKpis.total_published,
         total_reach: aggregatedKpis.total_reach,
         top_categories: aggregatedKpis.top_categories,
       },
-      true, // Multi-speaker
-      quarter // The quarter the report covers
+      true,
+      quarter,
+      allPodcastsForLookingAhead,
+      quarterlyNotes
     );
     
-    if (aiTalkingPoints.speaker_talking_points_spotlight && aiTalkingPoints.speaker_talking_points_spotlight.length > 0) {
-      next_quarter_strategy.speaker_talking_points_spotlight = aiTalkingPoints.speaker_talking_points_spotlight;
-      // Clear the general talking points since we're using per-speaker
+    if (aiLookingAhead.speaker_talking_points_spotlight && aiLookingAhead.speaker_talking_points_spotlight.length > 0) {
+      next_quarter_strategy.speaker_talking_points_spotlight = aiLookingAhead.speaker_talking_points_spotlight;
       next_quarter_strategy.talking_points_spotlight = [];
     }
+    if (aiLookingAhead.intro_paragraph) {
+      next_quarter_strategy.intro_paragraph = aiLookingAhead.intro_paragraph;
+    }
+    if (aiLookingAhead.strategic_focus_areas && aiLookingAhead.strategic_focus_areas.length > 0) {
+      next_quarter_strategy.strategic_focus_areas = aiLookingAhead.strategic_focus_areas;
+    }
+    if (aiLookingAhead.closing_paragraph) {
+      next_quarter_strategy.closing_paragraph = aiLookingAhead.closing_paragraph;
+    }
   } catch (err) {
-    console.error('AI talking points generation failed, using default:', err);
+    console.error('AI looking-ahead generation failed, using default:', err);
   }
   
   // Generate AI pitch hooks for each speaker
