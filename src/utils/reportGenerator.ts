@@ -2567,7 +2567,7 @@ export async function mergeUpdatedReportData(
       // Full recalculation with both new CSVs
       const mergedPodcasts = mergePodcastData(newData.batchData, newData.airtableData);
       const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
-      let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm);
+      let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, existingReport.speaking_time_pct || 0.40);
       
       // Apply rephonic data if provided or exists
       if (newData.rephonicData && newData.rephonicData.length > 0) {
