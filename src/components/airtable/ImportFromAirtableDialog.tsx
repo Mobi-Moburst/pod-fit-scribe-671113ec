@@ -173,7 +173,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
 
       // 2. Create speakers for all imported clients
       const speakerRows = toImport.map(c => {
-        const match = findExistingCompany(c.companyName, existingCompanies);
+        const match = findExistingCompanyFromParsed(c, existingCompanies);
         const companyId = match ? match.id : newCompanyMap.get(c.companyName.toLowerCase());
         return {
           org_id: TEAM_ORG_ID,
