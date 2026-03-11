@@ -146,6 +146,7 @@ serve(async (req) => {
     let matched = 0;
 
     for (const note of unmatched) {
+      if ((note.meeting_title || "").toLowerCase().includes("impromptu")) continue;
       const participantNames: string[] = [];
       if (Array.isArray(note.participants)) {
         for (const p of note.participants) {
