@@ -91,6 +91,22 @@ const Companies = () => {
     } finally { setIsScrapingStrategy(false); }
   };
 
+  const fetchHeadshotFromMediaKit = async () => {
+    if (!editingSpeaker?.media_kit_url) { toast({ title: 'Enter a media kit URL first', variant: 'destructive' }); return; }
+    setIsFetchingHeadshot(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-speaker-headshot', {
+        body: { url: editingSpeaker.media_kit_url },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'No headshot found');
+      setEditingSpeaker({ ...editingSpeaker, headshot_url: data.headshot_url });
+      toast({ title: 'Headshot found', description: 'Image loaded from media kit.' });
+    } catch (error) {
+      toast({ title: 'No headshot found', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    } finally { setIsFetchingHeadshot(false); }
+  };
+
   const managers = useMemo(() => Array.from(new Set(companies.map((c) => (c.campaign_manager || '').trim()).filter(Boolean))).sort(), [companies]);
   const filtered = useMemo(() => companies.filter((c) => !managerFilter || (c.campaign_manager || '').trim() === managerFilter), [companies, managerFilter]);
 
