@@ -34,7 +34,7 @@ import { ContentGapRecommendations } from "@/components/reports/ContentGapRecomm
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2, Loader2, Building2, Check } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Mic, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2, Loader2, Building2, Check } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AirtableSyncButton } from "@/components/airtable/AirtableSyncButton";
@@ -112,6 +112,7 @@ export default function Reports() {
   const [socialValueDialogOpen, setSocialValueDialogOpen] = useState(false);
   const [bookedDialogOpen, setBookedDialogOpen] = useState(false);
   const [publishedDialogOpen, setPublishedDialogOpen] = useState(false);
+  const [recordedDialogOpen, setRecordedDialogOpen] = useState(false);
   const [highlightsDialogOpen, setHighlightsDialogOpen] = useState(false);
   const [campaignOverviewEditOpen, setCampaignOverviewEditOpen] = useState(false);
   const [nextQuarterEditOpen, setNextQuarterEditOpen] = useState(false);
@@ -129,6 +130,7 @@ export default function Reports() {
     // Core KPIs
     totalBooked: true,
     totalPublished: true,
+    totalRecorded: true,
     socialReach: true,
     totalReach: true,
     averageScore: true,
@@ -180,7 +182,7 @@ export default function Reports() {
     }
   };
   
-  const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || 
+  const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || visibleSections.totalRecorded ||
     visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
   const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || visibleSections.geoScore || visibleSections.contentGap || visibleSections.socialValue;
   
@@ -1005,6 +1007,7 @@ export default function Reports() {
       setVisibleSections({
         totalBooked: savedSections.totalBooked ?? true,
         totalPublished: savedSections.totalPublished ?? true,
+        totalRecorded: savedSections.totalRecorded ?? true,
         socialReach: savedSections.socialReach ?? true,
         totalReach: savedSections.totalReach ?? true,
         averageScore: savedSections.averageScore ?? true,
@@ -2405,6 +2408,7 @@ export default function Reports() {
                 const hiddenItems = [
                   { key: 'totalBooked', label: 'Total Booked', visible: visibleSections.totalBooked },
                   { key: 'totalPublished', label: 'Total Published', visible: visibleSections.totalPublished },
+                  { key: 'totalRecorded', label: 'Total Recorded', visible: visibleSections.totalRecorded },
                   { key: 'socialReach', label: 'Social Reach', visible: visibleSections.socialReach },
                   { key: 'totalReach', label: 'Total Listenership', visible: visibleSections.totalReach },
                   { key: 'averageScore', label: 'Avg Score', visible: visibleSections.averageScore },
@@ -2468,6 +2472,16 @@ export default function Reports() {
                         icon={Radio}
                         onClick={() => setPublishedDialogOpen(true)}
                         onHide={() => toggleSection('totalPublished')}
+                      />
+                    )}
+                    {visibleSections.totalRecorded && (reportData.kpis.total_recorded ?? 0) > 0 && (
+                      <KPICard
+                        title="Total Recorded"
+                        value={reportData.kpis.total_recorded || 0}
+                        subtitle="Interviews completed"
+                        icon={Mic}
+                        onClick={() => setRecordedDialogOpen(true)}
+                        onHide={() => toggleSection('totalRecorded')}
                       />
                     )}
                     {visibleSections.socialReach && (
@@ -2866,6 +2880,17 @@ export default function Reports() {
                 icon={Radio}
                 podcasts={reportData.podcasts}
                 dateField="date_published"
+                dateRange={reportData.date_range}
+              />
+              
+              <PodcastListDialog
+                open={recordedDialogOpen}
+                onOpenChange={setRecordedDialogOpen}
+                title="Recorded Podcasts"
+                description="Podcast interviews recorded this period."
+                icon={Radio}
+                podcasts={reportData.podcasts}
+                dateField="scheduled_date_time"
                 dateRange={reportData.date_range}
               />
               

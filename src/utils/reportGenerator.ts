@@ -1385,6 +1385,13 @@ function calculateEnhancedKPIs(
     return pubDate >= dateRange.start && pubDate <= dateRange.end;
   }).length;
   
+  const total_recorded = airtableRows.filter(r => {
+    if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+    const schedDate = parseAirtableDate(r.scheduled_date_time);
+    if (!schedDate) return false;
+    return schedDate >= dateRange.start && schedDate <= dateRange.end;
+  }).length;
+  
   // Calculate total EMV from podcasts
   const total_emv = podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
   
@@ -1401,6 +1408,7 @@ function calculateEnhancedKPIs(
     total_interviews,
     total_booked,
     total_published,
+    total_recorded,
     // Calculated metrics
     total_emv,
     sov_percentage: 0,
@@ -2068,11 +2076,19 @@ function calculateSpeakerKPIs(
     return pubDate >= dateRange.start && pubDate <= dateRange.end;
   }).length;
   
+  const total_recorded = airtableRows.filter(r => {
+    if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+    const schedDate = parseAirtableDate(r.scheduled_date_time);
+    if (!schedDate) return false;
+    return schedDate >= dateRange.start && schedDate <= dateRange.end;
+  }).length;
+  
   const total_emv = podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
   
   return {
     total_booked,
     total_published,
+    total_recorded,
     total_reach,
     total_social_reach,
     avg_score: Math.round(avg_score * 10) / 10,
@@ -2353,6 +2369,7 @@ function calculateAggregatedKPIs(
   // Sum metrics
   const total_booked = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_booked, 0);
   const total_published = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_published, 0);
+  const total_recorded = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_recorded || 0), 0);
   const total_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_reach, 0);
   const total_social_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_social_reach, 0);
   const total_emv = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_emv || 0), 0);
@@ -2415,6 +2432,7 @@ function calculateAggregatedKPIs(
     total_interviews,
     total_booked,
     total_published,
+    total_recorded,
     total_emv,
     sov_percentage: 0,
     geo_score: 0,

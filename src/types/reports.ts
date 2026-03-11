@@ -62,6 +62,7 @@ export interface SpeakerBreakdown {
   kpis: {
     total_booked: number;
     total_published: number;
+    total_recorded?: number;
     total_reach: number;
     total_social_reach: number;
     avg_score: number;
@@ -145,6 +146,7 @@ export interface ReportData {
     total_interviews: number; // Count of 'podcast recording' actions in date range
     total_booked: number; // Count with date_booked
     total_published: number; // Count with date_published
+    total_recorded?: number; // Count with scheduled_date_time in range
     
     // Placeholder metrics for future implementation
     total_emv?: number; // Earned Media Value (based on CPM formulas)

@@ -13,7 +13,7 @@ interface PodcastListDialogProps {
   description: string;
   icon: typeof Calendar;
   podcasts: PodcastReportEntry[];
-  dateField: 'date_booked' | 'date_published';
+  dateField: 'date_booked' | 'date_published' | 'scheduled_date_time';
   dateRange?: { start: string; end: string };
 }
 
@@ -40,7 +40,9 @@ export const PodcastListDialog = ({ open, onOpenChange, title, description, icon
   const filtered = useMemo(() => {
     if (!dateRange) return podcasts;
     return podcasts.filter(p => {
-      const dateVal = dateField === 'date_booked' ? p.date_booked : p.date_published;
+      const dateVal = dateField === 'date_booked' ? p.date_booked 
+        : dateField === 'date_published' ? p.date_published 
+        : p.scheduled_date_time;
       return isDateInRange(dateVal, dateRange);
     });
   }, [podcasts, dateField, dateRange]);
@@ -63,7 +65,7 @@ export const PodcastListDialog = ({ open, onOpenChange, title, description, icon
             <TableHeader>
               <TableRow>
                 <TableHead>Podcast</TableHead>
-                <TableHead>{dateField === 'date_booked' ? 'Date Booked' : 'Date Published'}</TableHead>
+                <TableHead>{dateField === 'date_booked' ? 'Date Booked' : dateField === 'date_published' ? 'Date Published' : 'Recording Date'}</TableHead>
                 <TableHead className="text-right">Link</TableHead>
               </TableRow>
             </TableHeader>
@@ -79,7 +81,7 @@ export const PodcastListDialog = ({ open, onOpenChange, title, description, icon
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(dateField === 'date_booked' ? podcast.date_booked : podcast.date_published)}
+                    {formatDate(dateField === 'date_booked' ? podcast.date_booked : dateField === 'date_published' ? podcast.date_published : podcast.scheduled_date_time)}
                   </TableCell>
                   <TableCell className="text-right">
                     {(podcast.episode_link || podcast.apple_podcast_link) && (
