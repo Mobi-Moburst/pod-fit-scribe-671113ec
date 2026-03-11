@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
-import { parseCampaignStrategy, pickTopAudienceTags } from '@/lib/campaignStrategy';
+import { parseCampaignStrategy, pickTopAudienceTags, buildCampaignStrategyFromArrays } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download } from 'lucide-react';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
