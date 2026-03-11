@@ -40,10 +40,17 @@ function parseClientName(raw: string): { speakerName: string; companyName: strin
   return { speakerName: raw.slice(0, idx).trim(), companyName: raw.slice(idx + 3).trim() };
 }
 
-/** Check if a parsed company name matches any existing company (case-insensitive) */
-function findExistingCompany(companyName: string, existing: ExistingCompany[]): ExistingCompany | undefined {
-  const lower = companyName.toLowerCase();
-  return existing.find(c => c.name.toLowerCase() === lower);
+/** Check if any part of the parsed client name matches an existing company (handles reversed formats) */
+function findExistingCompanyFromParsed(
+  parsed: { raw: string; speakerName: string; companyName: string },
+  existing: ExistingCompany[]
+): ExistingCompany | undefined {
+  for (const candidate of [parsed.companyName, parsed.speakerName, parsed.raw]) {
+    const lower = candidate.toLowerCase();
+    const match = existing.find(c => c.name.toLowerCase() === lower);
+    if (match) return match;
+  }
+  return undefined;
 }
 
 export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies, onImportComplete }: Props) {
@@ -60,7 +67,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
 
   const { toast } = useToast();
 
-  const isExisting = (c: ParsedClient) => !!findExistingCompany(c.companyName, existingCompanies);
+  const isExisting = (c: ParsedClient) => !!findExistingCompanyFromParsed(c, existingCompanies);
 
   const scan = async () => {
     setIsScanning(true);
@@ -85,7 +92,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
       // Auto-select names that don't already exist
       const autoSelected = new Set<string>();
       parsed.forEach(c => {
-        if (!findExistingCompany(c.companyName, existingCompanies)) {
+        if (!findExistingCompanyFromParsed(c, existingCompanies)) {
           autoSelected.add(c.raw);
         }
       });
@@ -130,7 +137,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
       const linkToExisting: { client: ParsedClient; existingCompanyId: string }[] = [];
 
       for (const c of toImport) {
-        const match = findExistingCompany(c.companyName, existingCompanies);
+        const match = findExistingCompanyFromParsed(c, existingCompanies);
         if (match) {
           linkToExisting.push({ client: c, existingCompanyId: match.id });
         } else {
@@ -166,7 +173,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
 
       // 2. Create speakers for all imported clients
       const speakerRows = toImport.map(c => {
-        const match = findExistingCompany(c.companyName, existingCompanies);
+        const match = findExistingCompanyFromParsed(c, existingCompanies);
         const companyId = match ? match.id : newCompanyMap.get(c.companyName.toLowerCase());
         return {
           org_id: TEAM_ORG_ID,
