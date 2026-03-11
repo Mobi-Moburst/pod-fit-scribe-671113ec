@@ -108,8 +108,9 @@ async function fetchAllRecords(
   const allRecords: AirtableRecord[] = [];
   let offset: string | undefined;
   let useFilter = !!filterFormula;
+  let shouldContinue = true;
 
-  do {
+  while (shouldContinue) {
     const params = new URLSearchParams();
     if (useFilter && filterFormula) {
       params.append('filterByFormula', filterFormula);
@@ -135,6 +136,7 @@ async function fetchAllRecords(
         console.warn(`Filter formula rejected (422), retrying without filter. Error: ${errorText}`);
         useFilter = false;
         offset = undefined;
+        allRecords.length = 0;
         continue;
       }
       console.error(`Airtable API error: ${response.status} - ${errorText}`);
@@ -144,52 +146,41 @@ async function fetchAllRecords(
     const data: AirtableResponse = await response.json();
     allRecords.push(...data.records);
     offset = data.offset;
+    shouldContinue = !!offset;
 
     console.log(`Fetched ${data.records.length} records, total: ${allRecords.length}`);
-  } while (offset);
+  }
 
   return allRecords;
 }
 
-// Client-side date filtering when server-side formula fails
-function filterRecordsByDate(
-  records: AirtableRecord[],
-  fieldMapping: FieldMapping,
+// Client-side date filtering on already-mapped rows
+function filterRowsByDate(
+  rows: AirtableCSVRow[],
   dateRangeStart: string,
   dateRangeEnd: string,
-  speakerColumnName?: string,
-  speakerName?: string
-): AirtableRecord[] {
+): AirtableCSVRow[] {
   const start = new Date(dateRangeStart);
   const end = new Date(dateRangeEnd);
 
-  return records.filter(record => {
-    const fields = record.fields;
-
-    // Speaker filter
-    if (speakerColumnName && speakerName) {
-      const speakerValue = fields[speakerColumnName];
-      if (typeof speakerValue === 'string' && speakerValue !== speakerName) return false;
-      if (Array.isArray(speakerValue) && !speakerValue.includes(speakerName)) return false;
-    }
-
+  return rows.filter(row => {
     // Check if ANY date field falls in range
-    const dateFields = [
-      fieldMapping.scheduled_date_time,
-      fieldMapping.date_published,
-      fieldMapping.date_booked,
+    const dateValues = [
+      row.scheduled_date_time,
+      row.date_published,
+      row.date_booked,
     ].filter(Boolean);
 
-    for (const fieldName of dateFields) {
-      const val = fields[fieldName!];
+    if (dateValues.length === 0) return true; // No dates at all, include
+
+    for (const val of dateValues) {
       if (val) {
         const d = new Date(val);
         if (!isNaN(d.getTime()) && d >= start && d <= end) return true;
       }
     }
 
-    // If no date fields matched, include record only if no date fields exist at all
-    return dateFields.every(f => !fields[f!]);
+    return false;
   });
 }
 
@@ -263,24 +254,23 @@ Deno.serve(async (req) => {
       filterFormula
     );
 
-    // If we got unfiltered results (422 fallback), apply client-side date filtering
-    if (date_range_start && date_range_end && records.length > 0) {
-      const preCount = records.length;
-      records = filterRecordsByDate(
-        records, fieldMapping, date_range_start, date_range_end,
-        connection.speaker_column_name, speaker_name
-      );
-      if (records.length !== preCount) {
-        console.log(`Client-side filtered: ${preCount} → ${records.length} records`);
+    console.log(`Total records fetched: ${records.length}`);
+
+    // Map records to our format
+    let rows: AirtableCSVRow[] = records.map(record => 
+      mapRecordToRow(record, fieldMapping)
+    );
+
+    // Apply client-side date filtering (needed when server-side formula failed)
+    if (date_range_start && date_range_end) {
+      const preCount = rows.length;
+      rows = filterRowsByDate(rows, date_range_start, date_range_end);
+      if (rows.length !== preCount) {
+        console.log(`Client-side filtered: ${preCount} → ${rows.length} rows`);
       }
     }
 
-    console.log(`Total records after filtering: ${records.length}`);
-
-    // Map records to our format
-    const rows: AirtableCSVRow[] = records.map(record => 
-      mapRecordToRow(record, fieldMapping)
-    );
+    console.log(`Final row count: ${rows.length}`);
 
     // Update last_synced_at timestamp
     await supabase
