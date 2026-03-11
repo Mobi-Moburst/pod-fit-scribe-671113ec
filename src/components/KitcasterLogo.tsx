@@ -13,13 +13,15 @@ export const KitcasterLogo = ({ className = "h-8 w-auto" }: KitcasterLogoProps) 
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
     clickCountRef.current += 1;
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
 
     if (clickCountRef.current >= 5) {
+      // Prevent navigation when activating easter egg
+      e.preventDefault();
+      e.stopPropagation();
       clickCountRef.current = 0;
-      // Toggle batcave on/off
       setTheme(theme === "batcave" ? "dark" : "batcave");
       return;
     }
