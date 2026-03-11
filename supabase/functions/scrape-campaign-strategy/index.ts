@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert podcast booking strategist. Given a speaker's media kit page content, extract: target audiences, talking points/themes, topics to avoid (sensitive areas, competitors, off-brand topics), and guest identity tags (demographic/identity descriptors like "woman_entrepreneur", "black_founder", "veteran", "lgbtq_leader", "immigrant_founder" — use snake_case). Be concise — each item should be 2-6 words. Return 3-5 target audiences, 3-6 talking points, 0-4 avoid items, and 0-4 identity tags.`,
+            content: `You are an expert podcast booking strategist. Given a speaker's media kit page content, extract: the speaker's professional title/role, target audiences, talking points/themes, topics to avoid (sensitive areas, competitors, off-brand topics), and guest identity tags (demographic/identity descriptors like "woman_entrepreneur", "black_founder", "veteran", "lgbtq_leader", "immigrant_founder" — use snake_case). Be concise — each item should be 2-6 words. Return the speaker's title, 3-5 target audiences, 3-6 talking points, 0-4 avoid items, and 0-4 identity tags.`,
           },
           {
             role: 'user',
