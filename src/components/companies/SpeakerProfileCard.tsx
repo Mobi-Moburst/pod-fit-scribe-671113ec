@@ -318,28 +318,7 @@ export function SpeakerProfileCard({
 
           {/* History / Quarterly Notes */}
           <TabsContent value="history" className="p-4 mt-0">
-            {(() => {
-              const notes = Array.isArray(speaker.quarterly_notes) ? speaker.quarterly_notes as Array<{ quarter: string; notes: string; created_at: string }> : [];
-              if (notes.length === 0) {
-                return <p className="text-sm text-muted-foreground">No quarterly notes yet. Generate insights and save a quarterly summary to start building history.</p>;
-              }
-              const sorted = [...notes].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-              return (
-                <div className="space-y-3">
-                  {sorted.map((entry, i) => (
-                    <div key={i} className="border border-border/50 rounded-lg p-3 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-foreground">{entry.quarter}</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(entry.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-foreground/90">{entry.notes}</p>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+            <QuarterlyNotesHistory speakerId={speaker.id} notes={speaker.quarterly_notes} onUpdate={onUpdate} />
           </TabsContent>
         </ScrollArea>
       </Tabs>
