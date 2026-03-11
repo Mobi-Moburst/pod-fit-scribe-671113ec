@@ -494,7 +494,7 @@ function generateFocusDescription(audience: string, clientName: string): string 
   return `Continue building presence on ${audience.toLowerCase()} podcasts to expand ${clientName}'s thought leadership reach.`;
 }
 
-// Generate AI-powered talking points spotlight via edge function
+// Generate AI-powered looking-ahead content via edge function
 export async function generateAITalkingPoints(
   speakers: Array<{
     name: string;
@@ -514,13 +514,18 @@ export async function generateAITalkingPoints(
     top_categories?: Array<{ name: string; count: number }>;
   },
   isMultiSpeaker: boolean = false,
-  reportQuarter?: string // The quarter the report covers (current/past quarter)
+  reportQuarter?: string, // The quarter the report covers (current/past quarter)
+  podcasts?: Array<{ show_title: string; categories?: string; show_notes?: string }>,
+  quarterlyNotes?: Array<{ quarter: string; notes: string }>
 ): Promise<{
   talking_points_spotlight?: Array<{ title: string; description: string }>;
   speaker_talking_points_spotlight?: Array<{ speaker_name: string; points: Array<{ title: string; description: string }> }>;
+  intro_paragraph?: string;
+  strategic_focus_areas?: Array<{ title: string; description: string }>;
+  closing_paragraph?: string;
 }> {
   try {
-    console.log(`Generating AI talking points for ${speakers.length} speaker(s), multi-speaker: ${isMultiSpeaker}, nextQuarter: ${nextQuarter}, reportQuarter: ${reportQuarter}`);
+    console.log(`Generating AI looking-ahead content for ${speakers.length} speaker(s), multi-speaker: ${isMultiSpeaker}, nextQuarter: ${nextQuarter}, reportQuarter: ${reportQuarter}`);
     
     const { data, error } = await supabase.functions.invoke('generate-talking-points', {
       body: {
@@ -538,6 +543,15 @@ export async function generateAITalkingPoints(
         reportQuarter,
         kpis,
         isMultiSpeaker,
+        podcasts: podcasts?.slice(0, 15)?.map(p => ({
+          show_title: p.show_title,
+          categories: p.categories,
+          show_notes: p.show_notes,
+        })),
+        quarterly_notes: quarterlyNotes?.slice(0, 5)?.map(n => ({
+          quarter: n.quarter,
+          notes: n.notes,
+        })),
       }
     });
 
@@ -546,7 +560,7 @@ export async function generateAITalkingPoints(
       return {};
     }
 
-    console.log('AI talking points generated:', data);
+    console.log('AI looking-ahead content generated:', data);
     return data || {};
   } catch (err) {
     console.error('Failed to generate AI talking points:', err);
