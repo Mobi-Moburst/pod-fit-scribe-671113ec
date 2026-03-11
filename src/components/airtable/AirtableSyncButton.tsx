@@ -50,15 +50,24 @@ export function AirtableSyncButton({
   if (variant === 'inline') {
     if (!hasConnection) {
       return (
-        <Button
-          variant="outline"
-          size={size}
-          onClick={() => setShowConnectionDialog(true)}
-          className="gap-1"
-        >
-          <Link2 className="h-4 w-4" />
-          Connect Airtable
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            size={size}
+            onClick={() => setShowConnectionDialog(true)}
+            className="gap-1"
+          >
+            <Link2 className="h-4 w-4" />
+            Connect Airtable
+          </Button>
+          <AirtableConnectionDialog
+            open={showConnectionDialog}
+            onOpenChange={setShowConnectionDialog}
+            companyId={companyId}
+            speakerId={speakerId}
+            entityName={entityName}
+          />
+        </>
       );
     }
 
