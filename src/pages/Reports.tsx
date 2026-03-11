@@ -2473,6 +2473,16 @@ export default function Reports() {
                         onHide={() => toggleSection('totalPublished')}
                       />
                     )}
+                    {visibleSections.totalRecorded && (reportData.kpis.total_recorded ?? 0) > 0 && (
+                      <KPICard
+                        title="Total Recorded"
+                        value={reportData.kpis.total_recorded || 0}
+                        subtitle="Interviews completed"
+                        icon={Radio}
+                        onClick={() => setRecordedDialogOpen(true)}
+                        onHide={() => toggleSection('totalRecorded')}
+                      />
+                    )}
                     {visibleSections.socialReach && (
                       <KPICard
                         title="Social Reach"
