@@ -110,10 +110,14 @@ const Companies = () => {
     } finally { setIsFetchingHeadshot(false); }
   };
 
-  const managers = useMemo(() => Array.from(new Set(companies.map((c) => (c.campaign_manager || '').trim()).filter(Boolean))).sort(), [companies]);
+  const managers = useMemo(() => {
+    const names = new Set<string>();
+    companies.forEach((c) => (c.campaign_manager || '').split(',').map(m => m.trim()).filter(Boolean).forEach(m => names.add(m)));
+    return Array.from(names).sort();
+  }, [companies]);
   const filtered = useMemo(() => {
     const byView = companies.filter((c) => viewMode === 'active' ? !c.archived_at : !!c.archived_at);
-    return byView.filter((c) => !managerFilter || (c.campaign_manager || '').trim() === managerFilter).sort((a, b) => a.name.localeCompare(b.name));
+    return byView.filter((c) => !managerFilter || (c.campaign_manager || '').split(',').map(m => m.trim()).includes(managerFilter)).sort((a, b) => a.name.localeCompare(b.name));
   }, [companies, managerFilter, viewMode]);
   const archivedCount = useMemo(() => companies.filter(c => !!c.archived_at).length, [companies]);
 
@@ -379,7 +383,8 @@ const Companies = () => {
                 </div>
                 <div>
                   <Label>Campaign Manager</Label>
-                  <Input placeholder="e.g., Troy" value={editingCompany.campaign_manager || ''} onChange={(e) => setEditingCompany({ ...editingCompany, campaign_manager: e.target.value })} />
+                  <Input placeholder="e.g., Troy, Kylie" value={editingCompany.campaign_manager || ''} onChange={(e) => setEditingCompany({ ...editingCompany, campaign_manager: e.target.value })} />
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Separate multiple with commas</p>
                 </div>
                 <div>
                   <Label>Company URL</Label>
