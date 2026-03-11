@@ -228,6 +228,35 @@ const Companies = () => {
     await loadData();
   };
 
+  // ── Archive/Restore ──
+  const archiveCompany = async (id: string) => {
+    const { error } = await supabase.from('companies').update({ archived_at: new Date().toISOString() } as any).eq('id', id);
+    if (error) { toast({ title: 'Archive failed', description: error.message, variant: 'destructive' }); return; }
+    // Also archive all speakers under this company
+    await supabase.from('speakers').update({ archived_at: new Date().toISOString() } as any).eq('company_id', id);
+    await loadData(); toast({ title: 'Company archived' });
+  };
+
+  const restoreCompany = async (id: string) => {
+    const { error } = await supabase.from('companies').update({ archived_at: null } as any).eq('id', id);
+    if (error) { toast({ title: 'Restore failed', description: error.message, variant: 'destructive' }); return; }
+    // Also restore all speakers under this company
+    await supabase.from('speakers').update({ archived_at: null } as any).eq('company_id', id);
+    await loadData(); toast({ title: 'Company restored' });
+  };
+
+  const archiveSpeaker = async (id: string) => {
+    const { error } = await supabase.from('speakers').update({ archived_at: new Date().toISOString() } as any).eq('id', id);
+    if (error) { toast({ title: 'Archive failed', description: error.message, variant: 'destructive' }); return; }
+    await loadData(); toast({ title: 'Speaker archived' });
+  };
+
+  const restoreSpeaker = async (id: string) => {
+    const { error } = await supabase.from('speakers').update({ archived_at: null } as any).eq('id', id);
+    if (error) { toast({ title: 'Restore failed', description: error.message, variant: 'destructive' }); return; }
+    await loadData(); toast({ title: 'Speaker restored' });
+  };
+
   // ── Competitor helpers ──
   const suggestCompetitors = async () => {
     if (!editingSpeaker) return;
