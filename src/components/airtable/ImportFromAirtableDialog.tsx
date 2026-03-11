@@ -96,11 +96,13 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
       if (!data?.clients) throw new Error('No data returned');
 
       const fetched: AirtableClient[] = data.clients;
-      const parsed: ParsedClient[] = fetched.map(c => ({
-        raw: c.name,
-        ...parseClientName(c.name),
-        campaign_manager: c.campaign_manager,
-      }));
+      const parsed: ParsedClient[] = fetched
+        .filter(c => c.campaign_manager && c.campaign_manager.trim() !== '')
+        .map(c => ({
+          raw: c.name,
+          ...parseClientName(c.name),
+          campaign_manager: c.campaign_manager,
+        }));
       setClients(parsed);
 
       // Auto-select names that don't already exist
