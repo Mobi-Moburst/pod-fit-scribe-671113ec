@@ -2157,7 +2157,7 @@ export async function generateMultiSpeakerReport(
     
     // Apply Rephonic CSV data if provided (overrides Podchaser)
     if (rephonicRows && rephonicRows.length > 0) {
-      podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm);
+      podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm, speakingTimePct);
     }
     
     // Build published podcasts directly from airtable (same source as KPI)
