@@ -40,10 +40,17 @@ function parseClientName(raw: string): { speakerName: string; companyName: strin
   return { speakerName: raw.slice(0, idx).trim(), companyName: raw.slice(idx + 3).trim() };
 }
 
-/** Check if a parsed company name matches any existing company (case-insensitive) */
-function findExistingCompany(companyName: string, existing: ExistingCompany[]): ExistingCompany | undefined {
-  const lower = companyName.toLowerCase();
-  return existing.find(c => c.name.toLowerCase() === lower);
+/** Check if any part of the parsed client name matches an existing company (handles reversed formats) */
+function findExistingCompanyFromParsed(
+  parsed: { raw: string; speakerName: string; companyName: string },
+  existing: ExistingCompany[]
+): ExistingCompany | undefined {
+  for (const candidate of [parsed.companyName, parsed.speakerName, parsed.raw]) {
+    const lower = candidate.toLowerCase();
+    const match = existing.find(c => c.name.toLowerCase() === lower);
+    if (match) return match;
+  }
+  return undefined;
 }
 
 export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies, onImportComplete }: Props) {
