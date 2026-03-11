@@ -176,6 +176,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        speaker_title: extracted.speaker_title || '',
         target_audiences: extracted.target_audiences || [],
         talking_points: extracted.talking_points || [],
         avoid: extracted.avoid || [],
