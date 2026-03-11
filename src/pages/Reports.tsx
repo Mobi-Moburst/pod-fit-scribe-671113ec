@@ -1006,6 +1006,7 @@ export default function Reports() {
       setVisibleSections({
         totalBooked: savedSections.totalBooked ?? true,
         totalPublished: savedSections.totalPublished ?? true,
+        totalRecorded: savedSections.totalRecorded ?? true,
         socialReach: savedSections.socialReach ?? true,
         totalReach: savedSections.totalReach ?? true,
         averageScore: savedSections.averageScore ?? true,

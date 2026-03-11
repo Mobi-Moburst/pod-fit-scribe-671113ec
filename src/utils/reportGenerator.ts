@@ -2432,6 +2432,7 @@ function calculateAggregatedKPIs(
     total_interviews,
     total_booked,
     total_published,
+    total_recorded,
     total_emv,
     sov_percentage: 0,
     geo_score: 0,
