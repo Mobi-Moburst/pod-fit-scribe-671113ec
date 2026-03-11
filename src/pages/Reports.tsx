@@ -617,6 +617,9 @@ export default function Reports() {
         );
         
         setReportData(report);
+        if (!reportName) {
+          setReportName(`${selectedCompany?.name} - ${quarter || 'Report'}`);
+        }
         toast({
           title: "Multi-speaker report generated",
           description: `Processed ${report.speaker_breakdowns?.length || 0} speakers with ${report.kpis.total_booked} total bookings.`,
@@ -717,6 +720,9 @@ export default function Reports() {
       report.contains_live_scores = true;
       
       setReportData(report);
+      if (!reportName) {
+        setReportName(`${selectedCompany?.name} - ${quarter || 'Report'}`);
+      }
       toast({
         title: "Report generated",
         description: `Successfully processed ${report.kpis.total_interviews} podcasts with ${report.kpis.total_booked} booked and ${report.kpis.total_published} published.`,
@@ -2350,7 +2356,7 @@ export default function Reports() {
                     <div>
                       <Label>Report Name *</Label>
                       <Input
-                        placeholder="Q4 2025 Campaign Report"
+                        placeholder="Company - Q4 2025"
                         value={reportName}
                         onChange={(e) => setReportName(e.target.value)}
                       />
