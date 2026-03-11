@@ -2466,6 +2466,7 @@ export default function Reports() {
                         value={reportData.kpis.total_published}
                         subtitle="Episodes live"
                         icon={Radio}
+                        onClick={() => setPublishedDialogOpen(true)}
                         onHide={() => toggleSection('totalPublished')}
                       />
                     )}
