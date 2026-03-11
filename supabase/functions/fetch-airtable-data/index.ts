@@ -251,24 +251,23 @@ Deno.serve(async (req) => {
       filterFormula
     );
 
-    // If we got unfiltered results (422 fallback), apply client-side date filtering
-    if (date_range_start && date_range_end && records.length > 0) {
-      const preCount = records.length;
-      records = filterRecordsByDate(
-        records, fieldMapping, date_range_start, date_range_end,
-        connection.speaker_column_name, speaker_name
-      );
-      if (records.length !== preCount) {
-        console.log(`Client-side filtered: ${preCount} → ${records.length} records`);
+    console.log(`Total records fetched: ${records.length}`);
+
+    // Map records to our format
+    let rows: AirtableCSVRow[] = records.map(record => 
+      mapRecordToRow(record, fieldMapping)
+    );
+
+    // Apply client-side date filtering (needed when server-side formula failed)
+    if (date_range_start && date_range_end) {
+      const preCount = rows.length;
+      rows = filterRowsByDate(rows, date_range_start, date_range_end);
+      if (rows.length !== preCount) {
+        console.log(`Client-side filtered: ${preCount} → ${rows.length} rows`);
       }
     }
 
-    console.log(`Total records after filtering: ${records.length}`);
-
-    // Map records to our format
-    const rows: AirtableCSVRow[] = records.map(record => 
-      mapRecordToRow(record, fieldMapping)
-    );
+    console.log(`Final row count: ${rows.length}`);
 
     // Update last_synced_at timestamp
     await supabase
