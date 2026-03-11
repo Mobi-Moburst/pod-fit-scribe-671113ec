@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
-import { parseCampaignStrategy, pickTopAudienceTags, buildCampaignStrategyFromArrays } from '@/lib/campaignStrategy';
+import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, Archive } from 'lucide-react';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
@@ -86,7 +86,7 @@ const Companies = () => {
       const talking = data.talking_points || [];
       const avoid = data.avoid || [];
       const guest_identity_tags = data.guest_identity_tags || [];
-      const campaign_strategy = buildCampaignStrategyFromArrays(audiences, talking);
+      const campaign_strategy = data.campaign_strategy || editingSpeaker.campaign_strategy || '';
       setEditingSpeaker({ ...editingSpeaker, campaign_strategy, title: speakerTitle || editingSpeaker.title, target_audiences: audiences, talking_points: talking, avoid, avoid_text: avoid.join(', '), guest_identity_tags });
       toast({ title: 'Strategy generated', description: `${audiences.length} audiences, ${talking.length} talking points, ${avoid.length} avoid items, ${guest_identity_tags.length} identity tags extracted.` });
     } catch (error) {
@@ -522,11 +522,17 @@ const Companies = () => {
                           {isScrapingStrategy ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="h-3 w-3 mr-1" />Generate from Media Kit</>}
                         </Button>
                       </div>
-                      <Textarea rows={10} placeholder="Target Audiences:&#10;- Founders & Startup Leaders..." value={editingSpeaker.campaign_strategy || ''} onChange={(e) => {
-                        const campaign_strategy = e.target.value;
-                        const { audiences, talking } = parseCampaignStrategy(campaign_strategy);
-                        setEditingSpeaker({ ...editingSpeaker, campaign_strategy, target_audiences: audiences, talking_points: talking });
+                      <Textarea rows={6} placeholder="Freeform strategy narrative, positioning notes, etc." value={editingSpeaker.campaign_strategy || ''} onChange={(e) => {
+                        setEditingSpeaker({ ...editingSpeaker, campaign_strategy: e.target.value });
                       }} />
+                    </div>
+                    <div>
+                      <Label>Target Audiences</Label>
+                      <Textarea rows={2} placeholder="e.g., Startup Founders, Enterprise CTOs, Growth Marketers" value={(editingSpeaker.target_audiences || []).join(', ')} onChange={(e) => setEditingSpeaker({ ...editingSpeaker, target_audiences: toList(e.target.value) })} />
+                    </div>
+                    <div>
+                      <Label>Talking Points</Label>
+                      <Textarea rows={3} placeholder="e.g., AI in Sales, Building Remote Teams, Scaling Product-Led Growth" value={(editingSpeaker.talking_points || []).join(', ')} onChange={(e) => setEditingSpeaker({ ...editingSpeaker, talking_points: toList(e.target.value) })} />
                     </div>
                     <div>
                       <Label>Things to Avoid</Label>
