@@ -444,7 +444,21 @@ function QuarterlyNotesHistory({ speakerId, notes, onUpdate }: { speakerId: stri
           {editingIdx === i ? (
             <Textarea rows={3} value={editText} onChange={(e) => setEditText(e.target.value)} className="text-sm" />
           ) : (
-            <p className="text-sm text-foreground/90">{entry.notes}</p>
+            <div className="space-y-1">
+              <p className="text-sm text-foreground/90">{entry.notes}</p>
+              {entry.report_slug && (
+                <a
+                  href={`/report/${entry.report_slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  View Report
+                </a>
+              )}
+            </div>
           )}
         </div>
       ))}
