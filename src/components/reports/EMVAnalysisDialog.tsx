@@ -27,7 +27,7 @@ interface EMVAnalysisDialogProps {
   speakingTimePct?: number;
 }
 
-export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelationChart }: EMVAnalysisDialogProps) => {
+export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelationChart, cpm = 50, speakingTimePct = 0.40 }: EMVAnalysisDialogProps) => {
   // Filter podcasts that have EMV data
   const podcastsWithEMV = podcasts.filter(p => p.true_emv && p.true_emv > 0);
 
