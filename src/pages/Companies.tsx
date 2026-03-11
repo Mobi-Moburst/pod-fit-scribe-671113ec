@@ -325,6 +325,7 @@ const Companies = () => {
               </select>
             </div>
           )}
+          {managerFilter && <SyncFathomButton onSyncComplete={loadData} />}
         </div>
 
         {/* Company Card Grid */}
