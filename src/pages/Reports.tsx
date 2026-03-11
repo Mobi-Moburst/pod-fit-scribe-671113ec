@@ -2356,7 +2356,7 @@ export default function Reports() {
                     <div>
                       <Label>Report Name *</Label>
                       <Input
-                        placeholder="Q4 2025 Campaign Report"
+                        placeholder="Company - Q4 2025"
                         value={reportName}
                         onChange={(e) => setReportName(e.target.value)}
                       />
