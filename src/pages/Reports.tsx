@@ -2847,6 +2847,26 @@ export default function Reports() {
                 totalSocialReach={reportData.kpis.total_social_reach}
               />
               
+              <PodcastListDialog
+                open={bookedDialogOpen}
+                onOpenChange={setBookedDialogOpen}
+                title="Booked Podcasts"
+                description="Podcasts with confirmed bookings this period."
+                icon={Calendar}
+                podcasts={reportData.podcasts.filter(p => p.date_booked)}
+                dateField="date_booked"
+              />
+              
+              <PodcastListDialog
+                open={publishedDialogOpen}
+                onOpenChange={setPublishedDialogOpen}
+                title="Published Episodes"
+                description="Episodes that went live this period."
+                icon={Radio}
+                podcasts={reportData.podcasts.filter(p => p.date_published)}
+                dateField="date_published"
+              />
+              
               <ReachAnalysisDialog
                 open={reachDialogOpen}
                 onOpenChange={setReachDialogOpen}
