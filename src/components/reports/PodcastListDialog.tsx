@@ -13,7 +13,7 @@ interface PodcastListDialogProps {
   description: string;
   icon: typeof Calendar;
   podcasts: PodcastReportEntry[];
-  dateField: 'date_booked' | 'date_published';
+  dateField: 'date_booked' | 'date_published' | 'scheduled_date_time';
   dateRange?: { start: string; end: string };
 }
 
