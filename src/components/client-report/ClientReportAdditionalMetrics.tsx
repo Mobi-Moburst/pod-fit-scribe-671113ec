@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { DollarSign, Users, Brain, Target, Sparkles, Share2 } from "lucide-react";
+import { DollarSign, Users, Brain, Target, Sparkles, Share2, TrendingUp } from "lucide-react";
 import { ReportData } from "@/types/reports";
 
 interface VisibleSections {
@@ -56,7 +56,7 @@ export function ClientReportAdditionalMetrics({
   onSocialValueClick,
 }: ClientReportAdditionalMetricsProps) {
   // Calculate total EMV from podcasts
-  const totalEmv = reportData.podcasts?.reduce((sum, p) => sum + (p.true_emv || 0), 0) || 0;
+  const totalEmv = reportData.kpis?.total_emv || reportData.podcasts?.reduce((sum, p) => sum + (p.true_emv || 0), 0) || 0;
   
   // Get SOV percentage
   const sovPercentage = reportData.sov_analysis?.client_percentage || 0;
@@ -71,10 +71,26 @@ export function ClientReportAdditionalMetrics({
   const totalSocialReach = reportData.kpis?.total_social_reach || 0;
   const totalSocialValue = calculateTotalSocialValue(totalSocialReach);
 
+  // Total Campaign Value (EMV + Social Value)
+  const totalCampaignValue = totalEmv + totalSocialValue;
+  const showCampaignValue = visibleSections.emv && visibleSections.socialValue && totalEmv > 0 && totalSocialReach > 0;
+
   const metrics = [
+    // Total Campaign Value rollup card
+    {
+      key: 'campaignValue',
+      visible: showCampaignValue,
+      icon: TrendingUp,
+      value: formatCurrency(totalCampaignValue),
+      label: "Total Campaign Value",
+      subtitle: "EMV + Social Value combined",
+      onClick: onEmvClick,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
+    },
     {
       key: 'emv',
-      visible: visibleSections.emv && totalEmv > 0,
+      visible: visibleSections.emv !== false,
       icon: DollarSign,
       value: formatCurrency(totalEmv),
       label: "Earned Media Value",
@@ -85,40 +101,44 @@ export function ClientReportAdditionalMetrics({
     },
     {
       key: 'sov',
-      visible: visibleSections.sov && reportData.sov_analysis,
+      visible: visibleSections.sov !== false,
       icon: Users,
       value: `${sovPercentage.toFixed(0)}%`,
       label: "Peer Comparison",
       subtitle: "Share of voice",
-      onClick: onSovClick,
+      onClick: reportData.sov_analysis ? onSovClick : undefined,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
     },
     {
       key: 'geoScore',
-      visible: visibleSections.geoScore && reportData.geo_analysis,
+      visible: visibleSections.geoScore !== false,
       icon: Brain,
-      value: geoScore.toFixed(0),
+      value: reportData.geo_analysis ? `${geoScore.toFixed(0)}/100` : '0/100',
       label: "GEO Score",
-      subtitle: "AI engine indexing",
-      onClick: onGeoClick,
+      subtitle: reportData.geo_analysis
+        ? `${reportData.geo_analysis.total_podcasts_indexed} podcasts • ${reportData.geo_analysis.unique_ai_engines.length} AI engines`
+        : "AI engine indexing",
+      onClick: reportData.geo_analysis ? onGeoClick : undefined,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
     },
     {
       key: 'contentGap',
-      visible: visibleSections.contentGap && reportData.content_gap_analysis,
+      visible: visibleSections.contentGap !== false,
       icon: Target,
-      value: `${contentGapCoverage.toFixed(0)}%`,
+      value: reportData.content_gap_analysis ? `${contentGapCoverage.toFixed(0)}%` : '—',
       label: "Content Gap",
-      subtitle: "Topic coverage",
-      onClick: onContentGapClick,
+      subtitle: reportData.content_gap_analysis
+        ? `${reportData.content_gap_analysis.total_gaps} gaps • ${reportData.content_gap_analysis.total_prompts} prompts`
+        : "Topic coverage",
+      onClick: reportData.content_gap_analysis ? onContentGapClick : undefined,
       color: "text-amber-500",
       bgColor: "bg-amber-500/10",
     },
     {
       key: 'socialValue',
-      visible: visibleSections.socialValue && totalSocialReach > 0,
+      visible: visibleSections.socialValue !== false && totalSocialReach > 0,
       icon: Share2,
       value: formatCurrency(totalSocialValue),
       label: "Social Value",
@@ -144,7 +164,7 @@ export function ClientReportAdditionalMetrics({
         visibleMetrics.length === 1 ? 'grid-cols-1' :
         visibleMetrics.length === 2 ? 'grid-cols-1 md:grid-cols-2' :
         visibleMetrics.length === 3 ? 'grid-cols-1 md:grid-cols-3' :
-        'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+        'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
       }`}>
         {visibleMetrics.map((metric) => {
           const Icon = metric.icon;
@@ -152,15 +172,17 @@ export function ClientReportAdditionalMetrics({
             <Card
               key={metric.key}
               onClick={metric.onClick}
-              className="p-6 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg group"
+              className={`p-6 transition-all duration-200 hover:shadow-lg group ${metric.onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
             >
               <div className="flex items-start justify-between">
                 <div className={`p-3 rounded-xl ${metric.bgColor}`}>
                   <Icon className={`h-6 w-6 ${metric.color}`} />
                 </div>
-                <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                  Click for details
-                </span>
+                {metric.onClick && (
+                  <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                    Click for details
+                  </span>
+                )}
               </div>
               <div className="mt-4">
                 <p className="text-3xl font-bold">{metric.value}</p>
