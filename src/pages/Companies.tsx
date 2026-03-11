@@ -335,6 +335,9 @@ const Companies = () => {
               onDelete={() => removeCompany(company.id)}
               onAddSpeaker={() => startNewSpeaker(company.id)}
               onAirtable={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}
+              isArchived={!!company.archived_at}
+              onArchive={() => archiveCompany(company.id)}
+              onRestore={() => restoreCompany(company.id)}
             >
               {company.speakers.map(speaker => (
                 <SpeakerProfileCard
@@ -345,11 +348,18 @@ const Companies = () => {
                   onDelete={() => removeSpeaker(speaker.id)}
                   onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
                   onUpdate={loadData}
+                  isArchived={!!speaker.archived_at}
+                  onArchive={() => archiveSpeaker(speaker.id)}
+                  onRestore={() => restoreSpeaker(speaker.id)}
                 />
               ))}
             </CompanyCard>
           ))}
-          {!filtered.length && <p className="text-sm text-muted-foreground col-span-full">No companies yet.</p>}
+          {!filtered.length && (
+            <p className="text-sm text-muted-foreground col-span-full">
+              {viewMode === 'archived' ? 'No archived companies.' : 'No companies yet.'}
+            </p>
+          )}
         </div>
 
         {/* ═══ Company Edit Sheet ═══ */}

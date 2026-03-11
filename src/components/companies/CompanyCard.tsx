@@ -126,37 +126,52 @@ export function CompanyCard({
         {/* Expanded content */}
         {isExpanded && (
           <div className="border-t border-border/50">
-            {/* Action bar — hover-reveal in header area */}
+            {/* Action bar */}
             <div className="group/actions flex items-center gap-1 px-4 py-2 border-b border-border/30">
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onAddSpeaker(); }}>
-                <Plus className="h-3.5 w-3.5 mr-1" />Speaker
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onAirtable(); }}>
-                <Link2 className="h-3.5 w-3.5 mr-1" />Airtable
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-                <Pencil className="h-3.5 w-3.5 mr-1" />Edit
-              </Button>
-              <div className="flex-1" />
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive opacity-0 group-hover/actions:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                    <Trash className="h-3.5 w-3.5 mr-1" />Delete
+              {!isArchived && (
+                <>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onAddSpeaker(); }}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />Speaker
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete company?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently remove {company.name} and all its speakers.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onAirtable(); }}>
+                    <Link2 className="h-3.5 w-3.5 mr-1" />Airtable
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                    <Pencil className="h-3.5 w-3.5 mr-1" />Edit
+                  </Button>
+                </>
+              )}
+              <div className="flex-1" />
+              {isArchived ? (
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onRestore?.(); }}>
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />Restore
+                </Button>
+              ) : (
+                <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground opacity-0 group-hover/actions:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); onArchive?.(); }}>
+                  <Archive className="h-3.5 w-3.5 mr-1" />Archive
+                </Button>
+              )}
+              {!isArchived && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive opacity-0 group-hover/actions:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                      <Trash className="h-3.5 w-3.5 mr-1" />Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete company?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently remove {company.name} and all its speakers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
 
             {/* Speaker list — divider-based */}

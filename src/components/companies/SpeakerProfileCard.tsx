@@ -127,31 +127,42 @@ export function SpeakerProfileCard({
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
           <div className="flex items-center gap-0.5 opacity-0 group-hover/header:opacity-100 transition-opacity">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit">
-              <Pencil className="h-3 w-3" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAirtable} title="Airtable">
-              <Link2 className="h-3 w-3" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive">
-                  <Trash className="h-3 w-3" />
+            {isArchived ? (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onRestore} title="Restore">
+                <RotateCcw className="h-3 w-3 mr-1" />Restore
+              </Button>
+            ) : (
+              <>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit">
+                  <Pencil className="h-3 w-3" />
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently remove {speaker.name}. This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAirtable} title="Airtable">
+                  <Link2 className="h-3 w-3" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onArchive?.()} title="Archive">
+                  <Archive className="h-3 w-3" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive">
+                      <Trash className="h-3 w-3" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently remove {speaker.name}. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
           </div>
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setExpanded(false)}>
             <X className="h-3.5 w-3.5" />
