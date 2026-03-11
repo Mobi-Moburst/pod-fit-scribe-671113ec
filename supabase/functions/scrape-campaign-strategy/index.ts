@@ -105,6 +105,10 @@ Deno.serve(async (req) => {
               parameters: {
                 type: 'object',
                 properties: {
+                  speaker_title: {
+                    type: 'string',
+                    description: 'The speaker\'s professional title or role (e.g., "CEO at Acme Corp", "VP of Engineering")',
+                  },
                   target_audiences: {
                     type: 'array',
                     items: { type: 'string' },
