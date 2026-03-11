@@ -135,7 +135,7 @@ const Companies = () => {
         target_audiences: s.target_audiences || [], talking_points: s.talking_points || [], avoid: s.avoid || [],
         guest_identity_tags: s.guest_identity_tags || [], professional_credentials: s.professional_credentials || [],
         campaign_strategy: s.campaign_strategy || '', pitch_template: s.pitch_template || '', competitors: s.competitors || [],
-        archived_at: s.archived_at || null,
+        archived_at: s.archived_at || null, quarterly_notes: s.quarterly_notes || null,
       };
       const existing = speakersMap.get(s.company_id) || [];
       existing.push(speaker);
