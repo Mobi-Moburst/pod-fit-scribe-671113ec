@@ -522,11 +522,17 @@ const Companies = () => {
                           {isScrapingStrategy ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="h-3 w-3 mr-1" />Generate from Media Kit</>}
                         </Button>
                       </div>
-                      <Textarea rows={10} placeholder="Target Audiences:&#10;- Founders & Startup Leaders..." value={editingSpeaker.campaign_strategy || ''} onChange={(e) => {
-                        const campaign_strategy = e.target.value;
-                        const { audiences, talking } = parseCampaignStrategy(campaign_strategy);
-                        setEditingSpeaker({ ...editingSpeaker, campaign_strategy, target_audiences: audiences, talking_points: talking });
+                      <Textarea rows={6} placeholder="Freeform strategy narrative, positioning notes, etc." value={editingSpeaker.campaign_strategy || ''} onChange={(e) => {
+                        setEditingSpeaker({ ...editingSpeaker, campaign_strategy: e.target.value });
                       }} />
+                    </div>
+                    <div>
+                      <Label>Target Audiences</Label>
+                      <Textarea rows={2} placeholder="e.g., Startup Founders, Enterprise CTOs, Growth Marketers" value={(editingSpeaker.target_audiences || []).join(', ')} onChange={(e) => setEditingSpeaker({ ...editingSpeaker, target_audiences: toList(e.target.value) })} />
+                    </div>
+                    <div>
+                      <Label>Talking Points</Label>
+                      <Textarea rows={3} placeholder="e.g., AI in Sales, Building Remote Teams, Scaling Product-Led Growth" value={(editingSpeaker.talking_points || []).join(', ')} onChange={(e) => setEditingSpeaker({ ...editingSpeaker, talking_points: toList(e.target.value) })} />
                     </div>
                     <div>
                       <Label>Things to Avoid</Label>
