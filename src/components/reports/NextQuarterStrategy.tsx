@@ -106,21 +106,21 @@ export function NextQuarterStrategy({
             Looking Ahead: {nextQuarterLabel}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 text-sm">
           {/* Intro Paragraph */}
-          <MarkdownRenderer content={intro_paragraph} className="text-muted-foreground leading-relaxed" />
+          <MarkdownRenderer content={intro_paragraph} className="text-sm text-muted-foreground leading-relaxed" />
 
           {/* Strategic Focus Areas */}
           {strategic_focus_areas.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-semibold text-foreground">Strategic Focus Areas</h4>
+              <h4 className="text-sm font-semibold text-foreground">Strategic Focus Areas</h4>
               <ul className="space-y-3">
                 {strategic_focus_areas.map((area, idx) => (
                   <li key={idx} className="flex gap-2">
                     <span className="text-primary font-bold">•</span>
                     <div>
                       <span className="font-semibold text-foreground">{area.title}:</span>{' '}
-                      <MarkdownRenderer content={area.description} className="text-muted-foreground inline" />
+                      <MarkdownRenderer content={area.description} className="text-sm text-muted-foreground inline" />
                     </div>
                   </li>
                 ))}
