@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { Textarea } from "@/components/ui/textarea";
 import { CallNotesList } from "@/components/call-notes/CallNotesList";
 import { StrategyInsightsPanel } from "@/components/call-notes/StrategyInsightsPanel";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Pencil,
   X,
@@ -19,6 +22,7 @@ import {
   BookOpen,
   Archive,
   RotateCcw,
+  Check,
   Clock,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -315,28 +319,7 @@ export function SpeakerProfileCard({
 
           {/* History / Quarterly Notes */}
           <TabsContent value="history" className="p-4 mt-0">
-            {(() => {
-              const notes = Array.isArray(speaker.quarterly_notes) ? speaker.quarterly_notes as Array<{ quarter: string; notes: string; created_at: string }> : [];
-              if (notes.length === 0) {
-                return <p className="text-sm text-muted-foreground">No quarterly notes yet. Generate insights and save a quarterly summary to start building history.</p>;
-              }
-              const sorted = [...notes].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-              return (
-                <div className="space-y-3">
-                  {sorted.map((entry, i) => (
-                    <div key={i} className="border border-border/50 rounded-lg p-3 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-foreground">{entry.quarter}</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(entry.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-foreground/90">{entry.notes}</p>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+            <QuarterlyNotesHistory speakerId={speaker.id} notes={speaker.quarterly_notes} onUpdate={onUpdate} />
           </TabsContent>
         </ScrollArea>
       </Tabs>
@@ -351,6 +334,120 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         {title}
       </h5>
       {children}
+    </div>
+  );
+}
+
+type QuarterlyNote = { quarter: string; notes: string; created_at: string };
+
+function QuarterlyNotesHistory({ speakerId, notes, onUpdate }: { speakerId: string; notes?: QuarterlyNote[] | null; onUpdate: () => Promise<void> }) {
+  const items = Array.isArray(notes) ? notes : [];
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  const sorted = [...items].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  const updateNotes = async (newNotes: QuarterlyNote[]) => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("speakers")
+      .update({ quarterly_notes: newNotes } as any)
+      .eq("id", speakerId);
+    setSaving(false);
+    if (error) {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+      return false;
+    }
+    await onUpdate();
+    return true;
+  };
+
+  const handleDelete = async (entry: QuarterlyNote) => {
+    const filtered = items.filter((n) => n.created_at !== entry.created_at);
+    if (await updateNotes(filtered)) {
+      toast({ title: "Note deleted" });
+    }
+  };
+
+  const handleStartEdit = (idx: number) => {
+    setEditingIdx(idx);
+    setEditText(sorted[idx].notes);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingIdx === null) return;
+    const entry = sorted[editingIdx];
+    const updated = items.map((n) =>
+      n.created_at === entry.created_at ? { ...n, notes: editText } : n
+    );
+    if (await updateNotes(updated)) {
+      toast({ title: "Note updated" });
+      setEditingIdx(null);
+    }
+  };
+
+  if (items.length === 0) {
+    return <p className="text-sm text-muted-foreground">No quarterly notes yet. Generate insights and save a quarterly summary to start building history.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {sorted.map((entry, i) => (
+        <div key={entry.created_at} className="group/note border border-border/50 rounded-lg p-3 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">{entry.quarter}</span>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-muted-foreground mr-1">
+                {new Date(entry.created_at).toLocaleDateString()}
+              </span>
+              <div className="flex items-center gap-0.5 opacity-0 group-hover/note:opacity-100 transition-opacity">
+                {editingIdx === i ? (
+                  <>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSaveEdit} disabled={saving}>
+                      <Check className="h-3 w-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingIdx(null)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleStartEdit(i)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive hover:text-destructive">
+                          <Trash className="h-3 w-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete note?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently remove this {entry.quarter} note.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(entry)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          {editingIdx === i ? (
+            <Textarea rows={3} value={editText} onChange={(e) => setEditText(e.target.value)} className="text-sm" />
+          ) : (
+            <p className="text-sm text-foreground/90">{entry.notes}</p>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
