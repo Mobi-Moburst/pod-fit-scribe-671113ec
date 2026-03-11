@@ -29,6 +29,7 @@ import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
+import { PodcastListDialog } from "@/components/reports/PodcastListDialog";
 import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
