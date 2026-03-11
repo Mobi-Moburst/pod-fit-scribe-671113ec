@@ -262,10 +262,32 @@ export function SpeakerProfileCard({
 
           {/* Strategy */}
           <TabsContent value="strategy" className="p-4 space-y-4 mt-0">
+            {(speaker.target_audiences?.length ?? 0) > 0 && (
+              <Section title="Target Audiences">
+                <div className="flex flex-wrap gap-1.5">
+                  {speaker.target_audiences!.map((a) => (
+                    <Badge key={a} variant="secondary" className="text-xs">{a}</Badge>
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            {(speaker.talking_points?.length ?? 0) > 0 && (
+              <Section title="Talking Points">
+                <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
+                  {speaker.talking_points!.map((tp, i) => <li key={i}>{tp}</li>)}
+                </ul>
+              </Section>
+            )}
+
             {speaker.campaign_strategy ? (
-              <MarkdownRenderer content={speaker.campaign_strategy} />
+              <Section title="Strategy Narrative">
+                <MarkdownRenderer content={speaker.campaign_strategy} />
+              </Section>
             ) : (
-              <p className="text-sm text-muted-foreground">No campaign strategy set.</p>
+              !speaker.target_audiences?.length && !speaker.talking_points?.length && (
+                <p className="text-sm text-muted-foreground">No campaign strategy set.</p>
+              )
             )}
 
             {speaker.pitch_template && (
