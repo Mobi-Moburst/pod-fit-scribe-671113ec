@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.scrape-campaign-strategy]
 verify_jwt = false
+
+[functions.scrape-speaker-headshot]
+verify_jwt = false
