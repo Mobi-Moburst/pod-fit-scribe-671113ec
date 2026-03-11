@@ -33,7 +33,7 @@ import { useAirtableConnection, AirtableConnection } from '@/hooks/use-airtable-
 const DEFAULT_FIELD_MAPPING: Record<string, string> = {
   podcast_name: 'Podcast Name',
   action: 'Action',
-  scheduled_date_time: 'Recording Date',
+  scheduled_date_time: 'Scheduled Date / Time',
   date_booked: 'Date Booked',
   date_published: 'Date Published',
   link_to_episode: 'Link to episode',
