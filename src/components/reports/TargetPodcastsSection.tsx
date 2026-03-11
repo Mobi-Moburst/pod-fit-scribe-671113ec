@@ -384,7 +384,7 @@ export function TargetPodcastsSection({
               </div>
             ))}
           </div>
-          <p className="text-center text-muted-foreground mt-4">
+          <p className="text-center text-sm text-muted-foreground mt-4">
             <Sparkles className="h-4 w-4 inline mr-2 animate-pulse" />
             Generating podcast recommendations...
           </p>
