@@ -333,6 +333,37 @@ function generateStrategyParagraph(client: MinimalClient): string {
   return paragraph;
 }
 
+// AI-generated campaign overview using quarterly podcast data
+async function generateAICampaignOverview(
+  speaker: { name: string; title?: string; company?: string; target_audiences?: string[]; talking_points?: string[]; campaign_strategy?: string; professional_credentials?: string[] },
+  podcasts: Array<{ show_title: string; categories?: string; show_notes?: string }>,
+  kpis: { total_booked: number; total_published: number; total_reach: number; top_categories?: Array<{ name: string }> },
+  quarter?: string
+): Promise<{ strategy: string; talking_points: string[] } | null> {
+  try {
+    console.log('[generateAICampaignOverview] Calling edge function...');
+    const { data, error } = await supabase.functions.invoke('generate-campaign-overview', {
+      body: { speaker, podcasts, kpis, quarter }
+    });
+    
+    if (error) {
+      console.error('[generateAICampaignOverview] Error:', error);
+      return null;
+    }
+    
+    if (data?.strategy && Array.isArray(data?.talking_points)) {
+      console.log('[generateAICampaignOverview] Success');
+      return { strategy: data.strategy, talking_points: data.talking_points };
+    }
+    
+    console.warn('[generateAICampaignOverview] Unexpected response:', data);
+    return null;
+  } catch (err) {
+    console.error('[generateAICampaignOverview] Failed:', err);
+    return null;
+  }
+}
+
 // Format numbers with K/M suffix for readability
 function formatNumber(n: number): string {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
