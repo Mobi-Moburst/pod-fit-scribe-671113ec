@@ -50,6 +50,7 @@ export interface Speaker {
   pitch_template?: string;
   competitors?: Competitor[];
   archived_at?: string | null;
+  quarterly_notes?: Array<{ quarter: string; notes: string; created_at: string }> | null;
 }
 
 // Combined view for reports and UI convenience
