@@ -2088,6 +2088,7 @@ function calculateSpeakerKPIs(
   return {
     total_booked,
     total_published,
+    total_recorded,
     total_reach,
     total_social_reach,
     avg_score: Math.round(avg_score * 10) / 10,

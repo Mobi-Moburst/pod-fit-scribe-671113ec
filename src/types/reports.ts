@@ -62,6 +62,7 @@ export interface SpeakerBreakdown {
   kpis: {
     total_booked: number;
     total_published: number;
+    total_recorded?: number;
     total_reach: number;
     total_social_reach: number;
     avg_score: number;
