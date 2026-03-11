@@ -69,6 +69,25 @@ const Companies = () => {
     } finally { setIsFetchingBrand(false); }
   };
 
+  const scrapeStrategyFromMediaKit = async () => {
+    if (!editingSpeaker?.media_kit_url) { toast({ title: 'Enter a media kit URL first', variant: 'destructive' }); return; }
+    setIsScrapingStrategy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-campaign-strategy', {
+        body: { url: editingSpeaker.media_kit_url, speaker_name: editingSpeaker.name, speaker_title: editingSpeaker.title },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to extract strategy');
+      const audiences = data.target_audiences || [];
+      const talking = data.talking_points || [];
+      const campaign_strategy = buildCampaignStrategyFromArrays(audiences, talking);
+      setEditingSpeaker({ ...editingSpeaker, campaign_strategy, target_audiences: audiences, talking_points: talking });
+      toast({ title: 'Strategy generated', description: `${audiences.length} audiences, ${talking.length} talking points extracted.` });
+    } catch (error) {
+      toast({ title: 'Failed to generate strategy', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    } finally { setIsScrapingStrategy(false); }
+  };
+
   const managers = useMemo(() => Array.from(new Set(companies.map((c) => (c.campaign_manager || '').trim()).filter(Boolean))).sort(), [companies]);
   const filtered = useMemo(() => companies.filter((c) => !managerFilter || (c.campaign_manager || '').trim() === managerFilter), [companies, managerFilter]);
 
