@@ -2076,6 +2076,13 @@ function calculateSpeakerKPIs(
     return pubDate >= dateRange.start && pubDate <= dateRange.end;
   }).length;
   
+  const total_recorded = airtableRows.filter(r => {
+    if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+    const schedDate = parseAirtableDate(r.scheduled_date_time);
+    if (!schedDate) return false;
+    return schedDate >= dateRange.start && schedDate <= dateRange.end;
+  }).length;
+  
   const total_emv = podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
   
   return {
