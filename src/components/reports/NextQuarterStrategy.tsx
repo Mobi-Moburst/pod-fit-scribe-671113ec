@@ -132,7 +132,7 @@ export function NextQuarterStrategy({
           {(talking_points_spotlight.length > 0 || (speaker_talking_points_spotlight && speaker_talking_points_spotlight.length > 0)) && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Lightbulb className="h-4 w-4 text-accent" />
                   Talking Points to Spotlight
                 </h4>
