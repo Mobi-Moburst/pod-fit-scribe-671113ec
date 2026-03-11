@@ -238,7 +238,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
         {scanned && (
           <>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{clients.length} clients found · {existingCount} already exist · {selectedCount} selected</span>
+              <span>{newClients.length} new · {existingCount} already exist · {selectedCount} selected</span>
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <Checkbox
                   checked={selectedCount === newClients.length && newClients.length > 0}
