@@ -357,9 +357,12 @@ export function parseRephonicCSV(csvText: string): RephonicCSVRow[] {
     const monthlyListensRaw = row.monthly_listens || row.monthly_listeners || '';
     const monthlyListens = monthlyListensRaw ? parseInt(String(monthlyListensRaw).replace(/[^0-9]/g, '')) || 0 : 0;
     
-    // Social reach
+    // Social reach (combine social_reach + youtube_subscribers)
     const socialReachRaw = row.social_reach || row.social_followers || '';
-    const socialReach = socialReachRaw ? parseInt(String(socialReachRaw).replace(/[^0-9]/g, '')) || 0 : 0;
+    const socialReachVal = socialReachRaw ? parseInt(String(socialReachRaw).replace(/[^0-9]/g, '')) || 0 : 0;
+    const youtubeSubsRaw = row.youtube_subscribers || row.youtube_subs || '';
+    const youtubeSubsVal = youtubeSubsRaw ? parseInt(String(youtubeSubsRaw).replace(/[^0-9]/g, '')) || 0 : 0;
+    const socialReach = socialReachVal + youtubeSubsVal;
     
     // Categories
     const categories = row.categories || '';
