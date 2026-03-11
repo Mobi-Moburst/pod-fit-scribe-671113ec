@@ -440,6 +440,9 @@ const Companies = () => {
                           <label htmlFor="headshot-upload" className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-secondary hover:bg-secondary/80 rounded-md cursor-pointer transition-colors">
                             <Upload className="w-4 h-4" />{editingSpeaker.headshot_url ? 'Change Photo' : 'Upload Photo'}
                           </label>
+                          <Button type="button" variant="outline" size="sm" onClick={fetchHeadshotFromMediaKit} disabled={isFetchingHeadshot || !editingSpeaker.media_kit_url?.trim()} className="ml-2">
+                            {isFetchingHeadshot ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Fetching...</> : <><Globe className="h-3 w-3 mr-1" />Fetch from Media Kit</>}
+                          </Button>
                           <p className="text-xs text-muted-foreground mt-1">Square image recommended</p>
                         </div>
                       </div>
