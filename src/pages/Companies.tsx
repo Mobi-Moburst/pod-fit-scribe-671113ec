@@ -86,7 +86,7 @@ const Companies = () => {
       const talking = data.talking_points || [];
       const avoid = data.avoid || [];
       const guest_identity_tags = data.guest_identity_tags || [];
-      const campaign_strategy = buildCampaignStrategyFromArrays(audiences, talking);
+      const campaign_strategy = data.campaign_strategy || editingSpeaker.campaign_strategy || '';
       setEditingSpeaker({ ...editingSpeaker, campaign_strategy, title: speakerTitle || editingSpeaker.title, target_audiences: audiences, talking_points: talking, avoid, avoid_text: avoid.join(', '), guest_identity_tags });
       toast({ title: 'Strategy generated', description: `${audiences.length} audiences, ${talking.length} talking points, ${avoid.length} avoid items, ${guest_identity_tags.length} identity tags extracted.` });
     } catch (error) {
