@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
             type: 'function',
             function: {
               name: 'extract_campaign_strategy',
-              description: 'Extract target audiences and talking points from a speaker media kit.',
+              description: 'Extract campaign strategy details from a speaker media kit.',
               parameters: {
                 type: 'object',
                 properties: {
@@ -115,8 +115,18 @@ Deno.serve(async (req) => {
                     items: { type: 'string' },
                     description: 'Key themes/topics the speaker covers (e.g., "AI in Education", "Scaling Remote Teams")',
                   },
+                  avoid: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Topics or areas to avoid when pitching (e.g., "crypto", "competitor mentions", "politics")',
+                  },
+                  guest_identity_tags: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Identity descriptors in snake_case (e.g., "woman_entrepreneur", "black_founder", "veteran")',
+                  },
                 },
-                required: ['target_audiences', 'talking_points'],
+                required: ['target_audiences', 'talking_points', 'avoid', 'guest_identity_tags'],
                 additionalProperties: false,
               },
             },
