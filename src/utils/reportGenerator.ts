@@ -1926,10 +1926,10 @@ export async function generateReportFromMultipleCSVs(
   // Generate next quarter strategy (single speaker)
   let next_quarter_strategy = generateNextQuarterStrategy(client, kpis, quarter, 1, [client.name]);
   
-  // Enhance with AI-generated talking points (3 for single speaker)
+  // Enhance with AI-generated looking-ahead content
   try {
     const nextQuarter = getNextQuarter(quarter);
-    const aiTalkingPoints = await generateAITalkingPoints(
+    const aiLookingAhead = await generateAITalkingPoints(
       [{
         name: client.name,
         title: client.title,
@@ -1940,22 +1940,33 @@ export async function generateReportFromMultipleCSVs(
         professional_credentials: client.professional_credentials,
         guest_identity_tags: client.guest_identity_tags,
       }],
-      nextQuarter, // The quarter these talking points are FOR
+      nextQuarter,
       {
         total_booked: kpis.total_booked,
         total_published: kpis.total_published,
         total_reach: kpis.total_reach,
         top_categories: kpis.top_categories,
       },
-      false, // Single speaker
-      quarter // The quarter the report covers
+      false,
+      quarter,
+      sortedPodcasts.map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes })),
+      quarterlyNotes
     );
     
-    if (aiTalkingPoints.talking_points_spotlight && aiTalkingPoints.talking_points_spotlight.length > 0) {
-      next_quarter_strategy.talking_points_spotlight = aiTalkingPoints.talking_points_spotlight;
+    if (aiLookingAhead.talking_points_spotlight && aiLookingAhead.talking_points_spotlight.length > 0) {
+      next_quarter_strategy.talking_points_spotlight = aiLookingAhead.talking_points_spotlight;
+    }
+    if (aiLookingAhead.intro_paragraph) {
+      next_quarter_strategy.intro_paragraph = aiLookingAhead.intro_paragraph;
+    }
+    if (aiLookingAhead.strategic_focus_areas && aiLookingAhead.strategic_focus_areas.length > 0) {
+      next_quarter_strategy.strategic_focus_areas = aiLookingAhead.strategic_focus_areas;
+    }
+    if (aiLookingAhead.closing_paragraph) {
+      next_quarter_strategy.closing_paragraph = aiLookingAhead.closing_paragraph;
     }
   } catch (err) {
-    console.error('AI talking points generation failed, using default:', err);
+    console.error('AI looking-ahead generation failed, using default:', err);
   }
   
   // Generate AI pitch hooks for the speaker
