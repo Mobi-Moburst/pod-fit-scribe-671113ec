@@ -93,6 +93,11 @@ export default function Reports() {
   const [selectedQuarter, setSelectedQuarter] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   
+  // Advanced EMV settings
+  const [cpmRate, setCpmRate] = useState<number>(50);
+  const [speakingTimePct, setSpeakingTimePct] = useState<number>(40);
+  const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+  
   // State
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [savedReports, setSavedReports] = useState<any[]>([]);
