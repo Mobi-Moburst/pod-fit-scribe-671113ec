@@ -85,9 +85,13 @@ export function CompanyCard({
               </span>
             </div>
             {company.campaign_manager && (
-              <span className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-muted-foreground border border-border">
-                CM: {company.campaign_manager}
-              </span>
+              <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                {company.campaign_manager.split(',').map(m => m.trim()).filter(Boolean).map((cm) => (
+                  <span key={cm} className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-muted-foreground border border-border">
+                    CM: {cm}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
 

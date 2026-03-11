@@ -383,7 +383,8 @@ const Companies = () => {
                 </div>
                 <div>
                   <Label>Campaign Manager</Label>
-                  <Input placeholder="e.g., Troy" value={editingCompany.campaign_manager || ''} onChange={(e) => setEditingCompany({ ...editingCompany, campaign_manager: e.target.value })} />
+                  <Input placeholder="e.g., Troy, Kylie" value={editingCompany.campaign_manager || ''} onChange={(e) => setEditingCompany({ ...editingCompany, campaign_manager: e.target.value })} />
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Separate multiple with commas</p>
                 </div>
                 <div>
                   <Label>Company URL</Label>
