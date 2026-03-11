@@ -29,6 +29,7 @@ import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
+import { PodcastListDialog } from "@/components/reports/PodcastListDialog";
 import { ContentGapRecommendations } from "@/components/reports/ContentGapRecommendations";
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
@@ -109,6 +110,8 @@ export default function Reports() {
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
   const [socialValueDialogOpen, setSocialValueDialogOpen] = useState(false);
+  const [bookedDialogOpen, setBookedDialogOpen] = useState(false);
+  const [publishedDialogOpen, setPublishedDialogOpen] = useState(false);
   const [highlightsDialogOpen, setHighlightsDialogOpen] = useState(false);
   const [campaignOverviewEditOpen, setCampaignOverviewEditOpen] = useState(false);
   const [nextQuarterEditOpen, setNextQuarterEditOpen] = useState(false);
@@ -2453,6 +2456,7 @@ export default function Reports() {
                         value={reportData.kpis.total_booked}
                         subtitle="Confirmed bookings"
                         icon={Calendar}
+                        onClick={() => setBookedDialogOpen(true)}
                         onHide={() => toggleSection('totalBooked')}
                       />
                     )}
@@ -2462,6 +2466,7 @@ export default function Reports() {
                         value={reportData.kpis.total_published}
                         subtitle="Episodes live"
                         icon={Radio}
+                        onClick={() => setPublishedDialogOpen(true)}
                         onHide={() => toggleSection('totalPublished')}
                       />
                     )}
@@ -2840,6 +2845,26 @@ export default function Reports() {
                 open={socialValueDialogOpen}
                 onOpenChange={setSocialValueDialogOpen}
                 totalSocialReach={reportData.kpis.total_social_reach}
+              />
+              
+              <PodcastListDialog
+                open={bookedDialogOpen}
+                onOpenChange={setBookedDialogOpen}
+                title="Booked Podcasts"
+                description="Podcasts with confirmed bookings this period."
+                icon={Calendar}
+                podcasts={reportData.podcasts.filter(p => p.date_booked)}
+                dateField="date_booked"
+              />
+              
+              <PodcastListDialog
+                open={publishedDialogOpen}
+                onOpenChange={setPublishedDialogOpen}
+                title="Published Episodes"
+                description="Episodes that went live this period."
+                icon={Radio}
+                podcasts={reportData.podcasts.filter(p => p.date_published)}
+                dateField="date_published"
               />
               
               <ReachAnalysisDialog
