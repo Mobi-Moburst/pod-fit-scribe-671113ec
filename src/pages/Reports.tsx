@@ -2891,6 +2891,8 @@ export default function Reports() {
                 open={emvDialogOpen}
                 onOpenChange={setEmvDialogOpen}
                 podcasts={reportData.podcasts}
+                cpm={reportData.cpm || 50}
+                speakingTimePct={reportData.speaking_time_pct || 0.40}
               />
               
               <SOVChartDialog
