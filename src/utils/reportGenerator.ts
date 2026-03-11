@@ -2571,7 +2571,7 @@ export async function mergeUpdatedReportData(
       
       // Apply rephonic data if provided or exists
       if (newData.rephonicData && newData.rephonicData.length > 0) {
-        podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, newData.rephonicData, cpm);
+        podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, newData.rephonicData, cpm, existingReport.speaking_time_pct || 0.40);
       }
       
       updatedReport.podcasts = podcastsWithEMV;
