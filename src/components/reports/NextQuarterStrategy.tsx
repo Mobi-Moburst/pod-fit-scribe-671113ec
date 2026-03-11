@@ -106,21 +106,21 @@ export function NextQuarterStrategy({
             Looking Ahead: {nextQuarterLabel}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 text-sm">
           {/* Intro Paragraph */}
-          <MarkdownRenderer content={intro_paragraph} className="text-muted-foreground leading-relaxed" />
+          <MarkdownRenderer content={intro_paragraph} className="text-sm text-muted-foreground leading-relaxed" />
 
           {/* Strategic Focus Areas */}
           {strategic_focus_areas.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-semibold text-foreground">Strategic Focus Areas</h4>
+              <h4 className="text-sm font-semibold text-foreground">Strategic Focus Areas</h4>
               <ul className="space-y-3">
                 {strategic_focus_areas.map((area, idx) => (
                   <li key={idx} className="flex gap-2">
                     <span className="text-primary font-bold">•</span>
                     <div>
                       <span className="font-semibold text-foreground">{area.title}:</span>{' '}
-                      <MarkdownRenderer content={area.description} className="text-muted-foreground inline" />
+                      <MarkdownRenderer content={area.description} className="text-sm text-muted-foreground inline" />
                     </div>
                   </li>
                 ))}
@@ -132,7 +132,7 @@ export function NextQuarterStrategy({
           {(talking_points_spotlight.length > 0 || (speaker_talking_points_spotlight && speaker_talking_points_spotlight.length > 0)) && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Lightbulb className="h-4 w-4 text-accent" />
                   Talking Points to Spotlight
                 </h4>
@@ -158,7 +158,7 @@ export function NextQuarterStrategy({
                       <span className="text-accent font-bold">•</span>
                       <div>
                         <span className="font-semibold text-foreground">{point.title}:</span>{' '}
-                        <MarkdownRenderer content={point.description} className="text-muted-foreground inline" />
+                        <MarkdownRenderer content={point.description} className="text-sm text-muted-foreground inline" />
                       </div>
                     </li>
                   ))}
@@ -177,7 +177,7 @@ export function NextQuarterStrategy({
                             <span className="text-accent font-bold">•</span>
                             <div>
                               <span className="font-semibold text-foreground">{point.title}:</span>{' '}
-                              <MarkdownRenderer content={point.description} className="text-muted-foreground inline" />
+                              <MarkdownRenderer content={point.description} className="text-sm text-muted-foreground inline" />
                             </div>
                           </li>
                         ))}
@@ -191,13 +191,13 @@ export function NextQuarterStrategy({
 
           {/* Closing Paragraph */}
           <div className="italic border-l-2 border-primary/30 pl-4">
-            <MarkdownRenderer content={closing_paragraph} className="text-muted-foreground leading-relaxed" />
+            <MarkdownRenderer content={closing_paragraph} className="text-sm text-muted-foreground leading-relaxed" />
           </div>
 
           {/* Next Quarter KPIs */}
           {next_quarter_kpis && (next_quarter_kpis.high_impact_podcasts_goal > 0 || next_quarter_kpis.listenership_goal > 0) && (
             <div className="space-y-3 pt-4 border-t border-border">
-              <h4 className="font-semibold text-foreground">{nextQuarterLabel} Goals</h4>
+              <h4 className="text-sm font-semibold text-foreground">{nextQuarterLabel} Goals</h4>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setPodcastsDialogOpen(true)}
