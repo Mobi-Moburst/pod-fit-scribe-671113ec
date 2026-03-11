@@ -349,7 +349,7 @@ export function TargetPodcastsSection({
         <CardContent>
           <div className="text-center py-8">
             <Mic className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Generate AI-powered podcast recommendations based on your next quarter strategy.
             </p>
             <Button onClick={generateSuggestions} className="gap-2">
@@ -384,7 +384,7 @@ export function TargetPodcastsSection({
               </div>
             ))}
           </div>
-          <p className="text-center text-muted-foreground mt-4">
+          <p className="text-center text-sm text-muted-foreground mt-4">
             <Sparkles className="h-4 w-4 inline mr-2 animate-pulse" />
             Generating podcast recommendations...
           </p>
@@ -469,7 +469,7 @@ export function TargetPodcastsSection({
                   <>
                     {/* Title and Link */}
                     <div className="flex items-start gap-2 mb-2">
-                      <h3 className="font-semibold text-lg leading-tight">
+                      <h3 className="font-semibold text-sm leading-tight">
                         {podcast.apple_podcast_url ? (
                           <a
                             href={podcast.apple_podcast_url}
