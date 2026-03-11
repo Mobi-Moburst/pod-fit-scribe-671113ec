@@ -2343,6 +2343,7 @@ export async function generateMultiSpeakerReport(
       end: dateRange.end.toISOString(),
     },
     cpm,
+    speaking_time_pct: speakingTimePct,
     kpis: aggregatedKpis,
     campaign_overview: {
       strategy: generateCompanyStrategyParagraph(company.name, speakerBreakdowns),
