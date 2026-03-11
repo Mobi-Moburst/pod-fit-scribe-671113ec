@@ -2406,6 +2406,7 @@ export default function Reports() {
                 const hiddenItems = [
                   { key: 'totalBooked', label: 'Total Booked', visible: visibleSections.totalBooked },
                   { key: 'totalPublished', label: 'Total Published', visible: visibleSections.totalPublished },
+                  { key: 'totalRecorded', label: 'Total Recorded', visible: visibleSections.totalRecorded },
                   { key: 'socialReach', label: 'Social Reach', visible: visibleSections.socialReach },
                   { key: 'totalReach', label: 'Total Listenership', visible: visibleSections.totalReach },
                   { key: 'averageScore', label: 'Avg Score', visible: visibleSections.averageScore },
