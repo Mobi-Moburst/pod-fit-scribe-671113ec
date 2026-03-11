@@ -27,6 +27,9 @@ export function CompanyCard({
   onDelete,
   onAddSpeaker,
   onAirtable,
+  isArchived,
+  onArchive,
+  onRestore,
   children,
 }: CompanyCardProps) {
   return (
