@@ -1034,7 +1034,8 @@ export async function calculateCategoriesFromBookedPodcasts(
 // Calculate EMV for a single podcast
 function calculateEMV(
   podcast: PodcastReportEntry,
-  cpm: number = 50
+  cpm: number = 50,
+  speakingTimePct: number = 0.40
 ): {
   base_emv: number;
   speaking_minutes: number;
@@ -1053,8 +1054,8 @@ function calculateEMV(
   // Formula: Base EMV = (listeners / 1000) * CPM
   const base_emv = (listeners / 1000) * cpm;
   
-  // Speaking time: 40% of episode duration
-  const speaking_minutes = duration * 0.40;
+  // Speaking time: configurable % of episode duration
+  const speaking_minutes = duration * speakingTimePct;
   
   // Ad units: one ad per minute of speaking time
   const ad_units = speaking_minutes;
