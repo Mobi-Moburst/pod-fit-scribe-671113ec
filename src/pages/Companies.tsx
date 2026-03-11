@@ -223,7 +223,7 @@ const Companies = () => {
           </div>
         </Card>
 
-        <ImportFromAirtableDialog open={showImportDialog} onOpenChange={setShowImportDialog} existingCompanyNames={companies.map(c => c.name)} onImportComplete={loadData} />
+        <ImportFromAirtableDialog open={showImportDialog} onOpenChange={setShowImportDialog} existingCompanies={companies.map(c => ({ id: c.id, name: c.name }))} onImportComplete={loadData} />
 
         {/* Filter */}
         {managers.length > 0 && (

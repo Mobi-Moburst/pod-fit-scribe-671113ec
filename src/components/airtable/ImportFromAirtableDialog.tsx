@@ -14,20 +14,45 @@ interface AirtableClient {
   campaign_manager: string;
 }
 
+interface ParsedClient {
+  raw: string;
+  speakerName: string;
+  companyName: string;
+  campaign_manager: string;
+}
+
+interface ExistingCompany {
+  id: string;
+  name: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  existingCompanyNames: string[];
+  existingCompanies: ExistingCompany[];
   onImportComplete: () => void;
 }
 
-export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanyNames, onImportComplete }: Props) {
+/** Split "Speaker Name - Company Name" into parts; if no delimiter, both are the raw name */
+function parseClientName(raw: string): { speakerName: string; companyName: string } {
+  const idx = raw.indexOf(' - ');
+  if (idx === -1) return { speakerName: raw, companyName: raw };
+  return { speakerName: raw.slice(0, idx).trim(), companyName: raw.slice(idx + 3).trim() };
+}
+
+/** Check if a parsed company name matches any existing company (case-insensitive) */
+function findExistingCompany(companyName: string, existing: ExistingCompany[]): ExistingCompany | undefined {
+  const lower = companyName.toLowerCase();
+  return existing.find(c => c.name.toLowerCase() === lower);
+}
+
+export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies, onImportComplete }: Props) {
   const [baseId, setBaseId] = useState('appKSO0Fu50JdheHt');
   const [tableId, setTableId] = useState('tblJelP3ssvAGvhYb');
   const [clientColumn, setClientColumn] = useState('Client');
   const [cmColumn, setCmColumn] = useState('Campaign Manager');
 
-  const [clients, setClients] = useState<AirtableClient[]>([]);
+  const [clients, setClients] = useState<ParsedClient[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isScanning, setIsScanning] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -35,7 +60,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanyNa
 
   const { toast } = useToast();
 
-  const existingLower = new Set(existingCompanyNames.map(n => n.toLowerCase()));
+  const isExisting = (c: ParsedClient) => !!findExistingCompany(c.companyName, existingCompanies);
 
   const scan = async () => {
     setIsScanning(true);
@@ -50,13 +75,18 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanyNa
       if (!data?.clients) throw new Error('No data returned');
 
       const fetched: AirtableClient[] = data.clients;
-      setClients(fetched);
+      const parsed: ParsedClient[] = fetched.map(c => ({
+        raw: c.name,
+        ...parseClientName(c.name),
+        campaign_manager: c.campaign_manager,
+      }));
+      setClients(parsed);
 
       // Auto-select names that don't already exist
       const autoSelected = new Set<string>();
-      fetched.forEach(c => {
-        if (!existingLower.has(c.name.toLowerCase())) {
-          autoSelected.add(c.name);
+      parsed.forEach(c => {
+        if (!findExistingCompany(c.companyName, existingCompanies)) {
+          autoSelected.add(c.raw);
         }
       });
       setSelected(autoSelected);
@@ -69,64 +99,95 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanyNa
     }
   };
 
+  const newClients = clients.filter(c => !isExisting(c));
+  const existingCount = clients.length - newClients.length;
+
   const toggleAll = (checked: boolean) => {
     if (checked) {
-      const all = new Set<string>();
-      clients.forEach(c => {
-        if (!existingLower.has(c.name.toLowerCase())) all.add(c.name);
-      });
-      setSelected(all);
+      setSelected(new Set(newClients.map(c => c.raw)));
     } else {
       setSelected(new Set());
     }
   };
 
-  const toggle = (name: string) => {
+  const toggle = (raw: string) => {
     setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      if (next.has(raw)) next.delete(raw);
+      else next.add(raw);
       return next;
     });
   };
 
   const importSelected = async () => {
-    const toImport = clients.filter(c => selected.has(c.name));
+    const toImport = clients.filter(c => selected.has(c.raw));
     if (!toImport.length) return;
 
     setIsImporting(true);
     try {
-      // Batch create companies
-      const companyRows = toImport.map(c => ({
+      // Group by whether the company already exists
+      const needNewCompany: ParsedClient[] = [];
+      const linkToExisting: { client: ParsedClient; existingCompanyId: string }[] = [];
+
+      for (const c of toImport) {
+        const match = findExistingCompany(c.companyName, existingCompanies);
+        if (match) {
+          linkToExisting.push({ client: c, existingCompanyId: match.id });
+        } else {
+          needNewCompany.push(c);
+        }
+      }
+
+      // 1. Create new companies (deduplicate by companyName)
+      const uniqueNewCompanies = new Map<string, ParsedClient>();
+      needNewCompany.forEach(c => {
+        if (!uniqueNewCompanies.has(c.companyName.toLowerCase())) {
+          uniqueNewCompanies.set(c.companyName.toLowerCase(), c);
+        }
+      });
+
+      const companyRows = Array.from(uniqueNewCompanies.values()).map(c => ({
         org_id: TEAM_ORG_ID,
-        name: c.name,
+        name: c.companyName,
         campaign_manager: c.campaign_manager || null,
       }));
 
-      const { data: insertedCompanies, error: compErr } = await supabase
-        .from('companies')
-        .insert(companyRows)
-        .select('id, name');
-
-      if (compErr) throw compErr;
-
-      // Create a matching speaker for each company
-      if (insertedCompanies?.length) {
-        const speakerRows = insertedCompanies.map((comp: any) => ({
-          org_id: TEAM_ORG_ID,
-          company_id: comp.id,
-          name: comp.name,
-        }));
-
-        const { error: spkErr } = await supabase.from('speakers').insert(speakerRows);
-        if (spkErr) throw spkErr;
+      let newCompanyMap = new Map<string, string>(); // companyName lower → id
+      if (companyRows.length) {
+        const { data: insertedCompanies, error: compErr } = await supabase
+          .from('companies')
+          .insert(companyRows)
+          .select('id, name');
+        if (compErr) throw compErr;
+        insertedCompanies?.forEach((comp: any) => {
+          newCompanyMap.set(comp.name.toLowerCase(), comp.id);
+        });
       }
 
-      toast({ title: `Imported ${toImport.length} companies`, description: 'You can now edit them to fill in details.' });
+      // 2. Create speakers for all imported clients
+      const speakerRows = toImport.map(c => {
+        const match = findExistingCompany(c.companyName, existingCompanies);
+        const companyId = match ? match.id : newCompanyMap.get(c.companyName.toLowerCase());
+        return {
+          org_id: TEAM_ORG_ID,
+          company_id: companyId!,
+          name: c.speakerName,
+        };
+      });
+
+      const { error: spkErr } = await supabase.from('speakers').insert(speakerRows);
+      if (spkErr) throw spkErr;
+
+      const newCompanyCount = companyRows.length;
+      const newSpeakerCount = speakerRows.length;
+      toast({
+        title: `Imported ${newSpeakerCount} speaker${newSpeakerCount === 1 ? '' : 's'}`,
+        description: `${newCompanyCount} new compan${newCompanyCount === 1 ? 'y' : 'ies'} created, ${linkToExisting.length} linked to existing.`,
+      });
       onImportComplete();
       onOpenChange(false);
 
-      // Reset state for next open
+      // Reset
       setClients([]);
       setSelected(new Set());
       setScanned(false);
@@ -138,8 +199,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanyNa
     }
   };
 
-  const newCount = clients.filter(c => selected.has(c.name)).length;
-  const existingCount = clients.filter(c => existingLower.has(c.name.toLowerCase())).length;
+  const selectedCount = clients.filter(c => selected.has(c.raw)).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -178,10 +238,10 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanyNa
         {scanned && (
           <>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{clients.length} clients found · {existingCount} already exist · {newCount} selected</span>
+              <span>{clients.length} clients found · {existingCount} already exist · {selectedCount} selected</span>
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <Checkbox
-                  checked={newCount === clients.length - existingCount && newCount > 0}
+                  checked={selectedCount === newClients.length && newClients.length > 0}
                   onCheckedChange={(v) => toggleAll(!!v)}
                 />
                 <span>All new</span>
@@ -191,22 +251,32 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanyNa
             <ScrollArea className="max-h-64 border rounded-md">
               <div className="divide-y divide-border">
                 {clients.map(c => {
-                  const exists = existingLower.has(c.name.toLowerCase());
+                  const exists = isExisting(c);
+                  const hasSplit = c.speakerName !== c.companyName;
                   return (
                     <label
-                      key={c.name}
+                      key={c.raw}
                       className={`flex items-center gap-3 px-3 py-2 text-sm ${exists ? 'opacity-50' : 'cursor-pointer hover:bg-muted/40'}`}
                     >
                       <Checkbox
-                        checked={selected.has(c.name)}
-                        onCheckedChange={() => toggle(c.name)}
+                        checked={selected.has(c.raw)}
+                        onCheckedChange={() => toggle(c.raw)}
                         disabled={exists}
                       />
-                      <span className="flex-1 truncate">{c.name}</span>
+                      <div className="flex-1 min-w-0">
+                        {hasSplit ? (
+                          <>
+                            <span className="block truncate">{c.speakerName}</span>
+                            <span className="block text-xs text-muted-foreground truncate">{c.companyName}</span>
+                          </>
+                        ) : (
+                          <span className="block truncate">{c.raw}</span>
+                        )}
+                      </div>
                       {c.campaign_manager && (
                         <span className="text-xs text-muted-foreground truncate max-w-[120px]">{c.campaign_manager}</span>
                       )}
-                      {exists && <span className="text-xs text-muted-foreground italic">exists</span>}
+                      {exists && <span className="text-xs text-muted-foreground italic shrink-0">exists</span>}
                     </label>
                   );
                 })}
@@ -218,9 +288,9 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanyNa
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           {scanned && (
-            <Button onClick={importSelected} disabled={isImporting || newCount === 0}>
+            <Button onClick={importSelected} disabled={isImporting || selectedCount === 0}>
               {isImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-              Import {newCount} {newCount === 1 ? 'Company' : 'Companies'}
+              Import {selectedCount} {selectedCount === 1 ? 'Speaker' : 'Speakers'}
             </Button>
           )}
         </DialogFooter>
