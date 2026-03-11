@@ -282,7 +282,7 @@ export function SpeakerProfileCard({
 
             {speaker.campaign_strategy ? (
               <Section title="Strategy Narrative">
-                <MarkdownRenderer content={speaker.campaign_strategy} />
+                <MarkdownRenderer content={speaker.campaign_strategy} className="text-sm [&>p]:text-sm [&_li]:text-sm [&>h1]:text-sm [&>h2]:text-sm [&>h3]:text-sm [&>h4]:text-sm" />
               </Section>
             ) : (
               !speaker.target_audiences?.length && !speaker.talking_points?.length && (
