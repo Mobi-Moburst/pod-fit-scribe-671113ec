@@ -2706,7 +2706,7 @@ export async function mergeUpdatedReportData(
   
   // Update EMV data if Rephonic CSV was updated (without full podcast recalc)
   if (updatedCSVTypes.includes('rephonic') && newData.rephonicData && !needsPodcastRecalc) {
-    updatedReport.podcasts = applyRephonicEMVData(updatedReport.podcasts, newData.rephonicData, cpm);
+    updatedReport.podcasts = applyRephonicEMVData(updatedReport.podcasts, newData.rephonicData, cpm, existingReport.speaking_time_pct || 0.40);
     
     // Recalculate total EMV
     const totalEMV = updatedReport.podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
