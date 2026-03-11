@@ -2148,7 +2148,7 @@ export async function generateMultiSpeakerReport(
       try {
         const speakerPodchaserRows = await fetchPodchaserMetrics(speakerAppleUrls);
         if (speakerPodchaserRows.length > 0) {
-          podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, speakerPodchaserRows, cpm);
+          podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, speakerPodchaserRows, cpm, speakingTimePct);
         }
       } catch (err) {
         console.warn(`[generateMultiSpeakerReport] Podchaser fetch failed for ${speaker.name}:`, err);
