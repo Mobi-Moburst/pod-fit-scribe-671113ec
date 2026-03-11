@@ -333,6 +333,17 @@ function generateStrategyParagraph(client: MinimalClient): string {
   return paragraph;
 }
 
+// Extract first name, skipping honorific prefixes like Dr., Mr., Ms., etc.
+function extractFirstName(fullName: string): string {
+  const honorifics = ['dr.', 'dr', 'mr.', 'mr', 'ms.', 'ms', 'mrs.', 'mrs', 'prof.', 'prof', 'rev.', 'rev', 'sir'];
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length > 1 && honorifics.includes(parts[0].toLowerCase())) {
+    // Return "Dr. FirstName" to keep the honorific but use the actual first name
+    return `${parts[0]} ${parts[1]}`;
+  }
+  return parts[0];
+}
+
 // AI-generated campaign overview using quarterly podcast data
 async function generateAICampaignOverview(
   speaker: { name: string; title?: string; company?: string; target_audiences?: string[]; talking_points?: string[]; campaign_strategy?: string; professional_credentials?: string[] },
