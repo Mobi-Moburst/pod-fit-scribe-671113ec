@@ -255,15 +255,27 @@ Deno.serve(async (req) => {
       throw new Error('No Airtable access token configured. Please add AIRTABLE_PAT secret or provide a per-connection token.');
     }
 
-    // Fetch records from Airtable
-    const records = await fetchAllRecords(
+    // Fetch records from Airtable (auto-retries without filter on 422)
+    let records = await fetchAllRecords(
       connection.base_id,
       connection.table_id,
       accessToken,
       filterFormula
     );
 
-    console.log(`Total records fetched: ${records.length}`);
+    // If we got unfiltered results (422 fallback), apply client-side date filtering
+    if (date_range_start && date_range_end && records.length > 0) {
+      const preCount = records.length;
+      records = filterRecordsByDate(
+        records, fieldMapping, date_range_start, date_range_end,
+        connection.speaker_column_name, speaker_name
+      );
+      if (records.length !== preCount) {
+        console.log(`Client-side filtered: ${preCount} → ${records.length} records`);
+      }
+    }
+
+    console.log(`Total records after filtering: ${records.length}`);
 
     // Map records to our format
     const rows: AirtableCSVRow[] = records.map(record => 
