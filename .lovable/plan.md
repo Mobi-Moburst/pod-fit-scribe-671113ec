@@ -1,54 +1,79 @@
 
 
-## EMV Campaign Overview: Data-Driven Strategy & Talking Points
+# Surface Competitor Episode Details in Peer Comparison Dialog
 
-### Problem
-1. **Strategy paragraph** uses only speaker profile data (audiences, talking points from profile). It doesn't reference actual quarterly activity — the shows booked, show notes, episode titles, categories.
-2. **Key talking points** in Campaign Overview are pulled verbatim from the speaker profile (`client.talking_points?.slice(0, 3)`), not derived from what actually happened that quarter.
-3. **Pitch hooks intro copy** says "Each campaign leaned into clearly defined, repeatable hooks..." — not podcast guesting language.
+## Summary
+The `fetch-podchaser-credits` edge function already returns full episode data (title, podcast name, air date, role) per competitor, but the frontend discards it -- only `interview_count` is stored. This plan threads the episode data through to the `SOVChartDialog` and displays it when a user clicks on a competitor in the chart legend.
 
-### Changes
+## Changes
 
-#### 1. AI-generate the strategy paragraph using quarterly data
-Replace the template-based `generateStrategyParagraph()` with an AI call that receives:
-- Speaker profile (name, title, company, audiences, talking points, credentials)
-- Quarterly podcast data: podcast names, show notes, episode titles, categories from booked/published episodes
-- KPIs (total booked, published, reach, top categories)
-- Quarter context
+### 1. Store episode data alongside competitor counts
 
-Create a new edge function `generate-campaign-overview` that produces:
-- A 2-3 sentence strategy paragraph grounded in what actually happened
-- 3 key talking points derived from the intersection of speaker expertise and actual show content
+**`src/pages/Reports.tsx`**
 
-**Files**: `supabase/functions/generate-campaign-overview/index.ts` (new), `src/utils/reportGenerator.ts`
+- Expand the `competitorInterviews` state type from `{ name; role; count }` to include an optional `episodes` array:
+  ```ts
+  episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>
+  ```
+- In `autoFetchPeerComparison`, when mapping results back to state, also store `result.episodes` alongside `result.interview_count`.
+- When building `sov_analysis` for the report (in `generateReport` / `generateMultiSpeakerReport`), pass the episodes array into each competitor entry.
 
-#### 2. Replace static talking points with AI-derived ones
-Instead of `client.talking_points?.slice(0, 3)`, use the talking points returned by the new `generate-campaign-overview` function. These will reflect themes that actually surfaced across the quarter's podcast appearances, cross-referenced with the speaker's profile.
+### 2. Extend the `sov_analysis` type to include episodes
 
-**File**: `src/utils/reportGenerator.ts` (line ~1947)
+**`src/types/reports.ts`**
 
-#### 3. Fix pitch hooks intro copy
-Update the hardcoded copy in three files:
-- `src/components/reports/CampaignOverview.tsx` line 100: Change to "Each placement was positioned to resonate with the show's unique audience:"
-- `src/components/client-report/ClientReportCampaignOverview.tsx` line 41: Same update
-- `src/components/client-report/slides/CampaignOverviewSlide.tsx` — no hardcoded intro here (just section title), no change needed
+- Add an optional `episodes` field to the competitor entries in `sov_analysis`:
+  ```ts
+  competitors: Array<{
+    name: string;
+    role?: string;
+    peer_reason?: string;
+    linkedin_url?: string;
+    interview_count: number;
+    episodes?: Array<{
+      title: string;
+      podcast_name: string;
+      air_date: string;
+      role: string;
+    }>;
+  }>;
+  ```
 
-#### 4. Update config.toml
-Add the new edge function with `verify_jwt = false`.
+### 3. Display episode details in the Peer Comparison dialog
 
-### Edge Function Prompt Design (`generate-campaign-overview`)
-The AI will receive:
-- Speaker profile context
-- List of booked podcasts with: title, show notes (truncated), categories, episode link titles
-- KPIs summary
-- Quarter string
+**`src/components/reports/SOVChartDialog.tsx`**
 
-It returns JSON: `{ strategy: string, talking_points: string[] }`
+- Expand the `CompetitorInfoCard` popover to show an episode list below the existing peer reason and interview count:
+  - If `episodes` array exists and has entries, render a scrollable list (max-height ~200px) showing each episode as a compact row: podcast name (bold), episode title, and formatted air date.
+  - If no episodes (manual entry or Podchaser plan limitation), show the existing count-only view with a subtle note: "Episode details unavailable -- data entered manually or Podchaser plan limited."
+- The popover width increases slightly to accommodate the episode list (`min-w-[320px]`).
 
-The strategy paragraph will read naturally — e.g., "This quarter, [Name] appeared across [N] podcasts spanning [categories], positioning [pronoun] expertise in [topics] to audiences of [audience types]. Conversations centered on [themes from show notes]..."
+### 4. Thread episodes through report generation
 
-The talking points will be 3 concise themes actually discussed across appearances, not just profile bullet points.
+**`src/utils/reportGenerator.ts`** (or wherever `sov_analysis` is assembled)
 
-### Fallback
-If the AI call fails, fall back to the existing template-based `generateStrategyParagraph()` and `client.talking_points?.slice(0, 3)`.
+- When building the `sov_analysis` object from `manualSOVCompetitors`, include the `episodes` field if present. Manual-entry competitors will simply have no `episodes` array.
+
+## Technical Details
+
+### Data flow:
+```text
+Podchaser API → fetch-podchaser-credits (already returns episodes)
+  → autoFetchPeerComparison in Reports.tsx (currently discards episodes → will now store them)
+    → competitorInterviews state (gains episodes field)
+      → report generation (episodes passed into sov_analysis.competitors)
+        → SOVChartDialog → CompetitorInfoCard (renders episode list)
+```
+
+### Files modified:
+- `src/types/reports.ts` -- add `episodes` to competitor type
+- `src/pages/Reports.tsx` -- store episodes from Podchaser response, pass through to report
+- `src/components/reports/SOVChartDialog.tsx` -- render episode list in CompetitorInfoCard
+- `src/utils/reportGenerator.ts` -- thread episodes into sov_analysis assembly
+
+### No backend changes needed
+The edge function already returns the episode data. This is purely a frontend data-threading and UI addition.
+
+### Backward compatibility
+Existing saved reports without episode data will simply show the count-only view -- the `episodes` field is optional throughout.
 

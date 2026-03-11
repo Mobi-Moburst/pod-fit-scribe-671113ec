@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.rematch-call-notes]
 verify_jwt = false
+
+[functions.generate-campaign-overview]
+verify_jwt = false

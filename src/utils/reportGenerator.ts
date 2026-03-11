@@ -333,6 +333,37 @@ function generateStrategyParagraph(client: MinimalClient): string {
   return paragraph;
 }
 
+// AI-generated campaign overview using quarterly podcast data
+async function generateAICampaignOverview(
+  speaker: { name: string; title?: string; company?: string; target_audiences?: string[]; talking_points?: string[]; campaign_strategy?: string; professional_credentials?: string[] },
+  podcasts: Array<{ show_title: string; categories?: string; show_notes?: string }>,
+  kpis: { total_booked: number; total_published: number; total_reach: number; top_categories?: Array<{ name: string }> },
+  quarter?: string
+): Promise<{ strategy: string; talking_points: string[] } | null> {
+  try {
+    console.log('[generateAICampaignOverview] Calling edge function...');
+    const { data, error } = await supabase.functions.invoke('generate-campaign-overview', {
+      body: { speaker, podcasts, kpis, quarter }
+    });
+    
+    if (error) {
+      console.error('[generateAICampaignOverview] Error:', error);
+      return null;
+    }
+    
+    if (data?.strategy && Array.isArray(data?.talking_points)) {
+      console.log('[generateAICampaignOverview] Success');
+      return { strategy: data.strategy, talking_points: data.talking_points };
+    }
+    
+    console.warn('[generateAICampaignOverview] Unexpected response:', data);
+    return null;
+  } catch (err) {
+    console.error('[generateAICampaignOverview] Failed:', err);
+    return null;
+  }
+}
+
 // Format numbers with K/M suffix for readability
 function formatNumber(n: number): string {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
@@ -1924,6 +1955,22 @@ export async function generateReportFromMultipleCSVs(
     guest_identity_tags: client.guest_identity_tags,
   });
 
+  // Generate AI campaign overview using quarterly podcast data
+  const aiOverview = await generateAICampaignOverview(
+    {
+      name: client.name,
+      title: client.title,
+      company: client.company,
+      target_audiences: client.target_audiences,
+      talking_points: client.talking_points,
+      campaign_strategy: client.campaign_strategy,
+      professional_credentials: client.professional_credentials,
+    },
+    sortedPodcasts.map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes })),
+    { total_booked: kpis.total_booked, total_published: kpis.total_published, total_reach: kpis.total_reach, top_categories: kpis.top_categories },
+    quarter
+  );
+
   return {
     client,
     generated_at: new Date().toISOString(),
@@ -1937,14 +1984,14 @@ export async function generateReportFromMultipleCSVs(
     speaking_time_pct: speakingTimePct,
     kpis,
     campaign_overview: {
-      strategy: generateStrategyParagraph(client),
+      strategy: aiOverview?.strategy || generateStrategyParagraph(client),
       executive_summary: executiveSummary,
       target_audiences: pickTopAudienceTags({
         strategyText: client.campaign_strategy,
         audiences: client.target_audiences,
         max: 3
       }),
-      talking_points: client.talking_points?.slice(0, 3) || [],
+      talking_points: aiOverview?.talking_points?.length ? aiOverview.talking_points : (client.talking_points?.slice(0, 3) || []),
       pitch_hooks: aiHooks.length > 0 
         ? [{ speaker_name: client.name, hooks: aiHooks }]
         : undefined,
@@ -2333,6 +2380,25 @@ export async function generateMultiSpeakerReport(
   const pitch_hooks = await Promise.all(pitchHooksPromises);
   const validPitchHooks = pitch_hooks.filter(ph => ph.hooks.length > 0);
 
+  // Generate AI campaign overview for multi-speaker using all podcasts
+  const allPodcastsForAI = speakerBreakdowns.flatMap(s => 
+    (s.podcasts || []).map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes }))
+  );
+  const primarySpeaker = speakerData[0]?.speaker;
+  const aiOverviewMulti = await generateAICampaignOverview(
+    {
+      name: company.name,
+      company: company.name,
+      target_audiences: primarySpeaker?.target_audiences,
+      talking_points: primarySpeaker?.talking_points,
+      campaign_strategy: primarySpeaker?.campaign_strategy,
+      professional_credentials: primarySpeaker?.professional_credentials,
+    },
+    allPodcastsForAI,
+    { total_booked: aggregatedKpis.total_booked, total_published: aggregatedKpis.total_published, total_reach: aggregatedKpis.total_reach, top_categories: aggregatedKpis.top_categories },
+    quarter
+  );
+
   return {
     client: companyClient,
     generated_at: new Date().toISOString(),
@@ -2346,10 +2412,10 @@ export async function generateMultiSpeakerReport(
     speaking_time_pct: speakingTimePct,
     kpis: aggregatedKpis,
     campaign_overview: {
-      strategy: generateCompanyStrategyParagraph(company.name, speakerBreakdowns),
+      strategy: aiOverviewMulti?.strategy || generateCompanyStrategyParagraph(company.name, speakerBreakdowns),
       executive_summary: executiveSummary,
       target_audiences: speakerData[0]?.speaker.target_audiences?.slice(0, 3) || [],
-      talking_points: speakerData[0]?.speaker.talking_points?.slice(0, 3) || [],
+      talking_points: aiOverviewMulti?.talking_points?.length ? aiOverviewMulti.talking_points : (speakerData[0]?.speaker.talking_points?.slice(0, 3) || []),
       pitch_hooks: validPitchHooks.length > 0 ? validPitchHooks : undefined,
     },
     podcasts: allPodcasts.sort((a, b) => b.overall_score - a.overall_score),

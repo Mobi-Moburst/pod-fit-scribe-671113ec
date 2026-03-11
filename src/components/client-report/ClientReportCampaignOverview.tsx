@@ -38,7 +38,7 @@ export const ClientReportCampaignOverview = ({ campaignOverview }: ClientReportC
               Pitch Positioning &amp; Core Hooks
             </h3>
             <p className="text-muted-foreground leading-relaxed">
-              Repeatable hooks designed to resonate with each show's audience:
+              Each placement was positioned to resonate with the show's unique audience:
             </p>
 
             <div className="grid gap-4">
