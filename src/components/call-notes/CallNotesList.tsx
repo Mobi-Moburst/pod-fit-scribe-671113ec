@@ -73,6 +73,20 @@ export function CallNotesList({ speakerId, companyId, maxHeight = "400px" }: Cal
     });
   };
 
+  const handleDeleteNote = async (id: string) => {
+    const { error } = await supabase
+      .from("call_notes")
+      .delete()
+      .eq("id", id);
+    if (error) {
+      toast.error("Failed to delete call note");
+      console.error("Delete call note error:", error);
+    } else {
+      toast.success("Call note deleted");
+      setNotes(prev => prev.filter(n => n.id !== id));
+    }
+  };
+
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return null;
     const mins = Math.floor(seconds / 60);
