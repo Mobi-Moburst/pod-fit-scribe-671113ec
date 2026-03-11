@@ -430,7 +430,12 @@ const Companies = () => {
                       <Input placeholder="https://airtable.com/..." value={editingSpeaker.airtable_embed_url || ''} onChange={(e) => setEditingSpeaker({ ...editingSpeaker, airtable_embed_url: e.target.value })} />
                     </div>
                     <div>
-                      <Label className="flex items-center gap-1">Campaign Strategy <span className="text-destructive">*</span></Label>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="flex items-center gap-1">Campaign Strategy <span className="text-destructive">*</span></Label>
+                        <Button type="button" variant="outline" size="sm" onClick={scrapeStrategyFromMediaKit} disabled={isScrapingStrategy || !editingSpeaker.media_kit_url?.trim()}>
+                          {isScrapingStrategy ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="h-3 w-3 mr-1" />Generate from Media Kit</>}
+                        </Button>
+                      </div>
                       <Textarea rows={10} placeholder="Target Audiences:&#10;- Founders & Startup Leaders..." value={editingSpeaker.campaign_strategy || ''} onChange={(e) => {
                         const campaign_strategy = e.target.value;
                         const { audiences, talking } = parseCampaignStrategy(campaign_strategy);
