@@ -627,9 +627,6 @@ export default function Reports() {
           speakingTimePct / 100 // Convert percentage to decimal
         );
         
-        // Override CPM in report
-        report.cpm = cpmRate;
-        
         setReportData(report);
         if (!reportName) {
           setReportName(`${selectedCompany?.name} - ${quarter || 'Report'}`);
