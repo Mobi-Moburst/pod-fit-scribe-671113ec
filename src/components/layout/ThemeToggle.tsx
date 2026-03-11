@@ -9,13 +9,26 @@ export const ThemeToggle = () => {
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
 
-  const isDark = theme === "dark" || theme === undefined;
+  // If in batcave mode, toggle stays but cycles batcave → light → dark → batcave…
+  // Normal mode: dark ↔ light
+  const handleToggle = () => {
+    if (theme === "batcave") {
+      setTheme("light");
+    } else if (theme === "light") {
+      setTheme("dark");
+    } else {
+      setTheme("light");
+    }
+  };
+
+  const isDark = theme === "dark" || theme === "batcave" || theme === undefined;
+
   return (
     <Button
       variant="outline"
       size="icon"
       aria-label="Toggle theme"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={handleToggle}
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>
