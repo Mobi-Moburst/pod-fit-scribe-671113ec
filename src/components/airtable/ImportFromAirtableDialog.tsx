@@ -40,14 +40,28 @@ function parseClientName(raw: string): { speakerName: string; companyName: strin
   return { speakerName: raw.slice(0, idx).trim(), companyName: raw.slice(idx + 3).trim() };
 }
 
+/** Normalize a string for fuzzy comparison: lowercase, strip spaces/punctuation */
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/[\s\-_.]+/g, '');
+}
+
+/** Check if two strings match after normalization, or if one contains the other (min 4 chars) */
+function fuzzyMatch(candidate: string, existing: string): boolean {
+  const a = normalize(candidate);
+  const b = normalize(existing);
+  if (a === b) return true;
+  const shorter = a.length <= b.length ? a : b;
+  const longer = a.length > b.length ? a : b;
+  return shorter.length >= 4 && longer.includes(shorter);
+}
+
 /** Check if any part of the parsed client name matches an existing company (handles reversed formats) */
 function findExistingCompanyFromParsed(
   parsed: { raw: string; speakerName: string; companyName: string },
   existing: ExistingCompany[]
 ): ExistingCompany | undefined {
   for (const candidate of [parsed.companyName, parsed.speakerName, parsed.raw]) {
-    const lower = candidate.toLowerCase();
-    const match = existing.find(c => c.name.toLowerCase() === lower);
+    const match = existing.find(c => fuzzyMatch(candidate, c.name));
     if (match) return match;
   }
   return undefined;
