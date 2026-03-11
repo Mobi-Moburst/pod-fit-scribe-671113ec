@@ -31,6 +31,9 @@ interface SpeakerProfileCardProps {
   onDelete: () => void;
   onAirtable: () => void;
   onUpdate: () => Promise<void>;
+  isArchived?: boolean;
+  onArchive?: () => void;
+  onRestore?: () => void;
 }
 
 export function SpeakerProfileCard({
