@@ -2116,7 +2116,7 @@ export default function Reports() {
                                       }}
                                     />
                                     {files.batchFile && <p className="text-xs text-muted-foreground mt-1">{files.batchFile.name}</p>}
-                                    <p className="text-xs text-muted-foreground mt-1">Auto-fetched via Podchaser. Upload CSV only to override.</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Auto-fetch coming soon. Please upload List CSV from Rephonic.</p>
                                   </div>
                                   
                                   <div>
