@@ -274,6 +274,7 @@ export type Database = {
       companies: {
         Row: {
           airtable_embed_url: string | null
+          archived_at: string | null
           brand_colors: Json | null
           campaign_manager: string | null
           company_url: string | null
@@ -289,6 +290,7 @@ export type Database = {
         }
         Insert: {
           airtable_embed_url?: string | null
+          archived_at?: string | null
           brand_colors?: Json | null
           campaign_manager?: string | null
           company_url?: string | null
@@ -304,6 +306,7 @@ export type Database = {
         }
         Update: {
           airtable_embed_url?: string | null
+          archived_at?: string | null
           brand_colors?: Json | null
           campaign_manager?: string | null
           company_url?: string | null
@@ -508,6 +511,7 @@ export type Database = {
       speakers: {
         Row: {
           airtable_embed_url: string | null
+          archived_at: string | null
           avoid: string[] | null
           campaign_strategy: string | null
           company_id: string
@@ -530,6 +534,7 @@ export type Database = {
         }
         Insert: {
           airtable_embed_url?: string | null
+          archived_at?: string | null
           avoid?: string[] | null
           campaign_strategy?: string | null
           company_id: string
@@ -552,6 +557,7 @@ export type Database = {
         }
         Update: {
           airtable_embed_url?: string | null
+          archived_at?: string | null
           avoid?: string[] | null
           campaign_strategy?: string | null
           company_id?: string

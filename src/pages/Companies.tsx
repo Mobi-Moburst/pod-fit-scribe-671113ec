@@ -9,11 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { parseCampaignStrategy, pickTopAudienceTags, buildCampaignStrategyFromArrays } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, Archive } from 'lucide-react';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
 import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtableDialog';
 import { SyncFathomButton } from '@/components/call-notes/SyncFathomButton';
@@ -41,6 +42,7 @@ const Companies = () => {
   const [editingSpeaker, setEditingSpeaker] = useState<(Speaker & { isNew?: boolean; avoid_text?: string }) | null>(null);
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const [managerFilter, setManagerFilter] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const [isScrapingStrategy, setIsScrapingStrategy] = useState(false);
@@ -109,7 +111,11 @@ const Companies = () => {
   };
 
   const managers = useMemo(() => Array.from(new Set(companies.map((c) => (c.campaign_manager || '').trim()).filter(Boolean))).sort(), [companies]);
-  const filtered = useMemo(() => companies.filter((c) => !managerFilter || (c.campaign_manager || '').trim() === managerFilter), [companies, managerFilter]);
+  const filtered = useMemo(() => {
+    const byView = companies.filter((c) => viewMode === 'active' ? !c.archived_at : !!c.archived_at);
+    return byView.filter((c) => !managerFilter || (c.campaign_manager || '').trim() === managerFilter);
+  }, [companies, managerFilter, viewMode]);
+  const archivedCount = useMemo(() => companies.filter(c => !!c.archived_at).length, [companies]);
 
   const loadData = async () => {
     const [companiesRes, speakersRes] = await Promise.all([
@@ -125,6 +131,7 @@ const Companies = () => {
         target_audiences: s.target_audiences || [], talking_points: s.talking_points || [], avoid: s.avoid || [],
         guest_identity_tags: s.guest_identity_tags || [], professional_credentials: s.professional_credentials || [],
         campaign_strategy: s.campaign_strategy || '', pitch_template: s.pitch_template || '', competitors: s.competitors || [],
+        archived_at: s.archived_at || null,
       };
       const existing = speakersMap.get(s.company_id) || [];
       existing.push(speaker);
@@ -135,6 +142,7 @@ const Companies = () => {
       brand_colors: c.brand_colors || undefined, campaign_manager: c.campaign_manager || '',
       airtable_embed_url: c.airtable_embed_url || '', product_type: c.product_type || '',
       tags: c.tags || [], notes: c.notes || '', speakers: speakersMap.get(c.id) || [],
+      archived_at: c.archived_at || null,
     })));
   };
 
@@ -220,6 +228,35 @@ const Companies = () => {
     await loadData();
   };
 
+  // ── Archive/Restore ──
+  const archiveCompany = async (id: string) => {
+    const { error } = await supabase.from('companies').update({ archived_at: new Date().toISOString() } as any).eq('id', id);
+    if (error) { toast({ title: 'Archive failed', description: error.message, variant: 'destructive' }); return; }
+    // Also archive all speakers under this company
+    await supabase.from('speakers').update({ archived_at: new Date().toISOString() } as any).eq('company_id', id);
+    await loadData(); toast({ title: 'Company archived' });
+  };
+
+  const restoreCompany = async (id: string) => {
+    const { error } = await supabase.from('companies').update({ archived_at: null } as any).eq('id', id);
+    if (error) { toast({ title: 'Restore failed', description: error.message, variant: 'destructive' }); return; }
+    // Also restore all speakers under this company
+    await supabase.from('speakers').update({ archived_at: null } as any).eq('company_id', id);
+    await loadData(); toast({ title: 'Company restored' });
+  };
+
+  const archiveSpeaker = async (id: string) => {
+    const { error } = await supabase.from('speakers').update({ archived_at: new Date().toISOString() } as any).eq('id', id);
+    if (error) { toast({ title: 'Archive failed', description: error.message, variant: 'destructive' }); return; }
+    await loadData(); toast({ title: 'Speaker archived' });
+  };
+
+  const restoreSpeaker = async (id: string) => {
+    const { error } = await supabase.from('speakers').update({ archived_at: null } as any).eq('id', id);
+    if (error) { toast({ title: 'Restore failed', description: error.message, variant: 'destructive' }); return; }
+    await loadData(); toast({ title: 'Speaker restored' });
+  };
+
   // ── Competitor helpers ──
   const suggestCompetitors = async () => {
     if (!editingSpeaker) return;
@@ -265,16 +302,26 @@ const Companies = () => {
 
         <ImportFromAirtableDialog open={showImportDialog} onOpenChange={setShowImportDialog} existingCompanies={companies.map(c => ({ id: c.id, name: c.name }))} onImportComplete={loadData} />
 
-        {/* Filter */}
-        {managers.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Label className="text-sm shrink-0">Campaign Manager</Label>
-            <select className="h-9 rounded-md border bg-background px-3 text-sm" value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)}>
-              <option value="">All</option>
-              {managers.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-        )}
+        {/* View mode tabs + Filter */}
+        <div className="flex items-center gap-4 flex-wrap">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'active' | 'archived')} className="w-auto">
+            <TabsList className="h-9">
+              <TabsTrigger value="active" className="text-xs px-3">Active</TabsTrigger>
+              <TabsTrigger value="archived" className="text-xs px-3">
+                <Archive className="h-3 w-3 mr-1.5" />Archived{archivedCount > 0 && ` (${archivedCount})`}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {managers.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-sm shrink-0">Campaign Manager</Label>
+              <select className="h-9 rounded-md border bg-background px-3 text-sm" value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)}>
+                <option value="">All</option>
+                {managers.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
 
         {/* Company Card Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -288,6 +335,9 @@ const Companies = () => {
               onDelete={() => removeCompany(company.id)}
               onAddSpeaker={() => startNewSpeaker(company.id)}
               onAirtable={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}
+              isArchived={!!company.archived_at}
+              onArchive={() => archiveCompany(company.id)}
+              onRestore={() => restoreCompany(company.id)}
             >
               {company.speakers.map(speaker => (
                 <SpeakerProfileCard
@@ -298,11 +348,18 @@ const Companies = () => {
                   onDelete={() => removeSpeaker(speaker.id)}
                   onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
                   onUpdate={loadData}
+                  isArchived={!!speaker.archived_at}
+                  onArchive={() => archiveSpeaker(speaker.id)}
+                  onRestore={() => restoreSpeaker(speaker.id)}
                 />
               ))}
             </CompanyCard>
           ))}
-          {!filtered.length && <p className="text-sm text-muted-foreground col-span-full">No companies yet.</p>}
+          {!filtered.length && (
+            <p className="text-sm text-muted-foreground col-span-full">
+              {viewMode === 'archived' ? 'No archived companies.' : 'No companies yet.'}
+            </p>
+          )}
         </div>
 
         {/* ═══ Company Edit Sheet ═══ */}

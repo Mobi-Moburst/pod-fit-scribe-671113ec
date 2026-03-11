@@ -17,6 +17,8 @@ import {
   FileText,
   Sparkles,
   BookOpen,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { pickTopAudienceTags } from "@/lib/campaignStrategy";
@@ -29,6 +31,9 @@ interface SpeakerProfileCardProps {
   onDelete: () => void;
   onAirtable: () => void;
   onUpdate: () => Promise<void>;
+  isArchived?: boolean;
+  onArchive?: () => void;
+  onRestore?: () => void;
 }
 
 export function SpeakerProfileCard({
@@ -38,6 +43,9 @@ export function SpeakerProfileCard({
   onDelete,
   onAirtable,
   onUpdate,
+  isArchived,
+  onArchive,
+  onRestore,
 }: SpeakerProfileCardProps) {
   const [expanded, setExpanded] = useState(false);
   const topTags = pickTopAudienceTags({
@@ -79,12 +87,23 @@ export function SpeakerProfileCard({
         </div>
         {/* Hover-reveal actions */}
         <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Edit">
-            <Pencil className="h-3 w-3" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onAirtable(); }} title="Airtable">
-            <Link2 className="h-3 w-3" />
-          </Button>
+          {isArchived ? (
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onRestore?.(); }} title="Restore">
+              <RotateCcw className="h-3 w-3" />
+            </Button>
+          ) : (
+            <>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Edit">
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onAirtable(); }} title="Airtable">
+                <Link2 className="h-3 w-3" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onArchive?.(); }} title="Archive">
+                <Archive className="h-3 w-3" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -108,31 +127,42 @@ export function SpeakerProfileCard({
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
           <div className="flex items-center gap-0.5 opacity-0 group-hover/header:opacity-100 transition-opacity">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit">
-              <Pencil className="h-3 w-3" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAirtable} title="Airtable">
-              <Link2 className="h-3 w-3" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive">
-                  <Trash className="h-3 w-3" />
+            {isArchived ? (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onRestore} title="Restore">
+                <RotateCcw className="h-3 w-3 mr-1" />Restore
+              </Button>
+            ) : (
+              <>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} title="Edit">
+                  <Pencil className="h-3 w-3" />
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently remove {speaker.name}. This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAirtable} title="Airtable">
+                  <Link2 className="h-3 w-3" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onArchive?.()} title="Archive">
+                  <Archive className="h-3 w-3" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive">
+                      <Trash className="h-3 w-3" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete speaker?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently remove {speaker.name}. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
           </div>
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setExpanded(false)}>
             <X className="h-3.5 w-3.5" />
