@@ -8,6 +8,196 @@ const corsHeaders = {
 };
 
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
+const KITCASTER_COMPANY_ID = "0d1e306e-159a-4cf3-a9f5-0a6c40488ed5";
+
+const NICKNAME_MAP: Record<string, string[]> = {
+  james: ["jim", "jimmy", "jamie"],
+  jim: ["james", "jimmy", "jamie"],
+  william: ["will", "bill", "billy", "willy"],
+  bill: ["william", "will", "billy"],
+  will: ["william", "bill", "billy", "willy"],
+  robert: ["rob", "bob", "bobby", "robbie"],
+  bob: ["robert", "rob", "bobby"],
+  rob: ["robert", "bob", "bobby", "robbie"],
+  richard: ["rick", "dick", "rich", "ricky"],
+  rick: ["richard", "dick", "rich", "ricky"],
+  michael: ["mike", "mikey"],
+  mike: ["michael", "mikey"],
+  christopher: ["chris"],
+  chris: ["christopher"],
+  matthew: ["matt"],
+  matt: ["matthew"],
+  daniel: ["dan", "danny"],
+  dan: ["daniel", "danny"],
+  joseph: ["joe", "joey"],
+  joe: ["joseph", "joey"],
+  thomas: ["tom", "tommy"],
+  tom: ["thomas", "tommy"],
+  anthony: ["tony"],
+  tony: ["anthony"],
+  edward: ["ed", "eddie", "ted"],
+  ed: ["edward", "eddie", "ted"],
+  benjamin: ["ben"],
+  ben: ["benjamin"],
+  nicholas: ["nick"],
+  nick: ["nicholas"],
+  alexander: ["alex"],
+  alex: ["alexander"],
+  timothy: ["tim"],
+  tim: ["timothy"],
+  stephen: ["steve"],
+  steven: ["steve"],
+  steve: ["stephen", "steven"],
+  jonathan: ["jon"],
+  jon: ["jonathan"],
+  katherine: ["kate", "kathy", "katie"],
+  kate: ["katherine", "kathy", "katie"],
+  elizabeth: ["liz", "beth", "lizzy"],
+  liz: ["elizabeth", "beth", "lizzy"],
+  jennifer: ["jen", "jenny"],
+  jen: ["jennifer", "jenny"],
+  margaret: ["maggie", "meg", "peggy"],
+  patricia: ["pat", "patty"],
+  rebecca: ["becky"],
+  becky: ["rebecca"],
+  samantha: ["sam"],
+  sam: ["samantha", "samuel"],
+  samuel: ["sam"],
+};
+
+function getNameVariants(name: string): string[] {
+  const lower = name.toLowerCase();
+  const variants = [lower];
+  if (NICKNAME_MAP[lower]) {
+    variants.push(...NICKNAME_MAP[lower]);
+  }
+  return variants;
+}
+
+function namesMatch(name1: string, name2: string): boolean {
+  const a = name1.toLowerCase().trim();
+  const b = name2.toLowerCase().trim();
+  if (a === b) return true;
+  const aVariants = getNameVariants(a);
+  if (aVariants.includes(b)) return true;
+  const aParts = a.split(/\s+/);
+  const bParts = b.split(/\s+/);
+  if (aParts.length >= 2 && bParts.length >= 2) {
+    const aLast = aParts[aParts.length - 1];
+    const bLast = bParts[bParts.length - 1];
+    if (aLast === bLast) {
+      const aFirstVariants = getNameVariants(aParts[0]);
+      if (aFirstVariants.includes(bParts[0])) return true;
+    }
+  }
+  return false;
+}
+
+function matchSpeaker(
+  participantNames: string[],
+  meetingTitle: string,
+  summary: string | null,
+  speakers: any[],
+  companies: any[]
+): { speakerId: string | null; companyId: string | null } {
+  // TIER 0: Company-name matching from meeting title
+  const titleLower = meetingTitle.toLowerCase();
+  for (const company of companies) {
+    const companyName = company.name?.toLowerCase();
+    if (companyName && companyName.length >= 3 && titleLower.includes(companyName)) {
+      const companySpeakers = speakers.filter((s: any) => s.company_id === company.id);
+      if (companySpeakers.length > 0) {
+        for (const pName of participantNames) {
+          for (const s of companySpeakers) {
+            if (namesMatch(pName, s.name)) {
+              return { speakerId: s.id, companyId: company.id };
+            }
+          }
+        }
+        return { speakerId: companySpeakers[0].id, companyId: company.id };
+      }
+      return { speakerId: null, companyId: company.id };
+    }
+  }
+
+  // TIER 1: Exact/partial name match from participants (with nicknames)
+  for (const pName of participantNames) {
+    for (const s of speakers) {
+      if (namesMatch(pName, s.name)) {
+        return { speakerId: s.id, companyId: s.company_id };
+      }
+    }
+    const lower = pName.toLowerCase().trim();
+    const partial = speakers.find((s: any) => {
+      const sLower = s.name.toLowerCase().trim();
+      return lower.includes(sLower) || sLower.includes(lower);
+    });
+    if (partial) return { speakerId: partial.id, companyId: partial.company_id };
+  }
+
+  const searchText = `${meetingTitle} ${summary || ""}`.toLowerCase();
+
+  // TIER 2: Full name match in title/summary
+  for (const s of speakers) {
+    const sName = s.name.toLowerCase().trim();
+    if (sName.length >= 3 && searchText.includes(sName)) {
+      return { speakerId: s.id, companyId: s.company_id };
+    }
+  }
+
+  // TIER 3: Name parts match
+  for (const s of speakers) {
+    const nameParts = s.name.toLowerCase().trim().split(/\s+/).filter((p: string) => p.length >= 3);
+    if (nameParts.length >= 2 && nameParts.every((p: string) => searchText.includes(p))) {
+      return { speakerId: s.id, companyId: s.company_id };
+    }
+  }
+
+  // TIER 4: Unique first-name match (with nicknames)
+  const firstNameMatches: any[] = [];
+  for (const s of speakers) {
+    const firstName = s.name.toLowerCase().trim().split(/\s+/)[0];
+    const variants = getNameVariants(firstName);
+    if (variants.some((v) => v.length >= 3 && searchText.includes(v))) {
+      firstNameMatches.push(s);
+    }
+  }
+  if (firstNameMatches.length === 1) {
+    return { speakerId: firstNameMatches[0].id, companyId: firstNameMatches[0].company_id };
+  }
+
+  // TIER 5: Email local-part match
+  const emails = participantNames.filter((p: string) => p.includes("@"));
+  for (const email of emails) {
+    const localPart = email.split("@")[0].toLowerCase().replace(/[^a-z]/g, "");
+    if (localPart.length < 3) continue;
+    const matches = speakers.filter((s: any) => {
+      const firstName = s.name.toLowerCase().trim().split(/\s+/)[0];
+      const variants = getNameVariants(firstName);
+      return variants.includes(localPart);
+    });
+    if (matches.length === 1) {
+      return { speakerId: matches[0].id, companyId: matches[0].company_id };
+    }
+  }
+
+  // TIER 6: Email domain match against company URLs
+  for (const email of emails) {
+    const domain = email.split("@")[1]?.toLowerCase();
+    if (!domain) continue;
+    const match = companies.find((c: any) => {
+      if (!c.company_url) return false;
+      const urlDomain = c.company_url.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+      return urlDomain === domain;
+    });
+    if (match) {
+      const compSpeaker = speakers.find((s: any) => s.company_id === match.id);
+      return { speakerId: compSpeaker?.id || null, companyId: match.id };
+    }
+  }
+
+  return { speakerId: null, companyId: null };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -28,7 +218,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch recent meetings from Fathom API
     const fathomRes = await fetch(
       "https://api.fathom.video/v1/calls?limit=50",
       { headers: { Authorization: `Bearer ${apiKey}` } }
@@ -54,7 +243,6 @@ serve(async (req) => {
       );
     }
 
-    // Get existing fathom_meeting_ids to skip duplicates
     const { data: existingNotes } = await supabase
       .from("call_notes")
       .select("fathom_meeting_id")
@@ -63,104 +251,22 @@ serve(async (req) => {
 
     const existingIds = new Set((existingNotes || []).map((n: any) => n.fathom_meeting_id));
 
-    // Get speakers for matching
-    const { data: speakers } = await supabase
+    const { data: allSpeakers } = await supabase
       .from("speakers")
       .select("id, name, company_id")
       .eq("org_id", ORG_ID);
 
-    // Fetch companies for email domain matching
+    // Filter out Kitcaster internal speakers
+    const speakers = (allSpeakers || []).filter(
+      (s: any) => s.company_id !== KITCASTER_COMPANY_ID
+    );
+
     const { data: companies } = await supabase
       .from("companies")
-      .select("id, company_url")
+      .select("id, name, company_url")
       .eq("org_id", ORG_ID)
+      .neq("id", KITCASTER_COMPANY_ID)
       .not("company_url", "is", null);
-
-    const matchSpeaker = (participantNames: string[], meetingTitle: string, summary: string | null) => {
-      if (!speakers || speakers.length === 0) return { speakerId: null, companyId: null };
-      
-      // 1. Exact/partial name match from participants
-      for (const pName of participantNames) {
-        const lower = pName.toLowerCase().trim();
-        const exact = speakers.find((s: any) => s.name.toLowerCase().trim() === lower);
-        if (exact) return { speakerId: exact.id, companyId: exact.company_id };
-        const partial = speakers.find((s: any) => {
-          const sLower = s.name.toLowerCase().trim();
-          return lower.includes(sLower) || sLower.includes(lower);
-        });
-        if (partial) return { speakerId: partial.id, companyId: partial.company_id };
-      }
-
-      // 2-4. Title/summary scanning
-      const searchText = `${meetingTitle} ${summary || ""}`.toLowerCase();
-      
-      // 2. Full name match
-      for (const s of speakers) {
-        const sName = (s as any).name.toLowerCase().trim();
-        if (sName.length >= 3 && searchText.includes(sName)) {
-          return { speakerId: (s as any).id, companyId: (s as any).company_id };
-        }
-      }
-
-      // 3. Name parts match
-      for (const s of speakers) {
-        const sName = (s as any).name.toLowerCase().trim();
-        const nameParts = sName.split(/\s+/).filter((p: string) => p.length >= 3);
-        if (nameParts.length >= 2 && nameParts.every((p: string) => searchText.includes(p))) {
-          return { speakerId: (s as any).id, companyId: (s as any).company_id };
-        }
-      }
-
-      // 4. Unique first-name match
-      const firstNameMatches: any[] = [];
-      for (const s of speakers) {
-        const firstName = (s as any).name.toLowerCase().trim().split(/\s+/)[0];
-        if (firstName.length >= 3 && searchText.includes(firstName)) {
-          firstNameMatches.push(s);
-        }
-      }
-      if (firstNameMatches.length === 1) {
-        return { speakerId: firstNameMatches[0].id, companyId: firstNameMatches[0].company_id };
-      }
-
-      // 5. Email local-part match against speaker first names
-      const emails = participantNames.filter((p: string) => p.includes("@"));
-      for (const email of emails) {
-        const localPart = email.split("@")[0].toLowerCase().replace(/[^a-z]/g, "");
-        if (localPart.length < 3) continue;
-        const matches = speakers.filter((s: any) => {
-          const firstName = s.name.toLowerCase().trim().split(/\s+/)[0];
-          return firstName === localPart;
-        });
-        if (matches.length === 1) {
-          return { speakerId: matches[0].id, companyId: matches[0].company_id };
-        }
-      }
-
-      // 6. Email domain match against company URLs
-      let matchedCompanyId: string | null = null;
-      let matchedSpeakerId: string | null = null;
-      if (companies && companies.length > 0) {
-        for (const email of emails) {
-          const domain = email.split("@")[1]?.toLowerCase();
-          if (!domain) continue;
-          const match = companies.find((c: any) => {
-            if (!c.company_url) return false;
-            const urlDomain = c.company_url.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
-            return urlDomain === domain;
-          });
-          if (match) {
-            matchedCompanyId = match.id;
-            const compSpeaker = speakers.find((s: any) => s.company_id === match.id);
-            if (compSpeaker) matchedSpeakerId = (compSpeaker as any).id;
-            break;
-          }
-        }
-      }
-      if (matchedCompanyId) return { speakerId: matchedSpeakerId, companyId: matchedCompanyId };
-
-      return { speakerId: null, companyId: null };
-    };
 
     let imported = 0;
     let skipped = 0;
@@ -184,7 +290,7 @@ serve(async (req) => {
 
       const meetingTitle = meeting.title || "Untitled Meeting";
       const summaryText = typeof meeting.summary === "string" ? meeting.summary : (meeting.summary ? JSON.stringify(meeting.summary) : null);
-      const { speakerId, companyId } = matchSpeaker(participantNames, meetingTitle, summaryText);
+      const { speakerId, companyId } = matchSpeaker(participantNames, meetingTitle, summaryText, speakers, companies || []);
 
       let transcriptText = "";
       const transcript = meeting.transcript;
@@ -207,10 +313,10 @@ serve(async (req) => {
       const { error } = await supabase.from("call_notes").insert({
         org_id: ORG_ID,
         fathom_meeting_id: meetingId,
-        meeting_title: meeting.title || "Untitled Meeting",
+        meeting_title: meetingTitle,
         meeting_date: meeting.created_at || meeting.date || new Date().toISOString(),
         duration_seconds: typeof meeting.duration === "number" ? meeting.duration : null,
-        summary: typeof meeting.summary === "string" ? meeting.summary : (meeting.summary ? JSON.stringify(meeting.summary) : null),
+        summary: summaryText,
         action_items: actionItemsArray,
         transcript: transcriptText,
         participants: participantNames,

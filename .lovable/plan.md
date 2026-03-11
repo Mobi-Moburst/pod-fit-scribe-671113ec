@@ -1,32 +1,79 @@
 
 
-# Fix Speaker Matching: Exclude Internal Kitcaster Team and Add Company-Name Priority
+# Surface Competitor Episode Details in Peer Comparison Dialog
 
-## Problem
-The call "Kitcaster x ProArch Monthly Check-In" matched to **Ryan Estes** (Kitcaster's own speaker) instead of a ProArch speaker, because the participant entry "Brandy Whalen and Ryan Estes" triggered a partial name match before the actual client speakers were checked. Additionally, "James Spignardo" doesn't match "Jim Spignardo" (name variation).
+## Summary
+The `fetch-podchaser-credits` edge function already returns full episode data (title, podcast name, air date, role) per competitor, but the frontend discards it -- only `interview_count` is stored. This plan threads the episode data through to the `SOVChartDialog` and displays it when a user clicks on a competitor in the chart legend.
 
-## Root Cause
-The matching logic treats all speakers equally — it doesn't know that Kitcaster speakers are internal team members who should never be the "matched client speaker" on a call.
+## Changes
 
-## Solution
+### 1. Store episode data alongside competitor counts
 
-### Both `sync-fathom-meetings/index.ts` and `rematch-call-notes/index.ts`:
+**`src/pages/Reports.tsx`**
 
-1. **Exclude Kitcaster speakers from matching** — filter out any speaker whose `company_id` matches the Kitcaster company (`0d1e306e-159a-4cf3-a9f5-0a6c40488ed5`). These are internal team, never clients.
+- Expand the `competitorInterviews` state type from `{ name; role; count }` to include an optional `episodes` array:
+  ```ts
+  episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>
+  ```
+- In `autoFetchPeerComparison`, when mapping results back to state, also store `result.episodes` alongside `result.interview_count`.
+- When building `sov_analysis` for the report (in `generateReport` / `generateMultiSpeakerReport`), pass the episodes array into each competitor entry.
 
-2. **Add company-name matching from meeting title as a new top-priority tier** — before any participant name matching, scan the meeting title for company names. If "ProArch" appears in "Kitcaster x ProArch Monthly Check-In", immediately narrow to ProArch speakers and pick the first match from participants. This handles the common "Kitcaster x [Client] Check-In" pattern.
+### 2. Extend the `sov_analysis` type to include episodes
 
-3. **Add nickname/short-name handling** — match "James" to "Jim", "James" to "Jimmy", etc. using a small common-nicknames map, so "James Spignardo" matches "Jim Spignardo".
+**`src/types/reports.ts`**
 
-### Updated matching flow:
+- Add an optional `episodes` field to the competitor entries in `sov_analysis`:
+  ```ts
+  competitors: Array<{
+    name: string;
+    role?: string;
+    peer_reason?: string;
+    linkedin_url?: string;
+    interview_count: number;
+    episodes?: Array<{
+      title: string;
+      podcast_name: string;
+      air_date: string;
+      role: string;
+    }>;
+  }>;
+  ```
+
+### 3. Display episode details in the Peer Comparison dialog
+
+**`src/components/reports/SOVChartDialog.tsx`**
+
+- Expand the `CompetitorInfoCard` popover to show an episode list below the existing peer reason and interview count:
+  - If `episodes` array exists and has entries, render a scrollable list (max-height ~200px) showing each episode as a compact row: podcast name (bold), episode title, and formatted air date.
+  - If no episodes (manual entry or Podchaser plan limitation), show the existing count-only view with a subtle note: "Episode details unavailable -- data entered manually or Podchaser plan limited."
+- The popover width increases slightly to accommodate the episode list (`min-w-[320px]`).
+
+### 4. Thread episodes through report generation
+
+**`src/utils/reportGenerator.ts`** (or wherever `sov_analysis` is assembled)
+
+- When building the `sov_analysis` object from `manualSOVCompetitors`, include the `episodes` field if present. Manual-entry competitors will simply have no `episodes` array.
+
+## Technical Details
+
+### Data flow:
 ```text
-0. Filter out Kitcaster-company speakers entirely
-1. NEW: Check meeting title for company names → if found, prefer speakers from that company
-2. Exact/partial name match from participants (with nickname expansion)
-3-6. Existing tiers (title/summary scan, email matching, etc.)
+Podchaser API → fetch-podchaser-credits (already returns episodes)
+  → autoFetchPeerComparison in Reports.tsx (currently discards episodes → will now store them)
+    → competitorInterviews state (gains episodes field)
+      → report generation (episodes passed into sov_analysis.competitors)
+        → SOVChartDialog → CompetitorInfoCard (renders episode list)
 ```
 
-### Files to edit:
-- `supabase/functions/sync-fathom-meetings/index.ts` — update `matchSpeaker`, add company-name fetch with names, add nickname map
-- `supabase/functions/rematch-call-notes/index.ts` — same changes to its `matchSpeaker`, fetch companies with names
+### Files modified:
+- `src/types/reports.ts` -- add `episodes` to competitor type
+- `src/pages/Reports.tsx` -- store episodes from Podchaser response, pass through to report
+- `src/components/reports/SOVChartDialog.tsx` -- render episode list in CompetitorInfoCard
+- `src/utils/reportGenerator.ts` -- thread episodes into sov_analysis assembly
+
+### No backend changes needed
+The edge function already returns the episode data. This is purely a frontend data-threading and UI addition.
+
+### Backward compatibility
+Existing saved reports without episode data will simply show the count-only view -- the `episodes` field is optional throughout.
 
