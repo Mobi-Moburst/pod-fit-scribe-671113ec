@@ -2329,6 +2329,42 @@ export default function Reports() {
                 </Collapsible>
               )}
 
+              {/* ── Advanced Settings ── */}
+              <Collapsible open={advancedSettingsOpen} onOpenChange={setAdvancedSettingsOpen}>
+                <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-between py-2">
+                  <span className="font-medium">Advanced Settings</span>
+                  {advancedSettingsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 pt-1 pb-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">CPM Rate ($)</Label>
+                      <Input 
+                        type="number" 
+                        min={25} 
+                        max={150} 
+                        value={cpmRate} 
+                        onChange={(e) => setCpmRate(Math.max(25, Math.min(150, parseInt(e.target.value) || 50)))}
+                        className="h-8 text-xs mt-1"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Industry range: $25–$150</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Speaking Time %</Label>
+                      <Input 
+                        type="number" 
+                        min={20} 
+                        max={60} 
+                        value={speakingTimePct} 
+                        onChange={(e) => setSpeakingTimePct(Math.max(20, Math.min(60, parseInt(e.target.value) || 40)))}
+                        className="h-8 text-xs mt-1"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Guest airtime: 20–60%</p>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
               {/* ── Section 5: Generate Button ── */}
               <Button
                 onClick={handleGenerateReport}
