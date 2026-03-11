@@ -1772,7 +1772,8 @@ export async function generateReportFromMultipleCSVs(
   cpm: number = 50,
   rephonicRows?: RephonicCSVRow[],
   geoCsvProvided: boolean = false,
-  contentGapCsvProvided: boolean = false
+  contentGapCsvProvided: boolean = false,
+  speakingTimePct: number = 0.40
 ): Promise<ReportData> {
   
   // Step 1: Merge Batch + Airtable data by podcast title
