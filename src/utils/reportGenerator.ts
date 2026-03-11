@@ -1662,7 +1662,8 @@ export function calculateContentGapAnalysis(rows: ContentGapCSVRow[]): ContentGa
 function applyRephonicEMVData(
   podcasts: PodcastReportEntry[],
   rephonicRows: RephonicCSVRow[],
-  cpm: number = 50
+  cpm: number = 50,
+  speakingTimePct: number = 0.40
 ): PodcastReportEntry[] {
   if (!rephonicRows || rephonicRows.length === 0) return podcasts;
   
