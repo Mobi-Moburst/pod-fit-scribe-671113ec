@@ -2853,8 +2853,9 @@ export default function Reports() {
                 title="Booked Podcasts"
                 description="Podcasts with confirmed bookings this period."
                 icon={Calendar}
-                podcasts={reportData.podcasts.filter(p => p.date_booked)}
+                podcasts={reportData.podcasts}
                 dateField="date_booked"
+                dateRange={reportData.date_range}
               />
               
               <PodcastListDialog
@@ -2863,8 +2864,9 @@ export default function Reports() {
                 title="Published Episodes"
                 description="Episodes that went live this period."
                 icon={Radio}
-                podcasts={reportData.podcasts.filter(p => p.date_published)}
+                podcasts={reportData.podcasts}
                 dateField="date_published"
+                dateRange={reportData.date_range}
               />
               
               <ReachAnalysisDialog
