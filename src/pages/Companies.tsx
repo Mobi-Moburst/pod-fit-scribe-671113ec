@@ -111,7 +111,11 @@ const Companies = () => {
   };
 
   const managers = useMemo(() => Array.from(new Set(companies.map((c) => (c.campaign_manager || '').trim()).filter(Boolean))).sort(), [companies]);
-  const filtered = useMemo(() => companies.filter((c) => !managerFilter || (c.campaign_manager || '').trim() === managerFilter), [companies, managerFilter]);
+  const filtered = useMemo(() => {
+    const byView = companies.filter((c) => viewMode === 'active' ? !c.archived_at : !!c.archived_at);
+    return byView.filter((c) => !managerFilter || (c.campaign_manager || '').trim() === managerFilter);
+  }, [companies, managerFilter, viewMode]);
+  const archivedCount = useMemo(() => companies.filter(c => !!c.archived_at).length, [companies]);
 
   const loadData = async () => {
     const [companiesRes, speakersRes] = await Promise.all([
