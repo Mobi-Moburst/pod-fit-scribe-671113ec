@@ -129,6 +129,7 @@ export default function Reports() {
     // Core KPIs
     totalBooked: true,
     totalPublished: true,
+    totalRecorded: true,
     socialReach: true,
     totalReach: true,
     averageScore: true,
