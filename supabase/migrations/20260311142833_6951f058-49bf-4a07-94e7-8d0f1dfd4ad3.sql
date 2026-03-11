@@ -1,0 +1,1 @@
+UPDATE companies SET campaign_manager = 'Kylie Adams' WHERE id = '943f37aa-d651-49f0-9c89-26b25312cb7f';
