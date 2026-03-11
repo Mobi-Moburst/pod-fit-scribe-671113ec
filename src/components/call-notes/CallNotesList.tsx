@@ -196,6 +196,31 @@ export function CallNotesList({ speakerId, companyId, maxHeight = "400px" }: Cal
                       </pre>
                     </details>
                   )}
+                  {/* Delete */}
+                  <div className="flex justify-end pt-1">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 text-xs gap-1">
+                          <Trash2 className="h-3 w-3" />
+                          Delete Note
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete call note?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete "{note.meeting_title || "Untitled Meeting"}". This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteNote(note.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               </CollapsibleContent>
             </Card>
