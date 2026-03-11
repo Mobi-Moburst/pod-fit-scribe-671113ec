@@ -191,7 +191,7 @@ export function NextQuarterStrategy({
 
           {/* Closing Paragraph */}
           <div className="italic border-l-2 border-primary/30 pl-4">
-            <MarkdownRenderer content={closing_paragraph} className="text-muted-foreground leading-relaxed" />
+            <MarkdownRenderer content={closing_paragraph} className="text-sm text-muted-foreground leading-relaxed" />
           </div>
 
           {/* Next Quarter KPIs */}
