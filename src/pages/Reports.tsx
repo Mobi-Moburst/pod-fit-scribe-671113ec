@@ -2456,6 +2456,7 @@ export default function Reports() {
                         value={reportData.kpis.total_booked}
                         subtitle="Confirmed bookings"
                         icon={Calendar}
+                        onClick={() => setBookedDialogOpen(true)}
                         onHide={() => toggleSection('totalBooked')}
                       />
                     )}
