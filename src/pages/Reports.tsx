@@ -617,6 +617,9 @@ export default function Reports() {
         );
         
         setReportData(report);
+        if (!reportName) {
+          setReportName(`${selectedCompany?.name} - ${quarter || 'Report'}`);
+        }
         toast({
           title: "Multi-speaker report generated",
           description: `Processed ${report.speaker_breakdowns?.length || 0} speakers with ${report.kpis.total_booked} total bookings.`,
