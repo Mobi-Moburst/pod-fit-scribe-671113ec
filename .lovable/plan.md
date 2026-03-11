@@ -1,79 +1,66 @@
 
 
-# Surface Competitor Episode Details in Peer Comparison Dialog
+# Scrape Campaign Strategy from Media Kit URL
 
 ## Summary
-The `fetch-podchaser-credits` edge function already returns full episode data (title, podcast name, air date, role) per competitor, but the frontend discards it -- only `interview_count` is stored. This plan threads the episode data through to the `SOVChartDialog` and displays it when a user clicks on a competitor in the chart legend.
+Add a "Generate from Media Kit" button next to the Campaign Strategy textarea that scrapes the speaker's media kit page using Firecrawl, then uses the AI gateway to extract structured target audiences and talking points from the scraped content.
+
+## Approach
+
+Two-step pipeline in a single edge function:
+1. **Firecrawl scrape** the media kit URL (markdown format) to get page content
+2. **AI extraction** via Lovable AI gateway to parse the content into structured target audiences and talking points
+
+This mirrors the existing `fetch-company-brand` pattern but adds an AI step since campaign strategy requires semantic understanding, not just data extraction.
 
 ## Changes
 
-### 1. Store episode data alongside competitor counts
+### 1. New edge function: `supabase/functions/scrape-campaign-strategy/index.ts`
 
-**`src/pages/Reports.tsx`**
+- Accepts `{ url: string, speaker_name: string, speaker_title: string }`
+- Scrapes the media kit URL via Firecrawl (`formats: ['markdown']`, `onlyMainContent: true`)
+- Sends the scraped markdown to the AI gateway with a prompt to extract:
+  - `target_audiences: string[]` — who this speaker should reach
+  - `talking_points: string[]` — key themes/topics they speak about
+  - `strategy_summary: string` — a 2-3 sentence positioning summary
+- Uses tool calling to return structured JSON
+- Returns the structured data to the frontend
 
-- Expand the `competitorInterviews` state type from `{ name; role; count }` to include an optional `episodes` array:
-  ```ts
-  episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>
-  ```
-- In `autoFetchPeerComparison`, when mapping results back to state, also store `result.episodes` alongside `result.interview_count`.
-- When building `sov_analysis` for the report (in `generateReport` / `generateMultiSpeakerReport`), pass the episodes array into each competitor entry.
+### 2. Update `supabase/config.toml`
 
-### 2. Extend the `sov_analysis` type to include episodes
+Add `[functions.scrape-campaign-strategy]` with `verify_jwt = false`.
 
-**`src/types/reports.ts`**
+### 3. Update `src/pages/Companies.tsx`
 
-- Add an optional `episodes` field to the competitor entries in `sov_analysis`:
-  ```ts
-  competitors: Array<{
-    name: string;
-    role?: string;
-    peer_reason?: string;
-    linkedin_url?: string;
-    interview_count: number;
-    episodes?: Array<{
-      title: string;
-      podcast_name: string;
-      air_date: string;
-      role: string;
-    }>;
-  }>;
-  ```
+- Add `isScrapingStrategy` state
+- Add `scrapeStrategyFromMediaKit` function that:
+  - Invokes `scrape-campaign-strategy` with the speaker's media kit URL, name, and title
+  - On success, builds the campaign strategy text using `buildCampaignStrategyFromArrays` (already exists in `src/lib/campaignStrategy.ts`)
+  - Updates `editingSpeaker` with the new `campaign_strategy`, `target_audiences`, and `talking_points`
+- Add a button next to the Campaign Strategy label: "Generate from Media Kit" with a Sparkles icon
+  - Enabled when media kit URL is valid and not already scraping
+  - Shows loading spinner while scraping
 
-### 3. Display episode details in the Peer Comparison dialog
+### UI placement
 
-**`src/components/reports/SOVChartDialog.tsx`**
-
-- Expand the `CompetitorInfoCard` popover to show an episode list below the existing peer reason and interview count:
-  - If `episodes` array exists and has entries, render a scrollable list (max-height ~200px) showing each episode as a compact row: podcast name (bold), episode title, and formatted air date.
-  - If no episodes (manual entry or Podchaser plan limitation), show the existing count-only view with a subtle note: "Episode details unavailable -- data entered manually or Podchaser plan limited."
-- The popover width increases slightly to accommodate the episode list (`min-w-[320px]`).
-
-### 4. Thread episodes through report generation
-
-**`src/utils/reportGenerator.ts`** (or wherever `sov_analysis` is assembled)
-
-- When building the `sov_analysis` object from `manualSOVCompetitors`, include the `episodes` field if present. Manual-entry competitors will simply have no `episodes` array.
-
-## Technical Details
-
-### Data flow:
 ```text
-Podchaser API → fetch-podchaser-credits (already returns episodes)
-  → autoFetchPeerComparison in Reports.tsx (currently discards episodes → will now store them)
-    → competitorInterviews state (gains episodes field)
-      → report generation (episodes passed into sov_analysis.competitors)
-        → SOVChartDialog → CompetitorInfoCard (renders episode list)
+Campaign Strategy *
+[✨ Generate from Media Kit]     ← new button, next to label
+┌──────────────────────────────┐
+│ Target Audiences:            │
+│ - ...                        │
+│ Talking Points:              │
+│ - ...                        │
+└──────────────────────────────┘
 ```
 
-### Files modified:
-- `src/types/reports.ts` -- add `episodes` to competitor type
-- `src/pages/Reports.tsx` -- store episodes from Podchaser response, pass through to report
-- `src/components/reports/SOVChartDialog.tsx` -- render episode list in CompetitorInfoCard
-- `src/utils/reportGenerator.ts` -- thread episodes into sov_analysis assembly
+## Files
+- **Create**: `supabase/functions/scrape-campaign-strategy/index.ts`
+- **Edit**: `supabase/config.toml` — register new function
+- **Edit**: `src/pages/Companies.tsx` — add button and handler
 
-### No backend changes needed
-The edge function already returns the episode data. This is purely a frontend data-threading and UI addition.
-
-### Backward compatibility
-Existing saved reports without episode data will simply show the count-only view -- the `episodes` field is optional throughout.
+## Notes
+- Reuses existing `FIRECRAWL_API_KEY` and `LOVABLE_API_KEY` secrets (both already configured)
+- Reuses `buildCampaignStrategyFromArrays` from `src/lib/campaignStrategy.ts` to format the output
+- If the textarea already has content, the button will overwrite it (with a confirmation toast or the user can undo)
 
