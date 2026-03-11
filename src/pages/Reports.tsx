@@ -620,7 +620,7 @@ export default function Reports() {
           quarter,
           { start: startDate, end: endDate },
           manualSOVCompetitors,
-          50, // CPM - will be overridden below
+          cpmRate,
           rephonicRows,
           !!geoFile, // geoCsvProvided
           !!contentGapFile, // contentGapCsvProvided
