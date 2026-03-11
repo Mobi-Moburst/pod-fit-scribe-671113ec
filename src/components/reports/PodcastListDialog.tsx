@@ -84,16 +84,21 @@ export const PodcastListDialog = ({ open, onOpenChange, title, description, icon
                     {formatDate(dateField === 'date_booked' ? podcast.date_booked : dateField === 'date_published' ? podcast.date_published : podcast.scheduled_date_time)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {(podcast.episode_link || podcast.apple_podcast_link) && (
-                      <a
-                        href={podcast.episode_link || podcast.apple_podcast_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    )}
+                    {(() => {
+                      const link = dateField === 'date_published' 
+                        ? (podcast.episode_link || podcast.apple_podcast_link)
+                        : (podcast.apple_podcast_link || podcast.episode_link);
+                      return link ? (
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      ) : null;
+                    })()}
                   </TableCell>
                 </TableRow>
               ))}
