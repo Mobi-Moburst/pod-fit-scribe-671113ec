@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronDown, ChevronRight, FileText, Calendar, Clock, CheckSquare } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Calendar, Clock, CheckSquare, Trash2 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { format } from "date-fns";
 
 interface CallNote {
