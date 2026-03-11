@@ -1408,6 +1408,7 @@ function calculateEnhancedKPIs(
     total_interviews,
     total_booked,
     total_published,
+    total_recorded,
     // Calculated metrics
     total_emv,
     sov_percentage: 0,
