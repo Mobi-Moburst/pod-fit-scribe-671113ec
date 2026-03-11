@@ -81,7 +81,7 @@ export const PodcastListDialog = ({ open, onOpenChange, title, description, icon
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(dateField === 'date_booked' ? podcast.date_booked : podcast.date_published)}
+                    {formatDate(dateField === 'date_booked' ? podcast.date_booked : dateField === 'date_published' ? podcast.date_published : podcast.scheduled_date_time)}
                   </TableCell>
                   <TableCell className="text-right">
                     {(podcast.episode_link || podcast.apple_podcast_link) && (
