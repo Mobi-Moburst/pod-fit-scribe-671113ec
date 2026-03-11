@@ -178,6 +178,8 @@ Deno.serve(async (req) => {
         success: true,
         target_audiences: extracted.target_audiences || [],
         talking_points: extracted.talking_points || [],
+        avoid: extracted.avoid || [],
+        guest_identity_tags: extracted.guest_identity_tags || [],
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
