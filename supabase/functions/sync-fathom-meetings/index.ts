@@ -289,6 +289,10 @@ serve(async (req) => {
       }
 
       const meetingTitle = meeting.title || "Untitled Meeting";
+      if (meetingTitle.toLowerCase().includes("impromptu")) {
+        skipped++;
+        continue;
+      }
       const summaryText = typeof meeting.summary === "string" ? meeting.summary : (meeting.summary ? JSON.stringify(meeting.summary) : null);
       const { speakerId, companyId } = matchSpeaker(participantNames, meetingTitle, summaryText, speakers, companies || []);
 
