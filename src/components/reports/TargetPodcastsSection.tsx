@@ -349,7 +349,7 @@ export function TargetPodcastsSection({
         <CardContent>
           <div className="text-center py-8">
             <Mic className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Generate AI-powered podcast recommendations based on your next quarter strategy.
             </p>
             <Button onClick={generateSuggestions} className="gap-2">
