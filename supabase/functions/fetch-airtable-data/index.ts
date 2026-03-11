@@ -151,45 +151,33 @@ async function fetchAllRecords(
   return allRecords;
 }
 
-// Client-side date filtering when server-side formula fails
-function filterRecordsByDate(
-  records: AirtableRecord[],
-  fieldMapping: FieldMapping,
+// Client-side date filtering on already-mapped rows
+function filterRowsByDate(
+  rows: AirtableCSVRow[],
   dateRangeStart: string,
   dateRangeEnd: string,
-  speakerColumnName?: string,
-  speakerName?: string
-): AirtableRecord[] {
+): AirtableCSVRow[] {
   const start = new Date(dateRangeStart);
   const end = new Date(dateRangeEnd);
 
-  return records.filter(record => {
-    const fields = record.fields;
-
-    // Speaker filter
-    if (speakerColumnName && speakerName) {
-      const speakerValue = fields[speakerColumnName];
-      if (typeof speakerValue === 'string' && speakerValue !== speakerName) return false;
-      if (Array.isArray(speakerValue) && !speakerValue.includes(speakerName)) return false;
-    }
-
+  return rows.filter(row => {
     // Check if ANY date field falls in range
-    const dateFields = [
-      fieldMapping.scheduled_date_time,
-      fieldMapping.date_published,
-      fieldMapping.date_booked,
+    const dateValues = [
+      row.scheduled_date_time,
+      row.date_published,
+      row.date_booked,
     ].filter(Boolean);
 
-    for (const fieldName of dateFields) {
-      const val = fields[fieldName!];
+    if (dateValues.length === 0) return true; // No dates at all, include
+
+    for (const val of dateValues) {
       if (val) {
         const d = new Date(val);
         if (!isNaN(d.getTime()) && d >= start && d <= end) return true;
       }
     }
 
-    // If no date fields matched, include record only if no date fields exist at all
-    return dateFields.every(f => !fields[f!]);
+    return false;
   });
 }
 
