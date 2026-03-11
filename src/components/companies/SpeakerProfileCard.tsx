@@ -19,6 +19,7 @@ import {
   BookOpen,
   Archive,
   RotateCcw,
+  Clock,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { pickTopAudienceTags } from "@/lib/campaignStrategy";
@@ -185,6 +186,9 @@ export function SpeakerProfileCard({
           <TabsTrigger value="insights" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
             <Sparkles className="h-3 w-3 mr-1.5" />Insights
           </TabsTrigger>
+          <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
+            <Clock className="h-3 w-3 mr-1.5" />History
+          </TabsTrigger>
         </TabsList>
 
         <ScrollArea className="h-[400px]">
@@ -307,6 +311,32 @@ export function SpeakerProfileCard({
           {/* Insights */}
           <TabsContent value="insights" className="p-4 mt-0">
             <StrategyInsightsPanel speakerId={speaker.id} speaker={speaker} onUpdate={onUpdate} />
+          </TabsContent>
+
+          {/* History / Quarterly Notes */}
+          <TabsContent value="history" className="p-4 mt-0">
+            {(() => {
+              const notes = Array.isArray(speaker.quarterly_notes) ? speaker.quarterly_notes as Array<{ quarter: string; notes: string; created_at: string }> : [];
+              if (notes.length === 0) {
+                return <p className="text-sm text-muted-foreground">No quarterly notes yet. Generate insights and save a quarterly summary to start building history.</p>;
+              }
+              const sorted = [...notes].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+              return (
+                <div className="space-y-3">
+                  {sorted.map((entry, i) => (
+                    <div key={i} className="border border-border/50 rounded-lg p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-foreground">{entry.quarter}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(entry.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground/90">{entry.notes}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </TabsContent>
         </ScrollArea>
       </Tabs>
