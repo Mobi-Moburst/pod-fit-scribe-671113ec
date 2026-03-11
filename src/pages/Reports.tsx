@@ -2471,6 +2471,7 @@ export default function Reports() {
                         value={reportData.kpis.total_social_reach.toLocaleString()}
                         subtitle="Combined social following"
                         icon={Users}
+                        tooltip="The combined number of followers across all of the social media accounts that we found for this podcast. Source: Rephonic"
                         onHide={() => toggleSection('socialReach')}
                       />
                     )}
