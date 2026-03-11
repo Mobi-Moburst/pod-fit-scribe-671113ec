@@ -131,6 +131,7 @@ const Companies = () => {
         target_audiences: s.target_audiences || [], talking_points: s.talking_points || [], avoid: s.avoid || [],
         guest_identity_tags: s.guest_identity_tags || [], professional_credentials: s.professional_credentials || [],
         campaign_strategy: s.campaign_strategy || '', pitch_template: s.pitch_template || '', competitors: s.competitors || [],
+        archived_at: s.archived_at || null,
       };
       const existing = speakersMap.get(s.company_id) || [];
       existing.push(speaker);
@@ -141,6 +142,7 @@ const Companies = () => {
       brand_colors: c.brand_colors || undefined, campaign_manager: c.campaign_manager || '',
       airtable_embed_url: c.airtable_embed_url || '', product_type: c.product_type || '',
       tags: c.tags || [], notes: c.notes || '', speakers: speakersMap.get(c.id) || [],
+      archived_at: c.archived_at || null,
     })));
   };
 
