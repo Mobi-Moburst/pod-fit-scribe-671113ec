@@ -107,10 +107,11 @@ async function fetchAllRecords(
 ): Promise<AirtableRecord[]> {
   const allRecords: AirtableRecord[] = [];
   let offset: string | undefined;
+  let useFilter = !!filterFormula;
 
   do {
     const params = new URLSearchParams();
-    if (filterFormula) {
+    if (useFilter && filterFormula) {
       params.append('filterByFormula', filterFormula);
     }
     if (offset) {
@@ -129,6 +130,13 @@ async function fetchAllRecords(
 
     if (!response.ok) {
       const errorText = await response.text();
+      // If filter formula fails (unknown fields), retry without filter
+      if (response.status === 422 && useFilter) {
+        console.warn(`Filter formula rejected (422), retrying without filter. Error: ${errorText}`);
+        useFilter = false;
+        offset = undefined;
+        continue;
+      }
       console.error(`Airtable API error: ${response.status} - ${errorText}`);
       throw new Error(`Airtable API error: ${response.status} - ${errorText}`);
     }
@@ -141,6 +149,48 @@ async function fetchAllRecords(
   } while (offset);
 
   return allRecords;
+}
+
+// Client-side date filtering when server-side formula fails
+function filterRecordsByDate(
+  records: AirtableRecord[],
+  fieldMapping: FieldMapping,
+  dateRangeStart: string,
+  dateRangeEnd: string,
+  speakerColumnName?: string,
+  speakerName?: string
+): AirtableRecord[] {
+  const start = new Date(dateRangeStart);
+  const end = new Date(dateRangeEnd);
+
+  return records.filter(record => {
+    const fields = record.fields;
+
+    // Speaker filter
+    if (speakerColumnName && speakerName) {
+      const speakerValue = fields[speakerColumnName];
+      if (typeof speakerValue === 'string' && speakerValue !== speakerName) return false;
+      if (Array.isArray(speakerValue) && !speakerValue.includes(speakerName)) return false;
+    }
+
+    // Check if ANY date field falls in range
+    const dateFields = [
+      fieldMapping.scheduled_date_time,
+      fieldMapping.date_published,
+      fieldMapping.date_booked,
+    ].filter(Boolean);
+
+    for (const fieldName of dateFields) {
+      const val = fields[fieldName!];
+      if (val) {
+        const d = new Date(val);
+        if (!isNaN(d.getTime()) && d >= start && d <= end) return true;
+      }
+    }
+
+    // If no date fields matched, include record only if no date fields exist at all
+    return dateFields.every(f => !fields[f!]);
+  });
 }
 
 Deno.serve(async (req) => {
