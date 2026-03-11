@@ -9,15 +9,12 @@ export const ThemeToggle = () => {
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
 
-  // If in batcave mode, toggle stays but cycles batcave → light → dark → batcave…
-  // Normal mode: dark ↔ light
+  // Simple toggle: dark ↔ light. Batcave always exits to dark (its base).
   const handleToggle = () => {
-    if (theme === "batcave") {
+    if (theme === "dark" || theme === "batcave" || theme === undefined) {
       setTheme("light");
-    } else if (theme === "light") {
-      setTheme("dark");
     } else {
-      setTheme("light");
+      setTheme("dark");
     }
   };
 
