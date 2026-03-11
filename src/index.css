@@ -108,6 +108,67 @@
     --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 100% 62% / 0.15), transparent 60%);
     --shadow-elevated: 0 10px 30px -10px hsl(191 100% 62% / 0.25);
   }
+
+  /* 🦇 Bat Cave theme — activated via easter egg */
+  .batcave {
+    --background: 24 25% 8%;       /* Deep cave brown #1a1612 */
+    --foreground: 35 20% 88%;      /* Warm parchment white */
+
+    --card: 24 20% 11%;            /* Stone slab */
+    --card-foreground: 35 20% 88%;
+
+    --popover: 24 20% 11%;
+    --popover-foreground: 35 20% 88%;
+
+    --primary: 174 60% 45%;        /* Gemstone teal from bat wings */
+    --primary-foreground: 24 25% 8%;
+
+    --secondary: 24 15% 16%;       /* Darker cave stone */
+    --secondary-foreground: 35 20% 88%;
+
+    --muted: 24 15% 16%;
+    --muted-foreground: 35 10% 55%;
+
+    --accent: 38 80% 50%;          /* Warm torch amber */
+    --accent-foreground: 24 25% 8%;
+
+    --destructive: 0 65% 55%;      /* Red wing segment */
+    --destructive-foreground: 35 20% 88%;
+
+    --border: 24 15% 18%;          /* Stone crack lines */
+    --input: 24 15% 18%;
+    --ring: 174 60% 45%;
+
+    --sidebar-background: 24 20% 9%;
+    --sidebar-foreground: 35 20% 88%;
+    --sidebar-primary: 174 60% 45%;
+    --sidebar-primary-foreground: 24 25% 8%;
+    --sidebar-accent: 24 15% 16%;
+    --sidebar-accent-foreground: 35 20% 88%;
+    --sidebar-border: 24 15% 18%;
+    --sidebar-ring: 174 60% 45%;
+
+    --brand: 174 60% 45%;
+    --brand-glow: 174 70% 55%;
+    --yellow: 38 80% 50%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(174 60% 45%), hsl(38 80% 50%));
+    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(38 80% 50% / 0.08), transparent 60%);
+    --shadow-elevated: 0 10px 30px -10px hsl(38 80% 50% / 0.2);
+  }
+
+  /* Bat Cave subtle texture on cards */
+  .batcave .card-surface,
+  .batcave [data-slot="card"] {
+    box-shadow: inset 0 1px 0 0 hsl(35 20% 88% / 0.04), 0 2px 8px -2px hsl(0 0% 0% / 0.4);
+    border-color: hsl(24 15% 20%);
+  }
+
+  /* Warm glow on hover for batcave cards */
+  .batcave .card-surface:hover,
+  .batcave [data-slot="card"]:hover {
+    box-shadow: inset 0 1px 0 0 hsl(35 20% 88% / 0.06), 0 4px 16px -4px hsl(38 80% 50% / 0.15);
+  }
 }
 
 @layer base {
