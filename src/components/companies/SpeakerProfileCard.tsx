@@ -43,6 +43,9 @@ export function SpeakerProfileCard({
   onDelete,
   onAirtable,
   onUpdate,
+  isArchived,
+  onArchive,
+  onRestore,
 }: SpeakerProfileCardProps) {
   const [expanded, setExpanded] = useState(false);
   const topTags = pickTopAudienceTags({
