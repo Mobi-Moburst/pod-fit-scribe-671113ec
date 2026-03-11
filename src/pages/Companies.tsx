@@ -113,7 +113,7 @@ const Companies = () => {
   const managers = useMemo(() => Array.from(new Set(companies.map((c) => (c.campaign_manager || '').trim()).filter(Boolean))).sort(), [companies]);
   const filtered = useMemo(() => {
     const byView = companies.filter((c) => viewMode === 'active' ? !c.archived_at : !!c.archived_at);
-    return byView.filter((c) => !managerFilter || (c.campaign_manager || '').trim() === managerFilter);
+    return byView.filter((c) => !managerFilter || (c.campaign_manager || '').trim() === managerFilter).sort((a, b) => a.name.localeCompare(b.name));
   }, [companies, managerFilter, viewMode]);
   const archivedCount = useMemo(() => companies.filter(c => !!c.archived_at).length, [companies]);
 
