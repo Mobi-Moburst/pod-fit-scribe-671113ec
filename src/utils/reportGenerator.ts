@@ -333,6 +333,17 @@ function generateStrategyParagraph(client: MinimalClient): string {
   return paragraph;
 }
 
+// Extract first name, skipping honorific prefixes like Dr., Mr., Ms., etc.
+function extractFirstName(fullName: string): string {
+  const honorifics = ['dr.', 'dr', 'mr.', 'mr', 'ms.', 'ms', 'mrs.', 'mrs', 'prof.', 'prof', 'rev.', 'rev', 'sir'];
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length > 1 && honorifics.includes(parts[0].toLowerCase())) {
+    // Return "Dr. FirstName" to keep the honorific but use the actual first name
+    return `${parts[0]} ${parts[1]}`;
+  }
+  return parts[0];
+}
+
 // AI-generated campaign overview using quarterly podcast data
 async function generateAICampaignOverview(
   speaker: { name: string; title?: string; company?: string; target_audiences?: string[]; talking_points?: string[]; campaign_strategy?: string; professional_credentials?: string[] },
@@ -620,7 +631,7 @@ function generateNextQuarterStrategy(
   const nextQuarter = getNextQuarter(currentQuarter);
   const topicSpace = deriveTopicSpaceFromCategories(kpis);
   const pronoun = client.gender === 'female' ? 'her' : client.gender === 'male' ? 'his' : 'their';
-  const firstName = client.name.split(' ')[0];
+  const firstName = extractFirstName(client.name);
   
   // Generate intro paragraph
   const intro_paragraph = `As we move into ${nextQuarter}, our focus is on building on the momentum of ${currentQuarter} by targeting larger, more prominent podcasts in the ${topicSpace} space — continuing to position ${firstName} as a go-to voice on ${client.talking_points?.[0]?.toLowerCase() || 'industry thought leadership'}.`;
@@ -2595,7 +2606,7 @@ function generateMultiSpeakerExecutiveSummary(
   
   // Add speaker breakdown summary
   const speakerSummaries = speakerBreakdowns
-    .map(s => `${s.speaker_name.split(' ')[0]} (${s.kpis.total_booked} bookings)`)
+    .map(s => `${extractFirstName(s.speaker_name)} (${s.kpis.total_booked} bookings)`)
     .join(', ');
   
   summary += `Speaker breakdown: ${speakerSummaries}.`;
