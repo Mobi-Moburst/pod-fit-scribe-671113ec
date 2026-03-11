@@ -250,18 +250,16 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
 
             <ScrollArea className="max-h-64 border rounded-md">
               <div className="divide-y divide-border">
-                {clients.map(c => {
-                  const exists = isExisting(c);
+                {newClients.map(c => {
                   const hasSplit = c.speakerName !== c.companyName;
                   return (
                     <label
                       key={c.raw}
-                      className={`flex items-center gap-3 px-3 py-2 text-sm ${exists ? 'opacity-50' : 'cursor-pointer hover:bg-muted/40'}`}
+                      className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-muted/40"
                     >
                       <Checkbox
                         checked={selected.has(c.raw)}
                         onCheckedChange={() => toggle(c.raw)}
-                        disabled={exists}
                       />
                       <div className="flex-1 min-w-0">
                         {hasSplit ? (
@@ -276,7 +274,6 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
                       {c.campaign_manager && (
                         <span className="text-xs text-muted-foreground truncate max-w-[120px]">{c.campaign_manager}</span>
                       )}
-                      {exists && <span className="text-xs text-muted-foreground italic shrink-0">exists</span>}
                     </label>
                   );
                 })}
