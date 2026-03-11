@@ -294,7 +294,7 @@ const Companies = () => {
             <p className="text-sm text-muted-foreground">Manage companies and their speakers for podcast campaigns.</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <SyncFathomButton onSyncComplete={loadData} />
+            
             <Button variant="outline" onClick={() => setShowImportDialog(true)}>
               <Download className="h-4 w-4 mr-2" />Import from Airtable
             </Button>
@@ -325,6 +325,7 @@ const Companies = () => {
               </select>
             </div>
           )}
+          {managerFilter && <SyncFathomButton onSyncComplete={loadData} />}
         </div>
 
         {/* Company Card Grid */}
