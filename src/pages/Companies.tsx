@@ -80,9 +80,11 @@ const Companies = () => {
       if (!data?.success) throw new Error(data?.error || 'Failed to extract strategy');
       const audiences = data.target_audiences || [];
       const talking = data.talking_points || [];
+      const avoid = data.avoid || [];
+      const guest_identity_tags = data.guest_identity_tags || [];
       const campaign_strategy = buildCampaignStrategyFromArrays(audiences, talking);
-      setEditingSpeaker({ ...editingSpeaker, campaign_strategy, target_audiences: audiences, talking_points: talking });
-      toast({ title: 'Strategy generated', description: `${audiences.length} audiences, ${talking.length} talking points extracted.` });
+      setEditingSpeaker({ ...editingSpeaker, campaign_strategy, target_audiences: audiences, talking_points: talking, avoid, avoid_text: avoid.join(', '), guest_identity_tags });
+      toast({ title: 'Strategy generated', description: `${audiences.length} audiences, ${talking.length} talking points, ${avoid.length} avoid items, ${guest_identity_tags.length} identity tags extracted.` });
     } catch (error) {
       toast({ title: 'Failed to generate strategy', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     } finally { setIsScrapingStrategy(false); }
