@@ -87,12 +87,23 @@ export function SpeakerProfileCard({
         </div>
         {/* Hover-reveal actions */}
         <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Edit">
-            <Pencil className="h-3 w-3" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onAirtable(); }} title="Airtable">
-            <Link2 className="h-3 w-3" />
-          </Button>
+          {isArchived ? (
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onRestore?.(); }} title="Restore">
+              <RotateCcw className="h-3 w-3" />
+            </Button>
+          ) : (
+            <>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Edit">
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onAirtable(); }} title="Airtable">
+                <Link2 className="h-3 w-3" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onArchive?.(); }} title="Archive">
+                <Archive className="h-3 w-3" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
     );
