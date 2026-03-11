@@ -1078,10 +1078,11 @@ function calculateEMV(
 // Apply EMV calculations to all podcasts
 function applyEMVCalculations(
   podcasts: PodcastReportEntry[],
-  cpm: number = 50
+  cpm: number = 50,
+  speakingTimePct: number = 0.40
 ): PodcastReportEntry[] {
   return podcasts.map(podcast => {
-    const emvData = calculateEMV(podcast, cpm);
+    const emvData = calculateEMV(podcast, cpm, speakingTimePct);
     
     if (emvData) {
       return {
