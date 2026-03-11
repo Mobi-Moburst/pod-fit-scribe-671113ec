@@ -620,11 +620,15 @@ export default function Reports() {
           quarter,
           { start: startDate, end: endDate },
           manualSOVCompetitors,
-          50, // CPM
+          50, // CPM - will be overridden below
           rephonicRows,
           !!geoFile, // geoCsvProvided
-          !!contentGapFile // contentGapCsvProvided
+          !!contentGapFile, // contentGapCsvProvided
+          speakingTimePct / 100 // Convert percentage to decimal
         );
+        
+        // Override CPM in report
+        report.cpm = cpmRate;
         
         setReportData(report);
         if (!reportName) {
