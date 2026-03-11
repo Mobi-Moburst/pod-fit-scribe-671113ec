@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronDown, ChevronRight, FileText, Calendar, Clock, CheckSquare } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Calendar, Clock, CheckSquare, Trash2 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { format } from "date-fns";
 
 interface CallNote {
@@ -69,6 +71,20 @@ export function CallNotesList({ speakerId, companyId, maxHeight = "400px" }: Cal
       else next.add(id);
       return next;
     });
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    const { error } = await supabase
+      .from("call_notes")
+      .delete()
+      .eq("id", id);
+    if (error) {
+      toast.error("Failed to delete call note");
+      console.error("Delete call note error:", error);
+    } else {
+      toast.success("Call note deleted");
+      setNotes(prev => prev.filter(n => n.id !== id));
+    }
   };
 
   const formatDuration = (seconds: number | null) => {
@@ -180,6 +196,31 @@ export function CallNotesList({ speakerId, companyId, maxHeight = "400px" }: Cal
                       </pre>
                     </details>
                   )}
+                  {/* Delete */}
+                  <div className="flex justify-end pt-1">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 text-xs gap-1">
+                          <Trash2 className="h-3 w-3" />
+                          Delete Note
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete call note?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete "{note.meeting_title || "Untitled Meeting"}". This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteNote(note.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               </CollapsibleContent>
             </Card>
