@@ -158,7 +158,7 @@ export function NextQuarterStrategy({
                       <span className="text-accent font-bold">•</span>
                       <div>
                         <span className="font-semibold text-foreground">{point.title}:</span>{' '}
-                        <MarkdownRenderer content={point.description} className="text-muted-foreground inline" />
+                        <MarkdownRenderer content={point.description} className="text-sm text-muted-foreground inline" />
                       </div>
                     </li>
                   ))}
