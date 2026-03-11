@@ -40,7 +40,9 @@ export const PodcastListDialog = ({ open, onOpenChange, title, description, icon
   const filtered = useMemo(() => {
     if (!dateRange) return podcasts;
     return podcasts.filter(p => {
-      const dateVal = dateField === 'date_booked' ? p.date_booked : p.date_published;
+      const dateVal = dateField === 'date_booked' ? p.date_booked 
+        : dateField === 'date_published' ? p.date_published 
+        : p.scheduled_date_time;
       return isDateInRange(dateVal, dateRange);
     });
   }, [podcasts, dateField, dateRange]);
