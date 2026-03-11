@@ -23,6 +23,8 @@ interface EMVAnalysisDialogProps {
   onOpenChange: (open: boolean) => void;
   podcasts: PodcastReportEntry[];
   hideCorrelationChart?: boolean;
+  cpm?: number;
+  speakingTimePct?: number;
 }
 
 export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelationChart }: EMVAnalysisDialogProps) => {
