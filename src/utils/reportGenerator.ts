@@ -1955,6 +1955,22 @@ export async function generateReportFromMultipleCSVs(
     guest_identity_tags: client.guest_identity_tags,
   });
 
+  // Generate AI campaign overview using quarterly podcast data
+  const aiOverview = await generateAICampaignOverview(
+    {
+      name: client.name,
+      title: client.title,
+      company: client.company,
+      target_audiences: client.target_audiences,
+      talking_points: client.talking_points,
+      campaign_strategy: client.campaign_strategy,
+      professional_credentials: client.professional_credentials,
+    },
+    sortedPodcasts.map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes })),
+    { total_booked: kpis.total_booked, total_published: kpis.total_published, total_reach: kpis.total_reach, top_categories: kpis.top_categories },
+    quarter
+  );
+
   return {
     client,
     generated_at: new Date().toISOString(),
@@ -1968,14 +1984,14 @@ export async function generateReportFromMultipleCSVs(
     speaking_time_pct: speakingTimePct,
     kpis,
     campaign_overview: {
-      strategy: generateStrategyParagraph(client),
+      strategy: aiOverview?.strategy || generateStrategyParagraph(client),
       executive_summary: executiveSummary,
       target_audiences: pickTopAudienceTags({
         strategyText: client.campaign_strategy,
         audiences: client.target_audiences,
         max: 3
       }),
-      talking_points: client.talking_points?.slice(0, 3) || [],
+      talking_points: aiOverview?.talking_points?.length ? aiOverview.talking_points : (client.talking_points?.slice(0, 3) || []),
       pitch_hooks: aiHooks.length > 0 
         ? [{ speaker_name: client.name, hooks: aiHooks }]
         : undefined,
