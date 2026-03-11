@@ -109,6 +109,15 @@ export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelatio
             Detailed breakdown of earned media value for this campaign period.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Methodology */}
+        <div className="rounded-lg border border-border/60 bg-muted/30 p-3 mt-2">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Methodology</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            EMV = (Listeners per Episode ÷ 1,000) × ${cpm} CPM × (Episode Duration × {Math.round(speakingTimePct * 100)}% guest speaking time). 
+            This reflects the equivalent cost an advertiser would pay to reach the same audience through paid podcast ad placements.
+          </p>
+        </div>
         
         {/* Summary Metrics Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
