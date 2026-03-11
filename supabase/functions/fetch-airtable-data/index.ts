@@ -108,8 +108,9 @@ async function fetchAllRecords(
   const allRecords: AirtableRecord[] = [];
   let offset: string | undefined;
   let useFilter = !!filterFormula;
+  let shouldContinue = true;
 
-  do {
+  while (shouldContinue) {
     const params = new URLSearchParams();
     if (useFilter && filterFormula) {
       params.append('filterByFormula', filterFormula);
@@ -135,6 +136,7 @@ async function fetchAllRecords(
         console.warn(`Filter formula rejected (422), retrying without filter. Error: ${errorText}`);
         useFilter = false;
         offset = undefined;
+        allRecords.length = 0;
         continue;
       }
       console.error(`Airtable API error: ${response.status} - ${errorText}`);
@@ -144,9 +146,10 @@ async function fetchAllRecords(
     const data: AirtableResponse = await response.json();
     allRecords.push(...data.records);
     offset = data.offset;
+    shouldContinue = !!offset;
 
     console.log(`Fetched ${data.records.length} records, total: ${allRecords.length}`);
-  } while (offset);
+  }
 
   return allRecords;
 }
