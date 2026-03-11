@@ -397,7 +397,10 @@ function QuarterlyNotesHistory({ speakerId, notes, onUpdate }: { speakerId: stri
       {sorted.map((entry, i) => (
         <div key={entry.created_at} className="group/note border border-border/50 rounded-lg p-3 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">{entry.quarter}</span>
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+              {entry.report_slug && <FileText className="h-3 w-3 text-primary" />}
+              {entry.quarter}
+            </span>
             <div className="flex items-center gap-1">
               <span className="text-[10px] text-muted-foreground mr-1">
                 {new Date(entry.created_at).toLocaleDateString()}
