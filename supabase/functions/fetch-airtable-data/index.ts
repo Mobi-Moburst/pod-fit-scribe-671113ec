@@ -107,10 +107,11 @@ async function fetchAllRecords(
 ): Promise<AirtableRecord[]> {
   const allRecords: AirtableRecord[] = [];
   let offset: string | undefined;
+  let useFilter = !!filterFormula;
 
   do {
     const params = new URLSearchParams();
-    if (filterFormula) {
+    if (useFilter && filterFormula) {
       params.append('filterByFormula', filterFormula);
     }
     if (offset) {
@@ -129,6 +130,13 @@ async function fetchAllRecords(
 
     if (!response.ok) {
       const errorText = await response.text();
+      // If filter formula fails (unknown fields), retry without filter
+      if (response.status === 422 && useFilter) {
+        console.warn(`Filter formula rejected (422), retrying without filter. Error: ${errorText}`);
+        useFilter = false;
+        offset = undefined;
+        continue;
+      }
       console.error(`Airtable API error: ${response.status} - ${errorText}`);
       throw new Error(`Airtable API error: ${response.status} - ${errorText}`);
     }
@@ -141,6 +149,48 @@ async function fetchAllRecords(
   } while (offset);
 
   return allRecords;
+}
+
+// Client-side date filtering when server-side formula fails
+function filterRecordsByDate(
+  records: AirtableRecord[],
+  fieldMapping: FieldMapping,
+  dateRangeStart: string,
+  dateRangeEnd: string,
+  speakerColumnName?: string,
+  speakerName?: string
+): AirtableRecord[] {
+  const start = new Date(dateRangeStart);
+  const end = new Date(dateRangeEnd);
+
+  return records.filter(record => {
+    const fields = record.fields;
+
+    // Speaker filter
+    if (speakerColumnName && speakerName) {
+      const speakerValue = fields[speakerColumnName];
+      if (typeof speakerValue === 'string' && speakerValue !== speakerName) return false;
+      if (Array.isArray(speakerValue) && !speakerValue.includes(speakerName)) return false;
+    }
+
+    // Check if ANY date field falls in range
+    const dateFields = [
+      fieldMapping.scheduled_date_time,
+      fieldMapping.date_published,
+      fieldMapping.date_booked,
+    ].filter(Boolean);
+
+    for (const fieldName of dateFields) {
+      const val = fields[fieldName!];
+      if (val) {
+        const d = new Date(val);
+        if (!isNaN(d.getTime()) && d >= start && d <= end) return true;
+      }
+    }
+
+    // If no date fields matched, include record only if no date fields exist at all
+    return dateFields.every(f => !fields[f!]);
+  });
 }
 
 Deno.serve(async (req) => {
@@ -205,15 +255,27 @@ Deno.serve(async (req) => {
       throw new Error('No Airtable access token configured. Please add AIRTABLE_PAT secret or provide a per-connection token.');
     }
 
-    // Fetch records from Airtable
-    const records = await fetchAllRecords(
+    // Fetch records from Airtable (auto-retries without filter on 422)
+    let records = await fetchAllRecords(
       connection.base_id,
       connection.table_id,
       accessToken,
       filterFormula
     );
 
-    console.log(`Total records fetched: ${records.length}`);
+    // If we got unfiltered results (422 fallback), apply client-side date filtering
+    if (date_range_start && date_range_end && records.length > 0) {
+      const preCount = records.length;
+      records = filterRecordsByDate(
+        records, fieldMapping, date_range_start, date_range_end,
+        connection.speaker_column_name, speaker_name
+      );
+      if (records.length !== preCount) {
+        console.log(`Client-side filtered: ${preCount} → ${records.length} records`);
+      }
+    }
+
+    console.log(`Total records after filtering: ${records.length}`);
 
     // Map records to our format
     const rows: AirtableCSVRow[] = records.map(record => 
