@@ -2393,10 +2393,10 @@ export async function generateMultiSpeakerReport(
     speaking_time_pct: speakingTimePct,
     kpis: aggregatedKpis,
     campaign_overview: {
-      strategy: generateCompanyStrategyParagraph(company.name, speakerBreakdowns),
+      strategy: aiOverviewMulti?.strategy || generateCompanyStrategyParagraph(company.name, speakerBreakdowns),
       executive_summary: executiveSummary,
       target_audiences: speakerData[0]?.speaker.target_audiences?.slice(0, 3) || [],
-      talking_points: speakerData[0]?.speaker.talking_points?.slice(0, 3) || [],
+      talking_points: aiOverviewMulti?.talking_points?.length ? aiOverviewMulti.talking_points : (speakerData[0]?.speaker.talking_points?.slice(0, 3) || []),
       pitch_hooks: validPitchHooks.length > 0 ? validPitchHooks : undefined,
     },
     podcasts: allPodcasts.sort((a, b) => b.overall_score - a.overall_score),
