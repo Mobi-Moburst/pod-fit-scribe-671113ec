@@ -2380,6 +2380,25 @@ export async function generateMultiSpeakerReport(
   const pitch_hooks = await Promise.all(pitchHooksPromises);
   const validPitchHooks = pitch_hooks.filter(ph => ph.hooks.length > 0);
 
+  // Generate AI campaign overview for multi-speaker using all podcasts
+  const allPodcastsForAI = speakerBreakdowns.flatMap(s => 
+    (s.podcasts || []).map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes }))
+  );
+  const primarySpeaker = speakerData[0]?.speaker;
+  const aiOverviewMulti = await generateAICampaignOverview(
+    {
+      name: company.name,
+      company: company.name,
+      target_audiences: primarySpeaker?.target_audiences,
+      talking_points: primarySpeaker?.talking_points,
+      campaign_strategy: primarySpeaker?.campaign_strategy,
+      professional_credentials: primarySpeaker?.professional_credentials,
+    },
+    allPodcastsForAI,
+    { total_booked: aggregatedKpis.total_booked, total_published: aggregatedKpis.total_published, total_reach: aggregatedKpis.total_reach, top_categories: aggregatedKpis.top_categories },
+    quarter
+  );
+
   return {
     client: companyClient,
     generated_at: new Date().toISOString(),
