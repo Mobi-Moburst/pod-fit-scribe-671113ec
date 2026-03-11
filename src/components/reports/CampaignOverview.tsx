@@ -97,7 +97,7 @@ export const CampaignOverview = ({
           <div>
             <h4 className="text-sm font-medium mb-3">Pitch Positioning & Core Hooks</h4>
             <p className="text-sm text-muted-foreground mb-4">
-              Each campaign leaned into clearly defined, repeatable hooks designed to resonate with the target audience of each show:
+              Each placement was positioned to resonate with the show's unique audience:
             </p>
             <div className="space-y-4">
               {pitch_hooks.map((speakerHooks, idx) => (
