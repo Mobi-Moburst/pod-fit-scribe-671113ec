@@ -494,7 +494,7 @@ function generateFocusDescription(audience: string, clientName: string): string 
   return `Continue building presence on ${audience.toLowerCase()} podcasts to expand ${clientName}'s thought leadership reach.`;
 }
 
-// Generate AI-powered talking points spotlight via edge function
+// Generate AI-powered looking-ahead content via edge function
 export async function generateAITalkingPoints(
   speakers: Array<{
     name: string;
@@ -514,13 +514,18 @@ export async function generateAITalkingPoints(
     top_categories?: Array<{ name: string; count: number }>;
   },
   isMultiSpeaker: boolean = false,
-  reportQuarter?: string // The quarter the report covers (current/past quarter)
+  reportQuarter?: string, // The quarter the report covers (current/past quarter)
+  podcasts?: Array<{ show_title: string; categories?: string; show_notes?: string }>,
+  quarterlyNotes?: Array<{ quarter: string; notes: string }>
 ): Promise<{
   talking_points_spotlight?: Array<{ title: string; description: string }>;
   speaker_talking_points_spotlight?: Array<{ speaker_name: string; points: Array<{ title: string; description: string }> }>;
+  intro_paragraph?: string;
+  strategic_focus_areas?: Array<{ title: string; description: string }>;
+  closing_paragraph?: string;
 }> {
   try {
-    console.log(`Generating AI talking points for ${speakers.length} speaker(s), multi-speaker: ${isMultiSpeaker}, nextQuarter: ${nextQuarter}, reportQuarter: ${reportQuarter}`);
+    console.log(`Generating AI looking-ahead content for ${speakers.length} speaker(s), multi-speaker: ${isMultiSpeaker}, nextQuarter: ${nextQuarter}, reportQuarter: ${reportQuarter}`);
     
     const { data, error } = await supabase.functions.invoke('generate-talking-points', {
       body: {
@@ -538,6 +543,15 @@ export async function generateAITalkingPoints(
         reportQuarter,
         kpis,
         isMultiSpeaker,
+        podcasts: podcasts?.slice(0, 15)?.map(p => ({
+          show_title: p.show_title,
+          categories: p.categories,
+          show_notes: p.show_notes,
+        })),
+        quarterly_notes: quarterlyNotes?.slice(0, 5)?.map(n => ({
+          quarter: n.quarter,
+          notes: n.notes,
+        })),
       }
     });
 
@@ -546,7 +560,7 @@ export async function generateAITalkingPoints(
       return {};
     }
 
-    console.log('AI talking points generated:', data);
+    console.log('AI looking-ahead content generated:', data);
     return data || {};
   } catch (err) {
     console.error('Failed to generate AI talking points:', err);
@@ -1804,7 +1818,8 @@ export async function generateReportFromMultipleCSVs(
   rephonicRows?: RephonicCSVRow[],
   geoCsvProvided: boolean = false,
   contentGapCsvProvided: boolean = false,
-  speakingTimePct: number = 0.40
+  speakingTimePct: number = 0.40,
+  quarterlyNotes?: Array<{ quarter: string; notes: string }>
 ): Promise<ReportData> {
   
   // Step 1: Merge Batch + Airtable data by podcast title
@@ -1911,10 +1926,10 @@ export async function generateReportFromMultipleCSVs(
   // Generate next quarter strategy (single speaker)
   let next_quarter_strategy = generateNextQuarterStrategy(client, kpis, quarter, 1, [client.name]);
   
-  // Enhance with AI-generated talking points (3 for single speaker)
+  // Enhance with AI-generated looking-ahead content
   try {
     const nextQuarter = getNextQuarter(quarter);
-    const aiTalkingPoints = await generateAITalkingPoints(
+    const aiLookingAhead = await generateAITalkingPoints(
       [{
         name: client.name,
         title: client.title,
@@ -1925,22 +1940,33 @@ export async function generateReportFromMultipleCSVs(
         professional_credentials: client.professional_credentials,
         guest_identity_tags: client.guest_identity_tags,
       }],
-      nextQuarter, // The quarter these talking points are FOR
+      nextQuarter,
       {
         total_booked: kpis.total_booked,
         total_published: kpis.total_published,
         total_reach: kpis.total_reach,
         top_categories: kpis.top_categories,
       },
-      false, // Single speaker
-      quarter // The quarter the report covers
+      false,
+      quarter,
+      sortedPodcasts.map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes })),
+      quarterlyNotes
     );
     
-    if (aiTalkingPoints.talking_points_spotlight && aiTalkingPoints.talking_points_spotlight.length > 0) {
-      next_quarter_strategy.talking_points_spotlight = aiTalkingPoints.talking_points_spotlight;
+    if (aiLookingAhead.talking_points_spotlight && aiLookingAhead.talking_points_spotlight.length > 0) {
+      next_quarter_strategy.talking_points_spotlight = aiLookingAhead.talking_points_spotlight;
+    }
+    if (aiLookingAhead.intro_paragraph) {
+      next_quarter_strategy.intro_paragraph = aiLookingAhead.intro_paragraph;
+    }
+    if (aiLookingAhead.strategic_focus_areas && aiLookingAhead.strategic_focus_areas.length > 0) {
+      next_quarter_strategy.strategic_focus_areas = aiLookingAhead.strategic_focus_areas;
+    }
+    if (aiLookingAhead.closing_paragraph) {
+      next_quarter_strategy.closing_paragraph = aiLookingAhead.closing_paragraph;
     }
   } catch (err) {
-    console.error('AI talking points generation failed, using default:', err);
+    console.error('AI looking-ahead generation failed, using default:', err);
   }
   
   // Generate AI pitch hooks for the speaker
@@ -2170,7 +2196,8 @@ export async function generateMultiSpeakerReport(
   rephonicRows?: RephonicCSVRow[],
   geoCsvProvided: boolean = false,
   contentGapCsvProvided: boolean = false,
-  speakingTimePct: number = 0.40
+  speakingTimePct: number = 0.40,
+  quarterlyNotes?: Array<{ quarter: string; notes: string }>
 ): Promise<ReportData> {
   
   // Process each speaker's data
@@ -2326,7 +2353,10 @@ export async function generateMultiSpeakerReport(
   const speakerNames = speakerData.map(s => s.speaker.name);
   let next_quarter_strategy = generateNextQuarterStrategy(companyClient, aggregatedKpis, quarter, speakerData.length, speakerNames);
   
-  // Enhance with AI-generated per-speaker talking points (3 per speaker for multi-speaker)
+  // Enhance with AI-generated looking-ahead content (multi-speaker)
+  const allPodcastsForLookingAhead = speakerBreakdowns.flatMap(s => 
+    (s.podcasts || []).map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes }))
+  );
   try {
     const speakersForAI = speakerData.map(s => ({
       name: s.speaker.name,
@@ -2340,26 +2370,36 @@ export async function generateMultiSpeakerReport(
     }));
     
     const nextQuarter = getNextQuarter(quarter);
-    const aiTalkingPoints = await generateAITalkingPoints(
+    const aiLookingAhead = await generateAITalkingPoints(
       speakersForAI,
-      nextQuarter, // The quarter these talking points are FOR
+      nextQuarter,
       {
         total_booked: aggregatedKpis.total_booked,
         total_published: aggregatedKpis.total_published,
         total_reach: aggregatedKpis.total_reach,
         top_categories: aggregatedKpis.top_categories,
       },
-      true, // Multi-speaker
-      quarter // The quarter the report covers
+      true,
+      quarter,
+      allPodcastsForLookingAhead,
+      quarterlyNotes
     );
     
-    if (aiTalkingPoints.speaker_talking_points_spotlight && aiTalkingPoints.speaker_talking_points_spotlight.length > 0) {
-      next_quarter_strategy.speaker_talking_points_spotlight = aiTalkingPoints.speaker_talking_points_spotlight;
-      // Clear the general talking points since we're using per-speaker
+    if (aiLookingAhead.speaker_talking_points_spotlight && aiLookingAhead.speaker_talking_points_spotlight.length > 0) {
+      next_quarter_strategy.speaker_talking_points_spotlight = aiLookingAhead.speaker_talking_points_spotlight;
       next_quarter_strategy.talking_points_spotlight = [];
     }
+    if (aiLookingAhead.intro_paragraph) {
+      next_quarter_strategy.intro_paragraph = aiLookingAhead.intro_paragraph;
+    }
+    if (aiLookingAhead.strategic_focus_areas && aiLookingAhead.strategic_focus_areas.length > 0) {
+      next_quarter_strategy.strategic_focus_areas = aiLookingAhead.strategic_focus_areas;
+    }
+    if (aiLookingAhead.closing_paragraph) {
+      next_quarter_strategy.closing_paragraph = aiLookingAhead.closing_paragraph;
+    }
   } catch (err) {
-    console.error('AI talking points generation failed, using default:', err);
+    console.error('AI looking-ahead generation failed, using default:', err);
   }
   
   // Generate AI pitch hooks for each speaker

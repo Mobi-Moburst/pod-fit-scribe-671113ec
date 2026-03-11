@@ -624,7 +624,12 @@ export default function Reports() {
           rephonicRows,
           !!geoFile, // geoCsvProvided
           !!contentGapFile, // contentGapCsvProvided
-          speakingTimePct / 100 // Convert percentage to decimal
+          speakingTimePct / 100, // Convert percentage to decimal
+          // Merge quarterly notes from all selected speakers
+          selectedSpeakerIds.flatMap(id => {
+            const sp = speakers.find(s => s.id === id);
+            return (sp?.quarterly_notes as Array<{ quarter: string; notes: string }>) || [];
+          })
         );
         
         setReportData(report);
@@ -725,7 +730,8 @@ export default function Reports() {
         rephonicRows,
         !!geoFile, // geoCsvProvided
         !!contentGapFile, // contentGapCsvProvided
-        speakingTimePct / 100 // Convert percentage to decimal
+        speakingTimePct / 100, // Convert percentage to decimal
+        (selectedSpeaker?.quarterly_notes as Array<{ quarter: string; notes: string }>) || undefined
       );
 
       // Flag as needing scoring
