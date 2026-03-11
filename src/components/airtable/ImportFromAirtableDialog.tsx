@@ -67,7 +67,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
 
   const { toast } = useToast();
 
-  const isExisting = (c: ParsedClient) => !!findExistingCompany(c.companyName, existingCompanies);
+  const isExisting = (c: ParsedClient) => !!findExistingCompanyFromParsed(c, existingCompanies);
 
   const scan = async () => {
     setIsScanning(true);
