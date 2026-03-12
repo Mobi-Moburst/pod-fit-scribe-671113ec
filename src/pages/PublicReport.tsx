@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ReportData } from "@/types/reports";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Play, AlertCircle } from "lucide-react";
+import { Play, AlertCircle, Calendar, Radio, PhoneCall } from "lucide-react";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { ClientReportHeader } from "@/components/client-report/ClientReportHeader";
 import { ClientReportKPIs } from "@/components/client-report/ClientReportKPIs";
@@ -16,6 +16,7 @@ import { ClientReportTargetPodcasts } from "@/components/client-report/ClientRep
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
 import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
+import { PodcastListDialog } from "@/components/reports/PodcastListDialog";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
@@ -62,6 +63,10 @@ export default function PublicReport() {
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
   const [socialValueDialogOpen, setSocialValueDialogOpen] = useState(false);
+  const [bookedDialogOpen, setBookedDialogOpen] = useState(false);
+  const [publishedDialogOpen, setPublishedDialogOpen] = useState(false);
+  const [recordedDialogOpen, setRecordedDialogOpen] = useState(false);
+  const [introCallsDialogOpen, setIntroCallsDialogOpen] = useState(false);
 
   // Add cache-control meta tags to prevent browser caching
   useEffect(() => {
@@ -269,6 +274,10 @@ export default function PublicReport() {
             kpis={reportData.kpis}
             visibleSections={visibleSections}
             onReachClick={() => setReachDialogOpen(true)}
+            onBookedClick={() => setBookedDialogOpen(true)}
+            onPublishedClick={() => setPublishedDialogOpen(true)}
+            onRecordedClick={() => setRecordedDialogOpen(true)}
+            onIntroCallsClick={() => setIntroCallsDialogOpen(true)}
           />
         )}
 
@@ -347,6 +356,48 @@ export default function PublicReport() {
         {/* Footer */}
         <ClientReportFooter />
       </div>
+
+      {/* KPI List Dialogs */}
+      <PodcastListDialog
+        open={bookedDialogOpen}
+        onOpenChange={setBookedDialogOpen}
+        title="Booked Podcasts"
+        description="Podcasts with confirmed bookings this period."
+        icon={Calendar}
+        podcasts={reportData.podcasts}
+        dateField="date_booked"
+        dateRange={reportData.date_range}
+      />
+      <PodcastListDialog
+        open={publishedDialogOpen}
+        onOpenChange={setPublishedDialogOpen}
+        title="Published Episodes"
+        description="Episodes that went live this period."
+        icon={Radio}
+        podcasts={reportData.podcasts}
+        dateField="date_published"
+        dateRange={reportData.date_range}
+      />
+      <PodcastListDialog
+        open={recordedDialogOpen}
+        onOpenChange={setRecordedDialogOpen}
+        title="Recorded Podcasts"
+        description="Podcast interviews recorded this period."
+        icon={Radio}
+        podcasts={reportData.podcasts}
+        dateField="scheduled_date_time"
+        dateRange={reportData.date_range}
+      />
+      <PodcastListDialog
+        open={introCallsDialogOpen}
+        onOpenChange={setIntroCallsDialogOpen}
+        title="Intro Calls"
+        description="Introduction calls completed this period."
+        icon={PhoneCall}
+        podcasts={reportData.intro_call_podcasts || []}
+        dateField="scheduled_date_time"
+        dateRange={reportData.date_range}
+      />
 
       {/* Analysis Dialogs */}
       <EMVAnalysisDialog

@@ -13,6 +13,10 @@ interface ClientReportKPIsProps {
     averageScore?: boolean;
   };
   onReachClick?: () => void;
+  onBookedClick?: () => void;
+  onPublishedClick?: () => void;
+  onRecordedClick?: () => void;
+  onIntroCallsClick?: () => void;
 }
 
 const formatNumber = (num: number): string => {
@@ -21,7 +25,7 @@ const formatNumber = (num: number): string => {
   return num.toString();
 };
 
-export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: ClientReportKPIsProps) => {
+export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBookedClick, onPublishedClick, onRecordedClick, onIntroCallsClick }: ClientReportKPIsProps) => {
   const kpiItems = [];
 
   if (visibleSections.totalBooked) {
@@ -29,10 +33,10 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       key: 'totalBooked',
       label: "Podcasts Booked",
       value: kpis.total_booked,
-      description: "Confirmed bookings",
+      description: "Confirmed bookings" + (onBookedClick ? " • Click for details" : ""),
       icon: Calendar,
       color: "hsl(var(--primary))",
-      onClick: undefined as (() => void) | undefined,
+      onClick: onBookedClick,
     });
   }
 
@@ -41,10 +45,10 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       key: 'totalPublished',
       label: "Episodes Published",
       value: kpis.total_published,
-      description: "Episodes live",
+      description: "Episodes live" + (onPublishedClick ? " • Click for details" : ""),
       icon: Podcast,
       color: "hsl(var(--accent))",
-      onClick: undefined as (() => void) | undefined,
+      onClick: onPublishedClick,
     });
   }
 
@@ -53,10 +57,10 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       key: 'totalRecorded',
       label: "Total Recorded",
       value: kpis.total_recorded || 0,
-      description: "Interviews completed",
+      description: "Interviews completed" + (onRecordedClick ? " • Click for details" : ""),
       icon: Mic,
       color: "hsl(var(--primary))",
-      onClick: undefined as (() => void) | undefined,
+      onClick: onRecordedClick,
     });
   }
 
@@ -65,10 +69,10 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       key: 'totalIntroCalls',
       label: "Intro Calls",
       value: kpis.total_intro_calls || 0,
-      description: "Introduction calls completed",
+      description: "Introduction calls completed" + (onIntroCallsClick ? " • Click for details" : ""),
       icon: PhoneCall,
       color: "hsl(var(--primary))",
-      onClick: undefined as (() => void) | undefined,
+      onClick: onIntroCallsClick,
     });
   }
 
