@@ -14,6 +14,9 @@ import { SpeakerSpotlightSlide } from "@/components/client-report/slides/Speaker
 import { CampaignOverviewSlide } from "@/components/client-report/slides/CampaignOverviewSlide";
 import { CategoriesSlide } from "@/components/client-report/slides/CategoriesSlide";
 import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterSlide";
+import { NextQuarterIntroSlide } from "@/components/client-report/slides/NextQuarterIntroSlide";
+import { NextQuarterFocusAreasSlide } from "@/components/client-report/slides/NextQuarterFocusAreasSlide";
+import { NextQuarterTalkingPointsSlide } from "@/components/client-report/slides/NextQuarterTalkingPointsSlide";
 import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
 import HighlightsSlide from "@/components/client-report/slides/HighlightsSlide";
