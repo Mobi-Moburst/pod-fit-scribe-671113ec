@@ -49,6 +49,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 // Competitor info popover content
 const CompetitorInfoCard = ({ competitor }: { competitor: { 
   name: string; role?: string; peer_reason?: string; linkedin_url?: string; interview_count: number; color: string;
+  episode_urls?: string[];
   episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>;
 } }) => {
   return (
@@ -120,6 +121,29 @@ const CompetitorInfoCard = ({ competitor }: { competitor: {
                     </p>
                   )}
                 </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      ) : competitor.episode_urls && competitor.episode_urls.length > 0 ? (
+        <div className="border-t border-border pt-3">
+          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+            <ExternalLink className="h-3 w-3" />
+            Episode Links
+          </p>
+          <ScrollArea className="max-h-[200px]">
+            <div className="space-y-1.5 pr-2">
+              {competitor.episode_urls.map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-primary hover:underline bg-muted/30 rounded-md px-2.5 py-2 transition-colors hover:bg-muted/50"
+                >
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{url}</span>
+                </a>
               ))}
             </div>
           </ScrollArea>
@@ -200,6 +224,7 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
     peer_reason?: string;
     linkedin_url?: string;
     interview_count?: number;
+    episode_urls?: string[];
     episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>;
   }
   
@@ -218,6 +243,7 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
       peer_reason: comp.peer_reason,
       linkedin_url: comp.linkedin_url,
       interview_count: comp.interview_count,
+      episode_urls: comp.episode_urls,
       episodes: comp.episodes,
       isClient: false
     }))
@@ -253,6 +279,7 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
                       peer_reason: dataItem.peer_reason,
                       linkedin_url: dataItem.linkedin_url,
                       interview_count: dataItem.interview_count || dataItem.value,
+                      episode_urls: dataItem.episode_urls,
                       episodes: dataItem.episodes,
                       color: dataItem.color
                     }} 

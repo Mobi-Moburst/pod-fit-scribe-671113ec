@@ -41,6 +41,8 @@ interface GenerateRequest {
   podcasts?: Array<{ show_title: string; categories?: string; show_notes?: string }>;
   // NEW: strategic quarterly notes from speaker history
   quarterly_notes?: Array<{ quarter: string; notes: string }>;
+  // NEW: competitor/peer data for competitive positioning
+  competitor_data?: Array<{ name: string; interview_count: number; episode_urls?: string[] }>;
 }
 
 serve(async (req) => {
@@ -49,7 +51,7 @@ serve(async (req) => {
   }
 
   try {
-    const { speakers, quarter, reportQuarter, kpis, isMultiSpeaker, podcasts, quarterly_notes } = await req.json() as GenerateRequest;
+    const { speakers, quarter, reportQuarter, kpis, isMultiSpeaker, podcasts, quarterly_notes, competitor_data } = await req.json() as GenerateRequest;
     
     // Get current date for temporal context
     const now = new Date();
@@ -82,6 +84,18 @@ serve(async (req) => {
     // Build quarterly notes context
     const notesContext = quarterly_notes && quarterly_notes.length > 0
       ? `\nStrategic Notes from Campaign Manager:\n${quarterly_notes.slice(0, 5).map(n => `- [${n.quarter}] ${n.notes.substring(0, 300)}`).join('\n')}`
+      : '';
+
+    // Build competitive landscape context
+    const competitorContext = competitor_data && competitor_data.length > 0
+      ? `\nCompetitive Landscape (Peer Comparison):
+${competitor_data.map(c => {
+  const urlList = c.episode_urls && c.episode_urls.length > 0
+    ? `\n    Episode URLs: ${c.episode_urls.slice(0, 5).join(', ')}`
+    : '';
+  return `- ${c.name}: ${c.interview_count} podcast interviews${urlList}`;
+}).join('\n')}
+Note: Use this peer data to recommend strategies for edging out competitors — e.g., targeting similar podcasts, differentiating messaging, or increasing placement frequency in categories where competitors are active.`
       : '';
 
     // Build campaign context
@@ -128,12 +142,13 @@ ${speakerContext}
 ${campaignContext}
 ${podcastContext}
 ${notesContext}
+${competitorContext}
 
 Return ONLY valid JSON (no markdown fences) with these fields:
 
 1. "intro_paragraph" — 2-3 sentences. Forward-looking paragraph about what we're building toward in ${targetQuarter}. Ground it in what happened in ${previousQuarter} (reference actual podcast categories/themes placed) and what strategic direction we're heading. Don't be generic — reference specific category types or themes from the actual placements.
 
-2. "strategic_focus_areas" — Array of exactly 3 objects, each with "title" (3-6 words) and "description" (1-2 sentences). These are the podcast audience segments or thematic areas to target in ${targetQuarter}. Derive them from the intersection of the speaker's profile, the actual show categories from ${previousQuarter}, and any strategic notes.${quarterly_notes && quarterly_notes.length > 0 ? ' Incorporate direction from the strategic notes.' : ''}
+2. "strategic_focus_areas" — Array of exactly 3 objects, each with "title" (3-6 words) and "description" (1-2 sentences). These are the podcast audience segments or thematic areas to target in ${targetQuarter}. Derive them from the intersection of the speaker's profile, the actual show categories from ${previousQuarter}, and any strategic notes.${competitor_data && competitor_data.length > 0 ? ' Factor in the competitive landscape — identify opportunities to differentiate from or outpace peers who are active in similar podcast categories.' : ''}${quarterly_notes && quarterly_notes.length > 0 ? ' Incorporate direction from the strategic notes.' : ''}
 
 3. "talking_points" — Array of exactly 3 objects, each with "title" (5-8 words) and "description" (1-2 sentences). Forward-looking themes to emphasize in upcoming podcast appearances. Should build on themes that resonated in ${previousQuarter}'s placements and the speaker's expertise. Make each specific to ${speaker.name}.
 

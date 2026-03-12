@@ -527,7 +527,8 @@ export async function generateAITalkingPoints(
   isMultiSpeaker: boolean = false,
   reportQuarter?: string, // The quarter the report covers (current/past quarter)
   podcasts?: Array<{ show_title: string; categories?: string; show_notes?: string }>,
-  quarterlyNotes?: Array<{ quarter: string; notes: string }>
+  quarterlyNotes?: Array<{ quarter: string; notes: string }>,
+  competitorData?: Array<{ name: string; interview_count: number; episode_urls?: string[] }>
 ): Promise<{
   talking_points_spotlight?: Array<{ title: string; description: string }>;
   speaker_talking_points_spotlight?: Array<{ speaker_name: string; points: Array<{ title: string; description: string }> }>;
@@ -562,6 +563,11 @@ export async function generateAITalkingPoints(
         quarterly_notes: quarterlyNotes?.slice(0, 5)?.map(n => ({
           quarter: n.quarter,
           notes: n.notes,
+        })),
+        competitor_data: competitorData?.filter(c => c.interview_count > 0)?.map(c => ({
+          name: c.name,
+          interview_count: c.interview_count,
+          episode_urls: c.episode_urls?.slice(0, 10),
         })),
       }
     });
@@ -1491,7 +1497,7 @@ function calculateSOVAnalysis(
   airtableRows: AirtableCSVRow[],
   sovRows: SOVCSVRow[] | null,
   competitorName: string | null,
-  manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string; episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }> }[] | null,
+  manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string; episodeUrls?: string[]; episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }> }[] | null,
   dateRange?: { start: Date; end: Date }
 ): ReportData['sov_analysis'] {
   // Count client interviews as episodes published within the report range.
@@ -1518,6 +1524,7 @@ function calculateSOVAnalysis(
       linkedin_url: c.linkedin_url,
       interview_count: c.count,
       episodes: c.episodes,
+      episode_urls: c.episodeUrls?.filter(u => u.trim()) || [],
     }));
   }
   // Otherwise use CSV data
@@ -1973,7 +1980,8 @@ export async function generateReportFromMultipleCSVs(
       false,
       quarter,
       sortedPodcasts.map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes })),
-      quarterlyNotes
+      quarterlyNotes,
+      sov_analysis?.competitors?.map(c => ({ name: c.name, interview_count: c.interview_count, episode_urls: c.episode_urls }))
     );
     
     if (aiLookingAhead.talking_points_spotlight && aiLookingAhead.talking_points_spotlight.length > 0) {
@@ -2443,7 +2451,8 @@ export async function generateMultiSpeakerReport(
       true,
       quarter,
       allPodcastsForLookingAhead,
-      quarterlyNotes
+      quarterlyNotes,
+      sov_analysis?.competitors?.map(c => ({ name: c.name, interview_count: c.interview_count, episode_urls: c.episode_urls }))
     );
     
     if (aiLookingAhead.speaker_talking_points_spotlight && aiLookingAhead.speaker_talking_points_spotlight.length > 0) {
