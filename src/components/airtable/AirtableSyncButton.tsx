@@ -29,7 +29,7 @@ export function AirtableSyncButton({
   size = 'default',
 }: AirtableSyncButtonProps) {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
-  const { connection, hasConnection, isSyncing, syncData } = useAirtableConnection({
+  const { connection, hasConnection, isSyncing, syncData, refreshConnection } = useAirtableConnection({
     companyId,
     speakerId,
   });
