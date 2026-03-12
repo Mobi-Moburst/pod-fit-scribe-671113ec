@@ -119,6 +119,7 @@ export default function Reports() {
   const [bookedDialogOpen, setBookedDialogOpen] = useState(false);
   const [publishedDialogOpen, setPublishedDialogOpen] = useState(false);
   const [recordedDialogOpen, setRecordedDialogOpen] = useState(false);
+  const [introCallsDialogOpen, setIntroCallsDialogOpen] = useState(false);
   const [highlightsDialogOpen, setHighlightsDialogOpen] = useState(false);
   const [campaignOverviewEditOpen, setCampaignOverviewEditOpen] = useState(false);
   const [nextQuarterEditOpen, setNextQuarterEditOpen] = useState(false);
