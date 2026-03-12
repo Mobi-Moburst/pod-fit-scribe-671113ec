@@ -107,6 +107,7 @@ export default function Reports() {
   const [allReportsSearchQuery, setAllReportsSearchQuery] = useState('');
   const [allReportsExpanded, setAllReportsExpanded] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const [selectedCampaignManager, setSelectedCampaignManager] = useState<string>('');
   const [dataSourcesOpen, setDataSourcesOpen] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
