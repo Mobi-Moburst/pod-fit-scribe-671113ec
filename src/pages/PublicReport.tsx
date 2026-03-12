@@ -187,6 +187,7 @@ export default function PublicReport() {
         nextQuarterStrategy: true,
         targetPodcasts: true,
         contentGapRecommendations: true,
+        airtableEmbed: !!reportData.client?.airtable_embed_url,
         highlights: !!(reportData.highlight_clips && reportData.highlight_clips.length > 0),
         // Auto-detect additional metrics based on data presence
         emv: ((reportData.kpis?.total_emv || 0) > 0) || (reportData.podcasts?.some(p => p.true_emv && p.true_emv > 0)) || false,
