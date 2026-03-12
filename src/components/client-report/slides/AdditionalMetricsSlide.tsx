@@ -52,21 +52,41 @@ export const AdditionalMetricsSlide = ({
   onContentGapClick,
   onSocialValueClick,
 }: AdditionalMetricsSlideProps) => {
-  const metrics = [];
+  const metrics: Array<{
+    label: string;
+    value: string;
+    subtitle: string;
+    icon: typeof DollarSign;
+    color: string;
+    onClick?: () => void;
+  }> = [];
+
+  const totalEmv = reportData.kpis?.total_emv || reportData.podcasts?.reduce((sum, p) => sum + (p.true_emv || 0), 0) || 0;
+  const totalSocialReach = reportData.kpis?.total_social_reach || 0;
+  const totalSocialValue = totalSocialReach > 0 ? calculateTotalSocialValue(totalSocialReach) : 0;
+
+  // Total Campaign Value (rollup)
+  if (visibleSections.emv && visibleSections.socialValue && totalEmv > 0 && totalSocialReach > 0) {
+    const totalCampaignValue = totalEmv + totalSocialValue;
+    metrics.push({
+      label: "Total Campaign Value",
+      value: formatCurrency(totalCampaignValue),
+      subtitle: "EMV + Social Value combined",
+      icon: TrendingUp,
+      color: "hsl(var(--primary))",
+    });
+  }
 
   // EMV
-  if (visibleSections.emv) {
-    const totalEmv = reportData.podcasts?.reduce((sum, p) => sum + (p.true_emv || 0), 0) || 0;
-    if (totalEmv > 0) {
-      metrics.push({
-        label: "Earned Media Value",
-        value: formatCurrency(totalEmv),
-        subtitle: "Total campaign value",
-        icon: DollarSign,
-        color: "hsl(142 76% 36%)",
-        onClick: onEmvClick,
-      });
-    }
+  if (visibleSections.emv && totalEmv > 0) {
+    metrics.push({
+      label: "Earned Media Value",
+      value: formatCurrency(totalEmv),
+      subtitle: "Total campaign EMV",
+      icon: DollarSign,
+      color: "hsl(142 76% 36%)",
+      onClick: onEmvClick,
+    });
   }
 
   // SOV
