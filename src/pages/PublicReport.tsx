@@ -44,6 +44,7 @@ interface VisibleSections {
   nextQuarterStrategy?: boolean;
   targetPodcasts?: boolean;
   contentGapRecommendations?: boolean;
+  airtableEmbed?: boolean;
   highlights?: boolean;
 }
 
