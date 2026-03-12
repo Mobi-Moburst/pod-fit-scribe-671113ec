@@ -2234,54 +2234,132 @@ export default function Reports() {
                 </div>
               )}
 
-              {/* ── Section 4: Data Sources (collapsible) ── */}
+              {/* ── Section 4: Data Sources (progressive) ── */}
               {(selectedSpeakerId || (isMultiSpeakerMode && selectedSpeakerIds.length >= 2)) && dateRangeStart && dateRangeEnd && (
-                <Collapsible open={dataSourcesOpen} onOpenChange={setDataSourcesOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full text-left group">
-                    <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground cursor-pointer">Data Sources</Label>
-                    <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${dataSourcesOpen ? 'rotate-90' : ''}`} />
-                    {/* Status indicators */}
-                    {!dataSourcesOpen && (
-                      <div className="flex items-center gap-1.5 ml-auto">
-                        {(airtableSyncedData || airtableFile || Object.values(speakerSyncedData).some(Boolean)) && (
-                          <span className="w-2 h-2 rounded-full bg-green-500" title="Airtable data ready" />
-                        )}
-                        {(batchFile || geoFile || contentGapFile) && (
-                          <span className="w-2 h-2 rounded-full bg-green-500" title="CSV data uploaded" />
-                        )}
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Data Sources</Label>
+
+                  {/* Step 4a: Airtable (Required) */}
+                  {isMultiSpeakerMode && selectedSpeakerIds.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs font-medium">Airtable Data</Label>
+                        <Badge variant="secondary" className="text-[10px]">Required</Badge>
                       </div>
-                    )}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4 space-y-4">
-                    {/* Multi-speaker per-speaker CSV uploads */}
-                    {isMultiSpeakerMode && selectedSpeakerIds.length > 0 && (
-                      <div className="space-y-3">
-                        <Label className="text-xs font-medium text-muted-foreground">Per-Speaker Data</Label>
-                        {selectedSpeakerIds.map(speakerId => {
-                          const speaker = speakers.find(s => s.id === speakerId);
-                          const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
-                          const syncedData = speakerSyncedData[speakerId];
-                          const isExpanded = speakerFileExpanded[speakerId] ?? true;
-                          const hasAirtableData = !!syncedData || !!files.airtableFile;
-                          const isReady = files.batchFile && hasAirtableData;
-                          
-                          return (
-                            <Collapsible key={speakerId} open={isExpanded} onOpenChange={(open) => setSpeakerFileExpanded(prev => ({ ...prev, [speakerId]: open }))}>
-                              <div className="border border-border/60 rounded-lg">
-                                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 rounded-t-lg">
-                                  <div className="flex items-center gap-2">
-                                    {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                                    <span className="text-sm font-medium">{speaker?.name}</span>
-                                    {isReady ? (
-                                      <span className="w-2 h-2 rounded-full bg-green-500" />
-                                    ) : (
-                                      <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-                                    )}
-                                  </div>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="px-3 pb-3 space-y-3">
-                                  <div>
-                                    <Label className="text-xs">Rephonic CSV</Label>
+                      {selectedSpeakerIds.map(speakerId => {
+                        const speaker = speakers.find(s => s.id === speakerId);
+                        const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
+                        const syncedData = speakerSyncedData[speakerId];
+                        const hasAirtableData = !!syncedData;
+                        
+                        return (
+                          <div key={speakerId} className="border border-border/60 rounded-lg p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">{speaker?.name}</span>
+                                {hasAirtableData ? (
+                                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                                ) : (
+                                  <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                                )}
+                              </div>
+                              <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
+                                {syncedData ? `Synced (${syncedData.length})` : "Required"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <AirtableSyncButton
+                                companyId={selectedCompanyId || undefined}
+                                speakerId={speakerId}
+                                entityName={speaker?.name || 'Speaker'}
+                                dateRangeStart={dateRangeStart}
+                                dateRangeEnd={dateRangeEnd}
+                                onDataSynced={(data) => {
+                                  setSpeakerSyncedData(prev => ({ ...prev, [speakerId]: data }));
+                                  setSpeakerFiles(prev => ({ ...prev, [speakerId]: { ...prev[speakerId], airtableFile: null } }));
+                                }}
+                                variant="inline"
+                                size="sm"
+                              />
+                              {syncedData && (
+                                <Button variant="ghost" size="sm" onClick={() => setSpeakerSyncedData(prev => ({ ...prev, [speakerId]: null }))} title="Clear synced data">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            {syncedData && <AirtableDataPreview data={syncedData} />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs font-medium">Airtable Data</Label>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {airtableSyncedData ? `Synced (${airtableSyncedData.length})` : "Required"}
+                        </Badge>
+                      </div>
+                      {airtableSyncedData ? (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
+                          <Check className="h-4 w-4 text-green-500 shrink-0" />
+                          <span className="text-sm font-medium flex-1">Airtable synced ({airtableSyncedData.length} records)</span>
+                          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setAirtableSyncedData(null)}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <AirtableSyncButton
+                            key={`sync-${connectionVersion}`}
+                            companyId={selectedCompanyId || undefined}
+                            speakerId={selectedSpeakerId || undefined}
+                            entityName={speakerAsClient?.name || 'Speaker'}
+                            dateRangeStart={dateRangeStart}
+                            dateRangeEnd={dateRangeEnd}
+                            onDataSynced={(data) => { setAirtableSyncedData(data); setAirtableFile(null); }}
+                            variant="inline"
+                            size="sm"
+                          />
+                          <Button variant="ghost" size="sm" onClick={() => setAirtableConnectionDialogOpen(true)} title="Configure Airtable connection">
+                            <Link2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {airtableSyncedData && <AirtableDataPreview data={airtableSyncedData} />}
+                    </div>
+                  )}
+
+                  {/* Step 4b: Rephonic CSV (shows after Airtable is synced) */}
+                  {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs font-medium">Rephonic CSV</Label>
+                        <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
+                          {batchFile ? "Uploaded" : "Optional"}
+                        </Badge>
+                      </div>
+                      {batchFile ? (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
+                          <Check className="h-4 w-4 text-green-500 shrink-0" />
+                          <span className="text-sm flex-1 truncate">{batchFile.name}</span>
+                          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setBatchFile(null)}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          {isMultiSpeakerMode ? (
+                            <div className="space-y-2">
+                              {selectedSpeakerIds.map(speakerId => {
+                                const speaker = speakers.find(s => s.id === speakerId);
+                                const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
+                                return (
+                                  <div key={speakerId} className="border border-border/60 rounded-lg p-3 space-y-1.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-medium">{speaker?.name}</span>
+                                      {files.batchFile && <span className="w-2 h-2 rounded-full bg-green-500" />}
+                                    </div>
                                     <Input
                                       type="file"
                                       accept=".csv"
@@ -2293,298 +2371,238 @@ export default function Reports() {
                                         }));
                                       }}
                                     />
-                                    {files.batchFile && <p className="text-xs text-muted-foreground mt-1">{files.batchFile.name}</p>}
-                                    <p className="text-xs text-muted-foreground mt-1">Auto-fetch coming soon. Please upload List CSV from Rephonic.</p>
+                                    {files.batchFile && <p className="text-xs text-muted-foreground">{files.batchFile.name}</p>}
                                   </div>
-                                  
-                                  <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <Label className="text-xs">Airtable Data *</Label>
-                                      <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
-                                        {syncedData ? `Synced (${syncedData.length})` : files.airtableFile ? "CSV" : "Required"}
-                                      </Badge>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <AirtableSyncButton
-                                        companyId={selectedCompanyId || undefined}
-                                        speakerId={speakerId}
-                                        entityName={speaker?.name || 'Speaker'}
-                                        dateRangeStart={dateRangeStart}
-                                        dateRangeEnd={dateRangeEnd}
-                                        onDataSynced={(data) => {
-                                          setSpeakerSyncedData(prev => ({ ...prev, [speakerId]: data }));
-                                          setSpeakerFiles(prev => ({ ...prev, [speakerId]: { ...prev[speakerId], airtableFile: null } }));
-                                        }}
-                                        variant="inline"
-                                        size="sm"
-                                      />
-                                      {syncedData && (
-                                        <Button variant="ghost" size="sm" onClick={() => setSpeakerSyncedData(prev => ({ ...prev, [speakerId]: null }))} title="Clear synced data">
-                                          <X className="h-4 w-4" />
-                                        </Button>
-                                      )}
-                                    </div>
-                                    {syncedData && <AirtableDataPreview data={syncedData} />}
-                                    
-                                  </div>
-                                </CollapsibleContent>
-                              </div>
-                            </Collapsible>
-                          );
-                        })}
-                      </div>
-                    )}
-                    
-                    {/* Single-speaker CSV uploads */}
-                    {!isMultiSpeakerMode && (
-                      <>
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Label className="text-xs">Rephonic CSV</Label>
-                            <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
-                              {batchFile ? "Uploaded" : "Optional"}
-                            </Badge>
-                          </div>
-                          <Input type="file" accept=".csv" onChange={(e) => setBatchFile(e.target.files?.[0] || null)} />
-                          {batchFile && <p className="text-xs text-muted-foreground mt-1">{batchFile.name}</p>}
-                          <p className="text-xs text-muted-foreground mt-1">Auto-fetch coming soon. Please upload List CSV from Rephonic.</p>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Label className="text-xs">Airtable Data *</Label>
-                            <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
-                              {airtableSyncedData ? `Synced (${airtableSyncedData.length})` : airtableFile ? "CSV Uploaded" : "Required"}
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 mb-2">
-                            <AirtableSyncButton
-                              key={`sync-${connectionVersion}`}
-                              companyId={selectedCompanyId || undefined}
-                              speakerId={selectedSpeakerId || undefined}
-                              entityName={speakerAsClient?.name || 'Speaker'}
-                              dateRangeStart={dateRangeStart}
-                              dateRangeEnd={dateRangeEnd}
-                              onDataSynced={(data) => { setAirtableSyncedData(data); setAirtableFile(null); }}
-                              variant="inline"
-                              size="sm"
-                            />
-                            <Button variant="ghost" size="sm" onClick={() => setAirtableConnectionDialogOpen(true)} title="Configure Airtable connection">
-                              <Link2 className="h-4 w-4" />
-                            </Button>
-                            {airtableSyncedData && (
-                              <Button variant="ghost" size="sm" onClick={() => setAirtableSyncedData(null)} title="Clear synced data">
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                          {airtableSyncedData && <AirtableDataPreview data={airtableSyncedData} />}
-                          
-                        </div>
-                      </>
-                    )}
-
-                    {/* Company-level CSVs (shared) */}
-                    <div className="pt-3 border-t border-border/40">
-                      <Label className="text-xs font-medium text-muted-foreground mb-3 block">{isMultiSpeakerMode ? 'Company-Level Data (Shared)' : 'Optional Data'}</Label>
-                      
-                      {/* SOV/Peer Comparison */}
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Label className="text-xs font-medium">Peer Comparison</Label>
-                            <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
-                              {manualSOVMode && competitorInterviews.some(c => c.count > 0) ? "Manual Entry" : "Optional"}
-                            </Badge>
-                          </div>
-                          {manualSOVMode && competitorInterviews.length > 0 && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={autoFetchPeerComparison}
-                              disabled={isFetchingSOV || !dateRangeStart || !dateRangeEnd}
-                            >
-                              {isFetchingSOV ? (
-                                <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Fetching...</>
-                              ) : (
-                                <><RefreshCw className="h-3 w-3 mr-1" />Auto-Fetch</>
-                              )}
-                            </Button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <>
+                              <Input type="file" accept=".csv" onChange={(e) => setBatchFile(e.target.files?.[0] || null)} />
+                              <p className="text-xs text-muted-foreground">Upload List CSV from Rephonic for enhanced metrics.</p>
+                            </>
                           )}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 4c: Peer Comparison (shows after Airtable) */}
+                  {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs font-medium">Peer Comparison</Label>
+                          <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
+                            {manualSOVMode && competitorInterviews.some(c => c.count > 0) ? "Manual Entry" : "Optional"}
+                          </Badge>
                         </div>
-                        
-                        {manualSOVMode && competitorInterviews.length > 0 ? (
-                          <div className="space-y-2">
-                            <p className="text-xs text-muted-foreground">
-                              Use "Auto-Fetch" to populate counts, or enter manually.
-                            </p>
-                            {sovFetchError && (
-                              <p className="text-xs text-destructive flex items-center gap-1">
-                                <AlertTriangle className="h-3 w-3" />{sovFetchError}
-                              </p>
+                        {manualSOVMode && competitorInterviews.length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={autoFetchPeerComparison}
+                            disabled={isFetchingSOV || !dateRangeStart || !dateRangeEnd}
+                          >
+                            {isFetchingSOV ? (
+                              <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Fetching...</>
+                            ) : (
+                              <><RefreshCw className="h-3 w-3 mr-1" />Auto-Fetch</>
                             )}
-                            {competitorInterviews.map((comp, index) => (
-                              <div key={index} className="space-y-1.5">
-                                <div className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-xs truncate">{comp.name}</p>
-                                    <p className="text-[11px] text-muted-foreground truncate">{comp.role}</p>
-                                  </div>
-                                  <Input type="number" min="0" className="w-16 h-7 text-xs" placeholder="0" value={comp.count || ''} onChange={(e) => updateCompetitorCount(index, parseInt(e.target.value) || 0)} />
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyListenNotesURL(comp.name)} title="Copy ListenNotes URL">
-                                    <Clipboard className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0"
-                                    onClick={() => setExpandedCompetitorEpisodes(prev => ({ ...prev, [index]: !prev[index] }))}
-                                    title={expandedCompetitorEpisodes[index] ? "Hide episode URLs" : "Add episode URLs"}
-                                  >
-                                    {expandedCompetitorEpisodes[index] ? <ChevronDown className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                                  </Button>
-                                </div>
-                                {expandedCompetitorEpisodes[index] && (
-                                  <div className="ml-4 space-y-1.5">
-                                    {/* Show fetched episode metadata */}
-                                    {(comp.episodes || []).length > 0 && (
-                                      <div className="space-y-1">
-                                        {comp.episodes!.map((ep, epIdx) => (
-                                          <div key={epIdx} className="bg-muted/30 rounded-md p-2 space-y-0.5">
-                                            <p className="text-xs font-medium text-foreground leading-tight">{ep.podcast_name || 'Unknown Podcast'}</p>
-                                            <p className="text-[11px] text-muted-foreground leading-tight">{ep.title || 'Untitled Episode'}</p>
-                                            {ep.air_date && (
-                                              <p className="text-[10px] text-muted-foreground/70">{ep.air_date}</p>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                    {/* URL inputs */}
-                                    {(comp.episodeUrls || []).map((url, urlIdx) => (
-                                      <div key={urlIdx} className="flex items-center gap-1.5">
-                                        <Input
-                                          className="h-7 text-xs flex-1"
-                                          placeholder="Paste episode URL..."
-                                          value={url}
-                                          onChange={(e) => {
-                                            setCompetitorInterviews(prev => prev.map((c, i) => {
-                                              if (i !== index) return c;
-                                              const urls = [...(c.episodeUrls || [])];
-                                              urls[urlIdx] = e.target.value;
-                                              return { ...c, episodeUrls: urls };
-                                            }));
-                                          }}
-                                        />
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                                          onClick={() => {
-                                            setCompetitorInterviews(prev => prev.map((c, i) => {
-                                              if (i !== index) return c;
-                                              const urls = (c.episodeUrls || []).filter((_, j) => j !== urlIdx);
-                                              return { ...c, episodeUrls: urls };
-                                            }));
-                                          }}
-                                        >
-                                          <X className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    ))}
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-6 text-[10px] gap-1"
-                                        onClick={() => {
-                                          setCompetitorInterviews(prev => prev.map((c, i) => {
-                                            if (i !== index) return c;
-                                            return { ...c, episodeUrls: [...(c.episodeUrls || []), ''] };
-                                          }));
-                                        }}
-                                      >
-                                        <Plus className="h-3 w-3" />
-                                        Add URL
-                                      </Button>
-                                      {(comp.episodeUrls || []).some(u => u.trim()) && (
-                                        <Button
-                                          variant="secondary"
-                                          size="sm"
-                                          className="h-6 text-[10px] gap-1"
-                                          disabled={fetchingEpisodeMetadata[index]}
-                                          onClick={async () => {
-                                            const urls = (comp.episodeUrls || []).filter(u => u.trim());
-                                            if (urls.length === 0) return;
-                                            setFetchingEpisodeMetadata(prev => ({ ...prev, [index]: true }));
-                                            try {
-                                              const { data, error } = await supabase.functions.invoke('scrape-episode-metadata', {
-                                                body: { urls },
-                                              });
-                                              if (error) throw error;
-                                              if (data?.success && data.episodes) {
-                                                setCompetitorInterviews(prev => prev.map((c, i) => {
-                                                  if (i !== index) return c;
-                                                  const episodes = data.episodes.map((ep: any) => ({
-                                                    title: ep.episode_title || '',
-                                                    podcast_name: ep.podcast_name || '',
-                                                    air_date: ep.air_date || '',
-                                                    role: c.role || '',
-                                                  }));
-                                                  return { ...c, episodes, episodeUrls: [] };
-                                                }));
-                                                toast({ title: 'Episode info fetched', description: `Found metadata for ${data.episodes.length} episodes.` });
-                                              }
-                                            } catch (err) {
-                                              console.error('Error fetching episode metadata:', err);
-                                              toast({ title: 'Fetch failed', description: 'Could not scrape episode metadata.', variant: 'destructive' });
-                                            } finally {
-                                              setFetchingEpisodeMetadata(prev => ({ ...prev, [index]: false }));
-                                            }
-                                          }}
-                                        >
-                                          {fetchingEpisodeMetadata[index] ? (
-                                            <><Loader2 className="h-3 w-3 animate-spin" />Fetching...</>
-                                          ) : (
-                                            <><Search className="h-3 w-3" />Fetch Info</>
-                                          )}
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            No competitors defined. Add competitors to the speaker profile to enable peer comparison.
-                          </p>
+                          </Button>
                         )}
                       </div>
                       
-                      {/* GEO */}
-                      <div className="mb-3">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Label className="text-xs">GEO CSV</Label>
+                      {manualSOVMode && competitorInterviews.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">
+                            Use "Auto-Fetch" to populate counts, or enter manually.
+                          </p>
+                          {sovFetchError && (
+                            <p className="text-xs text-destructive flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />{sovFetchError}
+                            </p>
+                          )}
+                          {competitorInterviews.map((comp, index) => (
+                            <div key={index} className="space-y-1.5">
+                              <div className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-xs truncate">{comp.name}</p>
+                                  <p className="text-[11px] text-muted-foreground truncate">{comp.role}</p>
+                                </div>
+                                <Input type="number" min="0" className="w-16 h-7 text-xs" placeholder="0" value={comp.count || ''} onChange={(e) => updateCompetitorCount(index, parseInt(e.target.value) || 0)} />
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyListenNotesURL(comp.name)} title="Copy ListenNotes URL">
+                                  <Clipboard className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => setExpandedCompetitorEpisodes(prev => ({ ...prev, [index]: !prev[index] }))}
+                                  title={expandedCompetitorEpisodes[index] ? "Hide episode URLs" : "Add episode URLs"}
+                                >
+                                  {expandedCompetitorEpisodes[index] ? <ChevronDown className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                                </Button>
+                              </div>
+                              {expandedCompetitorEpisodes[index] && (
+                                <div className="ml-4 space-y-1.5">
+                                  {(comp.episodes || []).length > 0 && (
+                                    <div className="space-y-1">
+                                      {comp.episodes!.map((ep, epIdx) => (
+                                        <div key={epIdx} className="bg-muted/30 rounded-md p-2 space-y-0.5">
+                                          <p className="text-xs font-medium text-foreground leading-tight">{ep.podcast_name || 'Unknown Podcast'}</p>
+                                          <p className="text-[11px] text-muted-foreground leading-tight">{ep.title || 'Untitled Episode'}</p>
+                                          {ep.air_date && (
+                                            <p className="text-[10px] text-muted-foreground/70">{ep.air_date}</p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {(comp.episodeUrls || []).map((url, urlIdx) => (
+                                    <div key={urlIdx} className="flex items-center gap-1.5">
+                                      <Input
+                                        className="h-7 text-xs flex-1"
+                                        placeholder="Paste episode URL..."
+                                        value={url}
+                                        onChange={(e) => {
+                                          setCompetitorInterviews(prev => prev.map((c, i) => {
+                                            if (i !== index) return c;
+                                            const urls = [...(c.episodeUrls || [])];
+                                            urls[urlIdx] = e.target.value;
+                                            return { ...c, episodeUrls: urls };
+                                          }));
+                                        }}
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                        onClick={() => {
+                                          setCompetitorInterviews(prev => prev.map((c, i) => {
+                                            if (i !== index) return c;
+                                            const urls = (c.episodeUrls || []).filter((_, j) => j !== urlIdx);
+                                            return { ...c, episodeUrls: urls };
+                                          }));
+                                        }}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 text-[10px] gap-1"
+                                      onClick={() => {
+                                        setCompetitorInterviews(prev => prev.map((c, i) => {
+                                          if (i !== index) return c;
+                                          return { ...c, episodeUrls: [...(c.episodeUrls || []), ''] };
+                                        }));
+                                      }}
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                      Add URL
+                                    </Button>
+                                    {(comp.episodeUrls || []).some(u => u.trim()) && (
+                                      <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        className="h-6 text-[10px] gap-1"
+                                        disabled={fetchingEpisodeMetadata[index]}
+                                        onClick={async () => {
+                                          const urls = (comp.episodeUrls || []).filter(u => u.trim());
+                                          if (urls.length === 0) return;
+                                          setFetchingEpisodeMetadata(prev => ({ ...prev, [index]: true }));
+                                          try {
+                                            const { data, error } = await supabase.functions.invoke('scrape-episode-metadata', {
+                                              body: { urls },
+                                            });
+                                            if (error) throw error;
+                                            if (data?.success && data.episodes) {
+                                              setCompetitorInterviews(prev => prev.map((c, i) => {
+                                                if (i !== index) return c;
+                                                const episodes = data.episodes.map((ep: any) => ({
+                                                  title: ep.episode_title || '',
+                                                  podcast_name: ep.podcast_name || '',
+                                                  air_date: ep.air_date || '',
+                                                  role: c.role || '',
+                                                }));
+                                                return { ...c, episodes, episodeUrls: [] };
+                                              }));
+                                              toast({ title: 'Episode info fetched', description: `Found metadata for ${data.episodes.length} episodes.` });
+                                            }
+                                          } catch (err) {
+                                            console.error('Error fetching episode metadata:', err);
+                                            toast({ title: 'Fetch failed', description: 'Could not scrape episode metadata.', variant: 'destructive' });
+                                          } finally {
+                                            setFetchingEpisodeMetadata(prev => ({ ...prev, [index]: false }));
+                                          }
+                                        }}
+                                      >
+                                        {fetchingEpisodeMetadata[index] ? (
+                                          <><Loader2 className="h-3 w-3 animate-spin" />Fetching...</>
+                                        ) : (
+                                          <><Search className="h-3 w-3" />Fetch Info</>
+                                        )}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          No competitors defined. Add competitors to the speaker profile to enable peer comparison.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 4d: GEO & Content Gap (shows after Airtable) */}
+                  {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs font-medium">GEO CSV</Label>
                           <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{geoFile ? "Uploaded" : "Optional"}</Badge>
                         </div>
-                        <Input type="file" accept=".csv" onChange={(e) => setGeoFile(e.target.files?.[0] || null)} />
+                        {geoFile ? (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
+                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                            <span className="text-xs flex-1 truncate">{geoFile.name}</span>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setGeoFile(null)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Input type="file" accept=".csv" onChange={(e) => setGeoFile(e.target.files?.[0] || null)} />
+                        )}
                       </div>
-                      
-                      {/* Content Gap */}
-                      <div className="mb-3">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Label className="text-xs">Content Gap CSV</Label>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs font-medium">Content Gap CSV</Label>
                           <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{contentGapFile ? "Uploaded" : "Optional"}</Badge>
                         </div>
-                        <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
+                        {contentGapFile ? (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
+                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                            <span className="text-xs flex-1 truncate">{contentGapFile.name}</span>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setContentGapFile(null)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
+                        )}
                       </div>
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                  )}
+                </div>
               )}
 
               {/* ── Advanced Settings ── */}
