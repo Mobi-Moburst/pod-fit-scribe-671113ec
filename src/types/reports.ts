@@ -180,6 +180,7 @@ export interface ReportData {
       peer_reason?: string;
       linkedin_url?: string;
       interview_count: number;
+      episode_urls?: string[];
       episodes?: Array<{
         title: string;
         podcast_name: string;
