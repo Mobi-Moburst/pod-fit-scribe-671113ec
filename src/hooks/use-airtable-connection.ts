@@ -112,21 +112,51 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
         ...data,
       };
 
-      if (connection) {
-        // Update existing
+      // Find existing connection(s) for this exact scope and keep only one canonical row
+      let existingQuery = supabase
+        .from('airtable_connections')
+        .select('id')
+        .eq('org_id', TEAM_ORG_ID)
+        .order('updated_at', { ascending: false })
+        .limit(50);
+
+      existingQuery = speakerId ? existingQuery.eq('speaker_id', speakerId) : existingQuery.is('speaker_id', null);
+      existingQuery = companyId ? existingQuery.eq('company_id', companyId) : existingQuery.is('company_id', null);
+
+      const { data: existingConnections, error: existingError } = await existingQuery;
+      if (existingError) throw existingError;
+
+      const primaryConnection = existingConnections?.[0];
+
+      if (primaryConnection) {
+        // Update most recent row
         const { error } = await supabase
           .from('airtable_connections')
           .update(payload)
-          .eq('id', connection.id);
-        
+          .eq('id', primaryConnection.id);
+
         if (error) throw error;
+
+        // Clean up accidental duplicates for this same scope
+        if (existingConnections.length > 1) {
+          const duplicateIds = existingConnections.slice(1).map((row) => row.id);
+          const { error: deleteDuplicatesError } = await supabase
+            .from('airtable_connections')
+            .delete()
+            .in('id', duplicateIds);
+
+          if (deleteDuplicatesError) {
+            console.warn('Failed to clean duplicate Airtable connections:', deleteDuplicatesError);
+          }
+        }
+
         toast({ title: 'Connection updated' });
       } else {
-        // Create new
+        // Create new scoped connection
         const { error } = await supabase
           .from('airtable_connections')
           .insert([payload]);
-        
+
         if (error) throw error;
         toast({ title: 'Airtable connected', description: 'You can now sync data directly from Airtable.' });
       }
