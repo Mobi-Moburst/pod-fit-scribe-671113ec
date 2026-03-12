@@ -45,42 +45,46 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
   const fetchConnection = useCallback(async () => {
     if (!companyId && !speakerId) {
       setConnection(null);
-      return;
+      return null;
     }
 
     setIsLoading(true);
     try {
       let foundConnection: AirtableConnection | null = null;
 
-      // If speakerId provided, first try speaker-specific connection
+      // If speakerId provided, first try speaker-specific connection (pick most recently updated)
       if (speakerId) {
-        const { data: speakerConn, error: speakerErr } = await supabase
+        const { data: speakerConnections, error: speakerErr } = await supabase
           .from('airtable_connections')
           .select('*')
           .eq('speaker_id', speakerId)
-          .maybeSingle();
-        
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
         if (speakerErr) throw speakerErr;
-        foundConnection = speakerConn as AirtableConnection | null;
+        foundConnection = (speakerConnections?.[0] as AirtableConnection | undefined) || null;
       }
 
       // Fallback to company-level connection if no speaker connection found
       if (!foundConnection && companyId) {
-        const { data: companyConn, error: companyErr } = await supabase
+        const { data: companyConnections, error: companyErr } = await supabase
           .from('airtable_connections')
           .select('*')
           .eq('company_id', companyId)
           .is('speaker_id', null)
-          .maybeSingle();
-        
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
         if (companyErr) throw companyErr;
-        foundConnection = companyConn as AirtableConnection | null;
+        foundConnection = (companyConnections?.[0] as AirtableConnection | undefined) || null;
       }
 
       setConnection(foundConnection);
+      return foundConnection;
     } catch (error) {
       console.error('Failed to fetch Airtable connection:', error);
       setConnection(null);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -108,21 +112,51 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
         ...data,
       };
 
-      if (connection) {
-        // Update existing
+      // Find existing connection(s) for this exact scope and keep only one canonical row
+      let existingQuery = supabase
+        .from('airtable_connections')
+        .select('id')
+        .eq('org_id', TEAM_ORG_ID)
+        .order('updated_at', { ascending: false })
+        .limit(50);
+
+      existingQuery = speakerId ? existingQuery.eq('speaker_id', speakerId) : existingQuery.is('speaker_id', null);
+      existingQuery = companyId ? existingQuery.eq('company_id', companyId) : existingQuery.is('company_id', null);
+
+      const { data: existingConnections, error: existingError } = await existingQuery;
+      if (existingError) throw existingError;
+
+      const primaryConnection = existingConnections?.[0];
+
+      if (primaryConnection) {
+        // Update most recent row
         const { error } = await supabase
           .from('airtable_connections')
           .update(payload)
-          .eq('id', connection.id);
-        
+          .eq('id', primaryConnection.id);
+
         if (error) throw error;
+
+        // Clean up accidental duplicates for this same scope
+        if (existingConnections.length > 1) {
+          const duplicateIds = existingConnections.slice(1).map((row) => row.id);
+          const { error: deleteDuplicatesError } = await supabase
+            .from('airtable_connections')
+            .delete()
+            .in('id', duplicateIds);
+
+          if (deleteDuplicatesError) {
+            console.warn('Failed to clean duplicate Airtable connections:', deleteDuplicatesError);
+          }
+        }
+
         toast({ title: 'Connection updated' });
       } else {
-        // Create new
+        // Create new scoped connection
         const { error } = await supabase
           .from('airtable_connections')
           .insert([payload]);
-        
+
         if (error) throw error;
         toast({ title: 'Airtable connected', description: 'You can now sync data directly from Airtable.' });
       }
@@ -172,12 +206,17 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
   };
 
   // Sync data from Airtable
-  const syncData = async (options: {
-    dateRangeStart: string;
-    dateRangeEnd: string;
-    speakerName?: string;
-  }): Promise<AirtableCSVRow[] | null> => {
-    if (!connection) {
+  const syncData = async (
+    options: {
+      dateRangeStart: string;
+      dateRangeEnd: string;
+      speakerName?: string;
+    },
+    connectionOverride?: AirtableConnection | null
+  ): Promise<AirtableCSVRow[] | null> => {
+    const activeConnection = connectionOverride ?? connection;
+
+    if (!activeConnection) {
       toast({
         title: 'No Airtable connection',
         description: 'Please set up an Airtable connection first.',
@@ -190,7 +229,7 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
     try {
       const { data, error } = await supabase.functions.invoke('fetch-airtable-data', {
         body: {
-          connection_id: connection.id,
+          connection_id: activeConnection.id,
           date_range_start: options.dateRangeStart,
           date_range_end: options.dateRangeEnd,
           speaker_name: options.speakerName,
