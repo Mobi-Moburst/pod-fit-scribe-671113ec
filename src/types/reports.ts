@@ -168,6 +168,7 @@ export interface ReportData {
   };
   
   podcasts: PodcastReportEntry[];
+  intro_call_podcasts?: PodcastReportEntry[]; // Intro call entries for dialog
   
   // Optional SOV data
   sov_analysis?: {
