@@ -1980,7 +1980,8 @@ export async function generateReportFromMultipleCSVs(
       false,
       quarter,
       sortedPodcasts.map(p => ({ show_title: p.show_title, categories: p.categories, show_notes: p.show_notes })),
-      quarterlyNotes
+      quarterlyNotes,
+      sov_analysis?.competitors?.map(c => ({ name: c.name, interview_count: c.interview_count, episode_urls: c.episode_urls }))
     );
     
     if (aiLookingAhead.talking_points_spotlight && aiLookingAhead.talking_points_spotlight.length > 0) {
