@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ReportData } from "@/types/reports";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Play, AlertCircle, Calendar, Radio, PhoneCall } from "lucide-react";
+import { Play, AlertCircle, Calendar, Radio, PhoneCall, Sparkles } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { BackgroundFX } from "@/components/BackgroundFX";
