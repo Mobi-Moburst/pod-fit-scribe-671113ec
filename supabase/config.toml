@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.generate-campaign-overview]
 verify_jwt = false
+
+[functions.scrape-episode-metadata]
+verify_jwt = false
