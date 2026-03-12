@@ -2334,13 +2334,6 @@ export default function Reports() {
                           </div>
                           {airtableSyncedData && <AirtableDataPreview data={airtableSyncedData} />}
                           
-                          {!airtableSyncedData && (
-                            <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground">Or upload CSV as fallback:</p>
-                              <Input type="file" accept=".csv" onChange={(e) => setAirtableFile(e.target.files?.[0] || null)} />
-                              {airtableFile && <p className="text-xs text-muted-foreground">{airtableFile.name}</p>}
-                            </div>
-                          )}
                         </div>
                       </>
                     )}
