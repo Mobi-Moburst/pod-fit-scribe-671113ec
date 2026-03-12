@@ -2721,7 +2721,17 @@ export default function Reports() {
                     )}
                     {visibleSections.averageScore && (
                       reportData.kpis.avg_score === 0 && reportData.contains_live_scores ? (
-                        <div className="relative rounded-xl border border-border bg-card p-4 flex flex-col items-center justify-center gap-2 min-h-[120px]">
+                        <div className="group relative rounded-xl border border-border bg-card p-4 flex flex-col items-center justify-center gap-2 min-h-[120px]">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSection('averageScore');
+                            }}
+                            className="absolute top-2 right-2 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
+                            title="Hide this metric"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
                           <p className="text-sm font-medium text-foreground">Fit Scores</p>
                           <Button
                             size="sm"
