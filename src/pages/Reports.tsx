@@ -1052,6 +1052,7 @@ export default function Reports() {
         totalBooked: savedSections.totalBooked ?? true,
         totalPublished: savedSections.totalPublished ?? true,
         totalRecorded: savedSections.totalRecorded ?? true,
+        totalIntroCalls: savedSections.totalIntroCalls ?? true,
         socialReach: savedSections.socialReach ?? true,
         totalReach: savedSections.totalReach ?? true,
         averageScore: savedSections.averageScore ?? true,
