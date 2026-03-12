@@ -1,5 +1,6 @@
 import { ReportData } from "@/types/reports";
-import { Calendar, Podcast, Users, TrendingUp, Mic, PhoneCall } from "lucide-react";
+import { Calendar, Podcast, Users, TrendingUp, Mic, PhoneCall, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ClientReportKPIsProps {
   kpis: ReportData["kpis"];
