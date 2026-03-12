@@ -307,6 +307,11 @@ export default function PublicReport() {
           />
         )}
 
+        {/* Airtable Embed */}
+        {visibleSections.airtableEmbed && reportData.client?.airtable_embed_url && (
+          <AirtableEmbed embedUrl={reportData.client.airtable_embed_url} />
+        )}
+
         {/* Interview Highlights */}
         {visibleSections.highlights && reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
           <ClientReportHighlights
