@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 const Index = () => {
-  useEffect(() => { document.title = 'Podcast Qualifying Engine'; }, []);
+  useEffect(() => { document.title = 'Kitcaster Campaign Command Center'; }, []);
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center">
