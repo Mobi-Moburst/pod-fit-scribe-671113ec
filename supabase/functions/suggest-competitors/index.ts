@@ -51,7 +51,8 @@ ${clientContext}
 Return exactly 3 competitors with:
 - name: Full name
 - role: Their title and company
-- peer_reason: 1-2 sentences explaining why they compete for the same SOV`;
+- peer_reason: 1-2 sentences explaining why they compete for the same SOV
+- linkedin_url: Their LinkedIn profile URL (best guess based on your knowledge)`;
 
     console.log('[suggest-competitors] Calling Lovable AI with prompt');
 
