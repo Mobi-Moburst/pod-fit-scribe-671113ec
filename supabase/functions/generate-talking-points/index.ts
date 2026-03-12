@@ -86,6 +86,18 @@ serve(async (req) => {
       ? `\nStrategic Notes from Campaign Manager:\n${quarterly_notes.slice(0, 5).map(n => `- [${n.quarter}] ${n.notes.substring(0, 300)}`).join('\n')}`
       : '';
 
+    // Build competitive landscape context
+    const competitorContext = competitor_data && competitor_data.length > 0
+      ? `\nCompetitive Landscape (Peer Comparison):
+${competitor_data.map(c => {
+  const urlList = c.episode_urls && c.episode_urls.length > 0
+    ? `\n    Episode URLs: ${c.episode_urls.slice(0, 5).join(', ')}`
+    : '';
+  return `- ${c.name}: ${c.interview_count} podcast interviews${urlList}`;
+}).join('\n')}
+Note: Use this peer data to recommend strategies for edging out competitors — e.g., targeting similar podcasts, differentiating messaging, or increasing placement frequency in categories where competitors are active.`
+      : '';
+
     // Build campaign context
     const campaignContext = kpis ? `
 Campaign Performance (${previousQuarter}):
