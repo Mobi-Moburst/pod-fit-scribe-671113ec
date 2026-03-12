@@ -33,7 +33,7 @@ export const PublishedEpisodesSlide = ({ podcasts }: PublishedEpisodesSlideProps
               const { data } = await supabase.functions.invoke('scrape-podcast-cover-art', {
                 body: { apple_podcast_url: url },
               });
-              return { url, art: data?.cover_art_url || null };
+              return { url, art: data?.coverArtUrl ?? data?.cover_art_url ?? null };
             } catch {
               return { url, art: null };
             }
