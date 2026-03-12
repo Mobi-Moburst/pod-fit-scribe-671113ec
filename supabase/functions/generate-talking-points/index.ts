@@ -41,6 +41,8 @@ interface GenerateRequest {
   podcasts?: Array<{ show_title: string; categories?: string; show_notes?: string }>;
   // NEW: strategic quarterly notes from speaker history
   quarterly_notes?: Array<{ quarter: string; notes: string }>;
+  // NEW: competitor/peer data for competitive positioning
+  competitor_data?: Array<{ name: string; interview_count: number; episode_urls?: string[] }>;
 }
 
 serve(async (req) => {
