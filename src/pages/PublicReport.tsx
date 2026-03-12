@@ -5,6 +5,7 @@ import { ReportData } from "@/types/reports";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Play, AlertCircle, Calendar, Radio, PhoneCall } from "lucide-react";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { ClientReportHeader } from "@/components/client-report/ClientReportHeader";
 import { ClientReportKPIs } from "@/components/client-report/ClientReportKPIs";
@@ -249,8 +250,9 @@ export default function PublicReport() {
   return (
     <div className="min-h-screen bg-background relative">
       <BackgroundFX />
-      {/* Fixed Present Button */}
-      <div className="fixed top-6 right-6 z-50">
+      {/* Fixed top-right controls */}
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-2">
+        <ThemeToggle />
         <Button 
           onClick={handlePresent}
           size="lg"

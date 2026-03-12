@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 interface SlideNavigationProps {
   currentSlide: number;
@@ -18,15 +19,18 @@ export const SlideNavigation = ({
 }: SlideNavigationProps) => {
   return (
     <>
-      {/* Exit button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-6 right-6 z-50 bg-background/80 backdrop-blur-sm hover:bg-background"
-        onClick={onExit}
-      >
-        <X className="h-5 w-5" />
-      </Button>
+      {/* Top-right controls */}
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-2">
+        <ThemeToggle />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="bg-background/80 backdrop-blur-sm hover:bg-background"
+          onClick={onExit}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
 
       {/* Navigation arrows */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4">
