@@ -45,42 +45,46 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
   const fetchConnection = useCallback(async () => {
     if (!companyId && !speakerId) {
       setConnection(null);
-      return;
+      return null;
     }
 
     setIsLoading(true);
     try {
       let foundConnection: AirtableConnection | null = null;
 
-      // If speakerId provided, first try speaker-specific connection
+      // If speakerId provided, first try speaker-specific connection (pick most recently updated)
       if (speakerId) {
-        const { data: speakerConn, error: speakerErr } = await supabase
+        const { data: speakerConnections, error: speakerErr } = await supabase
           .from('airtable_connections')
           .select('*')
           .eq('speaker_id', speakerId)
-          .maybeSingle();
-        
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
         if (speakerErr) throw speakerErr;
-        foundConnection = speakerConn as AirtableConnection | null;
+        foundConnection = (speakerConnections?.[0] as AirtableConnection | undefined) || null;
       }
 
       // Fallback to company-level connection if no speaker connection found
       if (!foundConnection && companyId) {
-        const { data: companyConn, error: companyErr } = await supabase
+        const { data: companyConnections, error: companyErr } = await supabase
           .from('airtable_connections')
           .select('*')
           .eq('company_id', companyId)
           .is('speaker_id', null)
-          .maybeSingle();
-        
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
         if (companyErr) throw companyErr;
-        foundConnection = companyConn as AirtableConnection | null;
+        foundConnection = (companyConnections?.[0] as AirtableConnection | undefined) || null;
       }
 
       setConnection(foundConnection);
+      return foundConnection;
     } catch (error) {
       console.error('Failed to fetch Airtable connection:', error);
       setConnection(null);
+      return null;
     } finally {
       setIsLoading(false);
     }
