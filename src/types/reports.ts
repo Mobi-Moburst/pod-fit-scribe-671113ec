@@ -148,6 +148,7 @@ export interface ReportData {
     total_booked: number; // Count with date_booked
     total_published: number; // Count with date_published
     total_recorded?: number; // Count with scheduled_date_time in range
+    total_intro_calls?: number; // Count of 'intro call' actions with scheduled_date_time in range
     
     // Placeholder metrics for future implementation
     total_emv?: number; // Earned Media Value (based on CPM formulas)
