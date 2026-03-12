@@ -5,6 +5,7 @@ import { ReportData } from "@/types/reports";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Play, AlertCircle, Calendar, Radio, PhoneCall } from "lucide-react";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { ClientReportHeader } from "@/components/client-report/ClientReportHeader";
 import { ClientReportKPIs } from "@/components/client-report/ClientReportKPIs";
