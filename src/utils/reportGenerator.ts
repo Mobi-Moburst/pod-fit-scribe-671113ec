@@ -2518,6 +2518,7 @@ function calculateAggregatedKPIs(
   const total_booked = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_booked, 0);
   const total_published = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_published, 0);
   const total_recorded = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_recorded || 0), 0);
+  const total_intro_calls = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_intro_calls || 0), 0);
   const total_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_reach, 0);
   const total_social_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_social_reach, 0);
   const total_emv = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_emv || 0), 0);
