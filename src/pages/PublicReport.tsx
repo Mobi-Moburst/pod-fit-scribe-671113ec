@@ -186,14 +186,16 @@ export default function PublicReport() {
         contentGapRecommendations: true,
         highlights: !!(reportData.highlight_clips && reportData.highlight_clips.length > 0),
         // Auto-detect additional metrics based on data presence
-        emv: (reportData.podcasts?.some(p => p.true_emv && p.true_emv > 0)) || false,
+        emv: ((reportData.kpis?.total_emv || 0) > 0) || (reportData.podcasts?.some(p => p.true_emv && p.true_emv > 0)) || false,
         sov: !!reportData.sov_analysis,
         geoScore: !!reportData.geo_analysis,
         contentGap: !!reportData.content_gap_analysis,
         socialValue: (reportData.kpis?.total_social_reach || 0) > 0,
       };
       
-      setVisibleSections(reportData.visibleSections || dataAwareDefaults);
+      // Merge saved sections with data-aware defaults so new keys are picked up
+      const savedSections = reportData.visibleSections || {};
+      setVisibleSections({ ...dataAwareDefaults, ...savedSections });
       setIsLoading(false);
     };
 
