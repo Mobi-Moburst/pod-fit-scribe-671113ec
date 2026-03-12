@@ -2265,21 +2265,6 @@ export default function Reports() {
                                     </div>
                                     {syncedData && <AirtableDataPreview data={syncedData} />}
                                     
-                                    {!syncedData && (
-                                      <Collapsible>
-                                        <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                                          <ChevronRight className="h-3 w-3" />
-                                          Or upload CSV manually
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent className="pt-2">
-                                          <Input type="file" accept=".csv" onChange={(e) => {
-                                            const file = e.target.files?.[0] || null;
-                                            setSpeakerFiles(prev => ({ ...prev, [speakerId]: { ...prev[speakerId], airtableFile: file } }));
-                                          }} />
-                                          {files.airtableFile && <p className="text-xs text-muted-foreground mt-1">{files.airtableFile.name}</p>}
-                                        </CollapsibleContent>
-                                      </Collapsible>
-                                    )}
                                   </div>
                                 </CollapsibleContent>
                               </div>
