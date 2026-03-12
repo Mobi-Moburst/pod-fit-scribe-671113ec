@@ -74,6 +74,7 @@ export default function Reports() {
   const [airtableFile, setAirtableFile] = useState<File | null>(null);
   const [airtableSyncedData, setAirtableSyncedData] = useState<AirtableCSVRow[] | null>(null);
   const [airtableConnectionDialogOpen, setAirtableConnectionDialogOpen] = useState(false);
+  const [connectionVersion, setConnectionVersion] = useState(0);
   
   // Company-level file uploads (shared for multi-speaker)
   const [sovFile, setSOVFile] = useState<File | null>(null); // kept for backward compat, always null
