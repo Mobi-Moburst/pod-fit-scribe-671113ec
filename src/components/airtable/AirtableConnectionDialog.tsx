@@ -67,6 +67,7 @@ export function AirtableConnectionDialog({
   companyId,
   speakerId,
   entityName,
+  onConnectionSaved,
 }: AirtableConnectionDialogProps) {
   const {
     connection,
