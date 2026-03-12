@@ -331,17 +331,38 @@ export default function ReportPresentation() {
       });
     }
 
-    // Next Quarter Strategy
+    // Next Quarter Strategy - split into 3 slides
     if (visibleSections.nextQuarterStrategy && reportData.next_quarter_strategy) {
+      // Slide 1: Intro + Goals
       slides.push({
-        id: "next-quarter",
+        id: "next-quarter-intro",
         component: (
-          <NextQuarterSlide 
-            strategy={reportData.next_quarter_strategy}
-            reportEndDate={reportData.date_range?.end}
-          />
+          <NextQuarterIntroSlide strategy={reportData.next_quarter_strategy} />
         ),
       });
+
+      // Slide 2: Strategic Focus Areas (only if data exists)
+      if (reportData.next_quarter_strategy.strategic_focus_areas?.length) {
+        slides.push({
+          id: "next-quarter-focus",
+          component: (
+            <NextQuarterFocusAreasSlide strategy={reportData.next_quarter_strategy} />
+          ),
+        });
+      }
+
+      // Slide 3: Talking Points + Closing (only if data exists)
+      const hasTPs = reportData.next_quarter_strategy.talking_points_spotlight?.length ||
+        reportData.next_quarter_strategy.speaker_talking_points_spotlight?.length ||
+        reportData.next_quarter_strategy.closing_paragraph;
+      if (hasTPs) {
+        slides.push({
+          id: "next-quarter-talking-points",
+          component: (
+            <NextQuarterTalkingPointsSlide strategy={reportData.next_quarter_strategy} />
+          ),
+        });
+      }
     }
 
     // Target Podcasts
