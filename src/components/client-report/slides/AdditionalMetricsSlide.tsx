@@ -1,5 +1,5 @@
 import { ReportData } from "@/types/reports";
-import { DollarSign, PieChart, Globe, Target, Share2 } from "lucide-react";
+import { DollarSign, PieChart, Globe, Target, Share2, TrendingUp } from "lucide-react";
 
 // Platform data for social value calculation (allocation and CPM rates)
 const PLATFORM_DATA = {
@@ -52,21 +52,41 @@ export const AdditionalMetricsSlide = ({
   onContentGapClick,
   onSocialValueClick,
 }: AdditionalMetricsSlideProps) => {
-  const metrics = [];
+  const metrics: Array<{
+    label: string;
+    value: string;
+    subtitle: string;
+    icon: typeof DollarSign;
+    color: string;
+    onClick?: () => void;
+  }> = [];
+
+  const totalEmv = reportData.kpis?.total_emv || reportData.podcasts?.reduce((sum, p) => sum + (p.true_emv || 0), 0) || 0;
+  const totalSocialReach = reportData.kpis?.total_social_reach || 0;
+  const totalSocialValue = totalSocialReach > 0 ? calculateTotalSocialValue(totalSocialReach) : 0;
+
+  // Total Campaign Value (rollup)
+  if (visibleSections.emv && visibleSections.socialValue && totalEmv > 0 && totalSocialReach > 0) {
+    const totalCampaignValue = totalEmv + totalSocialValue;
+    metrics.push({
+      label: "Total Campaign Value",
+      value: formatCurrency(totalCampaignValue),
+      subtitle: "EMV + Social Value combined",
+      icon: TrendingUp,
+      color: "hsl(var(--primary))",
+    });
+  }
 
   // EMV
-  if (visibleSections.emv) {
-    const totalEmv = reportData.podcasts?.reduce((sum, p) => sum + (p.true_emv || 0), 0) || 0;
-    if (totalEmv > 0) {
-      metrics.push({
-        label: "Earned Media Value",
-        value: formatCurrency(totalEmv),
-        subtitle: "Total campaign value",
-        icon: DollarSign,
-        color: "hsl(142 76% 36%)",
-        onClick: onEmvClick,
-      });
-    }
+  if (visibleSections.emv && totalEmv > 0) {
+    metrics.push({
+      label: "Earned Media Value",
+      value: formatCurrency(totalEmv),
+      subtitle: "Total campaign EMV",
+      icon: DollarSign,
+      color: "hsl(142 76% 36%)",
+      onClick: onEmvClick,
+    });
   }
 
   // SOV
@@ -109,19 +129,15 @@ export const AdditionalMetricsSlide = ({
   }
 
   // Social Value
-  if (visibleSections.socialValue) {
-    const totalSocialReach = reportData.kpis?.total_social_reach || 0;
-    if (totalSocialReach > 0) {
-      const totalSocialValue = calculateTotalSocialValue(totalSocialReach);
-      metrics.push({
-        label: "Social Value",
-        value: formatCurrency(totalSocialValue),
-        subtitle: "Equivalent ad spend",
-        icon: Share2,
-        color: "hsl(330 81% 60%)",
-        onClick: onSocialValueClick,
-      });
-    }
+  if (visibleSections.socialValue && totalSocialReach > 0) {
+    metrics.push({
+      label: "Social Value",
+      value: formatCurrency(totalSocialValue),
+      subtitle: "Equivalent ad spend",
+      icon: Share2,
+      color: "hsl(330 81% 60%)",
+      onClick: onSocialValueClick,
+    });
   }
 
   if (metrics.length === 0) return null;
@@ -136,28 +152,36 @@ export const AdditionalMetricsSlide = ({
         metrics.length === 3 ? 'grid-cols-3 max-w-4xl mx-auto' :
         'grid-cols-2 md:grid-cols-4'
       }`}>
-        {metrics.map((metric, index) => (
-          <button
-            key={index}
-            onClick={metric.onClick}
-            className="group bg-card border border-border rounded-3xl p-8 space-y-4 transition-all duration-200 hover:scale-[1.03] hover:shadow-xl cursor-pointer text-left"
-          >
-            <div
-              className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
-              style={{ backgroundColor: `${metric.color}15` }}
+        {metrics.map((metric, index) => {
+          const isClickable = !!metric.onClick;
+          const Component = isClickable ? 'button' : 'div';
+          return (
+            <Component
+              key={index}
+              onClick={metric.onClick}
+              className={`group bg-card border border-border rounded-3xl p-8 space-y-4 transition-all duration-200 text-left ${
+                isClickable ? 'hover:scale-[1.03] hover:shadow-xl cursor-pointer' : ''
+              }`}
             >
-              <metric.icon className="h-8 w-8" style={{ color: metric.color }} />
-            </div>
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold">{metric.value}</div>
-              <div className="text-lg text-muted-foreground mt-2">{metric.label}</div>
-              <div className="text-sm text-muted-foreground/70 mt-1">{metric.subtitle}</div>
-            </div>
-            <div className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity text-center">
-              Click for details
-            </div>
-          </button>
-        ))}
+              <div
+                className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
+                style={{ backgroundColor: `${metric.color}15` }}
+              >
+                <metric.icon className="h-8 w-8" style={{ color: metric.color }} />
+              </div>
+              <div className="text-center">
+                <div className="text-4xl md:text-5xl font-bold">{metric.value}</div>
+                <div className="text-lg text-muted-foreground mt-2">{metric.label}</div>
+                <div className="text-sm text-muted-foreground/70 mt-1">{metric.subtitle}</div>
+              </div>
+              {isClickable && (
+                <div className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity text-center">
+                  Click for details
+                </div>
+              )}
+            </Component>
+          );
+        })}
       </div>
     </div>
   );
