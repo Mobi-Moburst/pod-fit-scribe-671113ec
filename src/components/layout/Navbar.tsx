@@ -19,7 +19,7 @@ export const Navbar = () => {
       <div className="container mx-auto flex items-center justify-between h-14 px-3">
         <Link to="/" className="flex items-center gap-2">
           <KitcasterLogo className="h-8 w-auto" />
-          <span className="font-semibold">Podcast Qualifying Engine</span>
+          <span className="font-semibold">Kitcaster Campaign Command Center</span>
         </Link>
 
         <nav className="flex items-center gap-1">
