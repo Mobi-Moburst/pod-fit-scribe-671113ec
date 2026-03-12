@@ -107,6 +107,7 @@ export default function Reports() {
   const [allReportsSearchQuery, setAllReportsSearchQuery] = useState('');
   const [allReportsExpanded, setAllReportsExpanded] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const [selectedCampaignManager, setSelectedCampaignManager] = useState<string>('');
   const [dataSourcesOpen, setDataSourcesOpen] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -283,11 +284,35 @@ export default function Reports() {
     [speakers, selectedCompanyId]
   );
 
+  // Extract unique campaign managers from all companies
+  const campaignManagers = useMemo(() => {
+    const managers = new Set<string>();
+    companies.forEach(c => {
+      if (c.campaign_manager) {
+        c.campaign_manager.split(',').forEach(m => {
+          const trimmed = m.trim();
+          if (trimmed) managers.add(trimmed);
+        });
+      }
+    });
+    return Array.from(managers).sort();
+  }, [companies]);
+
   const filteredCompanies = useMemo(() => {
-    if (!companySearchQuery.trim()) return companies;
-    const q = companySearchQuery.toLowerCase();
-    return companies.filter(c => c.name.toLowerCase().includes(q));
-  }, [companies, companySearchQuery]);
+    let filtered = companies;
+    // Filter by campaign manager
+    if (selectedCampaignManager) {
+      filtered = filtered.filter(c => 
+        c.campaign_manager?.split(',').map(m => m.trim()).includes(selectedCampaignManager)
+      );
+    }
+    // Filter by search query
+    if (companySearchQuery.trim()) {
+      const q = companySearchQuery.toLowerCase();
+      filtered = filtered.filter(c => c.name.toLowerCase().includes(q));
+    }
+    return filtered;
+  }, [companies, companySearchQuery, selectedCampaignManager]);
 
   const speakerAsClient: MinimalClient | null = useMemo(() => {
     if (!selectedSpeaker || !selectedCompany) return null;
@@ -1921,6 +1946,38 @@ export default function Reports() {
               {/* ── Section 1: Company Selection ── */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Company</Label>
+                
+                {/* Campaign Manager Filter */}
+                {campaignManagers.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCampaignManager('')}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        !selectedCampaignManager
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {campaignManagers.map(manager => (
+                      <button
+                        key={manager}
+                        type="button"
+                        onClick={() => setSelectedCampaignManager(manager === selectedCampaignManager ? '' : manager)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          selectedCampaignManager === manager
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        {manager}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -2208,21 +2265,6 @@ export default function Reports() {
                                     </div>
                                     {syncedData && <AirtableDataPreview data={syncedData} />}
                                     
-                                    {!syncedData && (
-                                      <Collapsible>
-                                        <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                                          <ChevronRight className="h-3 w-3" />
-                                          Or upload CSV manually
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent className="pt-2">
-                                          <Input type="file" accept=".csv" onChange={(e) => {
-                                            const file = e.target.files?.[0] || null;
-                                            setSpeakerFiles(prev => ({ ...prev, [speakerId]: { ...prev[speakerId], airtableFile: file } }));
-                                          }} />
-                                          {files.airtableFile && <p className="text-xs text-muted-foreground mt-1">{files.airtableFile.name}</p>}
-                                        </CollapsibleContent>
-                                      </Collapsible>
-                                    )}
                                   </div>
                                 </CollapsibleContent>
                               </div>
@@ -2277,13 +2319,6 @@ export default function Reports() {
                           </div>
                           {airtableSyncedData && <AirtableDataPreview data={airtableSyncedData} />}
                           
-                          {!airtableSyncedData && (
-                            <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground">Or upload CSV as fallback:</p>
-                              <Input type="file" accept=".csv" onChange={(e) => setAirtableFile(e.target.files?.[0] || null)} />
-                              {airtableFile && <p className="text-xs text-muted-foreground">{airtableFile.name}</p>}
-                            </div>
-                          )}
                         </div>
                       </>
                     )}
