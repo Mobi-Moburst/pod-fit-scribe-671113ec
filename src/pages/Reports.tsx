@@ -284,11 +284,35 @@ export default function Reports() {
     [speakers, selectedCompanyId]
   );
 
+  // Extract unique campaign managers from all companies
+  const campaignManagers = useMemo(() => {
+    const managers = new Set<string>();
+    companies.forEach(c => {
+      if (c.campaign_manager) {
+        c.campaign_manager.split(',').forEach(m => {
+          const trimmed = m.trim();
+          if (trimmed) managers.add(trimmed);
+        });
+      }
+    });
+    return Array.from(managers).sort();
+  }, [companies]);
+
   const filteredCompanies = useMemo(() => {
-    if (!companySearchQuery.trim()) return companies;
-    const q = companySearchQuery.toLowerCase();
-    return companies.filter(c => c.name.toLowerCase().includes(q));
-  }, [companies, companySearchQuery]);
+    let filtered = companies;
+    // Filter by campaign manager
+    if (selectedCampaignManager) {
+      filtered = filtered.filter(c => 
+        c.campaign_manager?.split(',').map(m => m.trim()).includes(selectedCampaignManager)
+      );
+    }
+    // Filter by search query
+    if (companySearchQuery.trim()) {
+      const q = companySearchQuery.toLowerCase();
+      filtered = filtered.filter(c => c.name.toLowerCase().includes(q));
+    }
+    return filtered;
+  }, [companies, companySearchQuery, selectedCampaignManager]);
 
   const speakerAsClient: MinimalClient | null = useMemo(() => {
     if (!selectedSpeaker || !selectedCompany) return null;
