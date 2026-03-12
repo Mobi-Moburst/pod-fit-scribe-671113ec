@@ -527,7 +527,8 @@ export async function generateAITalkingPoints(
   isMultiSpeaker: boolean = false,
   reportQuarter?: string, // The quarter the report covers (current/past quarter)
   podcasts?: Array<{ show_title: string; categories?: string; show_notes?: string }>,
-  quarterlyNotes?: Array<{ quarter: string; notes: string }>
+  quarterlyNotes?: Array<{ quarter: string; notes: string }>,
+  competitorData?: Array<{ name: string; interview_count: number; episode_urls?: string[] }>
 ): Promise<{
   talking_points_spotlight?: Array<{ title: string; description: string }>;
   speaker_talking_points_spotlight?: Array<{ speaker_name: string; points: Array<{ title: string; description: string }> }>;
