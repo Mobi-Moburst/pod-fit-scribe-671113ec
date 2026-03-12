@@ -365,6 +365,42 @@ export default function PublicReport() {
           />
         )}
 
+        {/* Content Gap Recommendations (read-only) */}
+        {visibleSections.contentGapRecommendations && reportData.content_gap_analysis?.ai_recommendations && reportData.content_gap_analysis.ai_recommendations.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-2xl font-semibold flex items-center gap-2">
+              <Sparkles className="h-6 w-6 text-accent" />
+              Content Gap Recommendations
+            </h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {reportData.content_gap_analysis.ai_recommendations.map((rec, idx) => (
+                <div key={idx} className="bg-card border border-border rounded-2xl p-6 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="font-semibold text-sm">{rec.title}</h4>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      rec.priority === 'high' ? 'bg-destructive/15 text-destructive' :
+                      rec.priority === 'medium' ? 'bg-accent/15 text-accent-foreground' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {rec.priority}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{rec.description}</p>
+                  {rec.related_topics.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {rec.related_topics.slice(0, 3).map((topic, i) => (
+                        <span key={i} className="text-xs px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Footer */}
         <ClientReportFooter />
       </div>
