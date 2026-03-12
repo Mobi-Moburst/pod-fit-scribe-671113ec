@@ -138,6 +138,7 @@ export default function Reports() {
     totalBooked: true,
     totalPublished: true,
     totalRecorded: true,
+    totalIntroCalls: true,
     socialReach: true,
     totalReach: true,
     averageScore: true,
