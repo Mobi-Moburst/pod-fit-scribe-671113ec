@@ -424,20 +424,38 @@ export function TargetPodcastsSection({
         <div className="space-y-6">
           {podcasts.map((podcast, index) => (
             <div key={index} className="flex gap-4 p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors relative group/item">
-              {/* Individual Regenerate Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  regenerateSinglePodcast(index);
-                }}
-                disabled={regeneratingIndex !== null || isLoading}
-                className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover/item:opacity-100 transition-opacity print:hidden"
-                title="Regenerate this recommendation"
-              >
-                <RefreshCw className={`h-4 w-4 ${regeneratingIndex === index ? 'animate-spin' : ''}`} />
-              </Button>
+              {/* Individual Remove & Regenerate Buttons */}
+              <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity print:hidden">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const updated = podcasts.filter((_, i) => i !== index);
+                    setPodcasts(updated);
+                    onPodcastsGenerated?.(updated);
+                    toast({ title: "Podcast removed", description: `Removed "${podcast.podcast_name}" from the list.` });
+                  }}
+                  disabled={regeneratingIndex !== null || isLoading}
+                  className="h-8 w-8"
+                  title="Remove this podcast"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    regenerateSinglePodcast(index);
+                  }}
+                  disabled={regeneratingIndex !== null || isLoading}
+                  className="h-8 w-8"
+                  title="Regenerate this recommendation"
+                >
+                  <RefreshCw className={`h-4 w-4 ${regeneratingIndex === index ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
 
               {/* Cover Art */}
               <div className="flex-shrink-0">
