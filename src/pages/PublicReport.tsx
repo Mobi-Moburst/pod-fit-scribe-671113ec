@@ -193,7 +193,9 @@ export default function PublicReport() {
         socialValue: (reportData.kpis?.total_social_reach || 0) > 0,
       };
       
-      setVisibleSections(reportData.visibleSections || dataAwareDefaults);
+      // Merge saved sections with data-aware defaults so new keys are picked up
+      const savedSections = reportData.visibleSections || {};
+      setVisibleSections({ ...dataAwareDefaults, ...savedSections });
       setIsLoading(false);
     };
 
