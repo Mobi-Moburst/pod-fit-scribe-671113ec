@@ -140,7 +140,19 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
               </div>
               <div>
                 <div className="text-3xl font-bold">{kpi.value}</div>
-                <div className="text-sm text-muted-foreground">{kpi.label}</div>
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  {kpi.label}
+                  {(kpi as any).tooltip && (
+                    <Tooltip>
+                      <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[220px] text-xs">
+                        {(kpi as any).tooltip}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground mt-1">{kpi.description}</div>
               </div>
             </div>
