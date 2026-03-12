@@ -2351,6 +2351,21 @@ export default function Reports() {
                                 </div>
                                 {expandedCompetitorEpisodes[index] && (
                                   <div className="ml-4 space-y-1.5">
+                                    {/* Show fetched episode metadata */}
+                                    {(comp.episodes || []).length > 0 && (
+                                      <div className="space-y-1">
+                                        {comp.episodes!.map((ep, epIdx) => (
+                                          <div key={epIdx} className="bg-muted/30 rounded-md p-2 space-y-0.5">
+                                            <p className="text-xs font-medium text-foreground leading-tight">{ep.podcast_name || 'Unknown Podcast'}</p>
+                                            <p className="text-[11px] text-muted-foreground leading-tight">{ep.title || 'Untitled Episode'}</p>
+                                            {ep.air_date && (
+                                              <p className="text-[10px] text-muted-foreground/70">{ep.air_date}</p>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {/* URL inputs */}
                                     {(comp.episodeUrls || []).map((url, urlIdx) => (
                                       <div key={urlIdx} className="flex items-center gap-1.5">
                                         <Input
@@ -2382,20 +2397,65 @@ export default function Reports() {
                                         </Button>
                                       </div>
                                     ))}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-6 text-[10px] gap-1"
-                                      onClick={() => {
-                                        setCompetitorInterviews(prev => prev.map((c, i) => {
-                                          if (i !== index) return c;
-                                          return { ...c, episodeUrls: [...(c.episodeUrls || []), ''] };
-                                        }));
-                                      }}
-                                    >
-                                      <Plus className="h-3 w-3" />
-                                      Add URL
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 text-[10px] gap-1"
+                                        onClick={() => {
+                                          setCompetitorInterviews(prev => prev.map((c, i) => {
+                                            if (i !== index) return c;
+                                            return { ...c, episodeUrls: [...(c.episodeUrls || []), ''] };
+                                          }));
+                                        }}
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                        Add URL
+                                      </Button>
+                                      {(comp.episodeUrls || []).some(u => u.trim()) && (
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          className="h-6 text-[10px] gap-1"
+                                          disabled={fetchingEpisodeMetadata[index]}
+                                          onClick={async () => {
+                                            const urls = (comp.episodeUrls || []).filter(u => u.trim());
+                                            if (urls.length === 0) return;
+                                            setFetchingEpisodeMetadata(prev => ({ ...prev, [index]: true }));
+                                            try {
+                                              const { data, error } = await supabase.functions.invoke('scrape-episode-metadata', {
+                                                body: { urls },
+                                              });
+                                              if (error) throw error;
+                                              if (data?.success && data.episodes) {
+                                                setCompetitorInterviews(prev => prev.map((c, i) => {
+                                                  if (i !== index) return c;
+                                                  const episodes = data.episodes.map((ep: any) => ({
+                                                    title: ep.episode_title || '',
+                                                    podcast_name: ep.podcast_name || '',
+                                                    air_date: ep.air_date || '',
+                                                    role: c.role || '',
+                                                  }));
+                                                  return { ...c, episodes, episodeUrls: [] };
+                                                }));
+                                                toast({ title: 'Episode info fetched', description: `Found metadata for ${data.episodes.length} episodes.` });
+                                              }
+                                            } catch (err) {
+                                              console.error('Error fetching episode metadata:', err);
+                                              toast({ title: 'Fetch failed', description: 'Could not scrape episode metadata.', variant: 'destructive' });
+                                            } finally {
+                                              setFetchingEpisodeMetadata(prev => ({ ...prev, [index]: false }));
+                                            }
+                                          }}
+                                        >
+                                          {fetchingEpisodeMetadata[index] ? (
+                                            <><Loader2 className="h-3 w-3 animate-spin" />Fetching...</>
+                                          ) : (
+                                            <><Search className="h-3 w-3" />Fetch Info</>
+                                          )}
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>
