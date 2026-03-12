@@ -28,6 +28,8 @@ import { AirtableDialog } from "@/components/client-report/AirtableDialog";
 interface VisibleSections {
   totalBooked?: boolean;
   totalPublished?: boolean;
+  totalRecorded?: boolean;
+  totalIntroCalls?: boolean;
   socialReach?: boolean;
   totalReach?: boolean;
   averageScore?: boolean;
@@ -154,6 +156,8 @@ export default function ReportPresentation() {
       const dataAwareDefaults: VisibleSections = {
         totalBooked: true,
         totalPublished: true,
+        totalRecorded: (reportData.kpis?.total_recorded ?? 0) > 0,
+        totalIntroCalls: (reportData.kpis?.total_intro_calls ?? 0) > 0,
         socialReach: true,
         totalReach: true,
         averageScore: true,
@@ -207,6 +211,7 @@ export default function ReportPresentation() {
 
     // KPIs slide
     const hasKPIs = visibleSections.totalBooked || visibleSections.totalPublished || 
+      visibleSections.totalRecorded || visibleSections.totalIntroCalls ||
       visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
     if (hasKPIs) {
       slides.push({

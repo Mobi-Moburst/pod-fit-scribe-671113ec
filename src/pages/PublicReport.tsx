@@ -27,6 +27,8 @@ import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
 interface VisibleSections {
   totalBooked?: boolean;
   totalPublished?: boolean;
+  totalRecorded?: boolean;
+  totalIntroCalls?: boolean;
   socialReach?: boolean;
   totalReach?: boolean;
   averageScore?: boolean;
@@ -167,6 +169,8 @@ export default function PublicReport() {
       const dataAwareDefaults: VisibleSections = {
         totalBooked: true,
         totalPublished: true,
+        totalRecorded: (reportData.kpis?.total_recorded ?? 0) > 0,
+        totalIntroCalls: (reportData.kpis?.total_intro_calls ?? 0) > 0,
         socialReach: true,
         totalReach: true,
         averageScore: true,
@@ -229,6 +233,7 @@ export default function PublicReport() {
   }
 
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || 
+    visibleSections.totalRecorded || visibleSections.totalIntroCalls ||
     visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
 
   const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || 

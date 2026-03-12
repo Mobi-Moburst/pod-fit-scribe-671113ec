@@ -1,11 +1,13 @@
 import { ReportData } from "@/types/reports";
-import { Calendar, Podcast, Users, TrendingUp } from "lucide-react";
+import { Calendar, Podcast, Users, TrendingUp, Mic, PhoneCall } from "lucide-react";
 
 interface KPIsSlideProps {
   kpis: ReportData["kpis"];
   visibleSections: {
     totalBooked?: boolean;
     totalPublished?: boolean;
+    totalRecorded?: boolean;
+    totalIntroCalls?: boolean;
     socialReach?: boolean;
     totalReach?: boolean;
     averageScore?: boolean;
@@ -43,6 +45,24 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
       value: kpis.total_published,
       icon: Podcast,
       color: "hsl(var(--accent))",
+    });
+  }
+
+  if (visibleSections.totalRecorded && (kpis.total_recorded ?? 0) > 0) {
+    kpiItems.push({
+      label: "Total Recorded",
+      value: kpis.total_recorded || 0,
+      icon: Mic,
+      color: "hsl(var(--primary))",
+    });
+  }
+
+  if (visibleSections.totalIntroCalls && (kpis.total_intro_calls ?? 0) > 0) {
+    kpiItems.push({
+      label: "Intro Calls",
+      value: kpis.total_intro_calls || 0,
+      icon: PhoneCall,
+      color: "hsl(var(--primary))",
     });
   }
 

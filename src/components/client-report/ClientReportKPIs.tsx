@@ -1,11 +1,13 @@
 import { ReportData } from "@/types/reports";
-import { Calendar, Podcast, Users, TrendingUp } from "lucide-react";
+import { Calendar, Podcast, Users, TrendingUp, Mic, PhoneCall } from "lucide-react";
 
 interface ClientReportKPIsProps {
   kpis: ReportData["kpis"];
   visibleSections: {
     totalBooked?: boolean;
     totalPublished?: boolean;
+    totalRecorded?: boolean;
+    totalIntroCalls?: boolean;
     socialReach?: boolean;
     totalReach?: boolean;
     averageScore?: boolean;
@@ -45,6 +47,31 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       onClick: undefined as (() => void) | undefined,
     });
   }
+
+  if (visibleSections.totalRecorded && (kpis.total_recorded ?? 0) > 0) {
+    kpiItems.push({
+      key: 'totalRecorded',
+      label: "Total Recorded",
+      value: kpis.total_recorded || 0,
+      description: "Interviews completed",
+      icon: Mic,
+      color: "hsl(var(--primary))",
+      onClick: undefined as (() => void) | undefined,
+    });
+  }
+
+  if (visibleSections.totalIntroCalls && (kpis.total_intro_calls ?? 0) > 0) {
+    kpiItems.push({
+      key: 'totalIntroCalls',
+      label: "Intro Calls",
+      value: kpis.total_intro_calls || 0,
+      description: "Introduction calls completed",
+      icon: PhoneCall,
+      color: "hsl(var(--primary))",
+      onClick: undefined as (() => void) | undefined,
+    });
+  }
+
   if (visibleSections.socialReach) {
     kpiItems.push({
       key: 'socialReach',
