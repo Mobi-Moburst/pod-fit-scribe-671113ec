@@ -16,6 +16,7 @@ import { ClientReportTargetPodcasts } from "@/components/client-report/ClientRep
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
 import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
+import { PodcastListDialog } from "@/components/reports/PodcastListDialog";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
