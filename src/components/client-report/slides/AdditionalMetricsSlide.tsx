@@ -129,19 +129,15 @@ export const AdditionalMetricsSlide = ({
   }
 
   // Social Value
-  if (visibleSections.socialValue) {
-    const totalSocialReach = reportData.kpis?.total_social_reach || 0;
-    if (totalSocialReach > 0) {
-      const totalSocialValue = calculateTotalSocialValue(totalSocialReach);
-      metrics.push({
-        label: "Social Value",
-        value: formatCurrency(totalSocialValue),
-        subtitle: "Equivalent ad spend",
-        icon: Share2,
-        color: "hsl(330 81% 60%)",
-        onClick: onSocialValueClick,
-      });
-    }
+  if (visibleSections.socialValue && totalSocialReach > 0) {
+    metrics.push({
+      label: "Social Value",
+      value: formatCurrency(totalSocialValue),
+      subtitle: "Equivalent ad spend",
+      icon: Share2,
+      color: "hsl(330 81% 60%)",
+      onClick: onSocialValueClick,
+    });
   }
 
   if (metrics.length === 0) return null;
