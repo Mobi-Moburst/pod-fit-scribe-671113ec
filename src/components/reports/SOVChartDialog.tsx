@@ -243,6 +243,7 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
       peer_reason: comp.peer_reason,
       linkedin_url: comp.linkedin_url,
       interview_count: comp.interview_count,
+      episode_urls: comp.episode_urls,
       episodes: comp.episodes,
       isClient: false
     }))
