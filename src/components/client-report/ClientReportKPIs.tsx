@@ -33,10 +33,10 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       key: 'totalBooked',
       label: "Podcasts Booked",
       value: kpis.total_booked,
-      description: "Confirmed bookings",
+      description: "Confirmed bookings" + (onBookedClick ? " • Click for details" : ""),
       icon: Calendar,
       color: "hsl(var(--primary))",
-      onClick: undefined as (() => void) | undefined,
+      onClick: onBookedClick,
     });
   }
 
