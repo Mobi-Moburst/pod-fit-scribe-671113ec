@@ -265,6 +265,16 @@ export default function ReportPresentation() {
       });
     }
 
+    // Published Episodes slide (single-speaker only)
+    if (!isMultiSpeaker && reportData.podcasts && reportData.podcasts.filter(p => p.date_published).length > 0) {
+      slides.push({
+        id: "published-episodes",
+        component: (
+          <PublishedEpisodesSlide podcasts={reportData.podcasts} />
+        ),
+      });
+    }
+
     // Speaker Spotlight slides (for multi-speaker reports)
     if (isMultiSpeaker && reportData.speaker_breakdowns) {
       reportData.speaker_breakdowns.forEach((speaker) => {
