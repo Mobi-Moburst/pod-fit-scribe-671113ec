@@ -1452,6 +1452,15 @@ function calculateEnhancedKPIs(
     return schedDate >= dateRange.start && schedDate <= dateRange.end;
   }).length;
   
+  const total_intro_calls = airtableRows.filter(r => {
+    const isIntroCall = getActionString(r.action).toLowerCase().includes('intro call');
+    if (!isIntroCall) return false;
+    if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+    const schedDate = parseAirtableDate(r.scheduled_date_time);
+    if (!schedDate) return false;
+    return schedDate >= dateRange.start && schedDate <= dateRange.end;
+  }).length;
+  
   // Calculate total EMV from podcasts
   const total_emv = podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
   
@@ -1469,6 +1478,7 @@ function calculateEnhancedKPIs(
     total_booked,
     total_published,
     total_recorded,
+    total_intro_calls,
     // Calculated metrics
     total_emv,
     sov_percentage: 0,
@@ -2036,6 +2046,7 @@ export async function generateReportFromMultipleCSVs(
         : undefined,
     },
     podcasts: sortedPodcasts,
+    intro_call_podcasts: buildIntroCallPodcasts(airtableRows, dateRange),
     sov_analysis,
     geo_analysis,
     content_gap_analysis,
@@ -2044,6 +2055,31 @@ export async function generateReportFromMultipleCSVs(
     geo_csv_uploaded: geoCsvProvided,
     content_gap_csv_uploaded: contentGapCsvProvided,
   };
+}
+
+// Build intro call podcast entries from airtable rows
+function buildIntroCallPodcasts(
+  airtableRows: AirtableCSVRow[],
+  dateRange: { start: Date; end: Date }
+): PodcastReportEntry[] {
+  return airtableRows
+    .filter(r => {
+      const isIntroCall = getActionString(r.action).toLowerCase().includes('intro call');
+      if (!isIntroCall) return false;
+      if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+      const schedDate = parseAirtableDate(r.scheduled_date_time);
+      if (!schedDate) return false;
+      return schedDate >= dateRange.start && schedDate <= dateRange.end;
+    })
+    .map(r => ({
+      show_title: r.podcast_name || 'Unknown Podcast',
+      verdict: 'Consider' as const,
+      overall_score: 0,
+      action: getActionString(r.action),
+      scheduled_date_time: r.scheduled_date_time,
+      apple_podcast_link: r.apple_podcast_link,
+      date_booked: r.date_booked,
+    }));
 }
 // Build published podcasts directly from airtable rows (same source as KPI)
 function buildPublishedPodcastsFromAirtable(
@@ -2175,6 +2211,15 @@ function calculateSpeakerKPIs(
     if (!schedDate) return false;
     return schedDate >= dateRange.start && schedDate <= dateRange.end;
   }).length;
+
+  const total_intro_calls = airtableRows.filter(r => {
+    const isIntroCall = getActionString(r.action).toLowerCase().includes('intro call');
+    if (!isIntroCall) return false;
+    if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+    const schedDate = parseAirtableDate(r.scheduled_date_time);
+    if (!schedDate) return false;
+    return schedDate >= dateRange.start && schedDate <= dateRange.end;
+  }).length;
   
   const total_emv = podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
   
@@ -2182,6 +2227,7 @@ function calculateSpeakerKPIs(
     total_booked,
     total_published,
     total_recorded,
+    total_intro_calls,
     total_reach,
     total_social_reach,
     avg_score: Math.round(avg_score * 10) / 10,
@@ -2474,6 +2520,7 @@ export async function generateMultiSpeakerReport(
       pitch_hooks: validPitchHooks.length > 0 ? validPitchHooks : undefined,
     },
     podcasts: allPodcasts.sort((a, b) => b.overall_score - a.overall_score),
+    intro_call_podcasts: buildIntroCallPodcasts(allAirtableRows, dateRange),
     sov_analysis,
     geo_analysis,
     content_gap_analysis,
@@ -2498,6 +2545,7 @@ function calculateAggregatedKPIs(
   const total_booked = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_booked, 0);
   const total_published = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_published, 0);
   const total_recorded = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_recorded || 0), 0);
+  const total_intro_calls = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_intro_calls || 0), 0);
   const total_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_reach, 0);
   const total_social_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_social_reach, 0);
   const total_emv = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_emv || 0), 0);
@@ -2561,6 +2609,7 @@ function calculateAggregatedKPIs(
     total_booked,
     total_published,
     total_recorded,
+    total_intro_calls,
     total_emv,
     sov_percentage: 0,
     geo_score: 0,

@@ -34,7 +34,7 @@ import { ContentGapRecommendations } from "@/components/reports/ContentGapRecomm
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Mic, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2, Loader2, Building2, Check } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Mic, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2, Loader2, Building2, Check, PhoneCall } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AirtableSyncButton } from "@/components/airtable/AirtableSyncButton";
@@ -119,6 +119,7 @@ export default function Reports() {
   const [bookedDialogOpen, setBookedDialogOpen] = useState(false);
   const [publishedDialogOpen, setPublishedDialogOpen] = useState(false);
   const [recordedDialogOpen, setRecordedDialogOpen] = useState(false);
+  const [introCallsDialogOpen, setIntroCallsDialogOpen] = useState(false);
   const [highlightsDialogOpen, setHighlightsDialogOpen] = useState(false);
   const [campaignOverviewEditOpen, setCampaignOverviewEditOpen] = useState(false);
   const [nextQuarterEditOpen, setNextQuarterEditOpen] = useState(false);
@@ -137,6 +138,7 @@ export default function Reports() {
     totalBooked: true,
     totalPublished: true,
     totalRecorded: true,
+    totalIntroCalls: true,
     socialReach: true,
     totalReach: true,
     averageScore: true,
@@ -1050,6 +1052,7 @@ export default function Reports() {
         totalBooked: savedSections.totalBooked ?? true,
         totalPublished: savedSections.totalPublished ?? true,
         totalRecorded: savedSections.totalRecorded ?? true,
+        totalIntroCalls: savedSections.totalIntroCalls ?? true,
         socialReach: savedSections.socialReach ?? true,
         totalReach: savedSections.totalReach ?? true,
         averageScore: savedSections.averageScore ?? true,
@@ -2488,6 +2491,7 @@ export default function Reports() {
                   { key: 'totalBooked', label: 'Total Booked', visible: visibleSections.totalBooked },
                   { key: 'totalPublished', label: 'Total Published', visible: visibleSections.totalPublished },
                   { key: 'totalRecorded', label: 'Total Recorded', visible: visibleSections.totalRecorded },
+                  { key: 'totalIntroCalls', label: 'Intro Calls', visible: visibleSections.totalIntroCalls },
                   { key: 'socialReach', label: 'Social Reach', visible: visibleSections.socialReach },
                   { key: 'totalReach', label: 'Total Listenership', visible: visibleSections.totalReach },
                   { key: 'averageScore', label: 'Avg Score', visible: visibleSections.averageScore },
@@ -2561,6 +2565,16 @@ export default function Reports() {
                         icon={Mic}
                         onClick={() => setRecordedDialogOpen(true)}
                         onHide={() => toggleSection('totalRecorded')}
+                      />
+                    )}
+                    {visibleSections.totalIntroCalls && (reportData.kpis.total_intro_calls ?? 0) > 0 && (
+                      <KPICard
+                        title="Intro Calls"
+                        value={reportData.kpis.total_intro_calls || 0}
+                        subtitle="Introduction calls completed"
+                        icon={PhoneCall}
+                        onClick={() => setIntroCallsDialogOpen(true)}
+                        onHide={() => toggleSection('totalIntroCalls')}
                       />
                     )}
                     {visibleSections.socialReach && (
@@ -3009,6 +3023,17 @@ export default function Reports() {
                 description="Podcast interviews recorded this period."
                 icon={Radio}
                 podcasts={reportData.podcasts}
+                dateField="scheduled_date_time"
+                dateRange={reportData.date_range}
+              />
+              
+              <PodcastListDialog
+                open={introCallsDialogOpen}
+                onOpenChange={setIntroCallsDialogOpen}
+                title="Intro Calls"
+                description="Introduction calls completed this period."
+                icon={PhoneCall}
+                podcasts={reportData.intro_call_podcasts || []}
                 dateField="scheduled_date_time"
                 dateRange={reportData.date_range}
               />
