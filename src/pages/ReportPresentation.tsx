@@ -17,6 +17,8 @@ import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterS
 import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
 import HighlightsSlide from "@/components/client-report/slides/HighlightsSlide";
+import { PublishedEpisodesSlide } from "@/components/client-report/slides/PublishedEpisodesSlide";
+import { ActivityTrackingSlide } from "@/components/client-report/slides/ActivityTrackingSlide";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
@@ -263,6 +265,16 @@ export default function ReportPresentation() {
       });
     }
 
+    // Published Episodes slide (single-speaker only)
+    if (!isMultiSpeaker && reportData.podcasts && reportData.podcasts.filter(p => p.date_published).length > 0) {
+      slides.push({
+        id: "published-episodes",
+        component: (
+          <PublishedEpisodesSlide podcasts={reportData.podcasts} />
+        ),
+      });
+    }
+
     // Speaker Spotlight slides (for multi-speaker reports)
     if (isMultiSpeaker && reportData.speaker_breakdowns) {
       reportData.speaker_breakdowns.forEach((speaker) => {
@@ -290,6 +302,20 @@ export default function ReportPresentation() {
             />
           ),
         });
+      });
+    }
+
+    // Activity Tracking (Airtable embed) slide
+    const airtableUrl = reportData.client?.airtable_embed_url;
+    if (airtableUrl) {
+      slides.push({
+        id: "activity-tracking",
+        component: (
+          <ActivityTrackingSlide
+            embedUrl={airtableUrl}
+            clientName={reportData.company_name || reportData.client?.company || reportData.client?.name}
+          />
+        ),
       });
     }
 
@@ -408,7 +434,7 @@ export default function ReportPresentation() {
   return (
     <div className="fixed inset-0 bg-background overflow-hidden">
       <BackgroundFX />
-      <SlideContainer scrollable={slides[currentSlide].id.startsWith('speaker-') || slides[currentSlide].id === 'campaign-overview' || slides[currentSlide].id === 'categories'}>
+      <SlideContainer scrollable={slides[currentSlide].id.startsWith('speaker-') || slides[currentSlide].id === 'campaign-overview' || slides[currentSlide].id === 'categories' || slides[currentSlide].id === 'published-episodes' || slides[currentSlide].id === 'activity-tracking'}>
         {slides[currentSlide].component}
       </SlideContainer>
       
