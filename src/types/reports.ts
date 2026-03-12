@@ -63,6 +63,7 @@ export interface SpeakerBreakdown {
     total_booked: number;
     total_published: number;
     total_recorded?: number;
+    total_intro_calls?: number;
     total_reach: number;
     total_social_reach: number;
     avg_score: number;
