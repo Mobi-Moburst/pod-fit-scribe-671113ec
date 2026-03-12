@@ -1,11 +1,13 @@
 import { ReportData } from "@/types/reports";
-import { Calendar, Podcast, Users, TrendingUp } from "lucide-react";
+import { Calendar, Podcast, Users, TrendingUp, Mic, PhoneCall } from "lucide-react";
 
 interface ClientReportKPIsProps {
   kpis: ReportData["kpis"];
   visibleSections: {
     totalBooked?: boolean;
     totalPublished?: boolean;
+    totalRecorded?: boolean;
+    totalIntroCalls?: boolean;
     socialReach?: boolean;
     totalReach?: boolean;
     averageScore?: boolean;
