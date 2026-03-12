@@ -46,6 +46,22 @@ export function AirtableSyncButton({
     }
   };
 
+  const handleConnectionSaved = async () => {
+    // Refresh connection state, then auto-sync
+    await refreshConnection();
+    // Small delay to let state settle, then trigger sync
+    setTimeout(async () => {
+      const data = await syncData({
+        dateRangeStart,
+        dateRangeEnd,
+        speakerName,
+      });
+      if (data) {
+        onDataSynced(data);
+      }
+    }, 300);
+  };
+
   // Inline variant - just a sync button, no connection UI
   if (variant === 'inline') {
     if (!hasConnection) {
