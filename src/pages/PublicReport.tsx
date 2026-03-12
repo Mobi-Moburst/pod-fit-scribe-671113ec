@@ -233,6 +233,7 @@ export default function PublicReport() {
   }
 
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || 
+    visibleSections.totalRecorded || visibleSections.totalIntroCalls ||
     visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
 
   const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || 

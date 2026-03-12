@@ -47,6 +47,31 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: Client
       onClick: undefined as (() => void) | undefined,
     });
   }
+
+  if (visibleSections.totalRecorded && (kpis.total_recorded ?? 0) > 0) {
+    kpiItems.push({
+      key: 'totalRecorded',
+      label: "Total Recorded",
+      value: kpis.total_recorded || 0,
+      description: "Interviews completed",
+      icon: Mic,
+      color: "hsl(var(--primary))",
+      onClick: undefined as (() => void) | undefined,
+    });
+  }
+
+  if (visibleSections.totalIntroCalls && (kpis.total_intro_calls ?? 0) > 0) {
+    kpiItems.push({
+      key: 'totalIntroCalls',
+      label: "Intro Calls",
+      value: kpis.total_intro_calls || 0,
+      description: "Introduction calls completed",
+      icon: PhoneCall,
+      color: "hsl(var(--primary))",
+      onClick: undefined as (() => void) | undefined,
+    });
+  }
+
   if (visibleSections.socialReach) {
     kpiItems.push({
       key: 'socialReach',
