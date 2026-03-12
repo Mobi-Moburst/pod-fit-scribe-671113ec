@@ -2579,9 +2579,9 @@ export default function Reports() {
                     )}
                     {visibleSections.socialReach && (
                       <KPICard
-                        title="Social Reach"
+                        title={reportData.kpis.total_published === 0 ? "Projected Social Reach" : "Social Reach"}
                         value={reportData.kpis.total_social_reach.toLocaleString()}
-                        subtitle="Combined social following"
+                        subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows" : "Combined social following"}
                         icon={Users}
                         tooltip="The combined number of followers across all of the social media accounts that we found for this podcast. Source: Rephonic"
                         onHide={() => toggleSection('socialReach')}
@@ -2589,9 +2589,9 @@ export default function Reports() {
                     )}
                     {visibleSections.totalReach && (
                       <KPICard
-                        title="Total Listenership"
+                        title={reportData.kpis.total_published === 0 ? "Projected Listenership" : "Total Listenership"}
                         value={reportData.kpis.total_reach.toLocaleString()}
-                        subtitle="Total monthly listeners • Click for details"
+                        subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows • Click for details" : "Total monthly listeners • Click for details"}
                         icon={Users}
                         onClick={() => setReachDialogOpen(true)}
                         onHide={() => toggleSection('totalReach')}
