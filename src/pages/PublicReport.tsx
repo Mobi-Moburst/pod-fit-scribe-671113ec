@@ -63,6 +63,10 @@ export default function PublicReport() {
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
   const [socialValueDialogOpen, setSocialValueDialogOpen] = useState(false);
+  const [bookedDialogOpen, setBookedDialogOpen] = useState(false);
+  const [publishedDialogOpen, setPublishedDialogOpen] = useState(false);
+  const [recordedDialogOpen, setRecordedDialogOpen] = useState(false);
+  const [introCallsDialogOpen, setIntroCallsDialogOpen] = useState(false);
 
   // Add cache-control meta tags to prevent browser caching
   useEffect(() => {
