@@ -24,6 +24,7 @@ const formatNumber = (num: number): string => {
 export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProps) => {
   const kpiItems: Array<{
     label: string;
+    description: string;
     value: string | number;
     icon: typeof Calendar;
     color: string;
@@ -33,6 +34,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
   if (visibleSections.totalBooked) {
     kpiItems.push({
       label: "Podcasts Booked",
+      description: "Confirmed bookings",
       value: kpis.total_booked,
       icon: Calendar,
       color: "hsl(var(--primary))",
@@ -42,6 +44,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
   if (visibleSections.totalPublished) {
     kpiItems.push({
       label: "Episodes Published",
+      description: "Episodes live",
       value: kpis.total_published,
       icon: Podcast,
       color: "hsl(var(--accent))",
@@ -51,6 +54,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
   if (visibleSections.totalRecorded && (kpis.total_recorded ?? 0) > 0) {
     kpiItems.push({
       label: "Total Recorded",
+      description: "Interviews completed",
       value: kpis.total_recorded || 0,
       icon: Mic,
       color: "hsl(var(--primary))",
@@ -60,6 +64,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
   if (visibleSections.totalIntroCalls && (kpis.total_intro_calls ?? 0) > 0) {
     kpiItems.push({
       label: "Intro Calls",
+      description: "Introduction calls completed",
       value: kpis.total_intro_calls || 0,
       icon: PhoneCall,
       color: "hsl(var(--primary))",
@@ -69,6 +74,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
   if (visibleSections.socialReach) {
     kpiItems.push({
       label: "Social Reach",
+      description: "Combined social following",
       value: formatNumber(kpis.total_social_reach || 0),
       icon: Users,
       color: "hsl(280 70% 60%)",
@@ -78,6 +84,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
   if (visibleSections.totalReach) {
     kpiItems.push({
       label: "Total Listenership",
+      description: "Total monthly listeners",
       value: formatNumber(kpis.total_reach),
       icon: Users,
       color: "hsl(191 100% 62%)",
@@ -88,6 +95,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
   if (visibleSections.averageScore) {
     kpiItems.push({
       label: "Average Fit Score",
+      description: "Podcast alignment score",
       value: kpis.avg_score.toFixed(1),
       icon: TrendingUp,
       color: "hsl(51 100% 61%)",
