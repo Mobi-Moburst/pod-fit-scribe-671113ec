@@ -1947,174 +1947,236 @@ export default function Reports() {
               <div className="space-y-3">
                 <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Company</Label>
                 
-                {/* Campaign Manager Filter */}
-                {campaignManagers.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCampaignManager('')}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                        !selectedCampaignManager
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                      }`}
+                {selectedCompanyId && selectedCompany ? (
+                  /* Collapsed: show selected company as a compact chip */
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-primary bg-primary/5 flex-1">
+                      <div className="w-6 h-6 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
+                        {selectedCompany.logo_url ? (
+                          <img src={selectedCompany.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
+                        ) : (
+                          <Building2 className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium">{selectedCompany.name}</span>
+                      <Check className="h-4 w-4 text-primary ml-auto shrink-0" />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setSelectedCompanyId(null);
+                        setSelectedSpeakerId(null);
+                        setSelectedSpeakerIds([]);
+                        setSpeakerFiles({});
+                        setSpeakerSyncedData({});
+                        setIsMultiSpeakerMode(false);
+                      }}
                     >
-                      All
-                    </button>
-                    {campaignManagers.map(manager => (
-                      <button
-                        key={manager}
-                        type="button"
-                        onClick={() => setSelectedCampaignManager(manager === selectedCampaignManager ? '' : manager)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                          selectedCampaignManager === manager
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                        }`}
-                      >
-                        {manager}
-                      </button>
-                    ))}
+                      Change
+                    </Button>
                   </div>
-                )}
+                ) : (
+                  /* Expanded: full company picker */
+                  <>
+                    {/* Campaign Manager Filter */}
+                    {campaignManagers.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCampaignManager('')}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            !selectedCampaignManager
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          }`}
+                        >
+                          All
+                        </button>
+                        {campaignManagers.map(manager => (
+                          <button
+                            key={manager}
+                            type="button"
+                            onClick={() => setSelectedCampaignManager(manager === selectedCampaignManager ? '' : manager)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                              selectedCampaignManager === manager
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                            }`}
+                          >
+                            {manager}
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search companies..."
-                    value={companySearchQuery}
-                    onChange={(e) => setCompanySearchQuery(e.target.value)}
-                    className="pl-9 h-9"
-                  />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[240px] overflow-y-auto">
-                  {filteredCompanies.map((company) => {
-                    const speakerCount = speakers.filter(s => s.company_id === company.id).length;
-                    const isSelected = selectedCompanyId === company.id;
-                    return (
-                      <button
-                        key={company.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCompanyId(company.id);
-                          setSelectedSpeakerId(null);
-                          setSelectedSpeakerIds([]);
-                          setSpeakerFiles({});
-                          setSpeakerSyncedData({});
-                          setIsMultiSpeakerMode(false);
-                        }}
-                        className={`flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all ${
-                          isSelected
-                            ? 'border-primary bg-primary/5 shadow-sm'
-                            : 'border-border/60 hover:border-border hover:shadow-sm bg-card'
-                        }`}
-                      >
-                        <div className="w-8 h-8 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
-                          {company.logo_url ? (
-                            <img src={company.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
-                          ) : (
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{company.name}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {speakerCount} speaker{speakerCount !== 1 ? 's' : ''}
-                          </p>
-                        </div>
-                        {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
-                      </button>
-                    );
-                  })}
-                  {filteredCompanies.length === 0 && (
-                    <p className="col-span-full text-sm text-muted-foreground text-center py-6">No companies found.</p>
-                  )}
-                </div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search companies..."
+                        value={companySearchQuery}
+                        onChange={(e) => setCompanySearchQuery(e.target.value)}
+                        className="pl-9 h-9"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[240px] overflow-y-auto">
+                      {filteredCompanies.map((company) => {
+                        const speakerCount = speakers.filter(s => s.company_id === company.id).length;
+                        return (
+                          <button
+                            key={company.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCompanyId(company.id);
+                              setSelectedSpeakerId(null);
+                              setSelectedSpeakerIds([]);
+                              setSpeakerFiles({});
+                              setSpeakerSyncedData({});
+                              setIsMultiSpeakerMode(false);
+                            }}
+                            className="flex items-center gap-2.5 p-3 rounded-lg border border-border/60 hover:border-border hover:shadow-sm bg-card text-left transition-all"
+                          >
+                            <div className="w-8 h-8 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
+                              {company.logo_url ? (
+                                <img src={company.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
+                              ) : (
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">{company.name}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {speakerCount} speaker{speakerCount !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      {filteredCompanies.length === 0 && (
+                        <p className="col-span-full text-sm text-muted-foreground text-center py-6">No companies found.</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* ── Section 2: Speaker Selection ── */}
               {selectedCompanyId && (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                      {isMultiSpeakerMode ? 'Speakers (select 2+)' : 'Speaker'}
-                    </Label>
-                    {companySpeakers.length >= 2 && (
+                  {/* Single speaker selected — collapsed view */}
+                  {!isMultiSpeakerMode && selectedSpeakerId && selectedSpeaker ? (
+                    <>
+                      <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Speaker</Label>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Multi-speaker</span>
-                        <Switch
-                          checked={isMultiSpeakerMode}
-                          onCheckedChange={(checked) => {
-                            setIsMultiSpeakerMode(checked);
-                            if (checked) {
-                              setSelectedSpeakerId(null);
-                              setSelectedSpeakerIds([]);
-                              setSpeakerFiles({});
-                              setSpeakerSyncedData({});
-                              setBatchFile(null);
-                              setAirtableFile(null);
-                            } else {
-                              setSelectedSpeakerIds([]);
-                              setSpeakerFiles({});
-                              setSpeakerSyncedData({});
-                            }
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    {companySpeakers.map((speaker) => {
-                      const isSelected = isMultiSpeakerMode
-                        ? selectedSpeakerIds.includes(speaker.id)
-                        : selectedSpeakerId === speaker.id;
-                      return (
-                        <button
-                          key={speaker.id}
-                          type="button"
-                          onClick={() => {
-                            if (isMultiSpeakerMode) {
-                              if (selectedSpeakerIds.includes(speaker.id)) {
-                                setSelectedSpeakerIds(prev => prev.filter(id => id !== speaker.id));
-                                setSpeakerFiles(prev => { const u = { ...prev }; delete u[speaker.id]; return u; });
-                                setSpeakerSyncedData(prev => { const u = { ...prev }; delete u[speaker.id]; return u; });
-                              } else {
-                                setSelectedSpeakerIds(prev => [...prev, speaker.id]);
-                                setSpeakerFileExpanded(prev => ({ ...prev, [speaker.id]: true }));
-                              }
-                            } else {
-                              setSelectedSpeakerId(speaker.id);
-                            }
-                          }}
-                          className={`flex items-center gap-3 w-full p-2.5 rounded-lg border text-left transition-all ${
-                            isSelected
-                              ? 'border-primary bg-primary/5'
-                              : 'border-transparent hover:bg-muted/50'
-                          }`}
-                        >
-                          {isMultiSpeakerMode && (
-                            <Checkbox checked={isSelected} className="pointer-events-none" />
-                          )}
-                          <Avatar className="w-7 h-7">
-                            <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
+                        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-primary bg-primary/5 flex-1">
+                          <Avatar className="w-6 h-6">
+                            <AvatarImage src={selectedSpeaker.headshot_url || undefined} alt={selectedSpeaker.name} />
                             <AvatarFallback className="text-[10px] bg-muted">
-                              {speaker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                              {selectedSpeaker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <span className="text-sm font-medium">{speaker.name}</span>
-                            {speaker.title && (
-                              <span className="text-xs text-muted-foreground ml-2">— {speaker.title}</span>
-                            )}
+                          <span className="text-sm font-medium">{selectedSpeaker.name}</span>
+                          {selectedSpeaker.title && (
+                            <span className="text-xs text-muted-foreground">— {selectedSpeaker.title}</span>
+                          )}
+                          <Check className="h-4 w-4 text-primary ml-auto shrink-0" />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setSelectedSpeakerId(null)}
+                        >
+                          Change
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    /* Expanded speaker picker */
+                    <>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                          {isMultiSpeakerMode ? 'Speakers (select 2+)' : 'Speaker'}
+                        </Label>
+                        {companySpeakers.length >= 2 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Multi-speaker</span>
+                            <Switch
+                              checked={isMultiSpeakerMode}
+                              onCheckedChange={(checked) => {
+                                setIsMultiSpeakerMode(checked);
+                                if (checked) {
+                                  setSelectedSpeakerId(null);
+                                  setSelectedSpeakerIds([]);
+                                  setSpeakerFiles({});
+                                  setSpeakerSyncedData({});
+                                  setBatchFile(null);
+                                  setAirtableFile(null);
+                                } else {
+                                  setSelectedSpeakerIds([]);
+                                  setSpeakerFiles({});
+                                  setSpeakerSyncedData({});
+                                }
+                              }}
+                            />
                           </div>
-                          {!isMultiSpeakerMode && isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
-                        </button>
-                      );
-                    })}
-                    {isMultiSpeakerMode && selectedSpeakerIds.length > 0 && selectedSpeakerIds.length < 2 && (
-                      <p className="text-xs text-destructive pt-1">Select at least 2 speakers for a multi-speaker report</p>
-                    )}
-                  </div>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        {companySpeakers.map((speaker) => {
+                          const isSelected = isMultiSpeakerMode
+                            ? selectedSpeakerIds.includes(speaker.id)
+                            : selectedSpeakerId === speaker.id;
+                          return (
+                            <button
+                              key={speaker.id}
+                              type="button"
+                              onClick={() => {
+                                if (isMultiSpeakerMode) {
+                                  if (selectedSpeakerIds.includes(speaker.id)) {
+                                    setSelectedSpeakerIds(prev => prev.filter(id => id !== speaker.id));
+                                    setSpeakerFiles(prev => { const u = { ...prev }; delete u[speaker.id]; return u; });
+                                    setSpeakerSyncedData(prev => { const u = { ...prev }; delete u[speaker.id]; return u; });
+                                  } else {
+                                    setSelectedSpeakerIds(prev => [...prev, speaker.id]);
+                                    setSpeakerFileExpanded(prev => ({ ...prev, [speaker.id]: true }));
+                                  }
+                                } else {
+                                  setSelectedSpeakerId(speaker.id);
+                                }
+                              }}
+                              className={`flex items-center gap-3 w-full p-2.5 rounded-lg border text-left transition-all ${
+                                isSelected
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-transparent hover:bg-muted/50'
+                              }`}
+                            >
+                              {isMultiSpeakerMode && (
+                                <Checkbox checked={isSelected} className="pointer-events-none" />
+                              )}
+                              <Avatar className="w-7 h-7">
+                                <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
+                                <AvatarFallback className="text-[10px] bg-muted">
+                                  {speaker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-sm font-medium">{speaker.name}</span>
+                                {speaker.title && (
+                                  <span className="text-xs text-muted-foreground ml-2">— {speaker.title}</span>
+                                )}
+                              </div>
+                              {!isMultiSpeakerMode && isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                            </button>
+                          );
+                        })}
+                        {isMultiSpeakerMode && selectedSpeakerIds.length > 0 && selectedSpeakerIds.length < 2 && (
+                          <p className="text-xs text-destructive pt-1">Select at least 2 speakers for a multi-speaker report</p>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
