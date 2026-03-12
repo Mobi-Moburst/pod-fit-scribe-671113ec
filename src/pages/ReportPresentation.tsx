@@ -14,6 +14,9 @@ import { SpeakerSpotlightSlide } from "@/components/client-report/slides/Speaker
 import { CampaignOverviewSlide } from "@/components/client-report/slides/CampaignOverviewSlide";
 import { CategoriesSlide } from "@/components/client-report/slides/CategoriesSlide";
 import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterSlide";
+import { NextQuarterIntroSlide } from "@/components/client-report/slides/NextQuarterIntroSlide";
+import { NextQuarterFocusAreasSlide } from "@/components/client-report/slides/NextQuarterFocusAreasSlide";
+import { NextQuarterTalkingPointsSlide } from "@/components/client-report/slides/NextQuarterTalkingPointsSlide";
 import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
 import HighlightsSlide from "@/components/client-report/slides/HighlightsSlide";
@@ -331,17 +334,38 @@ export default function ReportPresentation() {
       });
     }
 
-    // Next Quarter Strategy
+    // Next Quarter Strategy - split into 3 slides
     if (visibleSections.nextQuarterStrategy && reportData.next_quarter_strategy) {
+      // Slide 1: Intro + Goals
       slides.push({
-        id: "next-quarter",
+        id: "next-quarter-intro",
         component: (
-          <NextQuarterSlide 
-            strategy={reportData.next_quarter_strategy}
-            reportEndDate={reportData.date_range?.end}
-          />
+          <NextQuarterIntroSlide strategy={reportData.next_quarter_strategy} />
         ),
       });
+
+      // Slide 2: Strategic Focus Areas (only if data exists)
+      if (reportData.next_quarter_strategy.strategic_focus_areas?.length) {
+        slides.push({
+          id: "next-quarter-focus",
+          component: (
+            <NextQuarterFocusAreasSlide strategy={reportData.next_quarter_strategy} />
+          ),
+        });
+      }
+
+      // Slide 3: Talking Points + Closing (only if data exists)
+      const hasTPs = reportData.next_quarter_strategy.talking_points_spotlight?.length ||
+        reportData.next_quarter_strategy.speaker_talking_points_spotlight?.length ||
+        reportData.next_quarter_strategy.closing_paragraph;
+      if (hasTPs) {
+        slides.push({
+          id: "next-quarter-talking-points",
+          component: (
+            <NextQuarterTalkingPointsSlide strategy={reportData.next_quarter_strategy} />
+          ),
+        });
+      }
     }
 
     // Target Podcasts
@@ -434,7 +458,7 @@ export default function ReportPresentation() {
   return (
     <div className="fixed inset-0 bg-background overflow-hidden">
       <BackgroundFX />
-      <SlideContainer scrollable={slides[currentSlide].id.startsWith('speaker-') || slides[currentSlide].id === 'campaign-overview' || slides[currentSlide].id === 'categories' || slides[currentSlide].id === 'published-episodes' || slides[currentSlide].id === 'activity-tracking'}>
+      <SlideContainer scrollable={slides[currentSlide].id.startsWith('speaker-') || slides[currentSlide].id.startsWith('next-quarter') || ['campaign-overview', 'categories', 'published-episodes', 'activity-tracking'].includes(slides[currentSlide].id)}>
         {slides[currentSlide].component}
       </SlideContainer>
       
