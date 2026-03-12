@@ -206,12 +206,17 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
   };
 
   // Sync data from Airtable
-  const syncData = async (options: {
-    dateRangeStart: string;
-    dateRangeEnd: string;
-    speakerName?: string;
-  }): Promise<AirtableCSVRow[] | null> => {
-    if (!connection) {
+  const syncData = async (
+    options: {
+      dateRangeStart: string;
+      dateRangeEnd: string;
+      speakerName?: string;
+    },
+    connectionOverride?: AirtableConnection | null
+  ): Promise<AirtableCSVRow[] | null> => {
+    const activeConnection = connectionOverride ?? connection;
+
+    if (!activeConnection) {
       toast({
         title: 'No Airtable connection',
         description: 'Please set up an Airtable connection first.',
@@ -224,7 +229,7 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
     try {
       const { data, error } = await supabase.functions.invoke('fetch-airtable-data', {
         body: {
-          connection_id: connection.id,
+          connection_id: activeConnection.id,
           date_range_start: options.dateRangeStart,
           date_range_end: options.dateRangeEnd,
           speaker_name: options.speakerName,
