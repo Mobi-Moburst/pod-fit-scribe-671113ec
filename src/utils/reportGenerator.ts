@@ -1491,7 +1491,7 @@ function calculateSOVAnalysis(
   airtableRows: AirtableCSVRow[],
   sovRows: SOVCSVRow[] | null,
   competitorName: string | null,
-  manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string; episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }> }[] | null,
+  manualCompetitors?: { name: string; role: string; count: number; linkedin_url?: string; peer_reason?: string; episodeUrls?: string[]; episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }> }[] | null,
   dateRange?: { start: Date; end: Date }
 ): ReportData['sov_analysis'] {
   // Count client interviews as episodes published within the report range.
