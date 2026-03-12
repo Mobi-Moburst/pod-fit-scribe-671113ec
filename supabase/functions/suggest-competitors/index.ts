@@ -83,9 +83,10 @@ Return exactly 3 competitors with:
                       properties: {
                         name: { type: 'string', description: 'Full name' },
                         role: { type: 'string', description: 'Title and company' },
-                        peer_reason: { type: 'string', description: 'Why they compete for same SOV' }
+                        peer_reason: { type: 'string', description: 'Why they compete for same SOV' },
+                        linkedin_url: { type: 'string', description: 'LinkedIn profile URL' }
                       },
-                      required: ['name', 'role', 'peer_reason'],
+                      required: ['name', 'role', 'peer_reason', 'linkedin_url'],
                       additionalProperties: false
                     },
                     minItems: 3,
