@@ -121,6 +121,7 @@ export function AirtableConnectionDialog({
     setIsSaving(false);
 
     if (success) {
+      onConnectionSaved?.();
       onOpenChange(false);
     }
   };
