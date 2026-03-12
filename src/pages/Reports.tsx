@@ -132,6 +132,7 @@ export default function Reports() {
   const [isScoringFit, setIsScoringFit] = useState(false);
   const [isFetchingSOV, setIsFetchingSOV] = useState(false);
   const [sovFetchError, setSovFetchError] = useState<string | null>(null);
+  const [fetchingEpisodeMetadata, setFetchingEpisodeMetadata] = useState<{ [index: number]: boolean }>({});
   
   // Visibility state for report sections
   const [visibleSections, setVisibleSections] = useState({
