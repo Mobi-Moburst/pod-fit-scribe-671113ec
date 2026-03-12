@@ -2520,6 +2520,7 @@ export async function generateMultiSpeakerReport(
       pitch_hooks: validPitchHooks.length > 0 ? validPitchHooks : undefined,
     },
     podcasts: allPodcasts.sort((a, b) => b.overall_score - a.overall_score),
+    intro_call_podcasts: buildIntroCallPodcasts(allAirtableRows, dateRange),
     sov_analysis,
     geo_analysis,
     content_gap_analysis,
