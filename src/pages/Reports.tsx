@@ -1946,6 +1946,38 @@ export default function Reports() {
               {/* ── Section 1: Company Selection ── */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Company</Label>
+                
+                {/* Campaign Manager Filter */}
+                {campaignManagers.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCampaignManager('')}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        !selectedCampaignManager
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {campaignManagers.map(manager => (
+                      <button
+                        key={manager}
+                        type="button"
+                        onClick={() => setSelectedCampaignManager(manager === selectedCampaignManager ? '' : manager)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          selectedCampaignManager === manager
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        {manager}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
