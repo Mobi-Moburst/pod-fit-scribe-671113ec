@@ -254,6 +254,7 @@ export function AirtableSyncButton({
         companyId={companyId}
         speakerId={speakerId}
         entityName={entityName}
+        onConnectionSaved={handleConnectionSaved}
       />
     </>
   );
