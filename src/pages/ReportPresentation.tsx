@@ -156,6 +156,8 @@ export default function ReportPresentation() {
       const dataAwareDefaults: VisibleSections = {
         totalBooked: true,
         totalPublished: true,
+        totalRecorded: (reportData.kpis?.total_recorded ?? 0) > 0,
+        totalIntroCalls: (reportData.kpis?.total_intro_calls ?? 0) > 0,
         socialReach: true,
         totalReach: true,
         averageScore: true,
