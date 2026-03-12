@@ -2251,6 +2251,7 @@ export default function Reports() {
                           
                           <div className="flex items-center gap-2 mb-2">
                             <AirtableSyncButton
+                              key={`sync-${connectionVersion}`}
                               companyId={selectedCompanyId || undefined}
                               speakerId={selectedSpeakerId || undefined}
                               entityName={speakerAsClient?.name || 'Speaker'}
