@@ -132,7 +132,6 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
                 <div className="text-lg text-muted-foreground mt-2">{kpi.label}</div>
                 <div className="text-sm text-muted-foreground/70 mt-1">{kpi.description}</div>
               </div>
-              </div>
               {isClickable && (
                 <div className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                   Click for details
