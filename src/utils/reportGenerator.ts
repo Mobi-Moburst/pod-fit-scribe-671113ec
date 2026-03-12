@@ -1518,6 +1518,7 @@ function calculateSOVAnalysis(
       linkedin_url: c.linkedin_url,
       interview_count: c.count,
       episodes: c.episodes,
+      episode_urls: c.episodeUrls?.filter(u => u.trim()) || [],
     }));
   }
   // Otherwise use CSV data

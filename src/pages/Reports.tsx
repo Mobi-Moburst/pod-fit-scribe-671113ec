@@ -714,7 +714,7 @@ export default function Reports() {
       
       // Prepare manual SOV data if in manual mode
       const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
-        ? competitorInterviews.filter(c => c.count > 0)
+        ? competitorInterviews.filter(c => c.count > 0).map(c => ({ ...c, episodeUrls: (c.episodeUrls || []).filter(u => u.trim()) }))
         : null;
       
       // Generate report
