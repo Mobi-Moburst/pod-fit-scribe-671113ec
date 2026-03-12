@@ -84,7 +84,8 @@ export default function Reports() {
   
   // Manual SOV inputs
   const [manualSOVMode, setManualSOVMode] = useState(false);
-  const [competitorInterviews, setCompetitorInterviews] = useState<{ name: string; role: string; count: number; episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }> }[]>([]);
+  const [competitorInterviews, setCompetitorInterviews] = useState<{ name: string; role: string; count: number; episodeUrls?: string[]; episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }> }[]>([]);
+  const [expandedCompetitorEpisodes, setExpandedCompetitorEpisodes] = useState<{ [index: number]: boolean }>({});
   
   // Report metadata
   const [reportName, setReportName] = useState<string>('');
