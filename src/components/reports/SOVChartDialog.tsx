@@ -49,6 +49,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 // Competitor info popover content
 const CompetitorInfoCard = ({ competitor }: { competitor: { 
   name: string; role?: string; peer_reason?: string; linkedin_url?: string; interview_count: number; color: string;
+  episode_urls?: string[];
   episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>;
 } }) => {
   return (
