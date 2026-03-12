@@ -252,8 +252,8 @@ export default function Reports() {
   useEffect(() => {
     const loadData = async () => {
       const [companiesRes, speakersRes] = await Promise.all([
-        supabase.from('companies').select('*').order('name', { ascending: true }),
-        supabase.from('speakers').select('*').order('name', { ascending: true }),
+        supabase.from('companies').select('*').is('archived_at', null).order('name', { ascending: true }),
+        supabase.from('speakers').select('*').is('archived_at', null).order('name', { ascending: true }),
       ]);
       
       if (companiesRes.error) {
