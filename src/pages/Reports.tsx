@@ -2675,11 +2675,19 @@ export default function Reports() {
                         />
                       );
                     })()}
+                    {reportData.kpis.total_published === 0 && (visibleSections.emv || visibleSections.sov) && (
+                      <div className="col-span-full flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2.5 text-sm text-yellow-200 print:hidden">
+                        <Info className="h-4 w-4 shrink-0 text-yellow-400" />
+                        <span>
+                          <strong>Heads up:</strong> EMV and Peer Comparison rely on published episode data. With 0 episodes published, these metrics won't have meaningful data yet.
+                        </span>
+                      </div>
+                    )}
                     {visibleSections.emv && (
                       <KPICard
                         title="Earned Media Value"
                         value={`$${reportData.kpis.total_emv?.toLocaleString() || '0'}`}
-                        subtitle="Total campaign EMV • Click to view analysis"
+                        subtitle={reportData.kpis.total_published === 0 ? "Requires published episodes" : "Total campaign EMV • Click to view analysis"}
                         icon={DollarSign}
                         tooltip="Based on audience size × industry CPM rate × guest speaking time. Reflects the equivalent cost to reach this audience through paid podcast advertising."
                         onClick={() => setEmvDialogOpen(true)}
@@ -2690,7 +2698,7 @@ export default function Reports() {
                       <KPICard
                         title="Peer Comparison"
                         value={`${reportData.kpis.sov_percentage || reportData.sov_analysis?.client_percentage || 0}%`}
-                        subtitle="vs. selected peers • Click to view analysis"
+                        subtitle={reportData.kpis.total_published === 0 ? "Requires published episodes" : "vs. selected peers • Click to view analysis"}
                         icon={PieChart}
                         tooltip="Compares podcast interview volume against selected industry peers over the same period."
                         onClick={() => setSOVDialogOpen(true)}
