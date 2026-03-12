@@ -125,6 +125,29 @@ const CompetitorInfoCard = ({ competitor }: { competitor: {
             </div>
           </ScrollArea>
         </div>
+      ) : competitor.episode_urls && competitor.episode_urls.length > 0 ? (
+        <div className="border-t border-border pt-3">
+          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+            <ExternalLink className="h-3 w-3" />
+            Episode Links
+          </p>
+          <ScrollArea className="max-h-[200px]">
+            <div className="space-y-1.5 pr-2">
+              {competitor.episode_urls.map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-primary hover:underline bg-muted/30 rounded-md px-2.5 py-2 transition-colors hover:bg-muted/50"
+                >
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{url}</span>
+                </a>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
       ) : (
         <p className="text-xs text-muted-foreground/60 italic border-t border-border pt-2">
           Episode details unavailable — data entered manually or Podchaser plan limited.
