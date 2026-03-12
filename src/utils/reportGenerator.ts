@@ -2168,6 +2168,8 @@ function calculateSpeakerKPIs(
   }).length;
   
   const total_recorded = airtableRows.filter(r => {
+    const isPodcastRecording = getActionString(r.action).toLowerCase().includes('podcast recording');
+    if (!isPodcastRecording) return false;
     if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
     const schedDate = parseAirtableDate(r.scheduled_date_time);
     if (!schedDate) return false;
