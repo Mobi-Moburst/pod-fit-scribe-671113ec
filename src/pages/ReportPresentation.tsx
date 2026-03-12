@@ -28,6 +28,8 @@ import { AirtableDialog } from "@/components/client-report/AirtableDialog";
 interface VisibleSections {
   totalBooked?: boolean;
   totalPublished?: boolean;
+  totalRecorded?: boolean;
+  totalIntroCalls?: boolean;
   socialReach?: boolean;
   totalReach?: boolean;
   averageScore?: boolean;
