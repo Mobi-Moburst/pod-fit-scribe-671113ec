@@ -1,5 +1,6 @@
 import { ReportData } from "@/types/reports";
-import { Calendar, Podcast, Users, TrendingUp, Mic, PhoneCall } from "lucide-react";
+import { Calendar, Podcast, Users, TrendingUp, Mic, PhoneCall, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ClientReportKPIsProps {
   kpis: ReportData["kpis"];
@@ -82,6 +83,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       label: "Social Reach",
       value: formatNumber(kpis.total_social_reach || 0),
       description: "Combined social following",
+      tooltip: "The combined number of followers across all of the social media accounts that we found for this podcast. Source: Rephonic",
       icon: Users,
       color: "hsl(280 70% 60%)",
       onClick: undefined as (() => void) | undefined,
@@ -138,7 +140,19 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
               </div>
               <div>
                 <div className="text-3xl font-bold">{kpi.value}</div>
-                <div className="text-sm text-muted-foreground">{kpi.label}</div>
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  {kpi.label}
+                  {(kpi as any).tooltip && (
+                    <Tooltip>
+                      <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[220px] text-xs">
+                        {(kpi as any).tooltip}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground mt-1">{kpi.description}</div>
               </div>
             </div>
