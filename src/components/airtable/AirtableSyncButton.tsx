@@ -29,7 +29,7 @@ export function AirtableSyncButton({
   size = 'default',
 }: AirtableSyncButtonProps) {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
-  const { connection, hasConnection, isSyncing, syncData } = useAirtableConnection({
+  const { connection, hasConnection, isSyncing, syncData, refreshConnection } = useAirtableConnection({
     companyId,
     speakerId,
   });
@@ -44,6 +44,22 @@ export function AirtableSyncButton({
     if (data) {
       onDataSynced(data);
     }
+  };
+
+  const handleConnectionSaved = async () => {
+    // Refresh connection state, then auto-sync
+    await refreshConnection();
+    // Small delay to let state settle, then trigger sync
+    setTimeout(async () => {
+      const data = await syncData({
+        dateRangeStart,
+        dateRangeEnd,
+        speakerName,
+      });
+      if (data) {
+        onDataSynced(data);
+      }
+    }, 300);
   };
 
   // Inline variant - just a sync button, no connection UI
@@ -66,6 +82,7 @@ export function AirtableSyncButton({
             companyId={companyId}
             speakerId={speakerId}
             entityName={entityName}
+            onConnectionSaved={handleConnectionSaved}
           />
         </>
       );
@@ -113,6 +130,7 @@ export function AirtableSyncButton({
             companyId={companyId}
             speakerId={speakerId}
             entityName={entityName}
+            onConnectionSaved={handleConnectionSaved}
           />
         </>
       );
@@ -148,6 +166,7 @@ export function AirtableSyncButton({
           companyId={companyId}
           speakerId={speakerId}
           entityName={entityName}
+          onConnectionSaved={handleConnectionSaved}
         />
       </div>
     );
@@ -180,6 +199,7 @@ export function AirtableSyncButton({
           companyId={companyId}
           speakerId={speakerId}
           entityName={entityName}
+          onConnectionSaved={handleConnectionSaved}
         />
       </>
     );
@@ -234,6 +254,7 @@ export function AirtableSyncButton({
         companyId={companyId}
         speakerId={speakerId}
         entityName={entityName}
+        onConnectionSaved={handleConnectionSaved}
       />
     </>
   );

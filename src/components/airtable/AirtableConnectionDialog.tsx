@@ -58,6 +58,7 @@ interface AirtableConnectionDialogProps {
   companyId?: string;
   speakerId?: string;
   entityName: string; // For display: "Maya Reynolds" or "Acme Inc."
+  onConnectionSaved?: () => void;
 }
 
 export function AirtableConnectionDialog({
@@ -66,6 +67,7 @@ export function AirtableConnectionDialog({
   companyId,
   speakerId,
   entityName,
+  onConnectionSaved,
 }: AirtableConnectionDialogProps) {
   const {
     connection,
@@ -119,6 +121,7 @@ export function AirtableConnectionDialog({
     setIsSaving(false);
 
     if (success) {
+      onConnectionSaved?.();
       onOpenChange(false);
     }
   };

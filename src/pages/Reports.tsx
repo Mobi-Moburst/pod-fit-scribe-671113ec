@@ -74,6 +74,7 @@ export default function Reports() {
   const [airtableFile, setAirtableFile] = useState<File | null>(null);
   const [airtableSyncedData, setAirtableSyncedData] = useState<AirtableCSVRow[] | null>(null);
   const [airtableConnectionDialogOpen, setAirtableConnectionDialogOpen] = useState(false);
+  const [connectionVersion, setConnectionVersion] = useState(0);
   
   // Company-level file uploads (shared for multi-speaker)
   const [sovFile, setSOVFile] = useState<File | null>(null); // kept for backward compat, always null
@@ -2250,6 +2251,7 @@ export default function Reports() {
                           
                           <div className="flex items-center gap-2 mb-2">
                             <AirtableSyncButton
+                              key={`sync-${connectionVersion}`}
                               companyId={selectedCompanyId || undefined}
                               speakerId={selectedSpeakerId || undefined}
                               entityName={speakerAsClient?.name || 'Speaker'}
@@ -3081,6 +3083,7 @@ export default function Reports() {
             companyId={selectedCompanyId || undefined}
             speakerId={selectedSpeakerId || undefined}
             entityName={speakerAsClient?.name || selectedCompany?.name || 'Company'}
+            onConnectionSaved={() => setConnectionVersion(v => v + 1)}
           />
         </div>
       </main>
