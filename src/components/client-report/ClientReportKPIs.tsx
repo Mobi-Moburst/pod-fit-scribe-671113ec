@@ -45,10 +45,10 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       key: 'totalPublished',
       label: "Episodes Published",
       value: kpis.total_published,
-      description: "Episodes live",
+      description: "Episodes live" + (onPublishedClick ? " • Click for details" : ""),
       icon: Podcast,
       color: "hsl(var(--accent))",
-      onClick: undefined as (() => void) | undefined,
+      onClick: onPublishedClick,
     });
   }
 
