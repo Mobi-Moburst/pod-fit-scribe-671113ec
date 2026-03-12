@@ -2328,15 +2328,75 @@ export default function Reports() {
                               </p>
                             )}
                             {competitorInterviews.map((comp, index) => (
-                              <div key={index} className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-xs truncate">{comp.name}</p>
-                                  <p className="text-[11px] text-muted-foreground truncate">{comp.role}</p>
+                              <div key={index} className="space-y-1.5">
+                                <div className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-xs truncate">{comp.name}</p>
+                                    <p className="text-[11px] text-muted-foreground truncate">{comp.role}</p>
+                                  </div>
+                                  <Input type="number" min="0" className="w-16 h-7 text-xs" placeholder="0" value={comp.count || ''} onChange={(e) => updateCompetitorCount(index, parseInt(e.target.value) || 0)} />
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyListenNotesURL(comp.name)} title="Copy ListenNotes URL">
+                                    <Clipboard className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => setExpandedCompetitorEpisodes(prev => ({ ...prev, [index]: !prev[index] }))}
+                                    title={expandedCompetitorEpisodes[index] ? "Hide episode URLs" : "Add episode URLs"}
+                                  >
+                                    {expandedCompetitorEpisodes[index] ? <ChevronDown className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                                  </Button>
                                 </div>
-                                <Input type="number" min="0" className="w-16 h-7 text-xs" placeholder="0" value={comp.count || ''} onChange={(e) => updateCompetitorCount(index, parseInt(e.target.value) || 0)} />
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyListenNotesURL(comp.name)} title="Copy ListenNotes URL">
-                                  <Clipboard className="h-3.5 w-3.5" />
-                                </Button>
+                                {expandedCompetitorEpisodes[index] && (
+                                  <div className="ml-4 space-y-1.5">
+                                    {(comp.episodeUrls || []).map((url, urlIdx) => (
+                                      <div key={urlIdx} className="flex items-center gap-1.5">
+                                        <Input
+                                          className="h-7 text-xs flex-1"
+                                          placeholder="Paste episode URL..."
+                                          value={url}
+                                          onChange={(e) => {
+                                            setCompetitorInterviews(prev => prev.map((c, i) => {
+                                              if (i !== index) return c;
+                                              const urls = [...(c.episodeUrls || [])];
+                                              urls[urlIdx] = e.target.value;
+                                              return { ...c, episodeUrls: urls };
+                                            }));
+                                          }}
+                                        />
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                          onClick={() => {
+                                            setCompetitorInterviews(prev => prev.map((c, i) => {
+                                              if (i !== index) return c;
+                                              const urls = (c.episodeUrls || []).filter((_, j) => j !== urlIdx);
+                                              return { ...c, episodeUrls: urls };
+                                            }));
+                                          }}
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 text-[10px] gap-1"
+                                      onClick={() => {
+                                        setCompetitorInterviews(prev => prev.map((c, i) => {
+                                          if (i !== index) return c;
+                                          return { ...c, episodeUrls: [...(c.episodeUrls || []), ''] };
+                                        }));
+                                      }}
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                      Add URL
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
