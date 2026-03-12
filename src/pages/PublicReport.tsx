@@ -27,6 +27,8 @@ import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
 interface VisibleSections {
   totalBooked?: boolean;
   totalPublished?: boolean;
+  totalRecorded?: boolean;
+  totalIntroCalls?: boolean;
   socialReach?: boolean;
   totalReach?: boolean;
   averageScore?: boolean;
