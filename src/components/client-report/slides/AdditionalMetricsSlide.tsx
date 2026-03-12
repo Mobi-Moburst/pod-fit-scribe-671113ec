@@ -1,5 +1,5 @@
 import { ReportData } from "@/types/reports";
-import { DollarSign, PieChart, Globe, Target, Share2 } from "lucide-react";
+import { DollarSign, PieChart, Globe, Target, Share2, TrendingUp } from "lucide-react";
 
 // Platform data for social value calculation (allocation and CPM rates)
 const PLATFORM_DATA = {
