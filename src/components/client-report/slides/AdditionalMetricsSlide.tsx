@@ -152,28 +152,36 @@ export const AdditionalMetricsSlide = ({
         metrics.length === 3 ? 'grid-cols-3 max-w-4xl mx-auto' :
         'grid-cols-2 md:grid-cols-4'
       }`}>
-        {metrics.map((metric, index) => (
-          <button
-            key={index}
-            onClick={metric.onClick}
-            className="group bg-card border border-border rounded-3xl p-8 space-y-4 transition-all duration-200 hover:scale-[1.03] hover:shadow-xl cursor-pointer text-left"
-          >
-            <div
-              className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
-              style={{ backgroundColor: `${metric.color}15` }}
+        {metrics.map((metric, index) => {
+          const isClickable = !!metric.onClick;
+          const Component = isClickable ? 'button' : 'div';
+          return (
+            <Component
+              key={index}
+              onClick={metric.onClick}
+              className={`group bg-card border border-border rounded-3xl p-8 space-y-4 transition-all duration-200 text-left ${
+                isClickable ? 'hover:scale-[1.03] hover:shadow-xl cursor-pointer' : ''
+              }`}
             >
-              <metric.icon className="h-8 w-8" style={{ color: metric.color }} />
-            </div>
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold">{metric.value}</div>
-              <div className="text-lg text-muted-foreground mt-2">{metric.label}</div>
-              <div className="text-sm text-muted-foreground/70 mt-1">{metric.subtitle}</div>
-            </div>
-            <div className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity text-center">
-              Click for details
-            </div>
-          </button>
-        ))}
+              <div
+                className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
+                style={{ backgroundColor: `${metric.color}15` }}
+              >
+                <metric.icon className="h-8 w-8" style={{ color: metric.color }} />
+              </div>
+              <div className="text-center">
+                <div className="text-4xl md:text-5xl font-bold">{metric.value}</div>
+                <div className="text-lg text-muted-foreground mt-2">{metric.label}</div>
+                <div className="text-sm text-muted-foreground/70 mt-1">{metric.subtitle}</div>
+              </div>
+              {isClickable && (
+                <div className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity text-center">
+                  Click for details
+                </div>
+              )}
+            </Component>
+          );
+        })}
       </div>
     </div>
   );
