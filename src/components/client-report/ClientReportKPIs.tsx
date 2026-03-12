@@ -69,10 +69,10 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       key: 'totalIntroCalls',
       label: "Intro Calls",
       value: kpis.total_intro_calls || 0,
-      description: "Introduction calls completed",
+      description: "Introduction calls completed" + (onIntroCallsClick ? " • Click for details" : ""),
       icon: PhoneCall,
       color: "hsl(var(--primary))",
-      onClick: undefined as (() => void) | undefined,
+      onClick: onIntroCallsClick,
     });
   }
 
