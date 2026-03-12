@@ -13,6 +13,10 @@ interface ClientReportKPIsProps {
     averageScore?: boolean;
   };
   onReachClick?: () => void;
+  onBookedClick?: () => void;
+  onPublishedClick?: () => void;
+  onRecordedClick?: () => void;
+  onIntroCallsClick?: () => void;
 }
 
 const formatNumber = (num: number): string => {
