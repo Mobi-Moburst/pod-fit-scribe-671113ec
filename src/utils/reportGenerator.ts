@@ -564,6 +564,11 @@ export async function generateAITalkingPoints(
           quarter: n.quarter,
           notes: n.notes,
         })),
+        competitor_data: competitorData?.filter(c => c.interview_count > 0)?.map(c => ({
+          name: c.name,
+          interview_count: c.interview_count,
+          episode_urls: c.episode_urls?.slice(0, 10),
+        })),
       }
     });
 
