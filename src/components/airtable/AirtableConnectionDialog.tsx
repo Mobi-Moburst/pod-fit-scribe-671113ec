@@ -58,6 +58,7 @@ interface AirtableConnectionDialogProps {
   companyId?: string;
   speakerId?: string;
   entityName: string; // For display: "Maya Reynolds" or "Acme Inc."
+  onConnectionSaved?: () => void;
 }
 
 export function AirtableConnectionDialog({
