@@ -274,6 +274,10 @@ export default function PublicReport() {
             kpis={reportData.kpis}
             visibleSections={visibleSections}
             onReachClick={() => setReachDialogOpen(true)}
+            onBookedClick={() => setBookedDialogOpen(true)}
+            onPublishedClick={() => setPublishedDialogOpen(true)}
+            onRecordedClick={() => setRecordedDialogOpen(true)}
+            onIntroCallsClick={() => setIntroCallsDialogOpen(true)}
           />
         )}
 
