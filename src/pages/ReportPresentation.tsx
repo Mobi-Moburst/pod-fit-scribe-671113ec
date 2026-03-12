@@ -305,6 +305,20 @@ export default function ReportPresentation() {
       });
     }
 
+    // Activity Tracking (Airtable embed) slide
+    const airtableUrl = reportData.client?.airtable_embed_url;
+    if (airtableUrl) {
+      slides.push({
+        id: "activity-tracking",
+        component: (
+          <ActivityTrackingSlide
+            embedUrl={airtableUrl}
+            clientName={reportData.company_name || reportData.client?.company || reportData.client?.name}
+          />
+        ),
+      });
+    }
+
     // Categories
     if (visibleSections.topCategories && reportData.kpis.top_categories?.length > 0) {
       slides.push({
