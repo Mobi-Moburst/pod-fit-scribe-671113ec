@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Play, AlertCircle, Calendar, Radio, PhoneCall } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { ClientReportHeader } from "@/components/client-report/ClientReportHeader";
 import { ClientReportKPIs } from "@/components/client-report/ClientReportKPIs";
@@ -44,6 +45,7 @@ interface VisibleSections {
   nextQuarterStrategy?: boolean;
   targetPodcasts?: boolean;
   contentGapRecommendations?: boolean;
+  airtableEmbed?: boolean;
   highlights?: boolean;
 }
 
@@ -185,6 +187,7 @@ export default function PublicReport() {
         nextQuarterStrategy: true,
         targetPodcasts: true,
         contentGapRecommendations: true,
+        airtableEmbed: !!reportData.client?.airtable_embed_url,
         highlights: !!(reportData.highlight_clips && reportData.highlight_clips.length > 0),
         // Auto-detect additional metrics based on data presence
         emv: ((reportData.kpis?.total_emv || 0) > 0) || (reportData.podcasts?.some(p => p.true_emv && p.true_emv > 0)) || false,
@@ -303,6 +306,11 @@ export default function PublicReport() {
           <ClientReportCampaignOverview 
             campaignOverview={reportData.campaign_overview}
           />
+        )}
+
+        {/* Airtable Embed */}
+        {visibleSections.airtableEmbed && reportData.client?.airtable_embed_url && (
+          <AirtableEmbed embedUrl={reportData.client.airtable_embed_url} />
         )}
 
         {/* Interview Highlights */}
