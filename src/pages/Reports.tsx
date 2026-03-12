@@ -3027,6 +3027,17 @@ export default function Reports() {
                 dateRange={reportData.date_range}
               />
               
+              <PodcastListDialog
+                open={introCallsDialogOpen}
+                onOpenChange={setIntroCallsDialogOpen}
+                title="Intro Calls"
+                description="Introduction calls completed this period."
+                icon={PhoneCall}
+                podcasts={reportData.intro_call_podcasts || []}
+                dateField="scheduled_date_time"
+                dateRange={reportData.date_range}
+              />
+              
               <ReachAnalysisDialog
                 open={reachDialogOpen}
                 onOpenChange={setReachDialogOpen}
