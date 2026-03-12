@@ -211,6 +211,7 @@ export default function ReportPresentation() {
 
     // KPIs slide
     const hasKPIs = visibleSections.totalBooked || visibleSections.totalPublished || 
+      visibleSections.totalRecorded || visibleSections.totalIntroCalls ||
       visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
     if (hasKPIs) {
       slides.push({

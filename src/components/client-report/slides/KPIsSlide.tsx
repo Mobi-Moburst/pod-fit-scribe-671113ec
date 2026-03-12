@@ -48,6 +48,24 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
     });
   }
 
+  if (visibleSections.totalRecorded && (kpis.total_recorded ?? 0) > 0) {
+    kpiItems.push({
+      label: "Total Recorded",
+      value: kpis.total_recorded || 0,
+      icon: Mic,
+      color: "hsl(var(--primary))",
+    });
+  }
+
+  if (visibleSections.totalIntroCalls && (kpis.total_intro_calls ?? 0) > 0) {
+    kpiItems.push({
+      label: "Intro Calls",
+      value: kpis.total_intro_calls || 0,
+      icon: PhoneCall,
+      color: "hsl(var(--primary))",
+    });
+  }
+
   if (visibleSections.socialReach) {
     kpiItems.push({
       label: "Social Reach",
