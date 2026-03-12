@@ -2451,7 +2451,8 @@ export async function generateMultiSpeakerReport(
       true,
       quarter,
       allPodcastsForLookingAhead,
-      quarterlyNotes
+      quarterlyNotes,
+      sov_analysis?.competitors?.map(c => ({ name: c.name, interview_count: c.interview_count, episode_urls: c.episode_urls }))
     );
     
     if (aiLookingAhead.speaker_talking_points_spotlight && aiLookingAhead.speaker_talking_points_spotlight.length > 0) {
