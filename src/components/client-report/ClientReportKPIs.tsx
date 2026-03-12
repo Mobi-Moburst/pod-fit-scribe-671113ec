@@ -57,10 +57,10 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       key: 'totalRecorded',
       label: "Total Recorded",
       value: kpis.total_recorded || 0,
-      description: "Interviews completed",
+      description: "Interviews completed" + (onRecordedClick ? " • Click for details" : ""),
       icon: Mic,
       color: "hsl(var(--primary))",
-      onClick: undefined as (() => void) | undefined,
+      onClick: onRecordedClick,
     });
   }
 
