@@ -2046,6 +2046,7 @@ export async function generateReportFromMultipleCSVs(
         : undefined,
     },
     podcasts: sortedPodcasts,
+    intro_call_podcasts: buildIntroCallPodcasts(airtableRows, dateRange),
     sov_analysis,
     geo_analysis,
     content_gap_analysis,
@@ -2054,6 +2055,31 @@ export async function generateReportFromMultipleCSVs(
     geo_csv_uploaded: geoCsvProvided,
     content_gap_csv_uploaded: contentGapCsvProvided,
   };
+}
+
+// Build intro call podcast entries from airtable rows
+function buildIntroCallPodcasts(
+  airtableRows: AirtableCSVRow[],
+  dateRange: { start: Date; end: Date }
+): PodcastReportEntry[] {
+  return airtableRows
+    .filter(r => {
+      const isIntroCall = getActionString(r.action).toLowerCase().includes('intro call');
+      if (!isIntroCall) return false;
+      if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+      const schedDate = parseAirtableDate(r.scheduled_date_time);
+      if (!schedDate) return false;
+      return schedDate >= dateRange.start && schedDate <= dateRange.end;
+    })
+    .map(r => ({
+      show_title: r.podcast_name || 'Unknown Podcast',
+      verdict: 'Consider' as const,
+      overall_score: 0,
+      action: getActionString(r.action),
+      scheduled_date_time: r.scheduled_date_time,
+      apple_podcast_link: r.apple_podcast_link,
+      date_booked: r.date_booked,
+    }));
 }
 // Build published podcasts directly from airtable rows (same source as KPI)
 function buildPublishedPodcastsFromAirtable(
