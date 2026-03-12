@@ -25,7 +25,7 @@ const formatNumber = (num: number): string => {
   return num.toString();
 };
 
-export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick }: ClientReportKPIsProps) => {
+export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBookedClick, onPublishedClick, onRecordedClick, onIntroCallsClick }: ClientReportKPIsProps) => {
   const kpiItems = [];
 
   if (visibleSections.totalBooked) {
