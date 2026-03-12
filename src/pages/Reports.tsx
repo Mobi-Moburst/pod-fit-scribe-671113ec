@@ -2567,6 +2567,16 @@ export default function Reports() {
                         onHide={() => toggleSection('totalRecorded')}
                       />
                     )}
+                    {visibleSections.totalIntroCalls && (reportData.kpis.total_intro_calls ?? 0) > 0 && (
+                      <KPICard
+                        title="Intro Calls"
+                        value={reportData.kpis.total_intro_calls || 0}
+                        subtitle="Introduction calls completed"
+                        icon={PhoneCall}
+                        onClick={() => setIntroCallsDialogOpen(true)}
+                        onHide={() => toggleSection('totalIntroCalls')}
+                      />
+                    )}
                     {visibleSections.socialReach && (
                       <KPICard
                         title="Social Reach"
