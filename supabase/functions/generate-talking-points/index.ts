@@ -142,6 +142,7 @@ ${speakerContext}
 ${campaignContext}
 ${podcastContext}
 ${notesContext}
+${competitorContext}
 
 Return ONLY valid JSON (no markdown fences) with these fields:
 
