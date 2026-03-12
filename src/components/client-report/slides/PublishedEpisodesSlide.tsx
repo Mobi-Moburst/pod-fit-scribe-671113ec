@@ -29,9 +29,9 @@ export const PublishedEpisodesSlide = ({ podcasts }: PublishedEpisodesSlideProps
             rel="noopener noreferrer"
             className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border hover:bg-muted/50 transition-colors group"
           >
-            {episode.cover_art_url ? (
+            {(episode as any).cover_art_url ? (
               <img
-                src={episode.cover_art_url}
+                src={(episode as any).cover_art_url}
                 alt={episode.show_title}
                 className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
               />
@@ -44,8 +44,8 @@ export const PublishedEpisodesSlide = ({ podcasts }: PublishedEpisodesSlideProps
               <p className="font-semibold text-base truncate group-hover:text-primary transition-colors">
                 {episode.show_title}
               </p>
-              {episode.episode_title && (
-                <p className="text-sm text-muted-foreground truncate mt-0.5">{episode.episode_title}</p>
+              {(episode as any).episode_title && (
+                <p className="text-sm text-muted-foreground truncate mt-0.5">{(episode as any).episode_title}</p>
               )}
               <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                 {episode.date_published && (
