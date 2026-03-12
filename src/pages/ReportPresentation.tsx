@@ -17,6 +17,8 @@ import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterS
 import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
 import HighlightsSlide from "@/components/client-report/slides/HighlightsSlide";
+import { PublishedEpisodesSlide } from "@/components/client-report/slides/PublishedEpisodesSlide";
+import { ActivityTrackingSlide } from "@/components/client-report/slides/ActivityTrackingSlide";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
