@@ -51,7 +51,7 @@ serve(async (req) => {
   }
 
   try {
-    const { speakers, quarter, reportQuarter, kpis, isMultiSpeaker, podcasts, quarterly_notes } = await req.json() as GenerateRequest;
+    const { speakers, quarter, reportQuarter, kpis, isMultiSpeaker, podcasts, quarterly_notes, competitor_data } = await req.json() as GenerateRequest;
     
     // Get current date for temporal context
     const now = new Date();
