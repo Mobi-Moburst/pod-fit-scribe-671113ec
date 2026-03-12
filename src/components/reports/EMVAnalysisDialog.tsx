@@ -186,8 +186,8 @@ export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelatio
           </Card>
         </div>
 
-        {/* Scatter Chart Section - hide in demo mode */}
-        {!hideCorrelationChart && (
+        {/* Scatter Chart Section - hide when no fit scores or in demo mode */}
+        {!hideCorrelationChart && validPodcasts.length > 0 && (
           <>
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-2">Fit Score vs EMV Correlation</h3>
