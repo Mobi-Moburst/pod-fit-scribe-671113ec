@@ -608,9 +608,9 @@ export default function Reports() {
         const geoRows = geoText ? parseGEOCSV(geoText) : [];
         const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
         
-        // Prepare manual SOV data
+        // Prepare manual SOV data (include episode URLs)
         const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
-          ? competitorInterviews.filter(c => c.count > 0)
+          ? competitorInterviews.filter(c => c.count > 0).map(c => ({ ...c, episodeUrls: (c.episodeUrls || []).filter(u => u.trim()) }))
           : null;
         
         // Generate multi-speaker report
