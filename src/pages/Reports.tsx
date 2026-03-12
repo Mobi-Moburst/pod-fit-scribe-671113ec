@@ -3082,6 +3082,7 @@ export default function Reports() {
             companyId={selectedCompanyId || undefined}
             speakerId={selectedSpeakerId || undefined}
             entityName={speakerAsClient?.name || selectedCompany?.name || 'Company'}
+            onConnectionSaved={() => setConnectionVersion(v => v + 1)}
           />
         </div>
       </main>
