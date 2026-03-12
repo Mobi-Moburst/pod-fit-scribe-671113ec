@@ -357,6 +357,48 @@ export default function PublicReport() {
         <ClientReportFooter />
       </div>
 
+      {/* KPI List Dialogs */}
+      <PodcastListDialog
+        open={bookedDialogOpen}
+        onOpenChange={setBookedDialogOpen}
+        title="Booked Podcasts"
+        description="Podcasts with confirmed bookings this period."
+        icon={Calendar}
+        podcasts={reportData.podcasts}
+        dateField="date_booked"
+        dateRange={reportData.date_range}
+      />
+      <PodcastListDialog
+        open={publishedDialogOpen}
+        onOpenChange={setPublishedDialogOpen}
+        title="Published Episodes"
+        description="Episodes that went live this period."
+        icon={Radio}
+        podcasts={reportData.podcasts}
+        dateField="date_published"
+        dateRange={reportData.date_range}
+      />
+      <PodcastListDialog
+        open={recordedDialogOpen}
+        onOpenChange={setRecordedDialogOpen}
+        title="Recorded Podcasts"
+        description="Podcast interviews recorded this period."
+        icon={Radio}
+        podcasts={reportData.podcasts}
+        dateField="scheduled_date_time"
+        dateRange={reportData.date_range}
+      />
+      <PodcastListDialog
+        open={introCallsDialogOpen}
+        onOpenChange={setIntroCallsDialogOpen}
+        title="Intro Calls"
+        description="Introduction calls completed this period."
+        icon={PhoneCall}
+        podcasts={reportData.intro_call_podcasts || []}
+        dateField="scheduled_date_time"
+        dateRange={reportData.date_range}
+      />
+
       {/* Analysis Dialogs */}
       <EMVAnalysisDialog
         open={emvDialogOpen}
