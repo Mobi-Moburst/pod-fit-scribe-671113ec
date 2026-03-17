@@ -281,7 +281,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
       label: "Avg Score",
       value: speaker.kpis.avg_score.toFixed(1),
       icon: TrendingUp,
-      color: "hsl(51 100% 61%)",
+      color: "hsl(var(--gold))",
     });
   }
 

@@ -109,7 +109,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       value: kpis.avg_score.toFixed(1),
       description: "Podcast alignment score",
       icon: TrendingUp,
-      color: "hsl(51 100% 61%)",
+      color: "hsl(var(--gold))",
       onClick: undefined as (() => void) | undefined,
     });
   }
