@@ -87,7 +87,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
       description: "Total monthly listeners",
       value: formatNumber(kpis.total_reach),
       icon: Users,
-      color: "hsl(191 100% 62%)",
+      color: "hsl(var(--primary))",
       onClick: onReachClick,
     });
   }
@@ -98,7 +98,7 @@ export const KPIsSlide = ({ kpis, visibleSections, onReachClick }: KPIsSlideProp
       description: "Podcast alignment score",
       value: kpis.avg_score.toFixed(1),
       icon: TrendingUp,
-      color: "hsl(51 100% 61%)",
+      color: "hsl(var(--gold))",
     });
   }
 
