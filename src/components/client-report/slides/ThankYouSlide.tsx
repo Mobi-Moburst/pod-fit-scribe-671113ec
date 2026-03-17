@@ -24,14 +24,14 @@ export const ThankYouSlide = ({ client }: ThankYouSlideProps) => {
         angle: 60,
         spread: 55,
         origin: { x: 0, y: 0.6 },
-        colors: ['#29D4F5', '#AADD00', '#F5C518', '#F55060'],
+        colors: ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6'],
       });
       confetti({
         particleCount: 3,
         angle: 120,
         spread: 55,
         origin: { x: 1, y: 0.6 },
-        colors: ['#29D4F5', '#AADD00', '#F5C518', '#F55060'],
+        colors: ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6'],
       });
 
       if (Date.now() < end) {

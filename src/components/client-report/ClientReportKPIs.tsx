@@ -97,7 +97,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       value: formatNumber(kpis.total_reach),
       description: "Total monthly listeners" + (onReachClick ? " • Click for details" : ""),
       icon: Users,
-      color: "hsl(var(--primary))",
+      color: "hsl(191 100% 62%)",
       onClick: onReachClick,
     });
   }
@@ -109,7 +109,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       value: kpis.avg_score.toFixed(1),
       description: "Podcast alignment score",
       icon: TrendingUp,
-      color: "hsl(var(--gold))",
+      color: "hsl(51 100% 61%)",
       onClick: undefined as (() => void) | undefined,
     });
   }
