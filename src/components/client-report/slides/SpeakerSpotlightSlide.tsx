@@ -263,7 +263,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
       label: "Listenership",
       value: formatNumber(speaker.kpis.total_reach),
       icon: Users,
-      color: "hsl(191 100% 62%)",
+      color: "hsl(var(--primary))",
     });
   }
   
