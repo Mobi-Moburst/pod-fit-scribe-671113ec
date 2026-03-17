@@ -63,6 +63,7 @@
 
     --gradient-primary: linear-gradient(135deg, hsl(191 90% 56%), transparent);
     --gradient-text: linear-gradient(135deg, hsl(191 90% 56%), hsl(76 100% 43%));
+    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 90% 56% / 0.10), transparent 60%);
     --shadow-elevated: 0 10px 30px -10px hsl(191 90% 56% / 0.20);
     --transition-smooth: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
