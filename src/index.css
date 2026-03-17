@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+Pro:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,133 +9,135 @@
 @layer base {
   :root {
     /* Typography */
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-    --font-serif: 'Source Serif Pro', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+    --font-serif: 'Geist', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
 
-    /* Light theme (used when .dark is not set) */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 5%;
+    /* Light theme — mirrors dark since this is a dark-first app */
+    --background: 0 0% 4%;        /* #0A0A0A */
+    --foreground: 0 0% 100%;      /* #FFFFFF */
 
-    --card: 0 0% 98%;
-    --card-foreground: 0 0% 5%;
+    --card: 0 0% 7%;              /* #111111 */
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 5%;
+    --popover: 0 0% 10%;          /* #1A1A1A elevated */
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 191 100% 55%; /* Cyan (darker for light bg) */
-    --primary-foreground: 0 0% 100%;
+    --primary: 191 90% 56%;       /* #29D4F5 Cyan */
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary: 0 0% 10%;        /* #1A1A1A */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 35%; /* rgba(255,255,255,0.35) */
 
-    --accent: 51 100% 55%; /* Yellow (darker for light bg) */
-    --accent-foreground: 0 0% 5%;
+    --accent: 76 100% 43%;        /* #AADD00 Lime */
+    --accent-foreground: 0 0% 4%;
 
-    --destructive: 355 100% 65%; /* Coral */
+    --destructive: 355 90% 64%;   /* #F55060 Coral */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 191 100% 55%;
+    --border: 0 0% 100% / 0.08;   /* rgba(255,255,255,0.08) */
+    --input: 0 0% 100% / 0.08;
+    --ring: 191 90% 56%;
 
-    --radius: 1rem; /* rounded-2xl vibe */
+    --radius: 0.75rem;
 
-    /* Sidebar (light) */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 191 100% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 191 100% 55%;
+    /* Sidebar */
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 191 90% 56%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 100% / 0.08;
+    --sidebar-ring: 191 90% 56%;
 
-    /* Extras */
-    --brand: 191 100% 62%; /* Moburst cyan */
-    --brand-glow: 191 100% 72%;
-    --yellow: 51 100% 61%; /* Moburst yellow */
+    /* Brand accents */
+    --brand: 191 90% 56%;         /* Cyan */
+    --brand-glow: 191 90% 66%;
+    --lime: 76 100% 43%;          /* Lime */
+    --gold: 46 91% 53%;           /* Gold #F5C518 */
+    --coral: 355 90% 64%;         /* Coral #F55060 */
+    --yellow: 46 91% 53%;         /* Gold alias */
 
-    --gradient-primary: linear-gradient(135deg, hsl(191 100% 62%), hsl(51 100% 61%));
-    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 100% 62% / 0.12), transparent 60%);
-    --shadow-elevated: 0 10px 30px -10px hsl(191 100% 62% / 0.25);
+    --gradient-primary: linear-gradient(135deg, hsl(191 90% 56%), transparent);
+    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 90% 56% / 0.10), transparent 60%);
+    --shadow-elevated: 0 10px 30px -10px hsl(191 90% 56% / 0.20);
     --transition-smooth: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Dark theme (default) */
+  /* Dark theme (default — same as root since dark-first) */
   .dark {
-    --background: 0 0% 5%;  /* #0c0c0c Moburst black */
-    --foreground: 0 0% 100%;  /* #ffffff pure white */
+    --background: 0 0% 4%;        /* #0A0A0A */
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 8%;       /* slightly lighter than bg */
+    --card: 0 0% 7%;              /* #111111 */
     --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 8%;
+    --popover: 0 0% 10%;          /* #1A1A1A */
     --popover-foreground: 0 0% 100%;
 
-    --primary: 191 100% 62%; /* #3bd4ff Moburst cyan */
-    --primary-foreground: 0 0% 5%;
+    --primary: 191 90% 56%;       /* #29D4F5 Cyan */
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 0 0% 15%;
+    --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 70%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 35%;
 
-    --accent: 51 100% 61%; /* #ffe43a Moburst yellow */
-    --accent-foreground: 0 0% 5%;
+    --accent: 76 100% 43%;        /* #AADD00 Lime */
+    --accent-foreground: 0 0% 4%;
 
-    --destructive: 355 100% 70%; /* #ff6671 Moburst coral */
+    --destructive: 355 90% 64%;   /* #F55060 Coral */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 191 100% 62%;
+    --border: 0 0% 100% / 0.08;
+    --input: 0 0% 100% / 0.08;
+    --ring: 191 90% 56%;
 
-    --sidebar-background: 0 0% 8%;
+    --sidebar-background: 0 0% 4%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 191 100% 62%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-primary: 191 90% 56%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 10%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 191 100% 62%;
+    --sidebar-border: 0 0% 100% / 0.08;
+    --sidebar-ring: 191 90% 56%;
 
-    /* Gradient surface for dark mode - matches light mode but explicit */
-    --gradient-primary: linear-gradient(135deg, hsl(191 100% 62%), hsl(51 100% 61%));
-    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 100% 62% / 0.15), transparent 60%);
-    --shadow-elevated: 0 10px 30px -10px hsl(191 100% 62% / 0.25);
+    --gradient-primary: linear-gradient(135deg, hsl(191 90% 56%), transparent);
+    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 90% 56% / 0.10), transparent 60%);
+    --shadow-elevated: 0 10px 30px -10px hsl(191 90% 56% / 0.20);
   }
 
   /* 🦇 Bat Cave theme — activated via easter egg */
   .batcave {
-    --background: 24 25% 8%;       /* Deep cave brown #1a1612 */
-    --foreground: 35 20% 88%;      /* Warm parchment white */
+    --background: 24 25% 8%;
+    --foreground: 35 20% 88%;
 
-    --card: 24 20% 11%;            /* Stone slab */
+    --card: 24 20% 11%;
     --card-foreground: 35 20% 88%;
 
     --popover: 24 20% 11%;
     --popover-foreground: 35 20% 88%;
 
-    --primary: 174 60% 45%;        /* Gemstone teal from bat wings */
+    --primary: 174 60% 45%;
     --primary-foreground: 24 25% 8%;
 
-    --secondary: 24 15% 16%;       /* Darker cave stone */
+    --secondary: 24 15% 16%;
     --secondary-foreground: 35 20% 88%;
 
     --muted: 24 15% 16%;
     --muted-foreground: 35 10% 55%;
 
-    --accent: 38 80% 50%;          /* Warm torch amber */
+    --accent: 38 80% 50%;
     --accent-foreground: 24 25% 8%;
 
-    --destructive: 0 65% 55%;      /* Red wing segment */
+    --destructive: 0 65% 55%;
     --destructive-foreground: 35 20% 88%;
 
-    --border: 24 15% 18%;          /* Stone crack lines */
+    --border: 24 15% 18%;
     --input: 24 15% 18%;
     --ring: 174 60% 45%;
 
@@ -150,9 +152,12 @@
 
     --brand: 174 60% 45%;
     --brand-glow: 174 70% 55%;
+    --lime: 76 100% 43%;
+    --gold: 38 80% 50%;
+    --coral: 0 65% 55%;
     --yellow: 38 80% 50%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(174 60% 45%), hsl(38 80% 50%));
+    --gradient-primary: linear-gradient(135deg, hsl(174 60% 45%), transparent);
     --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(38 80% 50% / 0.08), transparent 60%);
     --shadow-elevated: 0 10px 30px -10px hsl(38 80% 50% / 0.2);
   }
@@ -164,7 +169,6 @@
     border-color: hsl(24 15% 20%);
   }
 
-  /* Warm glow on hover for batcave cards */
   .batcave .card-surface:hover,
   .batcave [data-slot="card"]:hover {
     box-shadow: inset 0 1px 0 0 hsl(35 20% 88% / 0.06), 0 4px 16px -4px hsl(38 80% 50% / 0.15);
@@ -192,5 +196,14 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+
+  /* Text opacity utilities */
+  .text-secondary {
+    color: hsl(0 0% 100% / 0.6);
+  }
+
+  .text-muted-label {
+    color: hsl(0 0% 100% / 0.35);
   }
 }
