@@ -97,7 +97,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       value: formatNumber(kpis.total_reach),
       description: "Total monthly listeners" + (onReachClick ? " • Click for details" : ""),
       icon: Users,
-      color: "hsl(191 100% 62%)",
+      color: "hsl(var(--primary))",
       onClick: onReachClick,
     });
   }
