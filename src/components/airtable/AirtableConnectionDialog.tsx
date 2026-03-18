@@ -411,42 +411,6 @@ export function AirtableConnectionDialog({
 
 
 
-            {/* Advanced: Custom Token (Collapsible) */}
-            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground">
-                  <span>Advanced: Custom API Token</span>
-                  {showAdvanced ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3 pt-3 px-1">
-                <div className="space-y-2">
-                  <Label htmlFor="token">Personal Access Token</Label>
-                  <Input
-                    id="token"
-                    type="password"
-                    placeholder="pat... (optional - uses shared token if empty)"
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Only needed if you want to use a different Airtable account for this connection.{' '}
-                    <a
-                      href="https://airtable.com/create/tokens"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline inline-flex items-center gap-0.5"
-                    >
-                      Get token <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </p>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
 
             {/* Field Mapping (Collapsible) */}
             <Collapsible open={showFieldMapping} onOpenChange={setShowFieldMapping}>
