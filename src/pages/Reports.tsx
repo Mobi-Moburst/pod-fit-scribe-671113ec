@@ -3256,6 +3256,42 @@ export default function Reports() {
                   speakerNames={reportData.speaker_breakdowns?.map(s => s.speaker_name) || []}
                 />
               )}
+
+              {/* Save Report Section - at bottom after all report content */}
+              <Card className="print:hidden border-border/60 shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-[15px] font-semibold tracking-tight">Save Report</CardTitle>
+                  <CardDescription>Save this report for future reference</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Report Name *</Label>
+                      <Input
+                        placeholder="Company - Q4 2025"
+                        value={reportName}
+                        onChange={(e) => setReportName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>Quarter</Label>
+                      <Input
+                        placeholder="Q4 2025"
+                        value={quarter}
+                        onChange={(e) => setQuarter(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleSaveReport}
+                    disabled={isSaving || !reportName}
+                    className="w-full"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {isSaving ? 'Saving...' : 'Save Report'}
+                  </Button>
+                </CardContent>
+              </Card>
             </>
           )}
 
