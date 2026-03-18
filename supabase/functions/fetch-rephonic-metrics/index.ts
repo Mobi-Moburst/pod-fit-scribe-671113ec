@@ -122,18 +122,19 @@ serve(async (req) => {
     const { apple_podcast_urls, podcast_names } = await req.json();
 
     // Support both lookup modes: by Apple URL or by podcast name
-    const lookups: Array<{ key: string; name: string | null }> = [];
+    const lookups: Array<{ key: string; name: string | null; appleId: string | null }> = [];
 
     if (apple_podcast_urls && Array.isArray(apple_podcast_urls)) {
       for (const url of apple_podcast_urls) {
-        const name = extractNameFromAppleUrl(url);
-        lookups.push({ key: url, name });
+        const appleId = extractAppleId(url);
+        const name = extractNameFromAppleUrl(url) || (appleId ? await lookupApplePodcastName(appleId) : null);
+        lookups.push({ key: url, name, appleId });
       }
     }
 
     if (podcast_names && Array.isArray(podcast_names)) {
       for (const name of podcast_names) {
-        lookups.push({ key: name, name });
+        lookups.push({ key: name, name, appleId: null });
       }
     }
 
