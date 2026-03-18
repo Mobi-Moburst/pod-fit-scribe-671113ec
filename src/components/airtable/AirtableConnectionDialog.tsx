@@ -408,52 +408,8 @@ export function AirtableConnectionDialog({
               </div>
             )}
 
-            {/* Base ID / Table ID (read-only when auto-filled, editable otherwise) */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="baseId">
-                  Base ID <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="baseId"
-                  placeholder="appXXXXXXXXXXXXXX"
-                  value={baseId}
-                  onChange={(e) => setBaseId(e.target.value)}
-                  readOnly={!!idsAutoFilled}
-                  className={idsAutoFilled ? 'bg-muted text-muted-foreground' : ''}
-                />
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tableId">
-                  Table ID <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="tableId"
-                  placeholder="tblXXXXXXXXXXXXXX"
-                  value={tableId}
-                  onChange={(e) => setTableId(e.target.value)}
-                  readOnly={!!idsAutoFilled}
-                  className={idsAutoFilled ? 'bg-muted text-muted-foreground' : ''}
-                />
-              </div>
-            </div>
 
-            {idsAutoFilled && (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground underline"
-                onClick={() => {
-                  setAirtableUrl('');
-                  setUrlParsed(false);
-                  setSelectedBaseId('');
-                  setSelectedTableId('');
-                  setShowBrowse(false);
-                }}
-              >
-                Edit IDs manually
-              </button>
-            )}
 
             {/* Advanced: Custom Token (Collapsible) */}
             <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
@@ -492,26 +448,12 @@ export function AirtableConnectionDialog({
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Multi-Speaker Column */}
-            <div className="space-y-2">
-              <Label htmlFor="speakerColumn">Speaker Column (Optional)</Label>
-              <Input
-                id="speakerColumn"
-                placeholder="e.g., Speaker or Guest Name"
-                value={speakerColumnName}
-                onChange={(e) => setSpeakerColumnName(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                If your table has multiple speakers, specify which column contains speaker names to filter by.
-              </p>
-            </div>
-
             {/* Field Mapping (Collapsible) */}
             <Collapsible open={showFieldMapping} onOpenChange={setShowFieldMapping}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between">
                   <span className="flex items-center gap-2">
-                    Field Mapping
+                    Field Mapping & Options
                     <Badge variant="secondary" className="font-normal">
                       {Object.keys(fieldMapping).length} fields
                     </Badge>
@@ -524,6 +466,22 @@ export function AirtableConnectionDialog({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-3">
+                {/* Speaker Column */}
+                <div className="space-y-2">
+                  <Label htmlFor="speakerColumn">Speaker Column (Optional)</Label>
+                  <Input
+                    id="speakerColumn"
+                    placeholder="e.g., Speaker or Guest Name"
+                    value={speakerColumnName}
+                    onChange={(e) => setSpeakerColumnName(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    If your table has multiple speakers, specify which column contains speaker names to filter by.
+                  </p>
+                </div>
+
+                <div className="h-px bg-border" />
+
                 <p className="text-xs text-muted-foreground">
                   Map your Airtable column names to our expected fields. Leave default if using standard names.
                 </p>
