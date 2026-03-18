@@ -408,52 +408,8 @@ export function AirtableConnectionDialog({
               </div>
             )}
 
-            {/* Base ID / Table ID (read-only when auto-filled, editable otherwise) */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="baseId">
-                  Base ID <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="baseId"
-                  placeholder="appXXXXXXXXXXXXXX"
-                  value={baseId}
-                  onChange={(e) => setBaseId(e.target.value)}
-                  readOnly={!!idsAutoFilled}
-                  className={idsAutoFilled ? 'bg-muted text-muted-foreground' : ''}
-                />
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tableId">
-                  Table ID <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="tableId"
-                  placeholder="tblXXXXXXXXXXXXXX"
-                  value={tableId}
-                  onChange={(e) => setTableId(e.target.value)}
-                  readOnly={!!idsAutoFilled}
-                  className={idsAutoFilled ? 'bg-muted text-muted-foreground' : ''}
-                />
-              </div>
-            </div>
 
-            {idsAutoFilled && (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground underline"
-                onClick={() => {
-                  setAirtableUrl('');
-                  setUrlParsed(false);
-                  setSelectedBaseId('');
-                  setSelectedTableId('');
-                  setShowBrowse(false);
-                }}
-              >
-                Edit IDs manually
-              </button>
-            )}
 
             {/* Advanced: Custom Token (Collapsible) */}
             <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
