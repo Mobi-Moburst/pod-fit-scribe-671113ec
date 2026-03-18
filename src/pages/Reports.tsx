@@ -434,64 +434,6 @@ export default function Reports() {
     );
   };
 
-  const autoFetchPeerComparison = async () => {
-    if (!dateRangeStart || !dateRangeEnd) {
-      toast({
-        title: "Select date range first",
-        description: "Please set the report date range before auto-fetching.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (competitorInterviews.length === 0) return;
-
-    setIsFetchingSOV(true);
-    setSovFetchError(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-podchaser-credits', {
-        body: {
-          competitors: competitorInterviews.map(c => ({ name: c.name, role: c.role })),
-          date_range: { start: dateRangeStart, end: dateRangeEnd },
-        },
-      });
-
-      if (error) throw new Error(error.message || 'Failed to fetch credits');
-      if (data?.error) throw new Error(data.error);
-
-      const results = data?.results;
-      if (results) {
-        setCompetitorInterviews(prev =>
-          prev.map(comp => {
-            const result = results[comp.name];
-            if (result && !result.error) {
-              return { ...comp, count: result.interview_count, episodes: result.episodes || [] };
-            }
-            return comp;
-          })
-        );
-
-        const successCount = Object.values(results).filter((r: any) => !r.error).length;
-        const errorCount = Object.values(results).filter((r: any) => r.error).length;
-
-        toast({
-          title: "Peer data fetched",
-          description: `${successCount} competitor(s) updated${errorCount > 0 ? `, ${errorCount} failed` : ''}.`,
-        });
-      }
-    } catch (err: any) {
-      console.error('Auto-fetch SOV error:', err);
-      const msg = err.message || 'Failed to fetch peer comparison data';
-      setSovFetchError(msg);
-      toast({
-        title: "Auto-fetch failed",
-        description: msg.includes('credits') ? "Credits API may not be available on your Podchaser plan. Use manual entry or CSV instead." : msg,
-        variant: "destructive",
-      });
-    } finally {
-      setIsFetchingSOV(false);
-    }
-  };
 
   const loadSavedReports = async () => {
     if (!selectedCompanyId) return;
