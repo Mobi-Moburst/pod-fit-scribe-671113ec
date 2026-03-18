@@ -1871,7 +1871,7 @@ export async function generateReportFromMultipleCSVs(
   if (applePodcastUrls.length > 0) {
     try {
       podchaserRows = await fetchPodchaserMetrics(applePodcastUrls);
-      console.log(`[generateReportFromMultipleCSVs] Podchaser returned ${podchaserRows.length} results`);
+      console.log(`[generateReportFromMultipleCSVs] Rephonic returned ${podchaserRows.length} results`);
     } catch (err) {
       console.warn('[generateReportFromMultipleCSVs] Podchaser fetch failed, continuing without:', err);
     }
