@@ -492,26 +492,12 @@ export function AirtableConnectionDialog({
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Multi-Speaker Column */}
-            <div className="space-y-2">
-              <Label htmlFor="speakerColumn">Speaker Column (Optional)</Label>
-              <Input
-                id="speakerColumn"
-                placeholder="e.g., Speaker or Guest Name"
-                value={speakerColumnName}
-                onChange={(e) => setSpeakerColumnName(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                If your table has multiple speakers, specify which column contains speaker names to filter by.
-              </p>
-            </div>
-
             {/* Field Mapping (Collapsible) */}
             <Collapsible open={showFieldMapping} onOpenChange={setShowFieldMapping}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between">
                   <span className="flex items-center gap-2">
-                    Field Mapping
+                    Field Mapping & Options
                     <Badge variant="secondary" className="font-normal">
                       {Object.keys(fieldMapping).length} fields
                     </Badge>
