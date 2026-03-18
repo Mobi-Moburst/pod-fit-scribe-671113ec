@@ -466,6 +466,22 @@ export function AirtableConnectionDialog({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-3">
+                {/* Speaker Column */}
+                <div className="space-y-2">
+                  <Label htmlFor="speakerColumn">Speaker Column (Optional)</Label>
+                  <Input
+                    id="speakerColumn"
+                    placeholder="e.g., Speaker or Guest Name"
+                    value={speakerColumnName}
+                    onChange={(e) => setSpeakerColumnName(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    If your table has multiple speakers, specify which column contains speaker names to filter by.
+                  </p>
+                </div>
+
+                <div className="h-px bg-border" />
+
                 <p className="text-xs text-muted-foreground">
                   Map your Airtable column names to our expected fields. Leave default if using standard names.
                 </p>
