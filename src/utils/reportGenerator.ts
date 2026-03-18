@@ -1893,7 +1893,7 @@ export async function generateReportFromMultipleCSVs(
   const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
   
   // Step 3: Apply EMV calculations (scraped data first)
-  let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct);
+  let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct, dateRange);
   
   // Step 3a: Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
   const applePodcastUrls = podcastsWithEMV
