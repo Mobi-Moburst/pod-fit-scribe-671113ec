@@ -7,6 +7,11 @@ const corsHeaders = {
 
 const REPHONIC_API_URL = 'https://api.rephonic.com';
 
+function extractAppleId(url: string): string | null {
+  const match = url.match(/\/id(\d+)/i);
+  return match ? match[1] : null;
+}
+
 // Extract a clean podcast name from an Apple Podcast URL for search
 function extractNameFromAppleUrl(url: string): string | null {
   // Pattern: /podcast/some-podcast-name/id123
@@ -15,6 +20,14 @@ function extractNameFromAppleUrl(url: string): string | null {
     return match[1].replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
   }
   return null;
+}
+
+async function lookupApplePodcastName(appleId: string): Promise<string | null> {
+  const response = await fetch(`https://itunes.apple.com/lookup?id=${appleId}&entity=podcast`);
+  if (!response.ok) return null;
+  const data = await response.json();
+  const result = data?.results?.[0];
+  return result?.collectionName || result?.trackName || null;
 }
 
 // Search Rephonic for a podcast by name using the titles mode
