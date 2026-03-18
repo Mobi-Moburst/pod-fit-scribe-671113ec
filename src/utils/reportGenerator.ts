@@ -2444,19 +2444,26 @@ export async function generateMultiSpeakerReport(
     const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
     let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct, dateRange);
     
-    // Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
+    // Auto-fetch Rephonic metrics — split into Apple URL vs name-based lookups
     const speakerAppleUrls = podcastsWithEMV
-      .map(p => p.apple_podcast_link)
-      .filter((url): url is string => !!url && url.trim() !== '');
+      .filter(p => p.apple_podcast_link && isApplePodcastUrl(p.apple_podcast_link))
+      .map(p => p.apple_podcast_link!)
+      .filter(url => url.trim() !== '');
     
-    if (speakerAppleUrls.length > 0) {
+    const speakerNameLookups = podcastsWithEMV
+      .filter(p => !p.apple_podcast_link || !isApplePodcastUrl(p.apple_podcast_link))
+      .filter(p => p.show_title && p.show_title.trim() !== '')
+      .map(p => ({ name: p.show_title, key: p.show_title }));
+    
+    if (speakerAppleUrls.length > 0 || speakerNameLookups.length > 0) {
       try {
-        const speakerPodchaserRows = await fetchPodchaserMetrics(speakerAppleUrls);
+        console.log(`[generateMultiSpeakerReport] Fetching Rephonic for ${speaker.name}: ${speakerAppleUrls.length} by URL, ${speakerNameLookups.length} by name`);
+        const speakerPodchaserRows = await fetchPodchaserMetrics(speakerAppleUrls, speakerNameLookups);
         if (speakerPodchaserRows.length > 0) {
           podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, speakerPodchaserRows, cpm, speakingTimePct, dateRange);
         }
       } catch (err) {
-        console.warn(`[generateMultiSpeakerReport] Podchaser fetch failed for ${speaker.name}:`, err);
+        console.warn(`[generateMultiSpeakerReport] Rephonic fetch failed for ${speaker.name}:`, err);
       }
     }
     
