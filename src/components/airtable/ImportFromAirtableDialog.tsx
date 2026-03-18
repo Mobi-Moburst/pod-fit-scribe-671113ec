@@ -232,25 +232,6 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
           <DialogDescription>Pull client names from an Airtable table and create company + speaker records.</DialogDescription>
         </DialogHeader>
 
-        {/* Config fields */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">Base ID</Label>
-            <Input value={baseId} onChange={e => setBaseId(e.target.value)} placeholder="appXXX" className="text-xs h-8" />
-          </div>
-          <div>
-            <Label className="text-xs">Table ID</Label>
-            <Input value={tableId} onChange={e => setTableId(e.target.value)} placeholder="tblXXX" className="text-xs h-8" />
-          </div>
-          <div>
-            <Label className="text-xs">Client Column</Label>
-            <Input value={clientColumn} onChange={e => setClientColumn(e.target.value)} className="text-xs h-8" />
-          </div>
-          <div>
-            <Label className="text-xs">Campaign Manager Column</Label>
-            <Input value={cmColumn} onChange={e => setCmColumn(e.target.value)} className="text-xs h-8" />
-          </div>
-        </div>
 
         <Button onClick={scan} disabled={isScanning || !baseId || !tableId} variant="outline" className="w-full">
           {isScanning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
