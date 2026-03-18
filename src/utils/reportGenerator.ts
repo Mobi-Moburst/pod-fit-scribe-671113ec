@@ -36,7 +36,8 @@ export async function fetchPodcastMetrics(
       const cachedUrls = new Set<string>();
       for (const row of cached) {
         const fetchedAt = new Date(row.fetched_at);
-        if (fetchedAt >= thirtyDaysAgo) {
+        const hasMetrics = row.listeners_per_episode !== null || row.monthly_listens !== null || row.social_reach !== null;
+        if (fetchedAt >= thirtyDaysAgo && hasMetrics) {
           results.push({
             podcast_name: row.podcast_name || '',
             listeners_per_episode: row.listeners_per_episode || undefined,

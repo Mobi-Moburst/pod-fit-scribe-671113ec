@@ -1,0 +1,1 @@
+DELETE FROM public.podcast_metadata_cache WHERE fetched_at >= now() - interval '30 days' AND (listeners_per_episode IS NULL OR monthly_listens IS NULL OR social_reach IS NULL);
