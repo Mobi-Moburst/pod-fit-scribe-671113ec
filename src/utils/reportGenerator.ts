@@ -1744,22 +1744,38 @@ function applyRephonicEMVData(
 ): PodcastReportEntry[] {
   if (!rephonicRows || rephonicRows.length === 0) return podcasts;
   
-  // Create a map of normalized podcast names to Rephonic data
-  const rephonicMap = new Map<string, RephonicCSVRow>();
+  // Create maps by both normalized name AND apple_podcast_link for matching
+  const rephonicByName = new Map<string, RephonicCSVRow>();
+  const rephonicByUrl = new Map<string, RephonicCSVRow>();
   rephonicRows.forEach(row => {
     if (row.podcast_name) {
-      rephonicMap.set(normalizeTitle(row.podcast_name), row);
+      rephonicByName.set(normalizeTitle(row.podcast_name), row);
+    }
+    if (row.apple_podcast_link) {
+      rephonicByUrl.set(row.apple_podcast_link.trim().toLowerCase(), row);
     }
   });
   
+  console.log(`[applyRephonicEMVData] Matching ${podcasts.length} podcasts against ${rephonicRows.length} Rephonic rows`);
+  let matchCount = 0;
+  
   return podcasts.map(podcast => {
-    // Try to find matching Rephonic data using fuzzy title matching
-    const normalizedTitle = normalizeTitle(podcast.show_title);
-    let rephonicData = rephonicMap.get(normalizedTitle);
+    let rephonicData: RephonicCSVRow | undefined;
     
-    // Fallback: fuzzy match using titlesMatch
+    // Priority 1: Match by Apple Podcast URL (most reliable)
+    if (podcast.apple_podcast_link) {
+      rephonicData = rephonicByUrl.get(podcast.apple_podcast_link.trim().toLowerCase());
+    }
+    
+    // Priority 2: Exact normalized title match
     if (!rephonicData) {
-      for (const [key, value] of rephonicMap.entries()) {
+      const normalizedTitle = normalizeTitle(podcast.show_title);
+      rephonicData = rephonicByName.get(normalizedTitle);
+    }
+    
+    // Priority 3: Fuzzy title match
+    if (!rephonicData) {
+      for (const [key, value] of rephonicByName.entries()) {
         if (titlesMatch(podcast.show_title, value.podcast_name)) {
           rephonicData = value;
           break;
@@ -1767,7 +1783,13 @@ function applyRephonicEMVData(
       }
     }
     
-    if (!rephonicData) return podcast;
+    if (!rephonicData) {
+      console.log(`[applyRephonicEMVData] No match for "${podcast.show_title}" (url: ${podcast.apple_podcast_link || 'none'})`);
+      return podcast;
+    }
+    
+    matchCount++;
+    console.log(`[applyRephonicEMVData] Matched "${podcast.show_title}" → "${rephonicData.podcast_name}" (listeners=${rephonicData.listeners_per_episode}, monthly=${rephonicData.monthly_listens}, social=${rephonicData.social_reach})`);
     
     // Apply Rephonic data
     const updatedPodcast = { ...podcast };
