@@ -2014,15 +2014,23 @@ export async function generateReportFromMultipleCSVs(
   // Step 3: Apply EMV calculations (scraped data first)
   let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct, dateRange);
   
-  // Step 3a: Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
+  // Step 3a: Auto-fetch Rephonic metrics for all podcasts
+  // Split into Apple URL lookups and name-based lookups
   const applePodcastUrls = podcastsWithEMV
-    .map(p => p.apple_podcast_link)
-    .filter((url): url is string => !!url && url.trim() !== '');
+    .filter(p => p.apple_podcast_link && isApplePodcastUrl(p.apple_podcast_link))
+    .map(p => p.apple_podcast_link!)
+    .filter(url => url.trim() !== '');
+  
+  const nameOnlyPodcasts = podcastsWithEMV
+    .filter(p => !p.apple_podcast_link || !isApplePodcastUrl(p.apple_podcast_link))
+    .filter(p => p.show_title && p.show_title.trim() !== '')
+    .map(p => ({ name: p.show_title, key: p.show_title }));
   
   let podchaserRows: RephonicCSVRow[] = [];
-  if (applePodcastUrls.length > 0) {
+  if (applePodcastUrls.length > 0 || nameOnlyPodcasts.length > 0) {
     try {
-      podchaserRows = await fetchPodchaserMetrics(applePodcastUrls);
+      console.log(`[generateReportFromMultipleCSVs] Fetching Rephonic: ${applePodcastUrls.length} by URL, ${nameOnlyPodcasts.length} by name`);
+      podchaserRows = await fetchPodchaserMetrics(applePodcastUrls, nameOnlyPodcasts);
       console.log(`[generateReportFromMultipleCSVs] Rephonic returned ${podchaserRows.length} results`);
     } catch (err) {
       console.warn('[generateReportFromMultipleCSVs] Rephonic fetch failed, continuing without:', err);
