@@ -68,6 +68,15 @@ async function getPodcastBySlug(slug: string, apiKey: string): Promise<any | nul
   const data = await response.json();
   const podcast = data?.podcast || data;
   console.log(`[getPodcastBySlug] name=${podcast.name}, downloads_per_episode=${podcast.downloads_per_episode}, social_reach=${podcast.social_reach}`);
+  // Log all available fields to discover YouTube subscriber data
+  const fieldKeys = Object.keys(podcast);
+  console.log(`[getPodcastBySlug] Available fields: ${fieldKeys.join(', ')}`);
+  // Log social/YouTube related fields specifically
+  const socialFields = fieldKeys.filter(k => /youtube|social|subscriber|channel|facebook|twitter|instagram|linkedin|tiktok|x_|platform/i.test(k));
+  console.log(`[getPodcastBySlug] Social-related fields: ${JSON.stringify(socialFields)}`);
+  for (const key of socialFields) {
+    console.log(`[getPodcastBySlug] ${key} = ${JSON.stringify(podcast[key])}`);
+  }
   return podcast;
 }
 
@@ -84,6 +93,10 @@ function normalizeMetrics(podcast: any): {
   const weekly = podcast.est_weekly_downloads || 0;
   const monthly = weekly > 0 ? weekly * 4 : listeners * 4;
   const socialReach = podcast.social_reach || 0;
+  const youtubeSubs = podcast.youtube?.channel?.num_subscribers || 0;
+  const combinedSocialReach = socialReach + youtubeSubs;
+
+  console.log(`[normalizeMetrics] social_reach=${socialReach}, youtube_subs=${youtubeSubs}, combined=${combinedSocialReach}`);
 
   let categories = '';
   if (Array.isArray(podcast.genres)) {
@@ -94,7 +107,7 @@ function normalizeMetrics(podcast: any): {
     podcast_name: name,
     listeners_per_episode: listeners,
     monthly_listens: monthly,
-    social_reach: socialReach,
+    social_reach: combinedSocialReach,
     categories,
     description: podcast.description || podcast.summary || '',
   };
