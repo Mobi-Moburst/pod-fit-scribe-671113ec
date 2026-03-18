@@ -2413,13 +2413,8 @@ export default function Reports() {
                       {manualSOVMode && competitorInterviews.length > 0 ? (
                         <div className="space-y-2">
                           <p className="text-xs text-muted-foreground">
-                            Use "Auto-Fetch" to populate counts, or enter manually.
+                            Enter interview counts manually. Use the clipboard icon to copy a ListenNotes search URL for each competitor.
                           </p>
-                          {sovFetchError && (
-                            <p className="text-xs text-destructive flex items-center gap-1">
-                              <AlertTriangle className="h-3 w-3" />{sovFetchError}
-                            </p>
-                          )}
                           {competitorInterviews.map((comp, index) => (
                             <div key={index} className="space-y-1.5">
                               <div className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
