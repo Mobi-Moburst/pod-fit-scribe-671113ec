@@ -12,9 +12,7 @@ function extractAppleId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-// Extract a clean podcast name from an Apple Podcast URL for search
 function extractNameFromAppleUrl(url: string): string | null {
-  // Pattern: /podcast/some-podcast-name/id123
   const match = url.match(/\/podcast\/([^/]+)\/id/i);
   if (match) {
     return match[1].replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
@@ -25,12 +23,12 @@ function extractNameFromAppleUrl(url: string): string | null {
 async function lookupApplePodcastName(appleId: string): Promise<string | null> {
   const response = await fetch(`https://itunes.apple.com/lookup?id=${appleId}&entity=podcast`);
   if (!response.ok) return null;
+
   const data = await response.json();
   const result = data?.results?.[0];
   return result?.collectionName || result?.trackName || null;
 }
 
-// Search Rephonic for a podcast by name using the titles mode
 async function searchPodcast(query: string, apiKey: string): Promise<any[] | null> {
   const params = new URLSearchParams({ query, mode: 'titles', per_page: '5' });
   const url = `${REPHONIC_API_URL}/api/search/podcasts/?${params}`;
@@ -51,8 +49,8 @@ async function searchPodcast(query: string, apiKey: string): Promise<any[] | nul
   const results = data?.podcasts || [];
   console.log(`[searchPodcast] Found ${results.length} results for "${query}"`);
   return results;
+}
 
-// Get podcast details by Rephonic slug/id
 async function getPodcastBySlug(slug: string, apiKey: string): Promise<any | null> {
   const url = `${REPHONIC_API_URL}/api/podcasts/${slug}/`;
   console.log(`[getPodcastBySlug] Fetching: ${url}`);
@@ -68,13 +66,11 @@ async function getPodcastBySlug(slug: string, apiKey: string): Promise<any | nul
   }
 
   const data = await response.json();
-  // The detail endpoint wraps data in a "podcast" key
   const podcast = data?.podcast || data;
   console.log(`[getPodcastBySlug] name=${podcast.name}, downloads_per_episode=${podcast.downloads_per_episode}, social_reach=${podcast.social_reach}`);
   return podcast;
 }
 
-// Normalize Rephonic response to our standard metrics format
 function normalizeMetrics(podcast: any): {
   podcast_name: string;
   listeners_per_episode: number;
@@ -87,10 +83,8 @@ function normalizeMetrics(podcast: any): {
   const listeners = podcast.downloads_per_episode || 0;
   const weekly = podcast.est_weekly_downloads || 0;
   const monthly = weekly > 0 ? weekly * 4 : listeners * 4;
-
   const socialReach = podcast.social_reach || 0;
 
-  // Categories/genres
   let categories = '';
   if (Array.isArray(podcast.genres)) {
     categories = podcast.genres.filter(Boolean).join(', ');
@@ -119,7 +113,6 @@ serve(async (req) => {
 
     const { apple_podcast_urls, podcast_names } = await req.json();
 
-    // Support both lookup modes: by Apple URL or by podcast name
     const lookups: Array<{ key: string; name: string | null; appleId: string | null }> = [];
 
     if (apple_podcast_urls && Array.isArray(apple_podcast_urls)) {
@@ -157,24 +150,24 @@ serve(async (req) => {
           continue;
         }
 
-        const searchResult = await searchPodcast(searchName, apiKey);
-        if (!searchResult) {
+        const searchResults = await searchPodcast(searchName, apiKey);
+        if (!searchResults || searchResults.length === 0) {
           results[lookup.key] = { error: 'Podcast not found on Rephonic' };
           continue;
         }
 
-        // Prefer exact Apple ID match from Rephonic identifiers when available
-        let podcastData = searchResult;
+        let podcastData = searchResults[0];
+
         if (lookup.appleId) {
-          const appleMatch = [searchResult]
-            .find((candidate: any) => String(candidate?.identifiers?.apple || candidate?.itunes_id || '') === String(lookup.appleId));
+          const appleMatch = searchResults.find((candidate: any) =>
+            String(candidate?.identifiers?.apple || candidate?.itunes_id || '') === String(lookup.appleId)
+          );
           if (appleMatch) {
             podcastData = appleMatch;
           }
         }
 
-        const slug = podcastData.id || searchResult.id;
-
+        const slug = podcastData.id;
         if (slug) {
           const detailed = await getPodcastBySlug(slug, apiKey);
           if (detailed) {
@@ -187,17 +180,17 @@ serve(async (req) => {
 
         console.log(`Found: "${metrics.podcast_name}" — listeners=${metrics.listeners_per_episode}, monthly=${metrics.monthly_listens}, social=${metrics.social_reach}`);
       } catch (err) {
-        if (err.message === 'Rate limited') {
+        const errorMessage = err instanceof Error ? err.message : 'Query failed';
+        if (errorMessage === 'Rate limited') {
           console.warn('[fetch-rephonic-metrics] Rate limited, waiting 2s...');
           await new Promise(r => setTimeout(r, 2000));
-          i--; // Retry this lookup
+          i--;
           continue;
         }
         console.error(`Error for ${lookup.key}:`, err);
-        results[lookup.key] = { error: err.message || 'Query failed' };
+        results[lookup.key] = { error: errorMessage };
       }
 
-      // Respectful delay between requests
       if (i < lookups.length - 1) {
         await new Promise(r => setTimeout(r, 300));
       }
@@ -208,9 +201,10 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Internal error';
     console.error('[fetch-rephonic-metrics] Error:', err);
     return new Response(
-      JSON.stringify({ error: err.message || 'Internal error' }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
