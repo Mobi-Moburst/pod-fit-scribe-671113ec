@@ -2330,59 +2330,70 @@ export default function Reports() {
                     </div>
                   )}
 
-                  {/* Step 4b: Rephonic CSV (shows after Airtable is synced) */}
+                  {/* Step 4b: Rephonic Metrics (auto via API, with optional CSV override) */}
                   {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <Label className="text-xs font-medium">Rephonic CSV</Label>
-                        <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">
-                          {batchFile ? "Uploaded" : "Optional"}
+                        <Label className="text-xs font-medium">Rephonic Metrics</Label>
+                        <Badge variant="secondary" className="text-[10px] bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30">
+                          Auto
                         </Badge>
                       </div>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
+                        <Check className="h-4 w-4 text-green-500 shrink-0" />
+                        <span className="text-sm flex-1 text-muted-foreground">
+                          Listener &amp; reach metrics will be fetched automatically from the Rephonic API during report generation.
+                        </span>
+                      </div>
                       {batchFile ? (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                          <Check className="h-4 w-4 text-green-500 shrink-0" />
-                          <span className="text-sm flex-1 truncate">{batchFile.name}</span>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5">
+                          <Upload className="h-4 w-4 text-primary shrink-0" />
+                          <span className="text-sm flex-1 truncate">CSV override: {batchFile.name}</span>
                           <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setBatchFile(null)}>
                             <X className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       ) : (
-                        <>
-                          {isMultiSpeakerMode ? (
-                            <div className="space-y-2">
-                              {selectedSpeakerIds.map(speakerId => {
-                                const speaker = speakers.find(s => s.id === speakerId);
-                                const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
-                                return (
-                                  <div key={speakerId} className="border border-border/60 rounded-lg p-3 space-y-1.5">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs font-medium">{speaker?.name}</span>
-                                      {files.batchFile && <span className="w-2 h-2 rounded-full bg-green-500" />}
+                        <Collapsible>
+                          <CollapsibleTrigger asChild>
+                            <button className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                              <ChevronRight className="h-3 w-3" />
+                              Upload CSV override instead
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pt-2">
+                            {isMultiSpeakerMode ? (
+                              <div className="space-y-2">
+                                {selectedSpeakerIds.map(speakerId => {
+                                  const speaker = speakers.find(s => s.id === speakerId);
+                                  const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
+                                  return (
+                                    <div key={speakerId} className="border border-border/60 rounded-lg p-3 space-y-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-medium">{speaker?.name}</span>
+                                        {files.batchFile && <span className="w-2 h-2 rounded-full bg-green-500" />}
+                                      </div>
+                                      <Input
+                                        type="file"
+                                        accept=".csv"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0] || null;
+                                          setSpeakerFiles(prev => ({
+                                            ...prev,
+                                            [speakerId]: { ...prev[speakerId], batchFile: file }
+                                          }));
+                                        }}
+                                      />
+                                      {files.batchFile && <p className="text-xs text-muted-foreground">{files.batchFile.name}</p>}
                                     </div>
-                                    <Input
-                                      type="file"
-                                      accept=".csv"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0] || null;
-                                        setSpeakerFiles(prev => ({
-                                          ...prev,
-                                          [speakerId]: { ...prev[speakerId], batchFile: file }
-                                        }));
-                                      }}
-                                    />
-                                    {files.batchFile && <p className="text-xs text-muted-foreground">{files.batchFile.name}</p>}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <>
+                                  );
+                                })}
+                              </div>
+                            ) : (
                               <Input type="file" accept=".csv" onChange={(e) => setBatchFile(e.target.files?.[0] || null)} />
-                              <p className="text-xs text-muted-foreground">Upload List CSV from Rephonic for enhanced metrics.</p>
-                            </>
-                          )}
-                        </>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
                       )}
                     </div>
                   )}
