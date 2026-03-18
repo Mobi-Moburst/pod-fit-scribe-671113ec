@@ -1139,13 +1139,23 @@ function calculateEMV(
   };
 }
 
-// Apply EMV calculations to all podcasts
+// Apply EMV calculations only to podcasts published within the report date range
 function applyEMVCalculations(
   podcasts: PodcastReportEntry[],
   cpm: number = 50,
-  speakingTimePct: number = 0.40
+  speakingTimePct: number = 0.40,
+  dateRange?: { start: Date; end: Date }
 ): PodcastReportEntry[] {
   return podcasts.map(podcast => {
+    // Only calculate EMV for podcasts published within the reporting period
+    if (dateRange && podcast.date_published) {
+      const pubDate = new Date(podcast.date_published);
+      if (pubDate < dateRange.start || pubDate > dateRange.end) {
+        // Outside reporting period — skip EMV calculation
+        return podcast;
+      }
+    }
+
     const emvData = calculateEMV(podcast, cpm, speakingTimePct);
     
     if (emvData) {
@@ -1740,7 +1750,8 @@ function applyRephonicEMVData(
   podcasts: PodcastReportEntry[],
   rephonicRows: RephonicCSVRow[],
   cpm: number = 50,
-  speakingTimePct: number = 0.40
+  speakingTimePct: number = 0.40,
+  dateRange?: { start: Date; end: Date }
 ): PodcastReportEntry[] {
   if (!rephonicRows || rephonicRows.length === 0) return podcasts;
   
@@ -1824,21 +1835,29 @@ function applyRephonicEMVData(
       updatedPodcast.apple_podcast_link = rephonicData.apple_podcast_link;
     }
     
-    // If Rephonic provides pre-calculated EMV, use it directly
-    if (rephonicData.emv && rephonicData.emv > 0) {
-      updatedPodcast.true_emv = rephonicData.emv;
-      // Estimate other EMV fields from the total
-      const listeners = updatedPodcast.listeners_per_episode || 5000;
-      updatedPodcast.base_emv = (listeners / 1000) * cpm;
-      updatedPodcast.ad_units = updatedPodcast.true_emv / updatedPodcast.base_emv;
-      updatedPodcast.speaking_minutes = updatedPodcast.ad_units;
-      updatedPodcast.value_per_minute = updatedPodcast.base_emv;
-    } 
-    // Otherwise recalculate EMV with the new data
-    else if (updatedPodcast.listeners_per_episode && updatedPodcast.episode_duration_minutes) {
-      const emvData = calculateEMV(updatedPodcast, cpm, speakingTimePct);
-      if (emvData) {
-        Object.assign(updatedPodcast, emvData);
+    // Only calculate EMV for podcasts published within the reporting period
+    const isInDateRange = !dateRange || !updatedPodcast.date_published || (() => {
+      const pubDate = new Date(updatedPodcast.date_published);
+      return pubDate >= dateRange.start && pubDate <= dateRange.end;
+    })();
+
+    if (isInDateRange) {
+      // If Rephonic provides pre-calculated EMV, use it directly
+      if (rephonicData.emv && rephonicData.emv > 0) {
+        updatedPodcast.true_emv = rephonicData.emv;
+        // Estimate other EMV fields from the total
+        const listeners = updatedPodcast.listeners_per_episode || 5000;
+        updatedPodcast.base_emv = (listeners / 1000) * cpm;
+        updatedPodcast.ad_units = updatedPodcast.true_emv / updatedPodcast.base_emv;
+        updatedPodcast.speaking_minutes = updatedPodcast.ad_units;
+        updatedPodcast.value_per_minute = updatedPodcast.base_emv;
+      } 
+      // Otherwise recalculate EMV with the new data
+      else if (updatedPodcast.listeners_per_episode && updatedPodcast.episode_duration_minutes) {
+        const emvData = calculateEMV(updatedPodcast, cpm, speakingTimePct);
+        if (emvData) {
+          Object.assign(updatedPodcast, emvData);
+        }
       }
     }
     
@@ -1883,7 +1902,7 @@ export async function generateReportFromMultipleCSVs(
   const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
   
   // Step 3: Apply EMV calculations (scraped data first)
-  let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct);
+  let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct, dateRange);
   
   // Step 3a: Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
   const applePodcastUrls = podcastsWithEMV
@@ -1902,12 +1921,12 @@ export async function generateReportFromMultipleCSVs(
   
   // Apply Podchaser data first (as baseline)
   if (podchaserRows.length > 0) {
-    podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, podchaserRows, cpm, speakingTimePct);
+    podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, podchaserRows, cpm, speakingTimePct, dateRange);
   }
   
   // Step 3b: Apply Rephonic CSV data if provided (overrides Podchaser data)
   if (rephonicRows && rephonicRows.length > 0) {
-    podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm, speakingTimePct);
+    podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm, speakingTimePct, dateRange);
   }
   
   // Step 4: Calculate enhanced KPIs (now includes total EMV)
@@ -2305,7 +2324,7 @@ export async function generateMultiSpeakerReport(
     
     // Scrape durations and calculate EMV
     const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
-    let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct);
+    let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct, dateRange);
     
     // Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
     const speakerAppleUrls = podcastsWithEMV
@@ -2316,7 +2335,7 @@ export async function generateMultiSpeakerReport(
       try {
         const speakerPodchaserRows = await fetchPodchaserMetrics(speakerAppleUrls);
         if (speakerPodchaserRows.length > 0) {
-          podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, speakerPodchaserRows, cpm, speakingTimePct);
+          podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, speakerPodchaserRows, cpm, speakingTimePct, dateRange);
         }
       } catch (err) {
         console.warn(`[generateMultiSpeakerReport] Podchaser fetch failed for ${speaker.name}:`, err);
@@ -2325,7 +2344,7 @@ export async function generateMultiSpeakerReport(
     
     // Apply Rephonic CSV data if provided (overrides Podchaser)
     if (rephonicRows && rephonicRows.length > 0) {
-      podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm, speakingTimePct);
+      podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm, speakingTimePct, dateRange);
     }
     
     // Build published podcasts directly from airtable (same source as KPI)
@@ -2770,11 +2789,11 @@ export async function mergeUpdatedReportData(
       // Full recalculation with both new CSVs
       const mergedPodcasts = mergePodcastData(newData.batchData, newData.airtableData);
       const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
-      let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, existingReport.speaking_time_pct || 0.40);
+      let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, existingReport.speaking_time_pct || 0.40, dateRange);
       
       // Apply rephonic data if provided or exists
       if (newData.rephonicData && newData.rephonicData.length > 0) {
-        podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, newData.rephonicData, cpm, existingReport.speaking_time_pct || 0.40);
+        podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, newData.rephonicData, cpm, existingReport.speaking_time_pct || 0.40, dateRange);
       }
       
       updatedReport.podcasts = podcastsWithEMV;
@@ -2909,7 +2928,7 @@ export async function mergeUpdatedReportData(
   
   // Update EMV data if Rephonic CSV was updated (without full podcast recalc)
   if (updatedCSVTypes.includes('rephonic') && newData.rephonicData && !needsPodcastRecalc) {
-    updatedReport.podcasts = applyRephonicEMVData(updatedReport.podcasts, newData.rephonicData, cpm, existingReport.speaking_time_pct || 0.40);
+    updatedReport.podcasts = applyRephonicEMVData(updatedReport.podcasts, newData.rephonicData, cpm, existingReport.speaking_time_pct || 0.40, dateRange);
     
     // Recalculate total EMV
     const totalEMV = updatedReport.podcasts.reduce((sum, p) => sum + (p.true_emv || 0), 0);
