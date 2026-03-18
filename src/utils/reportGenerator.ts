@@ -7,8 +7,8 @@ import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
 import { callScrape, callAnalyze } from '@/utils/api';
 
-// Fetch podcast metrics from Podchaser API with caching
-export async function fetchPodchaserMetrics(
+// Fetch podcast metrics from Rephonic API with caching
+export async function fetchPodcastMetrics(
   applePodcastUrls: string[]
 ): Promise<RephonicCSVRow[]> {
   if (!applePodcastUrls || applePodcastUrls.length === 0) return [];
@@ -17,7 +17,7 @@ export async function fetchPodchaserMetrics(
   const uniqueUrls = [...new Set(applePodcastUrls.filter(u => u && u.trim()))];
   if (uniqueUrls.length === 0) return [];
   
-  console.log(`[fetchPodchaserMetrics] Fetching metrics for ${uniqueUrls.length} podcasts`);
+  console.log(`[fetchPodcastMetrics] Fetching metrics for ${uniqueUrls.length} podcasts`);
   
   const results: RephonicCSVRow[] = [];
   const urlsToFetch: string[] = [];
@@ -37,7 +37,6 @@ export async function fetchPodchaserMetrics(
       for (const row of cached) {
         const fetchedAt = new Date(row.fetched_at);
         if (fetchedAt >= thirtyDaysAgo) {
-          // Cache hit - use cached data
           results.push({
             podcast_name: row.podcast_name || '',
             listeners_per_episode: row.listeners_per_episode || undefined,
@@ -51,9 +50,8 @@ export async function fetchPodchaserMetrics(
         }
       }
       
-      console.log(`[fetchPodchaserMetrics] Cache hits: ${cachedUrls.size}/${uniqueUrls.length}`);
+      console.log(`[fetchPodcastMetrics] Cache hits: ${cachedUrls.size}/${uniqueUrls.length}`);
       
-      // Determine URLs needing fresh fetch
       for (const url of uniqueUrls) {
         if (!cachedUrls.has(url)) urlsToFetch.push(url);
       }
@@ -61,37 +59,37 @@ export async function fetchPodchaserMetrics(
       urlsToFetch.push(...uniqueUrls);
     }
   } catch (err) {
-    console.warn('[fetchPodchaserMetrics] Cache check failed, fetching all:', err);
+    console.warn('[fetchPodcastMetrics] Cache check failed, fetching all:', err);
     urlsToFetch.push(...uniqueUrls);
   }
   
-  // Step 2: Fetch missing from Podchaser API
+  // Step 2: Fetch missing from Rephonic API
   if (urlsToFetch.length > 0) {
-    console.log(`[fetchPodchaserMetrics] Fetching ${urlsToFetch.length} from Podchaser API`);
+    console.log(`[fetchPodcastMetrics] Fetching ${urlsToFetch.length} from Rephonic API`);
     
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-podchaser-metrics', {
+      const { data, error } = await supabase.functions.invoke('fetch-rephonic-metrics', {
         body: { apple_podcast_urls: urlsToFetch }
       });
       
       if (error) {
-        console.error('[fetchPodchaserMetrics] Edge function error:', error);
+        console.error('[fetchPodcastMetrics] Rephonic edge function error:', error);
       } else if (data?.results) {
         const fetchedResults = data.results as Record<string, any>;
         
         for (const [url, metrics] of Object.entries(fetchedResults)) {
-          if (metrics.error) {
-            console.warn(`[fetchPodchaserMetrics] No data for ${url}: ${metrics.error}`);
+          if ((metrics as any).error) {
+            console.warn(`[fetchPodcastMetrics] No data for ${url}: ${(metrics as any).error}`);
             continue;
           }
           
           const row: RephonicCSVRow = {
-            podcast_name: metrics.podcast_name || '',
-            listeners_per_episode: metrics.listeners_per_episode || undefined,
-            monthly_listens: metrics.monthly_listens || undefined,
-            social_reach: metrics.social_reach || undefined,
-            categories: metrics.categories || undefined,
-            description: metrics.description || undefined,
+            podcast_name: (metrics as any).podcast_name || '',
+            listeners_per_episode: (metrics as any).listeners_per_episode || undefined,
+            monthly_listens: (metrics as any).monthly_listens || undefined,
+            social_reach: (metrics as any).social_reach || undefined,
+            categories: (metrics as any).categories || undefined,
+            description: (metrics as any).description || undefined,
             apple_podcast_link: url,
           };
           results.push(row);
@@ -111,20 +109,23 @@ export async function fetchPodchaserMetrics(
               org_id: '11111111-1111-1111-1111-111111111111',
             }, { onConflict: 'apple_podcast_url,org_id' })
             .then(({ error: upsertError }) => {
-              if (upsertError) console.warn('[fetchPodchaserMetrics] Cache upsert error:', upsertError);
+              if (upsertError) console.warn('[fetchPodcastMetrics] Cache upsert error:', upsertError);
             });
         }
         
-        console.log(`[fetchPodchaserMetrics] Fetched ${Object.keys(fetchedResults).length} results from Podchaser`);
+        console.log(`[fetchPodcastMetrics] Fetched ${Object.keys(fetchedResults).length} results from Rephonic`);
       }
     } catch (err) {
-      console.error('[fetchPodchaserMetrics] Failed to call edge function:', err);
+      console.error('[fetchPodcastMetrics] Failed to call edge function:', err);
     }
   }
   
-  console.log(`[fetchPodchaserMetrics] Total results: ${results.length}`);
+  console.log(`[fetchPodcastMetrics] Total results: ${results.length}`);
   return results;
 }
+
+// Backward-compatible alias
+export const fetchPodchaserMetrics = fetchPodcastMetrics;
 
 // Safely get action as a string (Airtable API may return arrays for select fields)
 function getActionString(action: any): string {
@@ -1870,9 +1871,9 @@ export async function generateReportFromMultipleCSVs(
   if (applePodcastUrls.length > 0) {
     try {
       podchaserRows = await fetchPodchaserMetrics(applePodcastUrls);
-      console.log(`[generateReportFromMultipleCSVs] Podchaser returned ${podchaserRows.length} results`);
+      console.log(`[generateReportFromMultipleCSVs] Rephonic returned ${podchaserRows.length} results`);
     } catch (err) {
-      console.warn('[generateReportFromMultipleCSVs] Podchaser fetch failed, continuing without:', err);
+      console.warn('[generateReportFromMultipleCSVs] Rephonic fetch failed, continuing without:', err);
     }
   }
   

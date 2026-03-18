@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.scrape-episode-metadata]
 verify_jwt = false
+
+[functions.fetch-rephonic-metrics]
+verify_jwt = false
