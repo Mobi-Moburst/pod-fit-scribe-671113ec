@@ -31,7 +31,7 @@ async function lookupApplePodcastName(appleId: string): Promise<string | null> {
 }
 
 // Search Rephonic for a podcast by name using the titles mode
-async function searchPodcast(query: string, apiKey: string): Promise<any | null> {
+async function searchPodcast(query: string, apiKey: string): Promise<any[] | null> {
   const params = new URLSearchParams({ query, mode: 'titles', per_page: '5' });
   const url = `${REPHONIC_API_URL}/api/search/podcasts/?${params}`;
   console.log(`[searchPodcast] Searching: ${url}`);
@@ -48,11 +48,9 @@ async function searchPodcast(query: string, apiKey: string): Promise<any | null>
   }
 
   const data = await response.json();
-  // Response format: { podcasts: [...], count: N, page: 1, ... }
   const results = data?.podcasts || [];
   console.log(`[searchPodcast] Found ${results.length} results for "${query}"`);
-  return results.length > 0 ? results[0] : null;
-}
+  return results;
 
 // Get podcast details by Rephonic slug/id
 async function getPodcastBySlug(slug: string, apiKey: string): Promise<any | null> {
