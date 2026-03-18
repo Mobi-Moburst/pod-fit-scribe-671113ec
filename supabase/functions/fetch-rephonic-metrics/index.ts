@@ -57,10 +57,10 @@ async function getPodcastBySlug(slug: string, apiKey: string): Promise<any | nul
   }
 
   const data = await response.json();
-  // Log the keys to understand response structure
-  console.log(`[getPodcastBySlug] Response keys: ${Object.keys(data).join(', ')}`);
-  console.log(`[getPodcastBySlug] name=${data.name}, downloads_per_episode=${data.downloads_per_episode}, social_reach=${data.social_reach}`);
-  return data;
+  // The detail endpoint wraps data in a "podcast" key
+  const podcast = data?.podcast || data;
+  console.log(`[getPodcastBySlug] name=${podcast.name}, downloads_per_episode=${podcast.downloads_per_episode}, social_reach=${podcast.social_reach}`);
+  return podcast;
 }
 
 // Normalize Rephonic response to our standard metrics format
