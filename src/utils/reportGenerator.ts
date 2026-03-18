@@ -7,117 +7,227 @@ import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
 import { supabase } from '@/integrations/supabase/client';
 import { callScrape, callAnalyze } from '@/utils/api';
 
+// Check if a URL is an Apple Podcasts URL
+function isApplePodcastUrl(url: string): boolean {
+  return url.includes('podcasts.apple.com') || url.includes('itunes.apple.com');
+}
+
 // Fetch podcast metrics from Rephonic API with caching
+// Supports both Apple Podcast URLs and name-based lookups for non-Apple podcasts
 export async function fetchPodcastMetrics(
-  applePodcastUrls: string[]
+  applePodcastUrls: string[],
+  podcastNamesForLookup?: { name: string; key: string }[]
 ): Promise<RephonicCSVRow[]> {
-  if (!applePodcastUrls || applePodcastUrls.length === 0) return [];
-  
-  // Deduplicate URLs
-  const uniqueUrls = [...new Set(applePodcastUrls.filter(u => u && u.trim()))];
-  if (uniqueUrls.length === 0) return [];
-  
-  console.log(`[fetchPodcastMetrics] Fetching metrics for ${uniqueUrls.length} podcasts`);
-  
   const results: RephonicCSVRow[] = [];
+  
+  // --- Part 1: Handle Apple Podcast URLs (with caching) ---
+  const uniqueUrls = [...new Set((applePodcastUrls || []).filter(u => u && u.trim()))];
   const urlsToFetch: string[] = [];
   
-  // Step 1: Check cache first
-  try {
-    const { data: cached, error } = await supabase
-      .from('podcast_metadata_cache')
-      .select('*')
-      .in('apple_podcast_url', uniqueUrls);
+  if (uniqueUrls.length > 0) {
+    console.log(`[fetchPodcastMetrics] Processing ${uniqueUrls.length} Apple Podcast URLs`);
     
-    if (!error && cached && cached.length > 0) {
-      const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      
-      const cachedUrls = new Set<string>();
-      for (const row of cached) {
-        const fetchedAt = new Date(row.fetched_at);
-        const hasMetrics = row.listeners_per_episode !== null || row.monthly_listens !== null || row.social_reach !== null;
-        if (fetchedAt >= thirtyDaysAgo && hasMetrics) {
-          results.push({
-            podcast_name: row.podcast_name || '',
-            listeners_per_episode: row.listeners_per_episode || undefined,
-            monthly_listens: row.monthly_listens || undefined,
-            social_reach: row.social_reach || undefined,
-            categories: row.categories || undefined,
-            description: row.description || undefined,
-            apple_podcast_link: row.apple_podcast_url,
-          });
-          cachedUrls.add(row.apple_podcast_url);
-        }
-      }
-      
-      console.log(`[fetchPodcastMetrics] Cache hits: ${cachedUrls.size}/${uniqueUrls.length}`);
-      
-      for (const url of uniqueUrls) {
-        if (!cachedUrls.has(url)) urlsToFetch.push(url);
-      }
-    } else {
-      urlsToFetch.push(...uniqueUrls);
-    }
-  } catch (err) {
-    console.warn('[fetchPodcastMetrics] Cache check failed, fetching all:', err);
-    urlsToFetch.push(...uniqueUrls);
-  }
-  
-  // Step 2: Fetch missing from Rephonic API
-  if (urlsToFetch.length > 0) {
-    console.log(`[fetchPodcastMetrics] Fetching ${urlsToFetch.length} from Rephonic API`);
-    
+    // Check cache first
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-rephonic-metrics', {
-        body: { apple_podcast_urls: urlsToFetch }
-      });
+      const { data: cached, error } = await supabase
+        .from('podcast_metadata_cache')
+        .select('*')
+        .in('apple_podcast_url', uniqueUrls);
       
-      if (error) {
-        console.error('[fetchPodcastMetrics] Rephonic edge function error:', error);
-      } else if (data?.results) {
-        const fetchedResults = data.results as Record<string, any>;
+      if (!error && cached && cached.length > 0) {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         
-        for (const [url, metrics] of Object.entries(fetchedResults)) {
-          if ((metrics as any).error) {
-            console.warn(`[fetchPodcastMetrics] No data for ${url}: ${(metrics as any).error}`);
-            continue;
-          }
-          
-          const row: RephonicCSVRow = {
-            podcast_name: (metrics as any).podcast_name || '',
-            listeners_per_episode: (metrics as any).listeners_per_episode || undefined,
-            monthly_listens: (metrics as any).monthly_listens || undefined,
-            social_reach: (metrics as any).social_reach || undefined,
-            categories: (metrics as any).categories || undefined,
-            description: (metrics as any).description || undefined,
-            apple_podcast_link: url,
-          };
-          results.push(row);
-          
-          // Step 3: Cache the result (fire-and-forget)
-          supabase
-            .from('podcast_metadata_cache')
-            .upsert({
-              apple_podcast_url: url,
-              podcast_name: row.podcast_name,
-              listeners_per_episode: row.listeners_per_episode || null,
-              monthly_listens: row.monthly_listens || null,
-              social_reach: row.social_reach || null,
-              categories: row.categories || null,
-              description: row.description || null,
-              fetched_at: new Date().toISOString(),
-              org_id: '11111111-1111-1111-1111-111111111111',
-            }, { onConflict: 'apple_podcast_url,org_id' })
-            .then(({ error: upsertError }) => {
-              if (upsertError) console.warn('[fetchPodcastMetrics] Cache upsert error:', upsertError);
+        const cachedUrls = new Set<string>();
+        for (const row of cached) {
+          const fetchedAt = new Date(row.fetched_at);
+          const hasMetrics = row.listeners_per_episode !== null || row.monthly_listens !== null || row.social_reach !== null;
+          if (fetchedAt >= thirtyDaysAgo && hasMetrics) {
+            results.push({
+              podcast_name: row.podcast_name || '',
+              listeners_per_episode: row.listeners_per_episode || undefined,
+              monthly_listens: row.monthly_listens || undefined,
+              social_reach: row.social_reach || undefined,
+              categories: row.categories || undefined,
+              description: row.description || undefined,
+              apple_podcast_link: row.apple_podcast_url,
             });
+            cachedUrls.add(row.apple_podcast_url);
+          }
         }
         
-        console.log(`[fetchPodcastMetrics] Fetched ${Object.keys(fetchedResults).length} results from Rephonic`);
+        console.log(`[fetchPodcastMetrics] Cache hits: ${cachedUrls.size}/${uniqueUrls.length}`);
+        
+        for (const url of uniqueUrls) {
+          if (!cachedUrls.has(url)) urlsToFetch.push(url);
+        }
+      } else {
+        urlsToFetch.push(...uniqueUrls);
       }
     } catch (err) {
-      console.error('[fetchPodcastMetrics] Failed to call edge function:', err);
+      console.warn('[fetchPodcastMetrics] Cache check failed, fetching all:', err);
+      urlsToFetch.push(...uniqueUrls);
+    }
+    
+    // Fetch missing from Rephonic API
+    if (urlsToFetch.length > 0) {
+      console.log(`[fetchPodcastMetrics] Fetching ${urlsToFetch.length} from Rephonic API (by URL)`);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-rephonic-metrics', {
+          body: { apple_podcast_urls: urlsToFetch }
+        });
+        
+        if (error) {
+          console.error('[fetchPodcastMetrics] Rephonic edge function error:', error);
+        } else if (data?.results) {
+          const fetchedResults = data.results as Record<string, any>;
+          
+          for (const [url, metrics] of Object.entries(fetchedResults)) {
+            if ((metrics as any).error) {
+              console.warn(`[fetchPodcastMetrics] No data for ${url}: ${(metrics as any).error}`);
+              continue;
+            }
+            
+            const row: RephonicCSVRow = {
+              podcast_name: (metrics as any).podcast_name || '',
+              listeners_per_episode: (metrics as any).listeners_per_episode || undefined,
+              monthly_listens: (metrics as any).monthly_listens || undefined,
+              social_reach: (metrics as any).social_reach || undefined,
+              categories: (metrics as any).categories || undefined,
+              description: (metrics as any).description || undefined,
+              apple_podcast_link: url,
+            };
+            results.push(row);
+            
+            // Cache the result (fire-and-forget)
+            supabase
+              .from('podcast_metadata_cache')
+              .upsert({
+                apple_podcast_url: url,
+                podcast_name: row.podcast_name,
+                listeners_per_episode: row.listeners_per_episode || null,
+                monthly_listens: row.monthly_listens || null,
+                social_reach: row.social_reach || null,
+                categories: row.categories || null,
+                description: row.description || null,
+                fetched_at: new Date().toISOString(),
+                org_id: '11111111-1111-1111-1111-111111111111',
+              }, { onConflict: 'apple_podcast_url,org_id' })
+              .then(({ error: upsertError }) => {
+                if (upsertError) console.warn('[fetchPodcastMetrics] Cache upsert error:', upsertError);
+              });
+          }
+          
+          console.log(`[fetchPodcastMetrics] Fetched ${Object.keys(fetchedResults).length} results from Rephonic (by URL)`);
+        }
+      } catch (err) {
+        console.error('[fetchPodcastMetrics] Failed to call edge function:', err);
+      }
+    }
+  }
+  
+  // --- Part 2: Handle name-based lookups (for podcasts without Apple URLs) ---
+  const nameLookups = podcastNamesForLookup || [];
+  if (nameLookups.length > 0) {
+    console.log(`[fetchPodcastMetrics] Fetching ${nameLookups.length} podcasts by name from Rephonic API`);
+    
+    // Check cache by name first
+    const namesToFetch: { name: string; key: string }[] = [];
+    try {
+      const names = nameLookups.map(n => n.name);
+      const { data: cached, error } = await supabase
+        .from('podcast_metadata_cache')
+        .select('*')
+        .in('podcast_name', names);
+      
+      if (!error && cached && cached.length > 0) {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const cachedNames = new Set<string>();
+        
+        for (const row of cached) {
+          const fetchedAt = new Date(row.fetched_at);
+          const hasMetrics = row.listeners_per_episode !== null || row.monthly_listens !== null || row.social_reach !== null;
+          if (fetchedAt >= thirtyDaysAgo && hasMetrics) {
+            results.push({
+              podcast_name: row.podcast_name || '',
+              listeners_per_episode: row.listeners_per_episode || undefined,
+              monthly_listens: row.monthly_listens || undefined,
+              social_reach: row.social_reach || undefined,
+              categories: row.categories || undefined,
+              description: row.description || undefined,
+              apple_podcast_link: row.apple_podcast_url,
+            });
+            cachedNames.add(row.podcast_name || '');
+          }
+        }
+        
+        console.log(`[fetchPodcastMetrics] Name-based cache hits: ${cachedNames.size}/${nameLookups.length}`);
+        
+        for (const lookup of nameLookups) {
+          if (!cachedNames.has(lookup.name)) namesToFetch.push(lookup);
+        }
+      } else {
+        namesToFetch.push(...nameLookups);
+      }
+    } catch (err) {
+      console.warn('[fetchPodcastMetrics] Name cache check failed:', err);
+      namesToFetch.push(...nameLookups);
+    }
+    
+    if (namesToFetch.length > 0) {
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-rephonic-metrics', {
+          body: { podcast_names: namesToFetch.map(n => n.name) }
+        });
+        
+        if (error) {
+          console.error('[fetchPodcastMetrics] Rephonic name lookup error:', error);
+        } else if (data?.results) {
+          const fetchedResults = data.results as Record<string, any>;
+          
+          for (const [name, metrics] of Object.entries(fetchedResults)) {
+            if ((metrics as any).error) {
+              console.warn(`[fetchPodcastMetrics] No data for "${name}": ${(metrics as any).error}`);
+              continue;
+            }
+            
+            const row: RephonicCSVRow = {
+              podcast_name: (metrics as any).podcast_name || name,
+              listeners_per_episode: (metrics as any).listeners_per_episode || undefined,
+              monthly_listens: (metrics as any).monthly_listens || undefined,
+              social_reach: (metrics as any).social_reach || undefined,
+              categories: (metrics as any).categories || undefined,
+              description: (metrics as any).description || undefined,
+            };
+            results.push(row);
+            
+            // Cache by name — use the podcast name as the URL key for name-based lookups
+            const cacheKey = `name:${name}`;
+            supabase
+              .from('podcast_metadata_cache')
+              .upsert({
+                apple_podcast_url: cacheKey,
+                podcast_name: row.podcast_name,
+                listeners_per_episode: row.listeners_per_episode || null,
+                monthly_listens: row.monthly_listens || null,
+                social_reach: row.social_reach || null,
+                categories: row.categories || null,
+                description: row.description || null,
+                fetched_at: new Date().toISOString(),
+                org_id: '11111111-1111-1111-1111-111111111111',
+              }, { onConflict: 'apple_podcast_url,org_id' })
+              .then(({ error: upsertError }) => {
+                if (upsertError) console.warn('[fetchPodcastMetrics] Name cache upsert error:', upsertError);
+              });
+          }
+          
+          console.log(`[fetchPodcastMetrics] Fetched ${Object.keys(fetchedResults).length} results from Rephonic (by name)`);
+        }
+      } catch (err) {
+        console.error('[fetchPodcastMetrics] Name-based fetch failed:', err);
+      }
     }
   }
   
@@ -1904,15 +2014,23 @@ export async function generateReportFromMultipleCSVs(
   // Step 3: Apply EMV calculations (scraped data first)
   let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct, dateRange);
   
-  // Step 3a: Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
+  // Step 3a: Auto-fetch Rephonic metrics for all podcasts
+  // Split into Apple URL lookups and name-based lookups
   const applePodcastUrls = podcastsWithEMV
-    .map(p => p.apple_podcast_link)
-    .filter((url): url is string => !!url && url.trim() !== '');
+    .filter(p => p.apple_podcast_link && isApplePodcastUrl(p.apple_podcast_link))
+    .map(p => p.apple_podcast_link!)
+    .filter(url => url.trim() !== '');
+  
+  const nameOnlyPodcasts = podcastsWithEMV
+    .filter(p => !p.apple_podcast_link || !isApplePodcastUrl(p.apple_podcast_link))
+    .filter(p => p.show_title && p.show_title.trim() !== '')
+    .map(p => ({ name: p.show_title, key: p.show_title }));
   
   let podchaserRows: RephonicCSVRow[] = [];
-  if (applePodcastUrls.length > 0) {
+  if (applePodcastUrls.length > 0 || nameOnlyPodcasts.length > 0) {
     try {
-      podchaserRows = await fetchPodchaserMetrics(applePodcastUrls);
+      console.log(`[generateReportFromMultipleCSVs] Fetching Rephonic: ${applePodcastUrls.length} by URL, ${nameOnlyPodcasts.length} by name`);
+      podchaserRows = await fetchPodchaserMetrics(applePodcastUrls, nameOnlyPodcasts);
       console.log(`[generateReportFromMultipleCSVs] Rephonic returned ${podchaserRows.length} results`);
     } catch (err) {
       console.warn('[generateReportFromMultipleCSVs] Rephonic fetch failed, continuing without:', err);
@@ -2326,19 +2444,26 @@ export async function generateMultiSpeakerReport(
     const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
     let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct, dateRange);
     
-    // Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
+    // Auto-fetch Rephonic metrics — split into Apple URL vs name-based lookups
     const speakerAppleUrls = podcastsWithEMV
-      .map(p => p.apple_podcast_link)
-      .filter((url): url is string => !!url && url.trim() !== '');
+      .filter(p => p.apple_podcast_link && isApplePodcastUrl(p.apple_podcast_link))
+      .map(p => p.apple_podcast_link!)
+      .filter(url => url.trim() !== '');
     
-    if (speakerAppleUrls.length > 0) {
+    const speakerNameLookups = podcastsWithEMV
+      .filter(p => !p.apple_podcast_link || !isApplePodcastUrl(p.apple_podcast_link))
+      .filter(p => p.show_title && p.show_title.trim() !== '')
+      .map(p => ({ name: p.show_title, key: p.show_title }));
+    
+    if (speakerAppleUrls.length > 0 || speakerNameLookups.length > 0) {
       try {
-        const speakerPodchaserRows = await fetchPodchaserMetrics(speakerAppleUrls);
+        console.log(`[generateMultiSpeakerReport] Fetching Rephonic for ${speaker.name}: ${speakerAppleUrls.length} by URL, ${speakerNameLookups.length} by name`);
+        const speakerPodchaserRows = await fetchPodchaserMetrics(speakerAppleUrls, speakerNameLookups);
         if (speakerPodchaserRows.length > 0) {
           podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, speakerPodchaserRows, cpm, speakingTimePct, dateRange);
         }
       } catch (err) {
-        console.warn(`[generateMultiSpeakerReport] Podchaser fetch failed for ${speaker.name}:`, err);
+        console.warn(`[generateMultiSpeakerReport] Rephonic fetch failed for ${speaker.name}:`, err);
       }
     }
     
