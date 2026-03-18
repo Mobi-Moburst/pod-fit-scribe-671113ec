@@ -1139,13 +1139,23 @@ function calculateEMV(
   };
 }
 
-// Apply EMV calculations to all podcasts
+// Apply EMV calculations only to podcasts published within the report date range
 function applyEMVCalculations(
   podcasts: PodcastReportEntry[],
   cpm: number = 50,
-  speakingTimePct: number = 0.40
+  speakingTimePct: number = 0.40,
+  dateRange?: { start: Date; end: Date }
 ): PodcastReportEntry[] {
   return podcasts.map(podcast => {
+    // Only calculate EMV for podcasts published within the reporting period
+    if (dateRange && podcast.date_published) {
+      const pubDate = new Date(podcast.date_published);
+      if (pubDate < dateRange.start || pubDate > dateRange.end) {
+        // Outside reporting period — skip EMV calculation
+        return podcast;
+      }
+    }
+
     const emvData = calculateEMV(podcast, cpm, speakingTimePct);
     
     if (emvData) {
