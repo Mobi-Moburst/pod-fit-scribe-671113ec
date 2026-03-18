@@ -1926,7 +1926,7 @@ export async function generateReportFromMultipleCSVs(
   
   // Step 3b: Apply Rephonic CSV data if provided (overrides Podchaser data)
   if (rephonicRows && rephonicRows.length > 0) {
-    podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm, speakingTimePct);
+    podcastsWithEMV = applyRephonicEMVData(podcastsWithEMV, rephonicRows, cpm, speakingTimePct, dateRange);
   }
   
   // Step 4: Calculate enhanced KPIs (now includes total EMV)
