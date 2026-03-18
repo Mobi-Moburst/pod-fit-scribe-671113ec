@@ -1,0 +1,1 @@
+DELETE FROM podcast_metadata_cache WHERE listeners_per_episode IS NULL AND monthly_listens IS NULL AND social_reach IS NULL;
