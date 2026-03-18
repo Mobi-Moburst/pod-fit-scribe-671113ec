@@ -300,6 +300,12 @@ export function AirtableConnectionDialog({
           </div>
         ) : (
           <div className="space-y-4 py-4">
+            {hasConnection && (
+              <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary">
+                <Check className="h-4 w-4 shrink-0" />
+                <span>Connected to Airtable</span>
+              </div>
+            )}
             {/* Connection Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Connection Name</Label>
