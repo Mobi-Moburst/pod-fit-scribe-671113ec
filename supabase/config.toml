@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.fetch-rephonic-metrics]
 verify_jwt = false
+
+[functions.list-airtable-bases]
+verify_jwt = false
