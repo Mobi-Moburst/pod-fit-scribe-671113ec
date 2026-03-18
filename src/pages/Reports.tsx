@@ -131,8 +131,6 @@ export default function Reports() {
   const [isRegeneratingCategories, setIsRegeneratingCategories] = useState(false);
   const [scoringProgress, setScoringProgress] = useState<{ completed: number; total: number } | null>(null);
   const [isScoringFit, setIsScoringFit] = useState(false);
-  const [isFetchingSOV, setIsFetchingSOV] = useState(false);
-  const [sovFetchError, setSovFetchError] = useState<string | null>(null);
   const [fetchingEpisodeMetadata, setFetchingEpisodeMetadata] = useState<{ [index: number]: boolean }>({});
   
   // Visibility state for report sections
