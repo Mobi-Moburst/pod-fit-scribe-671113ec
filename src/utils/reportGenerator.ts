@@ -1835,21 +1835,29 @@ function applyRephonicEMVData(
       updatedPodcast.apple_podcast_link = rephonicData.apple_podcast_link;
     }
     
-    // If Rephonic provides pre-calculated EMV, use it directly
-    if (rephonicData.emv && rephonicData.emv > 0) {
-      updatedPodcast.true_emv = rephonicData.emv;
-      // Estimate other EMV fields from the total
-      const listeners = updatedPodcast.listeners_per_episode || 5000;
-      updatedPodcast.base_emv = (listeners / 1000) * cpm;
-      updatedPodcast.ad_units = updatedPodcast.true_emv / updatedPodcast.base_emv;
-      updatedPodcast.speaking_minutes = updatedPodcast.ad_units;
-      updatedPodcast.value_per_minute = updatedPodcast.base_emv;
-    } 
-    // Otherwise recalculate EMV with the new data
-    else if (updatedPodcast.listeners_per_episode && updatedPodcast.episode_duration_minutes) {
-      const emvData = calculateEMV(updatedPodcast, cpm, speakingTimePct);
-      if (emvData) {
-        Object.assign(updatedPodcast, emvData);
+    // Only calculate EMV for podcasts published within the reporting period
+    const isInDateRange = !dateRange || !updatedPodcast.date_published || (() => {
+      const pubDate = new Date(updatedPodcast.date_published);
+      return pubDate >= dateRange.start && pubDate <= dateRange.end;
+    })();
+
+    if (isInDateRange) {
+      // If Rephonic provides pre-calculated EMV, use it directly
+      if (rephonicData.emv && rephonicData.emv > 0) {
+        updatedPodcast.true_emv = rephonicData.emv;
+        // Estimate other EMV fields from the total
+        const listeners = updatedPodcast.listeners_per_episode || 5000;
+        updatedPodcast.base_emv = (listeners / 1000) * cpm;
+        updatedPodcast.ad_units = updatedPodcast.true_emv / updatedPodcast.base_emv;
+        updatedPodcast.speaking_minutes = updatedPodcast.ad_units;
+        updatedPodcast.value_per_minute = updatedPodcast.base_emv;
+      } 
+      // Otherwise recalculate EMV with the new data
+      else if (updatedPodcast.listeners_per_episode && updatedPodcast.episode_duration_minutes) {
+        const emvData = calculateEMV(updatedPodcast, cpm, speakingTimePct);
+        if (emvData) {
+          Object.assign(updatedPodcast, emvData);
+        }
       }
     }
     
