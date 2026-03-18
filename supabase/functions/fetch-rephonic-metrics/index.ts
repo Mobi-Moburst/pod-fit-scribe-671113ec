@@ -7,13 +7,7 @@ const corsHeaders = {
 
 const REPHONIC_API_URL = 'https://api.rephonic.com';
 
-// Extract Apple Podcast ID from URL for matching
-function extractAppleId(url: string): string | null {
-  const match = url.match(/\/id(\d+)/i);
-  return match ? match[1] : null;
-}
-
-// Extract a clean podcast name from an Apple Podcast URL for search fallback
+// Extract a clean podcast name from an Apple Podcast URL for search
 function extractNameFromAppleUrl(url: string): string | null {
   // Pattern: /podcast/some-podcast-name/id123
   const match = url.match(/\/podcast\/([^/]+)\/id/i);
@@ -23,10 +17,13 @@ function extractNameFromAppleUrl(url: string): string | null {
   return null;
 }
 
-// Search Rephonic for a podcast by name, return the best match
+// Search Rephonic for a podcast by name using the titles mode
 async function searchPodcast(query: string, apiKey: string): Promise<any | null> {
-  const params = new URLSearchParams({ query, page_size: '5' });
-  const response = await fetch(`${REPHONIC_API_URL}/api/search/podcasts/?${params}`, {
+  const params = new URLSearchParams({ query, mode: 'titles', per_page: '5' });
+  const url = `${REPHONIC_API_URL}/api/search/podcasts/?${params}`;
+  console.log(`[searchPodcast] Searching: ${url}`);
+
+  const response = await fetch(url, {
     headers: { 'X-Rephonic-Api-Key': apiKey },
   });
 
@@ -38,13 +35,18 @@ async function searchPodcast(query: string, apiKey: string): Promise<any | null>
   }
 
   const data = await response.json();
-  const results = data?.results || data?.data || [];
+  // Response format: { podcasts: [...], count: N, page: 1, ... }
+  const results = data?.podcasts || [];
+  console.log(`[searchPodcast] Found ${results.length} results for "${query}"`);
   return results.length > 0 ? results[0] : null;
 }
 
-// Get podcast details by Rephonic slug
+// Get podcast details by Rephonic slug/id
 async function getPodcastBySlug(slug: string, apiKey: string): Promise<any | null> {
-  const response = await fetch(`${REPHONIC_API_URL}/api/podcasts/${slug}/`, {
+  const url = `${REPHONIC_API_URL}/api/podcasts/${slug}/`;
+  console.log(`[getPodcastBySlug] Fetching: ${url}`);
+
+  const response = await fetch(url, {
     headers: { 'X-Rephonic-Api-Key': apiKey },
   });
 
@@ -66,27 +68,17 @@ function normalizeMetrics(podcast: any): {
   categories: string;
   description: string;
 } {
-  const name = podcast.name || podcast.title || '';
-  const listeners = podcast.downloads_per_episode || podcast.listeners_per_episode || 0;
+  const name = podcast.name || podcast.short_name || '';
+  const listeners = podcast.downloads_per_episode || 0;
   const weekly = podcast.est_weekly_downloads || 0;
-  const monthly = weekly > 0 ? weekly * 4 : listeners * 4; // Estimate monthly from weekly or per-episode
+  const monthly = weekly > 0 ? weekly * 4 : listeners * 4;
 
-  // Sum social followers if available
-  let socialReach = 0;
-  if (podcast.social_reach) {
-    socialReach = podcast.social_reach;
-  } else if (podcast.social_accounts || podcast.social_followers) {
-    const social = podcast.social_accounts || podcast.social_followers || {};
-    socialReach = Object.values(social).reduce((sum: number, v: any) => sum + (typeof v === 'number' ? v : 0), 0);
-  }
+  const socialReach = podcast.social_reach || 0;
 
-  // Categories
+  // Categories/genres
   let categories = '';
-  if (Array.isArray(podcast.categories)) {
-    categories = podcast.categories
-      .map((c: any) => typeof c === 'string' ? c : c?.name || c?.title || '')
-      .filter(Boolean)
-      .join(', ');
+  if (Array.isArray(podcast.genres)) {
+    categories = podcast.genres.filter(Boolean).join(', ');
   }
 
   return {
@@ -113,18 +105,18 @@ serve(async (req) => {
     const { apple_podcast_urls, podcast_names } = await req.json();
 
     // Support both lookup modes: by Apple URL or by podcast name
-    const lookups: Array<{ key: string; name: string | null; appleId: string | null }> = [];
+    const lookups: Array<{ key: string; name: string | null }> = [];
 
     if (apple_podcast_urls && Array.isArray(apple_podcast_urls)) {
       for (const url of apple_podcast_urls) {
         const name = extractNameFromAppleUrl(url);
-        lookups.push({ key: url, name, appleId: extractAppleId(url) });
+        lookups.push({ key: url, name });
       }
     }
 
     if (podcast_names && Array.isArray(podcast_names)) {
       for (const name of podcast_names) {
-        lookups.push({ key: name, name, appleId: null });
+        lookups.push({ key: name, name });
       }
     }
 
@@ -143,7 +135,6 @@ serve(async (req) => {
       const lookup = lookups[i];
 
       try {
-        // Search by name extracted from Apple URL or direct name
         const searchName = lookup.name;
         if (!searchName) {
           results[lookup.key] = { error: 'Could not extract podcast name from URL' };
@@ -156,9 +147,10 @@ serve(async (req) => {
           continue;
         }
 
-        // Get detailed info via slug if available
-        const slug = searchResult.slug || searchResult.id;
+        // The search result already contains full metrics (downloads_per_episode, social_reach, etc.)
+        // Use slug/id to get detailed info if needed
         let podcastData = searchResult;
+        const slug = searchResult.id;
 
         if (slug) {
           const detailed = await getPodcastBySlug(slug, apiKey);
