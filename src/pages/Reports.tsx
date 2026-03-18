@@ -2408,21 +2408,6 @@ export default function Reports() {
                             {manualSOVMode && competitorInterviews.some(c => c.count > 0) ? "Manual Entry" : "Optional"}
                           </Badge>
                         </div>
-                        {manualSOVMode && competitorInterviews.length > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={autoFetchPeerComparison}
-                            disabled={isFetchingSOV || !dateRangeStart || !dateRangeEnd}
-                          >
-                            {isFetchingSOV ? (
-                              <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Fetching...</>
-                            ) : (
-                              <><RefreshCw className="h-3 w-3 mr-1" />Auto-Fetch</>
-                            )}
-                          </Button>
-                        )}
                       </div>
                       
                       {manualSOVMode && competitorInterviews.length > 0 ? (
