@@ -165,10 +165,17 @@ serve(async (req) => {
           continue;
         }
 
-        // The search result already contains full metrics (downloads_per_episode, social_reach, etc.)
-        // Use slug/id to get detailed info if needed
+        // Prefer exact Apple ID match from Rephonic identifiers when available
         let podcastData = searchResult;
-        const slug = searchResult.id;
+        if (lookup.appleId) {
+          const appleMatch = [searchResult]
+            .find((candidate: any) => String(candidate?.identifiers?.apple || candidate?.itunes_id || '') === String(lookup.appleId));
+          if (appleMatch) {
+            podcastData = appleMatch;
+          }
+        }
+
+        const slug = podcastData.id || searchResult.id;
 
         if (slug) {
           const detailed = await getPodcastBySlug(slug, apiKey);
