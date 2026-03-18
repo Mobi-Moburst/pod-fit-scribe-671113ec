@@ -2619,12 +2619,14 @@ export default function Reports() {
                 className="w-full"
                 size="lg"
               >
-                <Upload className="mr-2 h-5 w-5" />
+                {reportData ? <RefreshCw className="mr-2 h-5 w-5" /> : <Upload className="mr-2 h-5 w-5" />}
                 {isProcessing 
                   ? scoringProgress 
                     ? `Scoring podcast ${scoringProgress.completed} of ${scoringProgress.total}...`
                     : 'Processing...' 
-                  : isMultiSpeakerMode ? 'Generate Multi-Speaker Report' : 'Generate Report'}
+                  : reportData 
+                    ? 'Update Report' 
+                    : isMultiSpeakerMode ? 'Generate Multi-Speaker Report' : 'Generate Report'}
               </Button>
             </CardContent>
           </Card>
