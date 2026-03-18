@@ -2339,33 +2339,42 @@ export default function Reports() {
                   )}
 
                   {/* ── Generate Report Button (before optional sections) ── */}
-                  {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && !reportData && (
+                  {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
                     <div className="pt-3 pb-1">
-                      <Button
-                        onClick={handleGenerateReport}
-                        disabled={isProcessing || !dateRangeStart || !dateRangeEnd || 
-                          (isMultiSpeakerMode 
-                            ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => {
-                                const syncedData = speakerSyncedData[id];
-                                const hasAirtable = !!syncedData || !!speakerFiles[id]?.airtableFile;
-                                return !hasAirtable;
-                              })
-                            : !selectedSpeakerId || (!airtableSyncedData?.length && !airtableFile)
-                          )
-                        }
-                        className="w-full"
-                        size="lg"
-                      >
-                        <Upload className="mr-2 h-5 w-5" />
-                        {isProcessing 
-                          ? scoringProgress 
-                            ? `Scoring podcast ${scoringProgress.completed} of ${scoringProgress.total}...`
-                            : 'Processing...' 
-                          : isMultiSpeakerMode ? 'Generate Multi-Speaker Report' : 'Generate Report'}
-                      </Button>
-                      <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-                        Optional sections below (Peer Comparison, GEO, Content Gap) can be added later via Update Report
-                      </p>
+                      {reportData ? (
+                        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-4 py-3">
+                          <Check className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                          <span className="text-sm font-medium text-green-700 dark:text-green-300">Report generated — scroll down to view, or add optional data below and click Update Report</span>
+                        </div>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={handleGenerateReport}
+                            disabled={isProcessing || !dateRangeStart || !dateRangeEnd || 
+                              (isMultiSpeakerMode 
+                                ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => {
+                                    const syncedData = speakerSyncedData[id];
+                                    const hasAirtable = !!syncedData || !!speakerFiles[id]?.airtableFile;
+                                    return !hasAirtable;
+                                  })
+                                : !selectedSpeakerId || (!airtableSyncedData?.length && !airtableFile)
+                              )
+                            }
+                            className="w-full"
+                            size="lg"
+                          >
+                            <Upload className="mr-2 h-5 w-5" />
+                            {isProcessing 
+                              ? scoringProgress 
+                                ? `Scoring podcast ${scoringProgress.completed} of ${scoringProgress.total}...`
+                                : 'Processing...' 
+                              : isMultiSpeakerMode ? 'Generate Multi-Speaker Report' : 'Generate Report'}
+                          </Button>
+                          <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                            Optional sections below (Peer Comparison, GEO, Content Gap) can be added later via Update Report
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
 
