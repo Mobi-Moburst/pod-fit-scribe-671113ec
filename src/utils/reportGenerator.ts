@@ -1750,7 +1750,8 @@ function applyRephonicEMVData(
   podcasts: PodcastReportEntry[],
   rephonicRows: RephonicCSVRow[],
   cpm: number = 50,
-  speakingTimePct: number = 0.40
+  speakingTimePct: number = 0.40,
+  dateRange?: { start: Date; end: Date }
 ): PodcastReportEntry[] {
   if (!rephonicRows || rephonicRows.length === 0) return podcasts;
   
