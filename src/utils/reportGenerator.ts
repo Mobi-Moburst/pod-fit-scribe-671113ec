@@ -2315,7 +2315,7 @@ export async function generateMultiSpeakerReport(
     
     // Scrape durations and calculate EMV
     const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
-    let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct);
+    let podcastsWithEMV = applyEMVCalculations(podcastsWithDuration, cpm, speakingTimePct, dateRange);
     
     // Auto-fetch Podchaser metrics for podcasts with Apple Podcast links
     const speakerAppleUrls = podcastsWithEMV
