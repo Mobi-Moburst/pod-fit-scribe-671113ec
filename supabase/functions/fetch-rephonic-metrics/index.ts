@@ -68,6 +68,15 @@ async function getPodcastBySlug(slug: string, apiKey: string): Promise<any | nul
   const data = await response.json();
   const podcast = data?.podcast || data;
   console.log(`[getPodcastBySlug] name=${podcast.name}, downloads_per_episode=${podcast.downloads_per_episode}, social_reach=${podcast.social_reach}`);
+  // Log all available fields to discover YouTube subscriber data
+  const fieldKeys = Object.keys(podcast);
+  console.log(`[getPodcastBySlug] Available fields: ${fieldKeys.join(', ')}`);
+  // Log social/YouTube related fields specifically
+  const socialFields = fieldKeys.filter(k => /youtube|social|subscriber|channel|facebook|twitter|instagram|linkedin|tiktok|x_|platform/i.test(k));
+  console.log(`[getPodcastBySlug] Social-related fields: ${JSON.stringify(socialFields)}`);
+  for (const key of socialFields) {
+    console.log(`[getPodcastBySlug] ${key} = ${JSON.stringify(podcast[key])}`);
+  }
   return podcast;
 }
 
