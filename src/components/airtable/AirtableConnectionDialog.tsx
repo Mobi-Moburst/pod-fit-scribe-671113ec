@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -27,8 +27,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Link2, ChevronDown, ChevronRight, Trash2, Check, ExternalLink } from 'lucide-react';
-import { useAirtableConnection, AirtableConnection } from '@/hooks/use-airtable-connection';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Loader2, Link2, ChevronDown, ChevronRight, Trash2, Check, ExternalLink, AlertTriangle, Database } from 'lucide-react';
+import { useAirtableConnection } from '@/hooks/use-airtable-connection';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const DEFAULT_FIELD_MAPPING: Record<string, string> = {
   podcast_name: 'Podcast Name',
@@ -52,12 +61,38 @@ const FIELD_DESCRIPTIONS: Record<string, string> = {
   apple_podcast_link: 'Apple Podcasts URL',
 };
 
+interface AirtableBase {
+  id: string;
+  name: string;
+}
+
+interface AirtableTable {
+  id: string;
+  name: string;
+  fields: Array<{ id: string; name: string; type: string }>;
+}
+
+/** Extract appXXX and tblYYY from an Airtable URL */
+function parseAirtableUrl(url: string): { baseId: string; tableId: string; isSharedView: boolean } | null {
+  try {
+    const match = url.match(/airtable\.com\/(app[A-Za-z0-9]+)\/(tbl[A-Za-z0-9]+|shr[A-Za-z0-9]+|viw[A-Za-z0-9]+)/);
+    if (!match) return null;
+    const baseId = match[1];
+    const secondSegment = match[2];
+    const isSharedView = secondSegment.startsWith('shr');
+    const tableId = secondSegment.startsWith('tbl') ? secondSegment : '';
+    return { baseId, tableId, isSharedView };
+  } catch {
+    return null;
+  }
+}
+
 interface AirtableConnectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyId?: string;
   speakerId?: string;
-  entityName: string; // For display: "Maya Reynolds" or "Acme Inc."
+  entityName: string;
   onConnectionSaved?: () => void;
 }
 
@@ -87,6 +122,20 @@ export function AirtableConnectionDialog({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // URL parser state
+  const [airtableUrl, setAirtableUrl] = useState('');
+  const [urlParsed, setUrlParsed] = useState(false);
+  const [isSharedView, setIsSharedView] = useState(false);
+
+  // Browse state
+  const [showBrowse, setShowBrowse] = useState(false);
+  const [bases, setBases] = useState<AirtableBase[]>([]);
+  const [tables, setTables] = useState<AirtableTable[]>([]);
+  const [loadingBases, setLoadingBases] = useState(false);
+  const [loadingTables, setLoadingTables] = useState(false);
+  const [selectedBaseId, setSelectedBaseId] = useState('');
+  const [selectedTableId, setSelectedTableId] = useState('');
+
   // Populate form when connection loads
   useEffect(() => {
     if (connection) {
@@ -104,7 +153,97 @@ export function AirtableConnectionDialog({
       setSpeakerColumnName('');
       setFieldMapping(DEFAULT_FIELD_MAPPING);
     }
+    setAirtableUrl('');
+    setUrlParsed(false);
+    setIsSharedView(false);
   }, [connection, entityName]);
+
+  // URL parsing
+  const handleUrlChange = useCallback((url: string) => {
+    setAirtableUrl(url);
+    if (!url.trim()) {
+      setUrlParsed(false);
+      setIsSharedView(false);
+      return;
+    }
+    const parsed = parseAirtableUrl(url);
+    if (parsed) {
+      setBaseId(parsed.baseId);
+      if (parsed.tableId) setTableId(parsed.tableId);
+      setUrlParsed(true);
+      setIsSharedView(parsed.isSharedView);
+    } else {
+      setUrlParsed(false);
+      setIsSharedView(false);
+    }
+  }, []);
+
+  // Browse bases
+  const fetchBases = async () => {
+    setLoadingBases(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('list-airtable-bases', {
+        body: {},
+      });
+      if (error) throw error;
+      setBases(data.bases || []);
+      setShowBrowse(true);
+    } catch (err: any) {
+      toast.error('Failed to fetch Airtable bases', { description: err.message });
+    } finally {
+      setLoadingBases(false);
+    }
+  };
+
+  // Browse tables for a base
+  const fetchTables = async (bId: string) => {
+    setLoadingTables(true);
+    setTables([]);
+    setSelectedTableId('');
+    try {
+      const { data, error } = await supabase.functions.invoke('list-airtable-bases', {
+        body: { base_id: bId },
+      });
+      if (error) throw error;
+      setTables(data.tables || []);
+    } catch (err: any) {
+      toast.error('Failed to fetch tables', { description: err.message });
+    } finally {
+      setLoadingTables(false);
+    }
+  };
+
+  const handleBaseSelect = (bId: string) => {
+    setSelectedBaseId(bId);
+    setBaseId(bId);
+    fetchTables(bId);
+  };
+
+  const handleTableSelect = (tId: string) => {
+    setSelectedTableId(tId);
+    setTableId(tId);
+
+    // Auto-detect field mapping from table fields
+    const table = tables.find(t => t.id === tId);
+    if (table) {
+      const fieldNames = table.fields.map(f => f.name);
+      const newMapping = { ...fieldMapping };
+      for (const [ourKey, defaultCol] of Object.entries(DEFAULT_FIELD_MAPPING)) {
+        // Exact match first
+        const exactMatch = fieldNames.find(fn => fn === defaultCol);
+        if (exactMatch) {
+          newMapping[ourKey] = exactMatch;
+          continue;
+        }
+        // Case-insensitive match
+        const ciMatch = fieldNames.find(fn => fn.toLowerCase() === defaultCol.toLowerCase());
+        if (ciMatch) {
+          newMapping[ourKey] = ciMatch;
+        }
+      }
+      setFieldMapping(newMapping);
+    }
+  };
 
   const handleSave = async () => {
     if (!baseId.trim() || !tableId.trim()) return;
@@ -138,6 +277,7 @@ export function AirtableConnectionDialog({
   };
 
   const isValid = baseId.trim() && tableId.trim();
+  const idsAutoFilled = urlParsed || (selectedBaseId && selectedTableId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -171,47 +311,149 @@ export function AirtableConnectionDialog({
               />
             </div>
 
-            {/* Airtable Connection Details */}
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium">Airtable Connection</h4>
-                <Badge variant="secondary" className="text-xs">
-                  Using shared API access
-                </Badge>
+            {/* Paste Airtable URL */}
+            <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
+              <Label htmlFor="airtableUrl">Paste Airtable URL</Label>
+              <Input
+                id="airtableUrl"
+                placeholder="https://airtable.com/appXXX/tblYYY/..."
+                value={airtableUrl}
+                onChange={(e) => handleUrlChange(e.target.value)}
+              />
+              {urlParsed && !isSharedView && (
+                <p className="text-xs text-primary flex items-center gap-1">
+                  <Check className="h-3 w-3" /> Base & Table detected
+                </p>
+              )}
+              {urlParsed && isSharedView && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> This looks like a shared view link — paste the full table URL instead
+                </p>
+              )}
+              {airtableUrl && !urlParsed && (
+                <p className="text-xs text-muted-foreground">
+                  Paste a URL like airtable.com/appXXX/tblYYY
+                </p>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex-1 h-px bg-border" />
+              <span>or</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {/* Browse Airtable */}
+            {!showBrowse ? (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={fetchBases}
+                disabled={loadingBases}
+              >
+                {loadingBases ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Database className="h-4 w-4 mr-2" />
+                )}
+                Browse Airtable
+              </Button>
+            ) : (
+              <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Browse Airtable
+                </h4>
+                <div className="space-y-2">
+                  <Label>Base</Label>
+                  <Select value={selectedBaseId} onValueChange={handleBaseSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a base..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bases.map(b => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedBaseId && (
+                  <div className="space-y-2">
+                    <Label>Table</Label>
+                    {loadingTables ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading tables...
+                      </div>
+                    ) : (
+                      <Select value={selectedTableId} onValueChange={handleTableSelect}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a table..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tables.map(t => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Base ID / Table ID (read-only when auto-filled, editable otherwise) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="baseId">
+                  Base ID <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="baseId"
+                  placeholder="appXXXXXXXXXXXXXX"
+                  value={baseId}
+                  onChange={(e) => setBaseId(e.target.value)}
+                  readOnly={!!idsAutoFilled}
+                  className={idsAutoFilled ? 'bg-muted text-muted-foreground' : ''}
+                />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="baseId">
-                    Base ID <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="baseId"
-                    placeholder="appXXXXXXXXXXXXXX"
-                    value={baseId}
-                    onChange={(e) => setBaseId(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    From your Airtable URL after /app
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tableId">
-                    Table ID <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="tableId"
-                    placeholder="tblXXXXXXXXXXXXXX"
-                    value={tableId}
-                    onChange={(e) => setTableId(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    From your Airtable URL after /tbl
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="tableId">
+                  Table ID <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="tableId"
+                  placeholder="tblXXXXXXXXXXXXXX"
+                  value={tableId}
+                  onChange={(e) => setTableId(e.target.value)}
+                  readOnly={!!idsAutoFilled}
+                  className={idsAutoFilled ? 'bg-muted text-muted-foreground' : ''}
+                />
               </div>
             </div>
+
+            {idsAutoFilled && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+                onClick={() => {
+                  setAirtableUrl('');
+                  setUrlParsed(false);
+                  setSelectedBaseId('');
+                  setSelectedTableId('');
+                  setShowBrowse(false);
+                }}
+              >
+                Edit IDs manually
+              </button>
+            )}
 
             {/* Advanced: Custom Token (Collapsible) */}
             <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
