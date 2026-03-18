@@ -2338,7 +2338,38 @@ export default function Reports() {
                     </div>
                   )}
 
-                  {/* Step 4c: Peer Comparison (shows after Airtable) */}
+                  {/* ── Generate Report Button (before optional sections) ── */}
+                  {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && !reportData && (
+                    <div className="pt-3 pb-1">
+                      <Button
+                        onClick={handleGenerateReport}
+                        disabled={isProcessing || !dateRangeStart || !dateRangeEnd || 
+                          (isMultiSpeakerMode 
+                            ? selectedSpeakerIds.length < 2 || selectedSpeakerIds.some(id => {
+                                const syncedData = speakerSyncedData[id];
+                                const hasAirtable = !!syncedData || !!speakerFiles[id]?.airtableFile;
+                                return !hasAirtable;
+                              })
+                            : !selectedSpeakerId || (!airtableSyncedData?.length && !airtableFile)
+                          )
+                        }
+                        className="w-full"
+                        size="lg"
+                      >
+                        <Upload className="mr-2 h-5 w-5" />
+                        {isProcessing 
+                          ? scoringProgress 
+                            ? `Scoring podcast ${scoringProgress.completed} of ${scoringProgress.total}...`
+                            : 'Processing...' 
+                          : isMultiSpeakerMode ? 'Generate Multi-Speaker Report' : 'Generate Report'}
+                      </Button>
+                      <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                        Optional sections below (Peer Comparison, GEO, Content Gap) can be added later via Update Report
+                      </p>
+                    </div>
+                  )}
+
+                   {/* Step 4c: Peer Comparison (shows after Airtable) */}
                   {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
