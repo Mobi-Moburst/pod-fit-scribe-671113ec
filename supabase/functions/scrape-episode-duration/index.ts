@@ -40,6 +40,18 @@ function parseDuration(duration: string | number): number | null {
   return null;
 }
 
+// Extract Apple Podcast ID from URL
+function extractApplePodcastId(url: string): string | null {
+  const match = url.match(/\/id(\d+)/);
+  return match ? match[1] : null;
+}
+
+// Extract specific episode ID from Apple Podcast URL (the ?i= parameter)
+function extractAppleEpisodeId(url: string): string | null {
+  const match = url.match(/[?&]i=(\d+)/);
+  return match ? match[1] : null;
+}
+
 // Extract YouTube video ID from various URL formats
 function extractYouTubeVideoId(url: string): string | null {
   const patterns = [
@@ -136,14 +148,12 @@ async function getSpotifyDuration(episodeId: string, originalUrl: string): Promi
                               html.match(/(\d+)\s*min/i);
     if (durationTextMatch) {
       if (durationTextMatch[2]) {
-        // "X hr Y min" format
         const hours = parseInt(durationTextMatch[1]);
         const mins = parseInt(durationTextMatch[2]);
         const minutes = hours * 60 + mins;
         console.log(`Found Spotify duration from text: ${minutes} minutes`);
         return minutes;
       } else {
-        // "X min" format
         const minutes = parseInt(durationTextMatch[1]);
         console.log(`Found Spotify duration from text: ${minutes} minutes`);
         return minutes;
@@ -154,6 +164,72 @@ async function getSpotifyDuration(episodeId: string, originalUrl: string): Promi
     return null;
   } catch (error) {
     console.error('Error fetching Spotify duration:', error);
+    return null;
+  }
+}
+
+// Fetch duration via iTunes Lookup API (reliable fallback for Apple Podcasts)
+async function getITunesDuration(podcastId: string, episodeId: string | null): Promise<number | null> {
+  try {
+    // If we have an episode ID, look up the specific episode track
+    if (episodeId) {
+      const url = `https://itunes.apple.com/lookup?id=${episodeId}&entity=podcastEpisode`;
+      console.log(`iTunes Lookup for episode ID: ${episodeId}`);
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+          for (const result of data.results) {
+            if (result.trackTimeMillis) {
+              const minutes = Math.round(result.trackTimeMillis / 60000);
+              console.log(`Found duration via iTunes episode lookup: ${minutes} minutes`);
+              return minutes;
+            }
+          }
+        }
+      } else {
+        const text = await response.text();
+        console.log(`iTunes episode lookup failed: ${response.status} - ${text}`);
+      }
+    }
+
+    // Fallback: look up recent episodes of the podcast and try to find a match
+    // This is less reliable but better than nothing
+    const url = `https://itunes.apple.com/lookup?id=${podcastId}&entity=podcastEpisode&limit=25`;
+    console.log(`iTunes Lookup for podcast ID: ${podcastId} (recent episodes)`);
+    const response = await fetch(url);
+    if (!response.ok) {
+      const text = await response.text();
+      console.log(`iTunes podcast lookup failed: ${response.status} - ${text}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.results && data.results.length > 1) {
+      // First result is the podcast itself, rest are episodes
+      // Return average episode duration as a reasonable estimate
+      const episodes = data.results.filter((r: any) => r.wrapperType === 'podcastEpisode' && r.trackTimeMillis);
+      if (episodes.length > 0) {
+        // If we have the episode ID, try to find exact match
+        if (episodeId) {
+          const exactMatch = episodes.find((e: any) => String(e.trackId) === episodeId);
+          if (exactMatch) {
+            const minutes = Math.round(exactMatch.trackTimeMillis / 60000);
+            console.log(`Found exact episode in podcast feed: ${minutes} minutes`);
+            return minutes;
+          }
+        }
+        // Use the average episode duration as fallback
+        const avgMs = episodes.reduce((sum: number, e: any) => sum + e.trackTimeMillis, 0) / episodes.length;
+        const minutes = Math.round(avgMs / 60000);
+        console.log(`Using average episode duration from ${episodes.length} episodes: ${minutes} minutes`);
+        return minutes;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching iTunes duration:', error);
     return null;
   }
 }
@@ -202,6 +278,10 @@ serve(async (req) => {
       }
     }
 
+    // Check if it's an Apple Podcasts URL — try page scrape first, then iTunes API fallback
+    const applePodcastId = extractApplePodcastId(url);
+    const appleEpisodeId = extractAppleEpisodeId(url);
+
     // Default: Fetch and parse the page (Apple Podcasts, etc.)
     const response = await fetch(url, {
       headers: {
@@ -209,91 +289,104 @@ serve(async (req) => {
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const html = await response.text();
-    
     let duration_minutes: number | null = null;
 
-    // Strategy 1: Look for JSON-LD structured data
-    const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
-    if (jsonLdMatch) {
-      for (const match of jsonLdMatch) {
-        try {
-          const jsonContent = match.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '');
-          const data = JSON.parse(jsonContent);
-          
-          // Handle both single objects and arrays
-          const items = Array.isArray(data) ? data : [data];
-          
-          for (const item of items) {
-            if (item['@type'] === 'PodcastEpisode' && item.duration) {
-              duration_minutes = parseDuration(item.duration);
+    if (response.ok) {
+      const html = await response.text();
+
+      // Strategy 1: Look for JSON-LD structured data
+      const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+      if (jsonLdMatch) {
+        for (const match of jsonLdMatch) {
+          try {
+            const jsonContent = match.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '');
+            const data = JSON.parse(jsonContent);
+            
+            const items = Array.isArray(data) ? data : [data];
+            
+            for (const item of items) {
+              if (item['@type'] === 'PodcastEpisode' && item.duration) {
+                duration_minutes = parseDuration(item.duration);
+                if (duration_minutes !== null) {
+                  console.log(`Found duration in JSON-LD: ${duration_minutes} minutes`);
+                  break;
+                }
+              }
+            }
+            
+            if (duration_minutes !== null) break;
+          } catch (e) {
+            console.log('Error parsing JSON-LD:', e);
+          }
+        }
+      }
+
+      // Strategy 2: Look for meta tags with duration
+      if (duration_minutes === null) {
+        const metaPatterns = [
+          /meta\s+(?:property|name)=["'](?:twitter:player:stream:duration|duration|video:duration)["']\s+content=["']([^"']+)["']/gi,
+          /meta\s+content=["']([^"']+)["']\s+(?:property|name)=["'](?:twitter:player:stream:duration|duration|video:duration)["']/gi,
+          /meta\s+itemprop=["']duration["']\s+content=["']([^"']+)["']/gi,
+          /meta\s+content=["']([^"']+)["']\s+itemprop=["']duration["']/gi,
+        ];
+
+        for (const pattern of metaPatterns) {
+          const matches = html.matchAll(pattern);
+          for (const match of matches) {
+            if (match[1]) {
+              duration_minutes = parseDuration(match[1]);
               if (duration_minutes !== null) {
-                console.log(`Found duration in JSON-LD: ${duration_minutes} minutes`);
+                console.log(`Found duration in meta tags: ${duration_minutes} minutes`);
                 break;
               }
             }
           }
-          
           if (duration_minutes !== null) break;
-        } catch (e) {
-          console.log('Error parsing JSON-LD:', e);
         }
       }
-    }
 
-    // Strategy 2: Look for meta tags with duration
-    if (duration_minutes === null) {
-      const metaPatterns = [
-        /meta\s+(?:property|name)=["'](?:twitter:player:stream:duration|duration|video:duration)["']\s+content=["']([^"']+)["']/gi,
-        /meta\s+content=["']([^"']+)["']\s+(?:property|name)=["'](?:twitter:player:stream:duration|duration|video:duration)["']/gi,
-        /meta\s+itemprop=["']duration["']\s+content=["']([^"']+)["']/gi,
-        /meta\s+content=["']([^"']+)["']\s+itemprop=["']duration["']/gi,
-      ];
+      // Strategy 3: Look for duration in data attributes or visible text
+      if (duration_minutes === null) {
+        const dataPatterns = [
+          /data-duration=["']([^"']+)["']/gi,
+          /duration["\s:]+["']?(\d+:\d+(?::\d+)?)["']?/gi,
+          /length["\s:]+["']?(\d+:\d+(?::\d+)?)["']?/gi,
+        ];
 
-      for (const pattern of metaPatterns) {
-        const matches = html.matchAll(pattern);
-        for (const match of matches) {
-          if (match[1]) {
-            duration_minutes = parseDuration(match[1]);
-            if (duration_minutes !== null) {
-              console.log(`Found duration in meta tags: ${duration_minutes} minutes`);
-              break;
+        for (const pattern of dataPatterns) {
+          const matches = html.matchAll(pattern);
+          for (const match of matches) {
+            if (match[1]) {
+              duration_minutes = parseDuration(match[1]);
+              if (duration_minutes !== null) {
+                console.log(`Found duration in data attributes: ${duration_minutes} minutes`);
+                break;
+              }
             }
           }
+          if (duration_minutes !== null) break;
         }
-        if (duration_minutes !== null) break;
       }
+    } else {
+      console.log(`Page fetch failed with status ${response.status}, will try iTunes fallback`);
+      // Consume response body to prevent resource leak
+      await response.text();
     }
 
-    // Strategy 3: Look for duration in data attributes or visible text
-    if (duration_minutes === null) {
-      const dataPatterns = [
-        /data-duration=["']([^"']+)["']/gi,
-        /duration["\s:]+["']?(\d+:\d+(?::\d+)?)["']?/gi,
-        /length["\s:]+["']?(\d+:\d+(?::\d+)?)["']?/gi,
-      ];
-
-      for (const pattern of dataPatterns) {
-        const matches = html.matchAll(pattern);
-        for (const match of matches) {
-          if (match[1]) {
-            duration_minutes = parseDuration(match[1]);
-            if (duration_minutes !== null) {
-              console.log(`Found duration in data attributes: ${duration_minutes} minutes`);
-              break;
-            }
-          }
-        }
-        if (duration_minutes !== null) break;
+    // Strategy 4: iTunes API fallback for Apple Podcast URLs
+    if (duration_minutes === null && applePodcastId) {
+      console.log(`Page scrape failed, trying iTunes Lookup API fallback for podcast ${applePodcastId}, episode ${appleEpisodeId}`);
+      duration_minutes = await getITunesDuration(applePodcastId, appleEpisodeId);
+      if (duration_minutes !== null) {
+        return new Response(
+          JSON.stringify({ success: true, duration_minutes, source: 'itunes_api' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
     if (duration_minutes === null) {
-      console.log('Could not find duration in page');
+      console.log('Could not find duration from any source');
       return new Response(
         JSON.stringify({ success: false, error: 'Duration not found on page' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
