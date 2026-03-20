@@ -291,10 +291,10 @@ export function AirtableConnectionDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5" />
-            {hasConnection ? 'Edit Airtable Connection' : 'Connect Airtable'}
+            {speakerId ? `Airtable · ${entityName}` : effectiveHasConnection ? 'Edit Airtable Connection' : 'Connect Airtable'}
           </DialogTitle>
           <DialogDescription>
-            {hasConnection
+            {effectiveHasConnection
               ? `Update the Airtable API connection for ${entityName}.`
               : `Set up a direct API connection to sync ${entityName}'s activity data from Airtable.`}
           </DialogDescription>
@@ -306,10 +306,27 @@ export function AirtableConnectionDialog({
           </div>
         ) : (
           <div className="space-y-4 py-4">
-            {hasConnection && (
+            {/* Connection status & scope indicator */}
+            {effectiveHasConnection && !effectiveIsCompanyFallback && (
               <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary">
                 <Check className="h-4 w-4 shrink-0" />
-                <span>Connected to Airtable</span>
+                <span>{speakerId ? `Connected for ${entityName}` : 'Connected to Airtable'}</span>
+              </div>
+            )}
+            {effectiveIsCompanyFallback && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 space-y-1.5">
+                <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>Using company-wide connection · <span className="font-medium">{connection?.name}</span></span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={() => setForceNewSpeakerConnection(true)}
+                >
+                  Create speaker-specific connection
+                </Button>
               </div>
             )}
             {/* Connection Name */}
