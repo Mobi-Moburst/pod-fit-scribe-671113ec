@@ -30,6 +30,15 @@ interface EMVAnalysisDialogProps {
 export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelationChart, cpm = 50, speakingTimePct = 0.40 }: EMVAnalysisDialogProps) => {
   // Filter podcasts that have EMV data
   const podcastsWithEMV = podcasts.filter(p => p.true_emv && p.true_emv > 0);
+  
+  // Identify published episodes missing EMV data
+  const publishedPodcasts = podcasts.filter(p => p.date_published);
+  const publishedMissingEMV = publishedPodcasts.filter(p => !p.true_emv || p.true_emv <= 0);
+  const missingDuration = publishedMissingEMV.filter(p => !p.episode_duration_minutes);
+  const missingLink = publishedMissingEMV.filter(p => {
+    const link = p.episode_link?.trim().toLowerCase();
+    return !link || ['n/a', 'na', 'tbd', 'none', '-'].includes(link);
+  });
 
   // Calculate summary metrics
   const totalAdUnits = podcastsWithEMV.reduce((sum, p) => sum + (p.ad_units || 0), 0);
@@ -118,6 +127,38 @@ export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelatio
             This reflects the equivalent cost an advertiser would pay to reach the same audience through paid podcast ad placements.
           </p>
         </div>
+        
+        {/* Data Completeness Warning */}
+        {publishedMissingEMV.length > 0 && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 mt-2">
+            <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mb-1">
+              Data Completeness: {podcastsWithEMV.length} of {publishedPodcasts.length} published episodes have EMV
+            </p>
+            <div className="text-xs text-muted-foreground leading-relaxed space-y-1">
+              {missingLink.length > 0 && (
+                <p>
+                  <span className="font-medium">Missing episode link:</span>{' '}
+                  {missingLink.map(p => p.show_title).join(', ')}
+                </p>
+              )}
+              {missingDuration.filter(p => {
+                const link = p.episode_link?.trim().toLowerCase();
+                return link && !['n/a', 'na', 'tbd', 'none', '-'].includes(link);
+              }).length > 0 && (
+                <p>
+                  <span className="font-medium">Missing duration data:</span>{' '}
+                  {missingDuration.filter(p => {
+                    const link = p.episode_link?.trim().toLowerCase();
+                    return link && !['n/a', 'na', 'tbd', 'none', '-'].includes(link);
+                  }).map(p => p.show_title).join(', ')}
+                </p>
+              )}
+              <p className="text-muted-foreground/70 mt-1">
+                Update episode links in Airtable and regenerate the report to include these in EMV.
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* Summary Metrics Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">

@@ -956,8 +956,12 @@ export function calculateKPIs(rows: any[]): ReportData['kpis'] {
   };
 }
 
-// Helper to validate URL
+// Helper to validate URL — also rejects placeholder strings like N/A, TBD, etc.
 function isValidUrl(str: string): boolean {
+  const trimmed = str.trim().toLowerCase();
+  if (['n/a', 'na', 'tbd', 'none', '-', ''].includes(trimmed)) {
+    return false;
+  }
   try {
     new URL(str);
     return true;
