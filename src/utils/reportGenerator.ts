@@ -2762,15 +2762,13 @@ function calculateAggregatedKPIs(
     getActionString(r.action).toLowerCase().includes('podcast recording')
   ).length;
   
-  // Calculate total_listeners_per_episode from all batch rows (sum for the quarter)
-  const listenersPerEpisodeValues = successfulBatch
-    .map(r => {
-      const listeners = r.listeners_per_episode || 0;
-      return typeof listeners === 'string' ? parseFloat(listeners) : listeners;
-    })
-    .filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
-  
-  const total_listeners_per_episode = listenersPerEpisodeValues.reduce((a, b) => a + b, 0);
+  // Aggregate total_listeners_per_episode from enriched podcast entries (not raw batch rows)
+  const total_listeners_per_episode = allPodcasts.reduce((sum, p) => {
+    const val = typeof p.listeners_per_episode === 'string' 
+      ? parseFloat(p.listeners_per_episode) || 0 
+      : (p.listeners_per_episode || 0);
+    return sum + val;
+  }, 0);
 
   return {
     total_evaluated: successfulBatch.length,
