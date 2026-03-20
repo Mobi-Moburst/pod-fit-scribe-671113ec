@@ -510,7 +510,7 @@ export function AirtableConnectionDialog({
         )}
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          {hasConnection && (
+          {effectiveHasConnection && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="mr-auto">
