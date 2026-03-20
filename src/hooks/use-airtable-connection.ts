@@ -36,6 +36,7 @@ interface UseAirtableConnectionOptions {
 
 export function useAirtableConnection({ companyId, speakerId }: UseAirtableConnectionOptions = {}) {
   const [connection, setConnection] = useState<AirtableConnection | null>(null);
+  const [isCompanyFallback, setIsCompanyFallback] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
@@ -80,6 +81,8 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
       }
 
       setConnection(foundConnection);
+      // Detect if we fell back to company-level connection when speaker was requested
+      setIsCompanyFallback(!!speakerId && !!foundConnection && !foundConnection.speaker_id);
       return foundConnection;
     } catch (error) {
       console.error('Failed to fetch Airtable connection:', error);
@@ -266,6 +269,7 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
     isLoading,
     isSyncing,
     hasConnection: !!connection,
+    isCompanyFallback,
     saveConnection,
     deleteConnection,
     syncData,

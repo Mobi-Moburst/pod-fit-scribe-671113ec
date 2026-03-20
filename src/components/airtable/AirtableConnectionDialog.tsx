@@ -108,9 +108,15 @@ export function AirtableConnectionDialog({
     connection,
     isLoading,
     hasConnection,
+    isCompanyFallback,
     saveConnection,
     deleteConnection,
   } = useAirtableConnection({ companyId, speakerId });
+
+  // When "Create speaker-specific" is clicked, we override to treat as new
+  const [forceNewSpeakerConnection, setForceNewSpeakerConnection] = useState(false);
+  const effectiveHasConnection = hasConnection && !forceNewSpeakerConnection;
+  const effectiveIsCompanyFallback = isCompanyFallback && !forceNewSpeakerConnection;
 
   const [name, setName] = useState('');
   const [baseId, setBaseId] = useState('');
@@ -138,7 +144,7 @@ export function AirtableConnectionDialog({
 
   // Populate form when connection loads
   useEffect(() => {
-    if (connection) {
+    if (connection && !forceNewSpeakerConnection) {
       setName(connection.name || '');
       setBaseId(connection.base_id || '');
       setTableId(connection.table_id || '');
@@ -156,7 +162,7 @@ export function AirtableConnectionDialog({
     setAirtableUrl('');
     setUrlParsed(false);
     setIsSharedView(false);
-  }, [connection, entityName]);
+  }, [connection, entityName, forceNewSpeakerConnection]);
 
   // URL parsing
   const handleUrlChange = useCallback((url: string) => {
@@ -280,15 +286,15 @@ export function AirtableConnectionDialog({
   const idsAutoFilled = urlParsed || (selectedBaseId && selectedTableId);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) setForceNewSpeakerConnection(false); onOpenChange(v); }}>
       <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5" />
-            {hasConnection ? 'Edit Airtable Connection' : 'Connect Airtable'}
+            {speakerId ? `Airtable · ${entityName}` : effectiveHasConnection ? 'Edit Airtable Connection' : 'Connect Airtable'}
           </DialogTitle>
           <DialogDescription>
-            {hasConnection
+            {effectiveHasConnection
               ? `Update the Airtable API connection for ${entityName}.`
               : `Set up a direct API connection to sync ${entityName}'s activity data from Airtable.`}
           </DialogDescription>
@@ -300,10 +306,27 @@ export function AirtableConnectionDialog({
           </div>
         ) : (
           <div className="space-y-4 py-4">
-            {hasConnection && (
+            {/* Connection status & scope indicator */}
+            {effectiveHasConnection && !effectiveIsCompanyFallback && (
               <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary">
                 <Check className="h-4 w-4 shrink-0" />
-                <span>Connected to Airtable</span>
+                <span>{speakerId ? `Connected for ${entityName}` : 'Connected to Airtable'}</span>
+              </div>
+            )}
+            {effectiveIsCompanyFallback && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 space-y-1.5">
+                <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>Using company-wide connection · <span className="font-medium">{connection?.name}</span></span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={() => setForceNewSpeakerConnection(true)}
+                >
+                  Create speaker-specific connection
+                </Button>
               </div>
             )}
             {/* Connection Name */}
@@ -487,7 +510,7 @@ export function AirtableConnectionDialog({
         )}
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          {hasConnection && (
+          {effectiveHasConnection && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="mr-auto">
@@ -519,7 +542,7 @@ export function AirtableConnectionDialog({
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Saving...
               </>
-            ) : hasConnection ? (
+            ) : effectiveHasConnection ? (
               'Update Connection'
             ) : (
               'Connect Airtable'
