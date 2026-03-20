@@ -269,6 +269,7 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
     isLoading,
     isSyncing,
     hasConnection: !!connection,
+    isCompanyFallback,
     saveConnection,
     deleteConnection,
     syncData,
