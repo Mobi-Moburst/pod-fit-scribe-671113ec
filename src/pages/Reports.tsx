@@ -2757,7 +2757,7 @@ export default function Reports() {
                         value={reportData.kpis.total_social_reach.toLocaleString()}
                         subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows" : "Combined social following"}
                         icon={Users}
-                        tooltip="The combined number of followers across all of the social media accounts that we found for this podcast. Source: Rephonic"
+                        tooltip={`The combined number of followers across all of the social media accounts that we found for ${reportData.kpis.total_booked > 1 ? 'these podcasts' : 'this podcast'}`}
                         onHide={() => toggleSection('socialReach')}
                       />
                     )}
