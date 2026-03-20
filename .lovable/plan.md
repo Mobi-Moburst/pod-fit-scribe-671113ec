@@ -1,79 +1,60 @@
 
 
-# Surface Competitor Episode Details in Peer Comparison Dialog
+## Per-Speaker Airtable Connection Clarity
 
-## Summary
-The `fetch-podchaser-credits` edge function already returns full episode data (title, podcast name, air date, role) per competitor, but the frontend discards it -- only `interview_count` is stored. This plan threads the episode data through to the `SOVChartDialog` and displays it when a user clicks on a competitor in the chart legend.
+### Problem
+When a CM opens the Airtable dialog for a speaker, the hook falls back to the company-level connection if no speaker-specific one exists. The CM sees the company connection's details pre-filled but has no indication whether they're viewing a company-wide connection or a speaker-specific one. Saving creates a new speaker-level connection (correct behavior), but the UX doesn't communicate this. It feels like "only one Airtable" exists.
 
-## Changes
+### Solution
+Add clear scope indicators and an intentional "use company connection" vs "set up speaker-specific connection" flow.
 
-### 1. Store episode data alongside competitor counts
+### Changes
 
-**`src/pages/Reports.tsx`**
+**1. `src/components/airtable/AirtableConnectionDialog.tsx`**
+- Add a scope indicator banner below the "Connected to Airtable" banner:
+  - If viewing a **speaker-specific** connection: show "🔗 Connected for {speakerName}" in green
+  - If viewing a **company fallback**: show "Using company-wide connection · {connectionName}" in amber/yellow with a button: **"Create speaker-specific connection"** that clears the form for fresh input
+  - If **no connection** exists: show nothing (current behavior)
+- Pass a new `isCompanyFallback` prop from the hook to distinguish the two states
 
-- Expand the `competitorInterviews` state type from `{ name; role; count }` to include an optional `episodes` array:
-  ```ts
-  episodes?: Array<{ title: string; podcast_name: string; air_date: string; role: string }>
-  ```
-- In `autoFetchPeerComparison`, when mapping results back to state, also store `result.episodes` alongside `result.interview_count`.
-- When building `sov_analysis` for the report (in `generateReport` / `generateMultiSpeakerReport`), pass the episodes array into each competitor entry.
+**2. `src/hooks/use-airtable-connection.ts`**
+- Add an `isCompanyFallback` boolean to the return value
+- Set it to `true` when `speakerId` was provided but the returned connection has `speaker_id === null` (meaning it fell back to the company-level connection)
+- This lets the dialog distinguish "speaker has own connection" from "speaker is using company's connection"
 
-### 2. Extend the `sov_analysis` type to include episodes
+**3. `src/components/airtable/AirtableConnectionDialog.tsx` — dialog title**
+- When `speakerId` is provided, show dialog title as "Airtable · {entityName}" so the CM knows which speaker they're configuring
 
-**`src/types/reports.ts`**
+### UI Behavior
 
-- Add an optional `episodes` field to the competitor entries in `sov_analysis`:
-  ```ts
-  competitors: Array<{
-    name: string;
-    role?: string;
-    peer_reason?: string;
-    linkedin_url?: string;
-    interview_count: number;
-    episodes?: Array<{
-      title: string;
-      podcast_name: string;
-      air_date: string;
-      role: string;
-    }>;
-  }>;
-  ```
-
-### 3. Display episode details in the Peer Comparison dialog
-
-**`src/components/reports/SOVChartDialog.tsx`**
-
-- Expand the `CompetitorInfoCard` popover to show an episode list below the existing peer reason and interview count:
-  - If `episodes` array exists and has entries, render a scrollable list (max-height ~200px) showing each episode as a compact row: podcast name (bold), episode title, and formatted air date.
-  - If no episodes (manual entry or Podchaser plan limitation), show the existing count-only view with a subtle note: "Episode details unavailable -- data entered manually or Podchaser plan limited."
-- The popover width increases slightly to accommodate the episode list (`min-w-[320px]`).
-
-### 4. Thread episodes through report generation
-
-**`src/utils/reportGenerator.ts`** (or wherever `sov_analysis` is assembled)
-
-- When building the `sov_analysis` object from `manualSOVCompetitors`, include the `episodes` field if present. Manual-entry competitors will simply have no `episodes` array.
-
-## Technical Details
-
-### Data flow:
 ```text
-Podchaser API → fetch-podchaser-credits (already returns episodes)
-  → autoFetchPeerComparison in Reports.tsx (currently discards episodes → will now store them)
-    → competitorInterviews state (gains episodes field)
-      → report generation (episodes passed into sov_analysis.competitors)
-        → SOVChartDialog → CompetitorInfoCard (renders episode list)
+Speaker with own connection:
+┌──────────────────────────────────┐
+│ Airtable · Jim Spignardo         │
+│                                  │
+│ ✓ Connected to Airtable          │
+│   Speaker-specific connection    │
+│                                  │
+│ [URL / Browse / Fields...]       │
+└──────────────────────────────────┘
+
+Speaker using company fallback:
+┌──────────────────────────────────┐
+│ Airtable · Ben Wilcox            │
+│                                  │
+│ ⚠ Using company-wide connection  │
+│   "ProArch Activity Tracker"     │
+│   [Create speaker-specific]      │
+│                                  │
+│ [URL / Browse / Fields...]       │
+└──────────────────────────────────┘
 ```
 
-### Files modified:
-- `src/types/reports.ts` -- add `episodes` to competitor type
-- `src/pages/Reports.tsx` -- store episodes from Podchaser response, pass through to report
-- `src/components/reports/SOVChartDialog.tsx` -- render episode list in CompetitorInfoCard
-- `src/utils/reportGenerator.ts` -- thread episodes into sov_analysis assembly
+When "Create speaker-specific" is clicked, the form clears so the CM can paste a new URL or browse for a different table. Saving will create a new row with `speaker_id` set, leaving the company connection untouched.
 
-### No backend changes needed
-The edge function already returns the episode data. This is purely a frontend data-threading and UI addition.
-
-### Backward compatibility
-Existing saved reports without episode data will simply show the count-only view -- the `episodes` field is optional throughout.
+### Technical Detail
+| File | Change |
+|---|---|
+| `src/hooks/use-airtable-connection.ts` | Add `isCompanyFallback` to return; set based on whether returned connection's `speaker_id` matches the requested `speakerId` |
+| `src/components/airtable/AirtableConnectionDialog.tsx` | Add scope banner with fallback indicator and "Create speaker-specific" action; update dialog title |
 
