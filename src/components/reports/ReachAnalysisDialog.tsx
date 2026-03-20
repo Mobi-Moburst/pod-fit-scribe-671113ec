@@ -59,8 +59,8 @@ export const ReachAnalysisDialog = ({
   const periodMonths = calculatePeriodMonths(dateRange, quarter);
   const periodReach = totalReach * periodMonths;
 
-  // Calculate Estimated Annual Listenership
-  const estimatedAnnualListenership = totalListenersPerEpisode * 12;
+  // Calculate Estimated Annual Listenership from total_reach (consistent with the KPI card)
+  const estimatedAnnualListenership = totalReach * 12;
 
   // Find highest reach show (by monthly_listens) - parse to numbers for correct comparison
   const highestReachShow = podcasts.reduce((max, p) => {
