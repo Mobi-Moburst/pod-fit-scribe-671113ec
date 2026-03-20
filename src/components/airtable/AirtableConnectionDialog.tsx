@@ -108,9 +108,15 @@ export function AirtableConnectionDialog({
     connection,
     isLoading,
     hasConnection,
+    isCompanyFallback,
     saveConnection,
     deleteConnection,
   } = useAirtableConnection({ companyId, speakerId });
+
+  // When "Create speaker-specific" is clicked, we override to treat as new
+  const [forceNewSpeakerConnection, setForceNewSpeakerConnection] = useState(false);
+  const effectiveHasConnection = hasConnection && !forceNewSpeakerConnection;
+  const effectiveIsCompanyFallback = isCompanyFallback && !forceNewSpeakerConnection;
 
   const [name, setName] = useState('');
   const [baseId, setBaseId] = useState('');
