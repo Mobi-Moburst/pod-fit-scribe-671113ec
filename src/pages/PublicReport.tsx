@@ -451,7 +451,19 @@ export default function PublicReport() {
       <EMVAnalysisDialog
         open={emvDialogOpen}
         onOpenChange={setEmvDialogOpen}
-        podcasts={reportData.podcasts || []}
+        podcasts={
+          reportData.report_type === 'multi' && reportData.speaker_breakdowns
+            ? (() => {
+                const seen = new Set<string>();
+                return reportData.speaker_breakdowns.flatMap(s => s.podcasts || []).filter(p => {
+                  const key = p.show_title?.toLowerCase().trim();
+                  if (seen.has(key)) return false;
+                  seen.add(key);
+                  return true;
+                });
+              })()
+            : (reportData.podcasts || [])
+        }
       />
       <ReachAnalysisDialog
         open={reachDialogOpen}

@@ -3132,7 +3132,20 @@ export default function Reports() {
               <EMVAnalysisDialog
                 open={emvDialogOpen}
                 onOpenChange={setEmvDialogOpen}
-                podcasts={reportData.podcasts}
+                podcasts={
+                  reportData.report_type === 'multi' && reportData.speaker_breakdowns
+                    ? (() => {
+                        // Deduplicate published podcasts from speaker breakdowns to match KPI count
+                        const seen = new Set<string>();
+                        return reportData.speaker_breakdowns.flatMap(s => s.podcasts || []).filter(p => {
+                          const key = p.show_title?.toLowerCase().trim();
+                          if (seen.has(key)) return false;
+                          seen.add(key);
+                          return true;
+                        });
+                      })()
+                    : reportData.podcasts
+                }
                 cpm={reportData.cpm || 50}
                 speakingTimePct={reportData.speaking_time_pct || 0.40}
               />
