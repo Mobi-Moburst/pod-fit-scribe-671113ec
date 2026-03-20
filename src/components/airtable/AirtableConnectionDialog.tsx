@@ -144,7 +144,7 @@ export function AirtableConnectionDialog({
 
   // Populate form when connection loads
   useEffect(() => {
-    if (connection) {
+    if (connection && !forceNewSpeakerConnection) {
       setName(connection.name || '');
       setBaseId(connection.base_id || '');
       setTableId(connection.table_id || '');
@@ -162,7 +162,7 @@ export function AirtableConnectionDialog({
     setAirtableUrl('');
     setUrlParsed(false);
     setIsSharedView(false);
-  }, [connection, entityName]);
+  }, [connection, entityName, forceNewSpeakerConnection]);
 
   // URL parsing
   const handleUrlChange = useCallback((url: string) => {
