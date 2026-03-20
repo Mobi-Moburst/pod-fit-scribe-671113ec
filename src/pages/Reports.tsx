@@ -3141,7 +3141,7 @@ export default function Reports() {
                 open={sovDialogOpen}
                 onOpenChange={setSOVDialogOpen}
                 sovAnalysis={reportData.sov_analysis || null}
-                clientName={speakerAsClient?.name}
+                clientName={reportData.report_type === 'multi' ? `${reportData.company_name || selectedCompany?.name || 'Company'} Speakers` : speakerAsClient?.name}
                 dateRange={reportData.date_range}
                 podcasts={reportData.podcasts}
                 publishedCount={reportData.kpis.total_published}
