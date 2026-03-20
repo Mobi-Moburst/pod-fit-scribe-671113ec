@@ -2762,10 +2762,13 @@ function calculateAggregatedKPIs(
     getActionString(r.action).toLowerCase().includes('podcast recording')
   ).length;
   
-  // Aggregate total_listeners_per_episode from speaker breakdowns (already enriched with Rephonic data)
-  const total_listeners_per_episode = speakerBreakdowns.reduce(
-    (sum, s) => sum + (s.kpis.total_listeners_per_episode || 0), 0
-  );
+  // Aggregate total_listeners_per_episode from enriched podcast entries (not raw batch rows)
+  const total_listeners_per_episode = allPodcasts.reduce((sum, p) => {
+    const val = typeof p.listeners_per_episode === 'string' 
+      ? parseFloat(p.listeners_per_episode) || 0 
+      : (p.listeners_per_episode || 0);
+    return sum + val;
+  }, 0);
 
   return {
     total_evaluated: successfulBatch.length,
