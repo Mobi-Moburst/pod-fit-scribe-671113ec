@@ -466,7 +466,7 @@ export default function PublicReport() {
         open={sovDialogOpen}
         onOpenChange={setSovDialogOpen}
         sovAnalysis={reportData.sov_analysis}
-        clientName={reportData.client?.name}
+        clientName={reportData.report_type === 'multi' ? `${reportData.company_name || reportData.client?.company || 'Company'} Speakers` : reportData.client?.name}
       />
       <GEODialog
         open={geoDialogOpen}
