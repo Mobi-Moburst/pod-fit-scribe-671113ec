@@ -81,6 +81,8 @@ export function useAirtableConnection({ companyId, speakerId }: UseAirtableConne
       }
 
       setConnection(foundConnection);
+      // Detect if we fell back to company-level connection when speaker was requested
+      setIsCompanyFallback(!!speakerId && !!foundConnection && !foundConnection.speaker_id);
       return foundConnection;
     } catch (error) {
       console.error('Failed to fetch Airtable connection:', error);
