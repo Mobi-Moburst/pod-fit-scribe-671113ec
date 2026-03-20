@@ -286,7 +286,7 @@ export function AirtableConnectionDialog({
   const idsAutoFilled = urlParsed || (selectedBaseId && selectedTableId);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) setForceNewSpeakerConnection(false); onOpenChange(v); }}>
       <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
