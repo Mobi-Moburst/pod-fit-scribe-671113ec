@@ -83,7 +83,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
       label: "Social Reach",
       value: formatNumber(kpis.total_social_reach || 0),
       description: "Combined social following",
-      tooltip: "The combined number of followers across all of the social media accounts that we found for this podcast. Source: Rephonic",
+      tooltip: `The combined number of followers across all of the social media accounts that we found for ${(kpis.total_booked ?? 0) > 1 ? 'these podcasts' : 'this podcast'}`,
       icon: Users,
       color: "hsl(280 70% 60%)",
       onClick: undefined as (() => void) | undefined,
