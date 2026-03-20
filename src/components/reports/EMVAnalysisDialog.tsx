@@ -30,6 +30,15 @@ interface EMVAnalysisDialogProps {
 export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelationChart, cpm = 50, speakingTimePct = 0.40 }: EMVAnalysisDialogProps) => {
   // Filter podcasts that have EMV data
   const podcastsWithEMV = podcasts.filter(p => p.true_emv && p.true_emv > 0);
+  
+  // Identify published episodes missing EMV data
+  const publishedPodcasts = podcasts.filter(p => p.date_published);
+  const publishedMissingEMV = publishedPodcasts.filter(p => !p.true_emv || p.true_emv <= 0);
+  const missingDuration = publishedMissingEMV.filter(p => !p.episode_duration_minutes);
+  const missingLink = publishedMissingEMV.filter(p => {
+    const link = p.episode_link?.trim().toLowerCase();
+    return !link || ['n/a', 'na', 'tbd', 'none', '-'].includes(link);
+  });
 
   // Calculate summary metrics
   const totalAdUnits = podcastsWithEMV.reduce((sum, p) => sum + (p.ad_units || 0), 0);
