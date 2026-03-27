@@ -15,6 +15,7 @@ export interface BatchCSVRow {
 
 // Airtable CSV
 export interface AirtableCSVRow {
+  record_id?: string;
   podcast_name: string;
   apple_podcast_link?: string;
   action: string; // 'podcast recording', 'intro call', 'pending reschedule'

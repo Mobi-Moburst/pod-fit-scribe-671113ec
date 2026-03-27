@@ -2514,8 +2514,23 @@ export async function generateMultiSpeakerReport(
     allAirtableRows = [...allAirtableRows, ...airtableRows];
   }
   
+  // Deduplicate allAirtableRows to prevent double-counting when speakers share the same Airtable table
+  const seenRecordIds = new Set<string>();
+  const dedupedAirtableRows: AirtableCSVRow[] = [];
+  for (const row of allAirtableRows) {
+    const key = row.record_id || `${row.podcast_name}|${getActionString(row.action)}|${row.scheduled_date_time}`;
+    if (!seenRecordIds.has(key)) {
+      seenRecordIds.add(key);
+      dedupedAirtableRows.push(row);
+    }
+  }
+  if (dedupedAirtableRows.length !== allAirtableRows.length) {
+    console.log(`[Multi-speaker dedup] ${allAirtableRows.length} → ${dedupedAirtableRows.length} unique rows`);
+  }
+  allAirtableRows = dedupedAirtableRows;
+  
   // Calculate aggregated company KPIs
-  const aggregatedKpis = calculateAggregatedKPIs(speakerBreakdowns, allBatchRows, allAirtableRows, allPodcasts);
+  const aggregatedKpis = calculateAggregatedKPIs(speakerBreakdowns, allBatchRows, allAirtableRows, allPodcasts, dateRange);
   
   // Calculate accurate categories from booked podcasts using AI + target audiences
   if (allAirtableRows.length > 0) {
@@ -2720,13 +2735,40 @@ function calculateAggregatedKPIs(
   speakerBreakdowns: SpeakerBreakdown[],
   allBatchRows: BatchCSVRow[],
   allAirtableRows: AirtableCSVRow[],
-  allPodcasts: PodcastReportEntry[]
+  allPodcasts: PodcastReportEntry[],
+  dateRange: { start: Date; end: Date }
 ): ReportData['kpis'] {
-  // Sum metrics
-  const total_booked = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_booked, 0);
-  const total_published = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_published, 0);
-  const total_recorded = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_recorded || 0), 0);
-  const total_intro_calls = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_intro_calls || 0), 0);
+  // Calculate activity counts from deduped allAirtableRows (not speaker sums, to avoid double-counting shared tables)
+  const total_booked = allAirtableRows.filter(r => {
+    const isPodcastRecording = getActionString(r.action).toLowerCase().includes('podcast recording');
+    if (!isPodcastRecording) return false;
+    if (!r.date_booked || r.date_booked.trim() === '') return false;
+    const bookedDate = parseAirtableDate(r.date_booked);
+    if (!bookedDate) return false;
+    return bookedDate >= dateRange.start && bookedDate <= dateRange.end;
+  }).length;
+  const total_published = allAirtableRows.filter(r => {
+    if (!r.date_published || r.date_published.trim() === '') return false;
+    const pubDate = parseAirtableDate(r.date_published);
+    if (!pubDate) return false;
+    return pubDate >= dateRange.start && pubDate <= dateRange.end;
+  }).length;
+  const total_recorded = allAirtableRows.filter(r => {
+    const isPodcastRecording = getActionString(r.action).toLowerCase().includes('podcast recording');
+    if (!isPodcastRecording) return false;
+    if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+    const schedDate = parseAirtableDate(r.scheduled_date_time);
+    if (!schedDate) return false;
+    return schedDate >= dateRange.start && schedDate <= dateRange.end;
+  }).length;
+  const total_intro_calls = allAirtableRows.filter(r => {
+    const isIntroCall = getActionString(r.action).toLowerCase().includes('intro call');
+    if (!isIntroCall) return false;
+    if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+    const schedDate = parseAirtableDate(r.scheduled_date_time);
+    if (!schedDate) return false;
+    return schedDate >= dateRange.start && schedDate <= dateRange.end;
+  }).length;
   const total_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_reach, 0);
   const total_social_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_social_reach, 0);
   const total_emv = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_emv || 0), 0);
