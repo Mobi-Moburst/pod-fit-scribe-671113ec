@@ -2214,6 +2214,7 @@ export default function Reports() {
                                 entityName={speaker?.name || 'Speaker'}
                                 dateRangeStart={dateRangeStart}
                                 dateRangeEnd={dateRangeEnd}
+                                speakerName={speaker?.name}
                                 onDataSynced={(data) => {
                                   setSpeakerSyncedData(prev => ({ ...prev, [speakerId]: data }));
                                   setSpeakerFiles(prev => ({ ...prev, [speakerId]: { ...prev[speakerId], airtableFile: null } }));
