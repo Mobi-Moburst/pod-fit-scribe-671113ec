@@ -2735,21 +2735,39 @@ function calculateAggregatedKPIs(
   speakerBreakdowns: SpeakerBreakdown[],
   allBatchRows: BatchCSVRow[],
   allAirtableRows: AirtableCSVRow[],
-  allPodcasts: PodcastReportEntry[]
+  allPodcasts: PodcastReportEntry[],
+  dateRange: { start: Date; end: Date }
 ): ReportData['kpis'] {
   // Calculate activity counts from deduped allAirtableRows (not speaker sums, to avoid double-counting shared tables)
   const total_booked = allAirtableRows.filter(r => {
-    const action = getActionString(r.action).toLowerCase();
-    return action.includes('podcast recording') || action.includes('intro call') || action.includes('pending');
+    const isPodcastRecording = getActionString(r.action).toLowerCase().includes('podcast recording');
+    if (!isPodcastRecording) return false;
+    if (!r.date_booked || r.date_booked.trim() === '') return false;
+    const bookedDate = parseAirtableDate(r.date_booked);
+    if (!bookedDate) return false;
+    return bookedDate >= dateRange.start && bookedDate <= dateRange.end;
   }).length;
-  const total_published = allAirtableRows.filter(r => r.date_published && r.date_published.trim() !== '').length;
+  const total_published = allAirtableRows.filter(r => {
+    if (!r.date_published || r.date_published.trim() === '') return false;
+    const pubDate = parseAirtableDate(r.date_published);
+    if (!pubDate) return false;
+    return pubDate >= dateRange.start && pubDate <= dateRange.end;
+  }).length;
   const total_recorded = allAirtableRows.filter(r => {
-    const action = getActionString(r.action).toLowerCase();
-    return action.includes('podcast recording');
+    const isPodcastRecording = getActionString(r.action).toLowerCase().includes('podcast recording');
+    if (!isPodcastRecording) return false;
+    if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+    const schedDate = parseAirtableDate(r.scheduled_date_time);
+    if (!schedDate) return false;
+    return schedDate >= dateRange.start && schedDate <= dateRange.end;
   }).length;
   const total_intro_calls = allAirtableRows.filter(r => {
-    const action = getActionString(r.action).toLowerCase();
-    return action.includes('intro call');
+    const isIntroCall = getActionString(r.action).toLowerCase().includes('intro call');
+    if (!isIntroCall) return false;
+    if (!r.scheduled_date_time || r.scheduled_date_time.trim() === '') return false;
+    const schedDate = parseAirtableDate(r.scheduled_date_time);
+    if (!schedDate) return false;
+    return schedDate >= dateRange.start && schedDate <= dateRange.end;
   }).length;
   const total_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_reach, 0);
   const total_social_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_social_reach, 0);
