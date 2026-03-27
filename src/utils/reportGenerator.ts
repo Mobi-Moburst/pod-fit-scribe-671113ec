@@ -2514,6 +2514,21 @@ export async function generateMultiSpeakerReport(
     allAirtableRows = [...allAirtableRows, ...airtableRows];
   }
   
+  // Deduplicate allAirtableRows to prevent double-counting when speakers share the same Airtable table
+  const seenRecordIds = new Set<string>();
+  const dedupedAirtableRows: AirtableCSVRow[] = [];
+  for (const row of allAirtableRows) {
+    const key = row.record_id || `${row.podcast_name}|${getActionString(row.action)}|${row.scheduled_date_time}`;
+    if (!seenRecordIds.has(key)) {
+      seenRecordIds.add(key);
+      dedupedAirtableRows.push(row);
+    }
+  }
+  if (dedupedAirtableRows.length !== allAirtableRows.length) {
+    console.log(`[Multi-speaker dedup] ${allAirtableRows.length} → ${dedupedAirtableRows.length} unique rows`);
+  }
+  allAirtableRows = dedupedAirtableRows;
+  
   // Calculate aggregated company KPIs
   const aggregatedKpis = calculateAggregatedKPIs(speakerBreakdowns, allBatchRows, allAirtableRows, allPodcasts);
   
