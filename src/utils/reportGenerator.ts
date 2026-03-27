@@ -2530,7 +2530,7 @@ export async function generateMultiSpeakerReport(
   allAirtableRows = dedupedAirtableRows;
   
   // Calculate aggregated company KPIs
-  const aggregatedKpis = calculateAggregatedKPIs(speakerBreakdowns, allBatchRows, allAirtableRows, allPodcasts);
+  const aggregatedKpis = calculateAggregatedKPIs(speakerBreakdowns, allBatchRows, allAirtableRows, allPodcasts, dateRange);
   
   // Calculate accurate categories from booked podcasts using AI + target audiences
   if (allAirtableRows.length > 0) {
