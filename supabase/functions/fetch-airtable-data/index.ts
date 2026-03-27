@@ -19,6 +19,7 @@ interface AirtableResponse {
 }
 
 interface AirtableCSVRow {
+  record_id: string;
   podcast_name: string;
   apple_podcast_link?: string;
   action: string;
