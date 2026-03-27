@@ -88,6 +88,7 @@ function mapRecordToRow(record: AirtableRecord, fieldMapping: FieldMapping): Air
   const fields = record.fields;
   
   return {
+    record_id: record.id,
     podcast_name: fields[fieldMapping.podcast_name] || '',
     action: fields[fieldMapping.action] || '',
     scheduled_date_time: fields[fieldMapping.scheduled_date_time] || '',

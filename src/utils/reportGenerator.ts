@@ -2737,11 +2737,20 @@ function calculateAggregatedKPIs(
   allAirtableRows: AirtableCSVRow[],
   allPodcasts: PodcastReportEntry[]
 ): ReportData['kpis'] {
-  // Sum metrics
-  const total_booked = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_booked, 0);
-  const total_published = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_published, 0);
-  const total_recorded = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_recorded || 0), 0);
-  const total_intro_calls = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_intro_calls || 0), 0);
+  // Calculate activity counts from deduped allAirtableRows (not speaker sums, to avoid double-counting shared tables)
+  const total_booked = allAirtableRows.filter(r => {
+    const action = getActionString(r.action).toLowerCase();
+    return action.includes('podcast recording') || action.includes('intro call') || action.includes('pending');
+  }).length;
+  const total_published = allAirtableRows.filter(r => r.date_published && r.date_published.trim() !== '').length;
+  const total_recorded = allAirtableRows.filter(r => {
+    const action = getActionString(r.action).toLowerCase();
+    return action.includes('podcast recording');
+  }).length;
+  const total_intro_calls = allAirtableRows.filter(r => {
+    const action = getActionString(r.action).toLowerCase();
+    return action.includes('intro call');
+  }).length;
   const total_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_reach, 0);
   const total_social_reach = speakerBreakdowns.reduce((sum, s) => sum + s.kpis.total_social_reach, 0);
   const total_emv = speakerBreakdowns.reduce((sum, s) => sum + (s.kpis.total_emv || 0), 0);
