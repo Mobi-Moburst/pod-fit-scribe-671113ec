@@ -62,9 +62,10 @@ function buildDateFilterFormula(
 
   let formula = `OR(${dateConditions.join(', ')})`;
 
-  // Add speaker filter if provided
-  if (speakerColumnName && speakerName) {
-    formula = `AND({${speakerColumnName}}='${speakerName}', ${formula})`;
+  // Add speaker filter if provided (fallback to standard "speaker" column when connection setting is empty)
+  if (speakerName) {
+    const speakerField = speakerColumnName?.trim() || 'speaker';
+    formula = `AND({${speakerField}}='${speakerName}', ${formula})`;
   }
 
   return formula;
