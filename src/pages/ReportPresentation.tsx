@@ -310,13 +310,18 @@ export default function ReportPresentation() {
 
     // Activity Tracking (Airtable embed) slide
     const airtableUrl = reportData.client?.airtable_embed_url;
-    if (airtableUrl) {
+    const speakerEmbeds = reportData.speaker_breakdowns
+      ?.filter(s => s.airtable_embed_url)
+      .map(s => ({ speaker_name: s.speaker_name, embed_url: s.airtable_embed_url! })) || [];
+    
+    if (airtableUrl || speakerEmbeds.length > 0) {
       slides.push({
         id: "activity-tracking",
         component: (
           <ActivityTrackingSlide
-            embedUrl={airtableUrl}
+            embedUrl={airtableUrl || speakerEmbeds[0]?.embed_url || ''}
             clientName={reportData.company_name || reportData.client?.company || reportData.client?.name}
+            speakerEmbeds={speakerEmbeds.length > 1 ? speakerEmbeds : undefined}
           />
         ),
       });
