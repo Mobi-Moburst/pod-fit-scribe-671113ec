@@ -310,14 +310,7 @@ export default function PublicReport() {
 
         {/* Airtable Embed */}
         {visibleSections.airtableEmbed && reportData.client?.airtable_embed_url && (
-          <AirtableEmbed 
-            embedUrl={reportData.client.airtable_embed_url}
-            speakerEmbeds={
-              reportData.speaker_breakdowns
-                ?.filter(s => s.airtable_embed_url)
-                .map(s => ({ speaker_name: s.speaker_name, embed_url: s.airtable_embed_url! }))
-            }
-          />
+          <AirtableEmbed embedUrl={reportData.client.airtable_embed_url} />
         )}
 
         {/* Interview Highlights */}

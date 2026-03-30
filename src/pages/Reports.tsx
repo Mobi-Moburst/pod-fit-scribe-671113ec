@@ -3029,13 +3029,6 @@ export default function Reports() {
                 <AirtableEmbed
                   embedUrl={speakerAsClient?.airtable_embed_url}
                   onHide={() => toggleSection('airtableEmbed')}
-                  speakerEmbeds={
-                    reportData.report_type === 'multi' && reportData.speaker_breakdowns
-                      ? reportData.speaker_breakdowns
-                          .filter(s => s.airtable_embed_url)
-                          .map(s => ({ speaker_name: s.speaker_name, embed_url: s.airtable_embed_url! }))
-                      : undefined
-                  }
                 />
               )}
 
