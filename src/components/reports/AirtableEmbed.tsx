@@ -1,24 +1,52 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ExternalLink, Table, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ExternalLink, Table, X, Users } from "lucide-react";
+
+interface SpeakerEmbed {
+  speaker_name: string;
+  embed_url: string;
+  headshot_url?: string;
+}
 
 interface AirtableEmbedProps {
   embedUrl?: string;
   onHide?: () => void;
+  speakerEmbeds?: SpeakerEmbed[];
 }
 
-export function AirtableEmbed({ embedUrl, onHide }: AirtableEmbedProps) {
-  if (!embedUrl) return null;
+export function AirtableEmbed({ embedUrl, onHide, speakerEmbeds }: AirtableEmbedProps) {
+  // Determine if we have unique per-speaker embeds
+  const uniqueSpeakerEmbeds = useMemo(() => {
+    if (!speakerEmbeds || speakerEmbeds.length === 0) return null;
+    const uniqueUrls = new Set(speakerEmbeds.map(s => s.embed_url));
+    // Only show dropdown if there are multiple distinct URLs
+    if (uniqueUrls.size <= 1) return null;
+    return speakerEmbeds;
+  }, [speakerEmbeds]);
+
+  const [selectedSpeaker, setSelectedSpeaker] = useState<string>(
+    uniqueSpeakerEmbeds?.[0]?.speaker_name || ""
+  );
+
+  // Resolve current embed URL
+  const currentEmbedUrl = useMemo(() => {
+    if (uniqueSpeakerEmbeds) {
+      const selected = uniqueSpeakerEmbeds.find(s => s.speaker_name === selectedSpeaker);
+      return selected?.embed_url || uniqueSpeakerEmbeds[0]?.embed_url;
+    }
+    return embedUrl;
+  }, [uniqueSpeakerEmbeds, selectedSpeaker, embedUrl]);
+
+  if (!currentEmbedUrl) return null;
 
   // Convert share URL to embed URL if needed
   const getEmbedUrl = (url: string): string => {
-    // If it's already an embed URL, return as-is
     if (url.includes('/embed/')) return url;
-    // Convert shared view URL to embed format
-    // https://airtable.com/appXXX/shrYYY -> https://airtable.com/embed/appXXX/shrYYY
     return url.replace('airtable.com/', 'airtable.com/embed/');
   };
 
-  const embedSrc = getEmbedUrl(embedUrl);
+  const embedSrc = getEmbedUrl(currentEmbedUrl);
 
   return (
     <Card className="relative group">
@@ -32,10 +60,29 @@ export function AirtableEmbed({ embedUrl, onHide }: AirtableEmbedProps) {
         </button>
       )}
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Table className="h-5 w-5 text-primary" />
-          Activity Tracking
-        </CardTitle>
+        <div className="flex items-center justify-between gap-4">
+          <CardTitle className="flex items-center gap-2">
+            <Table className="h-5 w-5 text-primary" />
+            Activity Tracking
+          </CardTitle>
+          {uniqueSpeakerEmbeds && (
+            <Select value={selectedSpeaker} onValueChange={setSelectedSpeaker}>
+              <SelectTrigger className="w-[220px] print:hidden">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="Select speaker" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueSpeakerEmbeds.map((speaker) => (
+                  <SelectItem key={speaker.speaker_name} value={speaker.speaker_name}>
+                    {speaker.speaker_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {/* Screen: Show iframe */}
@@ -44,7 +91,7 @@ export function AirtableEmbed({ embedUrl, onHide }: AirtableEmbedProps) {
             src={embedSrc}
             className="w-full rounded-md border border-border"
             style={{ height: '500px' }}
-            title="Airtable Activity View"
+            title={`Airtable Activity View${uniqueSpeakerEmbeds ? ` - ${selectedSpeaker}` : ''}`}
           />
         </div>
         
@@ -57,12 +104,12 @@ export function AirtableEmbed({ embedUrl, onHide }: AirtableEmbedProps) {
               <p className="text-sm text-muted-foreground">
                 View the full activity table at:{" "}
                 <a 
-                  href={embedUrl} 
+                  href={currentEmbedUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-primary underline"
                 >
-                  {embedUrl}
+                  {currentEmbedUrl}
                 </a>
               </p>
             </div>
