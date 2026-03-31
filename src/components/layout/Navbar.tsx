@@ -4,7 +4,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 
 const tabs = [
   { to: "/", label: "Evaluate" },
