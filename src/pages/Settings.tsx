@@ -32,7 +32,7 @@ export default function Settings() {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "user">("user");
+  const [inviteRole, setInviteRole] = useState<"admin" | "user" | "viewer">("user");
   const [isInviting, setIsInviting] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
