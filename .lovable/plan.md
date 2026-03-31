@@ -1,4 +1,8 @@
+## Future Work: Enforce Read-Only Mode for Viewers
 
+The `viewer` role exists in the `user_roles` table and the `useUserRole` hook exposes `isViewer`. However, read-only enforcement is NOT yet wired up across the platform. When ready, hide all create/edit/delete buttons (companies, speakers, reports, evaluations, batch) for users with the `viewer` role. The hook is already in place — just need to conditionally render action buttons based on `isViewer`.
+
+---
 
 ## Fix Multi-Speaker Double-Counting When Speakers Share the Same Airtable Table
 
@@ -30,4 +34,3 @@ When multiple speakers share the same Airtable base/table, each speaker's sync r
 
 ### Technical Detail
 The key insight: per-speaker KPI cards in accordions should still show that speaker's individual counts. Only the top-level company KPI cards need deduplication. So the fix is isolated to the aggregation layer — speaker breakdowns remain unchanged.
-
