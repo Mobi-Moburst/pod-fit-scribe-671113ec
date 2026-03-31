@@ -20,6 +20,7 @@ import DemoPublicReport from "./pages/DemoPublicReport";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
 
 // Singleton pattern for QueryClient to prevent recreation during HMR
 let browserQueryClient: QueryClient | undefined = undefined;
