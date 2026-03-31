@@ -279,12 +279,13 @@ export default function Settings() {
                             ) : (
                               <Select
                                 value={u.role}
-                                onValueChange={(v) => handleRoleChange(u.id, v as "admin" | "user")}
+                                onValueChange={(v) => handleRoleChange(u.id, v as "admin" | "user" | "viewer")}
                               >
                                 <SelectTrigger className="w-28 h-8">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="viewer">Viewer</SelectItem>
                                   <SelectItem value="user">User</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>
