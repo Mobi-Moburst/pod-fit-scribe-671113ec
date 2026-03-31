@@ -937,12 +937,10 @@ export default function Reports() {
       
       if (error) throw error;
 
-      // 2. Set password via edge function
-      if (password) {
-        await supabase.functions.invoke("verify-report-password", {
-          body: { slug: pendingPublishSlug, password, action: "set" },
-        });
-      }
+      // 2. Set or remove password via edge function
+      await supabase.functions.invoke("verify-report-password", {
+        body: { slug: pendingPublishSlug, password: password || null, action: "set" },
+      });
       
       toast({
         title: "Report published!",
