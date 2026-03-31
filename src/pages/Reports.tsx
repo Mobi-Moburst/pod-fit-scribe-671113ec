@@ -133,6 +133,12 @@ export default function Reports() {
   const [isScoringFit, setIsScoringFit] = useState(false);
   const [fetchingEpisodeMetadata, setFetchingEpisodeMetadata] = useState<{ [index: number]: boolean }>({});
   
+  // Report password dialog state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [pendingPublishReportId, setPendingPublishReportId] = useState<string | null>(null);
+  const [pendingPublishSlug, setPendingPublishSlug] = useState<string | null>(null);
+  const [pendingPublishHasPassword, setPendingPublishHasPassword] = useState(false);
+  
   // Visibility state for report sections
   const [visibleSections, setVisibleSections] = useState({
     // Core KPIs
