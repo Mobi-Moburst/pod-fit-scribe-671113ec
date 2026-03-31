@@ -241,6 +241,20 @@ export default function PublicReport() {
     navigate(`/report/${slug}/present`);
   };
 
+  // Show password gate if needed
+  if (needsPassword && !isAuthenticated) {
+    return (
+      <ReportPasswordGate
+        slug={slug || ""}
+        onAuthenticated={() => {
+          setNeedsPassword(false);
+          setIsAuthenticated(true);
+          setIsLoading(true);
+        }}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background relative">
