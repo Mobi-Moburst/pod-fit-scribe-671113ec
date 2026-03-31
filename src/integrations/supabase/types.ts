@@ -448,6 +448,7 @@ export type Database = {
           quarter: string | null
           report_data: Json
           report_name: string
+          report_password_hash: string | null
           speaker_id: string | null
         }
         Insert: {
@@ -465,6 +466,7 @@ export type Database = {
           quarter?: string | null
           report_data: Json
           report_name: string
+          report_password_hash?: string | null
           speaker_id?: string | null
         }
         Update: {
@@ -482,6 +484,7 @@ export type Database = {
           quarter?: string | null
           report_data?: Json
           report_name?: string
+          report_password_hash?: string | null
           speaker_id?: string | null
         }
         Relationships: [

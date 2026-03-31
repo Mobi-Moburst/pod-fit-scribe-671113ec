@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
+import { useAuth } from "@/hooks/useAuth";
+import { LogOut } from "lucide-react";
 
 const tabs = [
   { to: "/", label: "Evaluate" },
@@ -14,6 +16,8 @@ const tabs = [
 
 export const Navbar = () => {
   const { pathname } = useLocation();
+  const { user, signOut } = useAuth();
+
   return (
     <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-14 px-3">
@@ -39,6 +43,17 @@ export const Navbar = () => {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          {user && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => signOut()}
+              className="text-muted-foreground hover:text-foreground"
+              title={`Sign out (${user.email})`}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </header>

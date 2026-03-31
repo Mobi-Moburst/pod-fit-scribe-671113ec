@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ReportData } from "@/types/reports";
 import { Button } from "@/components/ui/button";
+import { ReportPasswordGate } from "@/components/reports/ReportPasswordGate";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Play, AlertCircle, Calendar, Radio, PhoneCall, Sparkles } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -58,6 +59,8 @@ export default function PublicReport() {
   const [visibleSections, setVisibleSections] = useState<VisibleSections>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Dialog states
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
@@ -95,7 +98,35 @@ export default function PublicReport() {
     };
   }, []);
 
+  // Check if report needs a password
   useEffect(() => {
+    if (!slug) return;
+    // If already authenticated via sessionStorage, skip check
+    if (sessionStorage.getItem(`report-auth-${slug}`) === "true") {
+      setIsAuthenticated(true);
+      return;
+    }
+    const checkPassword = async () => {
+      try {
+        const { data } = await supabase.functions.invoke("check-report-password", {
+          body: { slug },
+        });
+        if (data?.has_password) {
+          setNeedsPassword(true);
+          setIsLoading(false);
+        } else {
+          setIsAuthenticated(true);
+        }
+      } catch {
+        // If check fails, just proceed without password gate
+        setIsAuthenticated(true);
+      }
+    };
+    checkPassword();
+  }, [slug]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
     const fetchReport = async () => {
       if (!slug) {
         setError("Report not found");
@@ -204,11 +235,25 @@ export default function PublicReport() {
     };
 
     fetchReport();
-  }, [slug]);
+  }, [slug, isAuthenticated]);
 
   const handlePresent = () => {
     navigate(`/report/${slug}/present`);
   };
+
+  // Show password gate if needed
+  if (needsPassword && !isAuthenticated) {
+    return (
+      <ReportPasswordGate
+        slug={slug || ""}
+        onAuthenticated={() => {
+          setNeedsPassword(false);
+          setIsAuthenticated(true);
+          setIsLoading(true);
+        }}
+      />
+    );
+  }
 
   if (isLoading) {
     return (

@@ -34,7 +34,7 @@ import { ContentGapRecommendations } from "@/components/reports/ContentGapRecomm
 import { AirtableEmbed } from "@/components/reports/AirtableEmbed";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
-import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Mic, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2, Loader2, Building2, Check, PhoneCall, Info, Plus } from "lucide-react";
+import { Upload, FileText, TrendingUp, Users, Printer, Calendar, Radio, Mic, Trash2, Eye, DollarSign, PieChart, Sparkles, Search, Clipboard, X, AlertTriangle, ChevronDown, ChevronRight, Globe, Link, Copy, ExternalLink, Video, RefreshCw, Share2, Link2, Loader2, Building2, Check, PhoneCall, Info, Plus, Lock } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AirtableSyncButton } from "@/components/airtable/AirtableSyncButton";
@@ -48,6 +48,7 @@ import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOvervie
 import { NextQuarterEditDialog } from "@/components/reports/NextQuarterEditDialog";
 import { UpdateCSVDialog } from "@/components/reports/UpdateCSVDialog";
 import { AirtableDataPreview } from "@/components/reports/AirtableDataPreview";
+import { ReportPasswordDialog } from "@/components/reports/ReportPasswordDialog";
 
 export default function Reports() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -132,6 +133,12 @@ export default function Reports() {
   const [scoringProgress, setScoringProgress] = useState<{ completed: number; total: number } | null>(null);
   const [isScoringFit, setIsScoringFit] = useState(false);
   const [fetchingEpisodeMetadata, setFetchingEpisodeMetadata] = useState<{ [index: number]: boolean }>({});
+  
+  // Report password dialog state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [pendingPublishReportId, setPendingPublishReportId] = useState<string | null>(null);
+  const [pendingPublishSlug, setPendingPublishSlug] = useState<string | null>(null);
+  const [pendingPublishHasPassword, setPendingPublishHasPassword] = useState(false);
   
   // Visibility state for report sections
   const [visibleSections, setVisibleSections] = useState({
@@ -903,23 +910,41 @@ export default function Reports() {
   };
 
   const handlePublishReport = async (reportId: string) => {
-    const slug = generateSlug();
+    // Check if already published (has a slug) — just open password dialog for existing
+    const existingReport = allReports.find(r => r.id === reportId);
+    const slug = existingReport?.public_slug || generateSlug();
+    
+    // Open password dialog — publish happens after password is set
+    setPendingPublishReportId(reportId);
+    setPendingPublishSlug(slug);
+    setPendingPublishHasPassword(!!existingReport?.report_password_hash);
+    setPasswordDialogOpen(true);
+  };
+
+  const handlePublishWithPassword = async (password: string) => {
+    if (!pendingPublishReportId || !pendingPublishSlug) return;
     
     try {
+      // 1. Publish the report
       const { error } = await supabase
         .from('reports')
         .update({
           is_published: true,
-          public_slug: slug,
+          public_slug: pendingPublishSlug,
           published_at: new Date().toISOString(),
         })
-        .eq('id', reportId);
+        .eq('id', pendingPublishReportId);
       
       if (error) throw error;
+
+      // 2. Set or remove password via edge function
+      await supabase.functions.invoke("verify-report-password", {
+        body: { slug: pendingPublishSlug, password: password || null, action: "set" },
+      });
       
       toast({
         title: "Report published!",
-        description: "Your report is now publicly accessible.",
+        description: password ? "Password-protected report is now live." : "Your report is now publicly accessible.",
       });
       await loadSavedReports();
       await loadAllReports();
@@ -930,6 +955,10 @@ export default function Reports() {
         description: error instanceof Error ? error.message : "Failed to publish report",
         variant: "destructive",
       });
+      throw error; // re-throw so dialog shows error
+    } finally {
+      setPendingPublishReportId(null);
+      setPendingPublishSlug(null);
     }
   };
 
@@ -1825,14 +1854,30 @@ export default function Reports() {
                                     Update
                                   </Button>
                                   {report.is_published ? (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="text-xs"
-                                      onClick={() => handleUnpublishReport(report.id)}
-                                    >
-                                      Unpublish
-                                    </Button>
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-xs"
+                                        onClick={() => {
+                                          setPendingPublishReportId(report.id);
+                                          setPendingPublishSlug(report.public_slug);
+                                          setPendingPublishHasPassword(!!report.report_password_hash);
+                                          setPasswordDialogOpen(true);
+                                        }}
+                                      >
+                                        <Lock className="h-3.5 w-3.5 mr-1" />
+                                        {report.report_password_hash ? "Password" : "Set PW"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-xs"
+                                        onClick={() => handleUnpublishReport(report.id)}
+                                      >
+                                        Unpublish
+                                      </Button>
+                                    </>
                                   ) : (
                                     <Button
                                       size="sm"
@@ -3351,6 +3396,16 @@ export default function Reports() {
             speakerId={selectedSpeakerId || undefined}
             entityName={speakerAsClient?.name || selectedCompany?.name || 'Company'}
             onConnectionSaved={() => setConnectionVersion(v => v + 1)}
+          />
+
+          {/* Report Password Dialog */}
+          <ReportPasswordDialog
+            open={passwordDialogOpen}
+            onOpenChange={setPasswordDialogOpen}
+            onConfirm={handlePublishWithPassword}
+            currentHasPassword={pendingPublishHasPassword}
+            title={pendingPublishHasPassword ? "Update Report Password" : "Set Report Password"}
+            description="Clients will need this password to view the published report."
           />
         </div>
       </main>
