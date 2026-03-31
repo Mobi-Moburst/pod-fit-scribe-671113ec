@@ -33,5 +33,5 @@ export function useUserRole() {
     fetchRole();
   }, [user]);
 
-  return { role, isAdmin: role === "admin", isLoading };
+  return { role, isAdmin: role === "admin", isViewer: role === "viewer", isLoading };
 }
