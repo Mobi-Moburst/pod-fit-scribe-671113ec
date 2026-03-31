@@ -4,7 +4,7 @@ import { useAuth } from "./useAuth";
 
 export function useUserRole() {
   const { user } = useAuth();
-  const [role, setRole] = useState<"admin" | "user" | null>(null);
+  const [role, setRole] = useState<"admin" | "user" | "viewer" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function useUserRole() {
         console.error("Error fetching role:", error);
         setRole("user"); // Default to user if error
       } else {
-        setRole((data?.role as "admin" | "user") || "user");
+        setRole((data?.role as "admin" | "user" | "viewer") || "user");
       }
       setIsLoading(false);
     };
@@ -33,5 +33,5 @@ export function useUserRole() {
     fetchRole();
   }, [user]);
 
-  return { role, isAdmin: role === "admin", isLoading };
+  return { role, isAdmin: role === "admin", isViewer: role === "viewer", isLoading };
 }

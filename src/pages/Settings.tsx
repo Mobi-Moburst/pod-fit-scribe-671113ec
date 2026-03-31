@@ -21,7 +21,7 @@ interface ManagedUser {
   email: string;
   created_at: string;
   last_sign_in_at: string | null;
-  role: "admin" | "user";
+  role: "admin" | "user" | "viewer";
 }
 
 export default function Settings() {
@@ -32,7 +32,7 @@ export default function Settings() {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "user">("user");
+  const [inviteRole, setInviteRole] = useState<"admin" | "user" | "viewer">("user");
   const [isInviting, setIsInviting] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
@@ -82,7 +82,7 @@ export default function Settings() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: "admin" | "user") => {
+  const handleRoleChange = async (userId: string, newRole: "admin" | "user" | "viewer") => {
     try {
       await callManageUsers("update_role", { user_id: userId, role: newRole });
       toast({ title: "Role updated" });
@@ -216,11 +216,12 @@ export default function Settings() {
                       required
                     />
                   </div>
-                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "admin" | "user")}>
+                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "admin" | "user" | "viewer")}>
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="viewer">Viewer</SelectItem>
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
@@ -278,12 +279,13 @@ export default function Settings() {
                             ) : (
                               <Select
                                 value={u.role}
-                                onValueChange={(v) => handleRoleChange(u.id, v as "admin" | "user")}
+                                onValueChange={(v) => handleRoleChange(u.id, v as "admin" | "user" | "viewer")}
                               >
                                 <SelectTrigger className="w-28 h-8">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="viewer">Viewer</SelectItem>
                                   <SelectItem value="user">User</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>
