@@ -216,11 +216,12 @@ export default function Settings() {
                       required
                     />
                   </div>
-                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "admin" | "user")}>
+                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "admin" | "user" | "viewer")}>
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="viewer">Viewer</SelectItem>
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
