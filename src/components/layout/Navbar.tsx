@@ -44,15 +44,27 @@ export const Navbar = () => {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           {user && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => signOut()}
-              className="text-muted-foreground hover:text-foreground"
-              title={`Sign out (${user.email})`}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <>
+              <Link to="/settings">
+                <Button
+                  variant={pathname === "/settings" ? "soft" : "ghost"}
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => signOut()}
+                className="text-muted-foreground hover:text-foreground"
+                title={`Sign out (${user.email})`}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </>
           )}
         </div>
       </div>
