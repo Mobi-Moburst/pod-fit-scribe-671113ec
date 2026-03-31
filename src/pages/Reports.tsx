@@ -48,6 +48,7 @@ import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOvervie
 import { NextQuarterEditDialog } from "@/components/reports/NextQuarterEditDialog";
 import { UpdateCSVDialog } from "@/components/reports/UpdateCSVDialog";
 import { AirtableDataPreview } from "@/components/reports/AirtableDataPreview";
+import { ReportPasswordDialog } from "@/components/reports/ReportPasswordDialog";
 
 export default function Reports() {
   const [companies, setCompanies] = useState<Company[]>([]);
