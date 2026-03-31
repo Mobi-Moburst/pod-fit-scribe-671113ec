@@ -910,23 +910,43 @@ export default function Reports() {
   };
 
   const handlePublishReport = async (reportId: string) => {
-    const slug = generateSlug();
+    // Check if already published (has a slug) — just open password dialog for existing
+    const existingReport = allReports.find(r => r.id === reportId);
+    const slug = existingReport?.public_slug || generateSlug();
+    
+    // Open password dialog — publish happens after password is set
+    setPendingPublishReportId(reportId);
+    setPendingPublishSlug(slug);
+    setPendingPublishHasPassword(!!existingReport?.report_password_hash);
+    setPasswordDialogOpen(true);
+  };
+
+  const handlePublishWithPassword = async (password: string) => {
+    if (!pendingPublishReportId || !pendingPublishSlug) return;
     
     try {
+      // 1. Publish the report
       const { error } = await supabase
         .from('reports')
         .update({
           is_published: true,
-          public_slug: slug,
+          public_slug: pendingPublishSlug,
           published_at: new Date().toISOString(),
         })
-        .eq('id', reportId);
+        .eq('id', pendingPublishReportId);
       
       if (error) throw error;
+
+      // 2. Set password via edge function
+      if (password) {
+        await supabase.functions.invoke("verify-report-password", {
+          body: { slug: pendingPublishSlug, password, action: "set" },
+        });
+      }
       
       toast({
         title: "Report published!",
-        description: "Your report is now publicly accessible.",
+        description: password ? "Password-protected report is now live." : "Your report is now publicly accessible.",
       });
       await loadSavedReports();
       await loadAllReports();
@@ -937,6 +957,10 @@ export default function Reports() {
         description: error instanceof Error ? error.message : "Failed to publish report",
         variant: "destructive",
       });
+      throw error; // re-throw so dialog shows error
+    } finally {
+      setPendingPublishReportId(null);
+      setPendingPublishSlug(null);
     }
   };
 
