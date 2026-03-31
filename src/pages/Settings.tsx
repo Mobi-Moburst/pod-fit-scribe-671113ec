@@ -82,7 +82,7 @@ export default function Settings() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: "admin" | "user") => {
+  const handleRoleChange = async (userId: string, newRole: "admin" | "user" | "viewer") => {
     try {
       await callManageUsers("update_role", { user_id: userId, role: newRole });
       toast({ title: "Role updated" });
