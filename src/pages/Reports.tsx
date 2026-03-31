@@ -1856,14 +1856,30 @@ export default function Reports() {
                                     Update
                                   </Button>
                                   {report.is_published ? (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="text-xs"
-                                      onClick={() => handleUnpublishReport(report.id)}
-                                    >
-                                      Unpublish
-                                    </Button>
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-xs"
+                                        onClick={() => {
+                                          setPendingPublishReportId(report.id);
+                                          setPendingPublishSlug(report.public_slug);
+                                          setPendingPublishHasPassword(!!report.report_password_hash);
+                                          setPasswordDialogOpen(true);
+                                        }}
+                                      >
+                                        <Lock className="h-3.5 w-3.5 mr-1" />
+                                        {report.report_password_hash ? "Password" : "Set PW"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-xs"
+                                        onClick={() => handleUnpublishReport(report.id)}
+                                      >
+                                        Unpublish
+                                      </Button>
+                                    </>
                                   ) : (
                                     <Button
                                       size="sm"
