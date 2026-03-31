@@ -25,7 +25,7 @@ export function useUserRole() {
         console.error("Error fetching role:", error);
         setRole("user"); // Default to user if error
       } else {
-        setRole((data?.role as "admin" | "user") || "user");
+        setRole((data?.role as "admin" | "user" | "viewer") || "user");
       }
       setIsLoading(false);
     };
