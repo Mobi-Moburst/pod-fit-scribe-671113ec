@@ -235,7 +235,7 @@ export default function PublicReport() {
     };
 
     fetchReport();
-  }, [slug]);
+  }, [slug, isAuthenticated]);
 
   const handlePresent = () => {
     navigate(`/report/${slug}/present`);
