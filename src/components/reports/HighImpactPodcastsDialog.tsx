@@ -111,10 +111,6 @@ export function HighImpactPodcastsDialog({
             </div>
           )}
 
-          {/* Dynamic Calculation Explanation */}
-          <div className="text-center text-sm text-muted-foreground border-t pt-4">
-            <p>{buildExplanation()}</p>
-          </div>
         </div>
       </DialogContent>
     </Dialog>
