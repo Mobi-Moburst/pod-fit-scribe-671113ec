@@ -4,7 +4,7 @@ import { useAuth } from "./useAuth";
 
 export function useUserRole() {
   const { user } = useAuth();
-  const [role, setRole] = useState<"admin" | "user" | null>(null);
+  const [role, setRole] = useState<"admin" | "user" | "viewer" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
