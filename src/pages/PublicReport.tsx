@@ -59,6 +59,8 @@ export default function PublicReport() {
   const [visibleSections, setVisibleSections] = useState<VisibleSections>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Dialog states
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
