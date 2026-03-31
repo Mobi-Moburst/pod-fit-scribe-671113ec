@@ -98,7 +98,35 @@ export default function PublicReport() {
     };
   }, []);
 
+  // Check if report needs a password
   useEffect(() => {
+    if (!slug) return;
+    // If already authenticated via sessionStorage, skip check
+    if (sessionStorage.getItem(`report-auth-${slug}`) === "true") {
+      setIsAuthenticated(true);
+      return;
+    }
+    const checkPassword = async () => {
+      try {
+        const { data } = await supabase.functions.invoke("check-report-password", {
+          body: { slug },
+        });
+        if (data?.has_password) {
+          setNeedsPassword(true);
+          setIsLoading(false);
+        } else {
+          setIsAuthenticated(true);
+        }
+      } catch {
+        // If check fails, just proceed without password gate
+        setIsAuthenticated(true);
+      }
+    };
+    checkPassword();
+  }, [slug]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
     const fetchReport = async () => {
       if (!slug) {
         setError("Report not found");
