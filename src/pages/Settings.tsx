@@ -21,7 +21,7 @@ interface ManagedUser {
   email: string;
   created_at: string;
   last_sign_in_at: string | null;
-  role: "admin" | "user";
+  role: "admin" | "user" | "viewer";
 }
 
 export default function Settings() {
