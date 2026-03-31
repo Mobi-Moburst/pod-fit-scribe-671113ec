@@ -3383,6 +3383,16 @@ export default function Reports() {
             entityName={speakerAsClient?.name || selectedCompany?.name || 'Company'}
             onConnectionSaved={() => setConnectionVersion(v => v + 1)}
           />
+
+          {/* Report Password Dialog */}
+          <ReportPasswordDialog
+            open={passwordDialogOpen}
+            onOpenChange={setPasswordDialogOpen}
+            onConfirm={handlePublishWithPassword}
+            currentHasPassword={pendingPublishHasPassword}
+            title={pendingPublishHasPassword ? "Update Report Password" : "Set Report Password"}
+            description="Clients will need this password to view the published report."
+          />
         </div>
       </main>
     </div>
