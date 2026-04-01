@@ -62,43 +62,47 @@ export const NextQuarterSlide = ({ strategy, reportEndDate }: NextQuarterSlidePr
               <h3 className="text-lg font-semibold text-center text-muted-foreground uppercase tracking-wider">
                 {nextQuarterLabel} Goals
               </h3>
-              <div className="grid gap-4 md:grid-cols-2">
-                <button
-                  onClick={() => setPodcastsDialogOpen(true)}
-                  className="group relative overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-2xl p-6 cursor-pointer hover:border-primary/40 transition-all duration-300 text-left"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative flex items-center gap-4">
-                    <div className="p-3 bg-primary/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                      <Target className="h-7 w-7 text-primary" />
+              <div className={`grid gap-4 ${strategy.next_quarter_kpis.high_impact_podcasts_goal > 0 && strategy.next_quarter_kpis.listenership_goal > 0 ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+                {strategy.next_quarter_kpis.high_impact_podcasts_goal > 0 && (
+                  <button
+                    onClick={() => setPodcastsDialogOpen(true)}
+                    className="group relative overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-2xl p-6 cursor-pointer hover:border-primary/40 transition-all duration-300 text-left"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative flex items-center gap-4">
+                      <div className="p-3 bg-primary/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                        <Target className="h-7 w-7 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-4xl font-bold">{strategy.next_quarter_kpis.high_impact_podcasts_goal}</p>
+                        <p className="text-sm text-muted-foreground">High-Impact Podcasts</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-4xl font-bold">{strategy.next_quarter_kpis.high_impact_podcasts_goal}</p>
-                      <p className="text-sm text-muted-foreground">High-Impact Podcasts</p>
+                    <div className="absolute bottom-2 right-3 text-xs text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
+                      Click for details →
                     </div>
-                  </div>
-                  <div className="absolute bottom-2 right-3 text-xs text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
-                    Click for details →
-                  </div>
-                </button>
-                <button
-                  onClick={() => setListenershipDialogOpen(true)}
-                  className="group relative overflow-hidden bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 rounded-2xl p-6 cursor-pointer hover:border-accent/40 transition-all duration-300 text-left"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative flex items-center gap-4">
-                    <div className="p-3 bg-accent/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                      <TrendingUp className="h-7 w-7 text-accent" />
+                  </button>
+                )}
+                {strategy.next_quarter_kpis.listenership_goal > 0 && (
+                  <button
+                    onClick={() => setListenershipDialogOpen(true)}
+                    className="group relative overflow-hidden bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 rounded-2xl p-6 cursor-pointer hover:border-accent/40 transition-all duration-300 text-left"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative flex items-center gap-4">
+                      <div className="p-3 bg-accent/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                        <TrendingUp className="h-7 w-7 text-accent" />
+                      </div>
+                      <div>
+                        <p className="text-4xl font-bold">{formatNumber(strategy.next_quarter_kpis.listenership_goal)}</p>
+                        <p className="text-sm text-muted-foreground">Listenership Goal</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-4xl font-bold">{formatNumber(strategy.next_quarter_kpis.listenership_goal)}</p>
-                      <p className="text-sm text-muted-foreground">Listenership Goal</p>
+                    <div className="absolute bottom-2 right-3 text-xs text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
+                      Click for details →
                     </div>
-                  </div>
-                  <div className="absolute bottom-2 right-3 text-xs text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
-                    Click for details →
-                  </div>
-                </button>
+                  </button>
+                )}
               </div>
             </div>
           )}
