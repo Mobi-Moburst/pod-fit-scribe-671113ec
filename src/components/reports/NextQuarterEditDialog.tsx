@@ -532,93 +532,133 @@ export function NextQuarterEditDialog({
               
               {/* Listenership Section */}
               <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Listenership Goal (Monthly)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={listenershipGoal}
-                    onChange={(e) => setListenershipGoal(parseInt(e.target.value) || 0)}
-                    placeholder="e.g., 1200000"
-                  />
-                  <p className="text-xs text-muted-foreground">Target monthly listeners for next quarter</p>
-                </div>
-                
-                {/* Listenership Breakdown Metrics */}
-                <div className="space-y-3 pt-2 border-t border-border">
-                  <Label className="text-sm font-medium">Goal Metrics</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Monthly Listeners/Episode Goal</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={monthlyListenersPerEpisodeGoal}
-                        onChange={(e) => setMonthlyListenersPerEpisodeGoal(parseInt(e.target.value) || 0)}
-                        placeholder="e.g., 5000"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Est. Annual Listenership Goal</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={annualListenershipGoal}
-                        onChange={(e) => setAnnualListenershipGoal(parseInt(e.target.value) || 0)}
-                        placeholder="e.g., 72000"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Growth Target (%)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={growthPercentage}
-                        onChange={(e) => setGrowthPercentage(parseInt(e.target.value) || 0)}
-                        placeholder="e.g., 20"
-                      />
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Listenership Goal</Label>
+                  {listenershipGoal > 0 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setListenershipGoal(0);
+                        setMonthlyListenersPerEpisodeGoal(0);
+                        setAnnualListenershipGoal(0);
+                        setGrowthPercentage(20);
+                        setCurrentTotalReach(0);
+                        setCurrentListenersPerEpisode(0);
+                        setCurrentAnnualListenership(0);
+                      }}
+                      className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Remove
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setListenershipGoal(1)}
+                      className="text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Listenership Goal
+                    </Button>
+                  )}
                 </div>
 
-                {/* Current Quarter Baseline */}
-                <div className="space-y-3 pt-2 border-t border-border">
-                  <Label className="text-sm font-medium">Current Quarter Baseline</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Current Monthly Listeners</Label>
+                {listenershipGoal > 0 ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Monthly Listenership Goal</Label>
                       <Input
                         type="number"
-                        min={0}
-                        value={currentTotalReach}
-                        onChange={(e) => setCurrentTotalReach(parseInt(e.target.value) || 0)}
-                        placeholder="e.g., 4000"
+                        min={1}
+                        value={listenershipGoal}
+                        onChange={(e) => setListenershipGoal(parseInt(e.target.value) || 0)}
+                        placeholder="e.g., 1200000"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Current Listeners/Episode</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={currentListenersPerEpisode}
-                        onChange={(e) => setCurrentListenersPerEpisode(parseInt(e.target.value) || 0)}
-                        placeholder="e.g., 4000"
-                      />
+                    
+                    {/* Listenership Breakdown Metrics */}
+                    <div className="space-y-3 pt-2 border-t border-border">
+                      <Label className="text-sm font-medium">Goal Metrics</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Monthly Listeners/Episode Goal</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={monthlyListenersPerEpisodeGoal}
+                            onChange={(e) => setMonthlyListenersPerEpisodeGoal(parseInt(e.target.value) || 0)}
+                            placeholder="e.g., 5000"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Est. Annual Listenership Goal</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={annualListenershipGoal}
+                            onChange={(e) => setAnnualListenershipGoal(parseInt(e.target.value) || 0)}
+                            placeholder="e.g., 72000"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Growth Target (%)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={growthPercentage}
+                            onChange={(e) => setGrowthPercentage(parseInt(e.target.value) || 0)}
+                            placeholder="e.g., 20"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Current Est. Annual Listenership</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={currentAnnualListenership}
-                        onChange={(e) => setCurrentAnnualListenership(parseInt(e.target.value) || 0)}
-                        placeholder="e.g., 60000"
-                      />
+
+                    {/* Current Quarter Baseline */}
+                    <div className="space-y-3 pt-2 border-t border-border">
+                      <Label className="text-sm font-medium">Current Quarter Baseline</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Current Monthly Listeners</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={currentTotalReach}
+                            onChange={(e) => setCurrentTotalReach(parseInt(e.target.value) || 0)}
+                            placeholder="e.g., 4000"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Current Listeners/Episode</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={currentListenersPerEpisode}
+                            onChange={(e) => setCurrentListenersPerEpisode(parseInt(e.target.value) || 0)}
+                            placeholder="e.g., 4000"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Current Est. Annual Listenership</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={currentAnnualListenership}
+                            onChange={(e) => setCurrentAnnualListenership(parseInt(e.target.value) || 0)}
+                            placeholder="e.g., 60000"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Manual values override automatic calculations in the Listenership Goal dialog</p>
                     </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Manual values override automatic calculations in the Listenership Goal dialog</p>
-                </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Listenership goal is hidden from the report. Click "Add" to include it.</p>
+                )}
               </div>
             </div>
           </div>
