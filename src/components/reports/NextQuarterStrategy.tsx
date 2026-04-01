@@ -198,31 +198,35 @@ export function NextQuarterStrategy({
           {next_quarter_kpis && (next_quarter_kpis.high_impact_podcasts_goal > 0 || next_quarter_kpis.listenership_goal > 0) && (
             <div className="space-y-3 pt-4 border-t border-border">
               <h4 className="text-sm font-semibold text-foreground">{nextQuarterLabel} Goals</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => setPodcastsDialogOpen(true)}
-                  className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors group/card text-left"
-                >
-                  <div className="p-2 bg-primary/20 rounded-full group-hover/card:scale-110 transition-transform">
-                    <Target className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{next_quarter_kpis.high_impact_podcasts_goal}</p>
-                    <p className="text-xs text-muted-foreground">High-Impact Podcasts</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setListenershipDialogOpen(true)}
-                  className="flex items-center gap-3 p-4 bg-accent/10 rounded-lg cursor-pointer hover:bg-accent/20 transition-colors group/card text-left"
-                >
-                  <div className="p-2 bg-accent/20 rounded-full group-hover/card:scale-110 transition-transform">
-                    <TrendingUp className="h-5 w-5 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{formatNumber(next_quarter_kpis.listenership_goal)}</p>
-                    <p className="text-xs text-muted-foreground">Listenership Goal</p>
-                  </div>
-                </button>
+              <div className={`grid gap-4 ${next_quarter_kpis.high_impact_podcasts_goal > 0 && next_quarter_kpis.listenership_goal > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {next_quarter_kpis.high_impact_podcasts_goal > 0 && (
+                  <button
+                    onClick={() => setPodcastsDialogOpen(true)}
+                    className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors group/card text-left"
+                  >
+                    <div className="p-2 bg-primary/20 rounded-full group-hover/card:scale-110 transition-transform">
+                      <Target className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">{next_quarter_kpis.high_impact_podcasts_goal}</p>
+                      <p className="text-xs text-muted-foreground">High-Impact Podcasts</p>
+                    </div>
+                  </button>
+                )}
+                {next_quarter_kpis.listenership_goal > 0 && (
+                  <button
+                    onClick={() => setListenershipDialogOpen(true)}
+                    className="flex items-center gap-3 p-4 bg-accent/10 rounded-lg cursor-pointer hover:bg-accent/20 transition-colors group/card text-left"
+                  >
+                    <div className="p-2 bg-accent/20 rounded-full group-hover/card:scale-110 transition-transform">
+                      <TrendingUp className="h-5 w-5 text-accent" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">{formatNumber(next_quarter_kpis.listenership_goal)}</p>
+                      <p className="text-xs text-muted-foreground">Listenership Goal</p>
+                    </div>
+                  </button>
+                )}
               </div>
             </div>
           )}
