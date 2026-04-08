@@ -200,6 +200,52 @@ export default function PublicReport() {
         }
       }
       
+      // Fetch live airtable_embed_url from speaker/company to override stale saved data
+      try {
+        let liveEmbedUrl: string | null = null;
+        if (data.speaker_id) {
+          const { data: speaker } = await supabase
+            .from("speakers")
+            .select("airtable_embed_url")
+            .eq("id", data.speaker_id)
+            .single();
+          liveEmbedUrl = speaker?.airtable_embed_url || null;
+        }
+        if (!liveEmbedUrl && data.company_id) {
+          const { data: company } = await supabase
+            .from("companies")
+            .select("airtable_embed_url")
+            .eq("id", data.company_id)
+            .single();
+          liveEmbedUrl = company?.airtable_embed_url || null;
+        }
+        if (liveEmbedUrl && reportData.client) {
+          reportData = {
+            ...reportData,
+            client: { ...reportData.client, airtable_embed_url: liveEmbedUrl },
+          };
+        }
+        // Also update speaker_breakdowns with live embed URLs
+        if (reportData.speaker_breakdowns?.length && reportData.selected_speaker_ids?.length) {
+          const { data: liveSpeakers } = await supabase
+            .from("speakers")
+            .select("id, airtable_embed_url")
+            .in("id", reportData.selected_speaker_ids);
+          if (liveSpeakers) {
+            const urlMap = new Map(liveSpeakers.map(s => [s.id, s.airtable_embed_url]));
+            reportData = {
+              ...reportData,
+              speaker_breakdowns: reportData.speaker_breakdowns.map(sb => ({
+                ...sb,
+                airtable_embed_url: urlMap.get(sb.speaker_id) || sb.airtable_embed_url,
+              })),
+            };
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch live airtable embed URL:", e);
+      }
+
       setReportData(reportData);
       setReportName(data.report_name);
       setQuarter(data.quarter || "");
