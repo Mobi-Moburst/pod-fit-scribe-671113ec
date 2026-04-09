@@ -173,6 +173,18 @@ export default function ReportPresentation() {
             .single();
           liveEmbedUrl = company?.airtable_embed_url || null;
         }
+        // For multi-speaker reports, fall back to any speaker's embed URL
+        if (!liveEmbedUrl && reportData.selected_speaker_ids?.length) {
+          const { data: liveSpeakers } = await supabase
+            .from("speakers")
+            .select("airtable_embed_url")
+            .in("id", reportData.selected_speaker_ids)
+            .not("airtable_embed_url", "is", null)
+            .limit(1);
+          if (liveSpeakers?.length) {
+            liveEmbedUrl = liveSpeakers[0].airtable_embed_url;
+          }
+        }
         if (liveEmbedUrl && reportData.client) {
           reportData = {
             ...reportData,
