@@ -4,24 +4,32 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EditableNumber } from "./EditableNumber";
 
 import { PodcastReportEntry } from "@/types/reports";
 
 interface PodcastTableProps {
   podcasts: PodcastReportEntry[];
+  /**
+   * When provided, enables inline editing of per-row listeners_per_episode.
+   * Receives the index in the *original* podcasts array and the new value.
+   */
+  onEditReach?: (originalIndex: number, next: number) => void;
 }
 
-export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
+export const PodcastTable = ({ podcasts, onEditReach }: PodcastTableProps) => {
   const [sortBy, setSortBy] = useState<'score' | 'reach'>('score');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const sortedPodcasts = [...podcasts].sort((a, b) => {
+  // Track original indices so edits map back even after sorting
+  const indexed = podcasts.map((p, i) => ({ podcast: p, originalIndex: i }));
+  const sortedPodcasts = [...indexed].sort((a, b) => {
     const multiplier = sortOrder === 'asc' ? 1 : -1;
     if (sortBy === 'score') {
-      return multiplier * (a.overall_score - b.overall_score);
+      return multiplier * (a.podcast.overall_score - b.podcast.overall_score);
     } else {
-      const aReach = a.listeners_per_episode || 0;
-      const bReach = b.listeners_per_episode || 0;
+      const aReach = a.podcast.listeners_per_episode || 0;
+      const bReach = b.podcast.listeners_per_episode || 0;
       return multiplier * (aReach - bReach);
     }
   });
@@ -35,17 +43,8 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
     }
   };
 
-  const getVerdictColor = (verdict: string) => {
-    switch (verdict) {
-      case 'Fit': return 'default';
-      case 'Consider': return 'secondary';
-      case 'Not': return 'outline';
-      default: return 'outline';
-    }
-  };
-
   const formatNumber = (num?: number) => {
-    if (!num) return '-';
+    if (num === undefined || num === null || num === 0) return '-';
     return num.toLocaleString();
   };
 
@@ -87,8 +86,8 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedPodcasts.map((podcast, idx) => (
-              <TableRow key={idx}>
+            {sortedPodcasts.map(({ podcast, originalIndex }) => (
+              <TableRow key={originalIndex}>
                 <TableCell className="font-medium">{podcast.show_title}</TableCell>
                 <TableCell>
                   {podcast.overall_score > 0 ? (
@@ -98,7 +97,16 @@ export const PodcastTable = ({ podcasts }: PodcastTableProps) => {
                   )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {formatNumber(podcast.listeners_per_episode)}
+                  {onEditReach ? (
+                    <EditableNumber
+                      value={podcast.listeners_per_episode || 0}
+                      onSave={(next) => onEditReach(originalIndex, next)}
+                      format={(n) => (n > 0 ? n.toLocaleString() : '-')}
+                      ariaLabel={`Edit reach for ${podcast.show_title}`}
+                    />
+                  ) : (
+                    formatNumber(podcast.listeners_per_episode)
+                  )}
                 </TableCell>
                 <TableCell>
                   {podcast.action ? (
