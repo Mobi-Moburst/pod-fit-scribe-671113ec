@@ -3411,6 +3411,14 @@ export default function Reports() {
                 totalReach={reportData.kpis.total_reach}
                 onEditTotalReach={(next) => updateReportKpis({ total_reach: next })}
                 onEditTotalListenersPerEpisode={(next) => updateReportKpis({ total_listeners_per_episode: next })}
+                onEditPodcastMonthlyListens={(podcast, next) =>
+                  updatePodcastMonthlyListens(
+                    (p) =>
+                      (podcast.apple_podcast_link && p.apple_podcast_link === podcast.apple_podcast_link) ||
+                      (!podcast.apple_podcast_link && p.show_title === podcast.show_title),
+                    next
+                  )
+                }
               />
 
               <HighlightUploadDialog
