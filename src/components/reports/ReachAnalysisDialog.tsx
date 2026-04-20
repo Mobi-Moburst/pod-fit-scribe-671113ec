@@ -27,6 +27,9 @@ interface ReachAnalysisDialogProps {
   /** When provided, enables inline editing of the listenership figures */
   onEditTotalReach?: (next: number) => void;
   onEditTotalListenersPerEpisode?: (next: number) => void;
+  /** When provided, enables inline editing of an individual podcast's monthly_listens.
+   *  The matcher receives the podcast entry and should return true for the row to update. */
+  onEditPodcastMonthlyListens?: (podcast: PodcastReportEntry, next: number) => void;
 }
 
 // Calculate months in reporting period
@@ -57,6 +60,7 @@ export const ReachAnalysisDialog = ({
   totalReach = 0,
   onEditTotalReach,
   onEditTotalListenersPerEpisode,
+  onEditPodcastMonthlyListens,
 }: ReachAnalysisDialogProps) => {
   const [coverArtUrl, setCoverArtUrl] = useState<string | null>(null);
   const [isLoadingCoverArt, setIsLoadingCoverArt] = useState(false);
@@ -240,7 +244,16 @@ export const ReachAnalysisDialog = ({
                 {/* Show Info */}
                 <div className="flex-1 min-w-0">
                   <div className="text-2xl font-bold">
-                    {formatNumber(highestMonthlyListens)}
+                    {onEditPodcastMonthlyListens && highestReachShow ? (
+                      <EditableNumber
+                        value={highestMonthlyListens}
+                        onSave={(next) => onEditPodcastMonthlyListens(highestReachShow, next)}
+                        format={formatNumber}
+                        ariaLabel="Edit highest reach show monthly listeners"
+                      />
+                    ) : (
+                      formatNumber(highestMonthlyListens)
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">monthly listeners</p>
                   {highestReachShow?.apple_podcast_link ? (

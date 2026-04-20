@@ -1200,6 +1200,70 @@ export default function Reports() {
     }
   };
 
+  // Inline edit for an individual podcast's monthly_listens. Recomputes total_reach.
+  const updatePodcastMonthlyListens = async (
+    matcher: (p: any) => boolean,
+    next: number
+  ) => {
+    if (!reportData) return;
+
+    const updatePodcasts = (list: any[] | undefined) =>
+      (list || []).map((p) => (matcher(p) ? { ...p, monthly_listens: next } : p));
+
+    const newPodcasts = updatePodcasts(reportData.podcasts);
+    const newTotalReach = newPodcasts.reduce((sum: number, p: any) => {
+      const v = typeof p.monthly_listens === 'string' ? parseFloat(p.monthly_listens) || 0 : (p.monthly_listens || 0);
+      return sum + v;
+    }, 0);
+
+    const optimistic = {
+      ...reportData,
+      podcasts: newPodcasts,
+      kpis: { ...reportData.kpis, total_reach: newTotalReach },
+      visibleSections,
+    } as any;
+    setReportData(optimistic);
+
+    if (!currentReportId) return;
+
+    try {
+      const { data: freshReport, error: fetchError } = await supabase
+        .from('reports')
+        .select('report_data')
+        .eq('id', currentReportId)
+        .single();
+      if (fetchError) throw fetchError;
+
+      const fresh = freshReport.report_data as unknown as ReportData;
+      const freshPodcasts = updatePodcasts(fresh.podcasts);
+      const freshTotal = freshPodcasts.reduce((sum: number, p: any) => {
+        const v = typeof p.monthly_listens === 'string' ? parseFloat(p.monthly_listens) || 0 : (p.monthly_listens || 0);
+        return sum + v;
+      }, 0);
+
+      const updated = {
+        ...fresh,
+        podcasts: freshPodcasts,
+        kpis: { ...fresh.kpis, total_reach: freshTotal },
+        visibleSections,
+      } as any;
+      setReportData(updated);
+
+      const { error } = await supabase
+        .from('reports')
+        .update({ report_data: updated as any })
+        .eq('id', currentReportId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving podcast reach edit:', error);
+      toast({
+        title: 'Failed to save',
+        description: "Couldn't save podcast reach update.",
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleContentGapRecommendationsUpdate = async (
     recommendations: ReportData['content_gap_analysis']['ai_recommendations']
   ) => {
@@ -3347,6 +3411,14 @@ export default function Reports() {
                 totalReach={reportData.kpis.total_reach}
                 onEditTotalReach={(next) => updateReportKpis({ total_reach: next })}
                 onEditTotalListenersPerEpisode={(next) => updateReportKpis({ total_listeners_per_episode: next })}
+                onEditPodcastMonthlyListens={(podcast, next) =>
+                  updatePodcastMonthlyListens(
+                    (p) =>
+                      (podcast.apple_podcast_link && p.apple_podcast_link === podcast.apple_podcast_link) ||
+                      (!podcast.apple_podcast_link && p.show_title === podcast.show_title),
+                    next
+                  )
+                }
               />
 
               <HighlightUploadDialog
