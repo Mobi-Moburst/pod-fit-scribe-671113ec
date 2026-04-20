@@ -2857,6 +2857,8 @@ export default function Reports() {
                       <KPICard
                         title={reportData.kpis.total_published === 0 ? "Projected Listenership" : "Total Listenership"}
                         value={reportData.kpis.total_reach.toLocaleString()}
+                        editableValue={reportData.kpis.total_reach}
+                        onValueEdit={(next) => updateReportKpis({ total_reach: next })}
                         subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows • Click for details" : "Total monthly listeners • Click for details"}
                         icon={Users}
                         onClick={() => setReachDialogOpen(true)}
@@ -3343,6 +3345,8 @@ export default function Reports() {
                 quarter={quarter}
                 dateRange={reportData.date_range}
                 totalReach={reportData.kpis.total_reach}
+                onEditTotalReach={(next) => updateReportKpis({ total_reach: next })}
+                onEditTotalListenersPerEpisode={(next) => updateReportKpis({ total_listeners_per_episode: next })}
               />
 
               <HighlightUploadDialog
