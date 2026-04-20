@@ -1154,6 +1154,52 @@ export default function Reports() {
     }
   };
 
+  // Inline KPI edits (e.g. listenership totals). Persists to DB if report is saved.
+  const updateReportKpis = async (kpiPatch: Partial<ReportData['kpis']>) => {
+    if (!reportData) return;
+
+    const optimisticReportData = {
+      ...reportData,
+      kpis: { ...reportData.kpis, ...kpiPatch },
+      visibleSections,
+    } as any;
+    setReportData(optimisticReportData);
+
+    if (!currentReportId) return;
+
+    try {
+      const { data: freshReport, error: fetchError } = await supabase
+        .from('reports')
+        .select('report_data')
+        .eq('id', currentReportId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const freshReportData = freshReport.report_data as unknown as ReportData;
+      const updatedReportData = {
+        ...freshReportData,
+        kpis: { ...freshReportData.kpis, ...kpiPatch },
+        visibleSections,
+      } as any;
+      setReportData(updatedReportData);
+
+      const { error } = await supabase
+        .from('reports')
+        .update({ report_data: updatedReportData as any })
+        .eq('id', currentReportId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving KPI edits:', error);
+      toast({
+        title: 'Failed to save',
+        description: "Couldn't save metric update to report.",
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleContentGapRecommendationsUpdate = async (
     recommendations: ReportData['content_gap_analysis']['ai_recommendations']
   ) => {
