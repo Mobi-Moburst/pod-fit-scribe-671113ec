@@ -60,6 +60,7 @@ export const ReachAnalysisDialog = ({
   totalReach = 0,
   onEditTotalReach,
   onEditTotalListenersPerEpisode,
+  onEditPodcastMonthlyListens,
 }: ReachAnalysisDialogProps) => {
   const [coverArtUrl, setCoverArtUrl] = useState<string | null>(null);
   const [isLoadingCoverArt, setIsLoadingCoverArt] = useState(false);
