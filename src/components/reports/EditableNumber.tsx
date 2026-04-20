@@ -138,7 +138,7 @@ export function EditableNumber({
           setEditing(true);
         }}
         className={cn(
-          "opacity-0 group-hover/edit:opacity-100 transition-opacity p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground print:hidden",
+          "opacity-40 hover:opacity-100 group-hover/edit:opacity-100 transition-opacity p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground print:hidden",
           iconClassName
         )}
         title="Edit value"
