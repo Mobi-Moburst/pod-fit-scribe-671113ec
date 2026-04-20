@@ -11,6 +11,7 @@ import { PodcastReportEntry } from "@/types/reports";
 import { Users, TrendingUp, Trophy, ExternalLink, Loader2, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInMonths, parseISO } from "date-fns";
+import { EditableNumber } from "./EditableNumber";
 
 interface ReachAnalysisDialogProps {
   open: boolean;
@@ -23,6 +24,9 @@ interface ReachAnalysisDialogProps {
     end: string;
   };
   totalReach?: number;
+  /** When provided, enables inline editing of the listenership figures */
+  onEditTotalReach?: (next: number) => void;
+  onEditTotalListenersPerEpisode?: (next: number) => void;
 }
 
 // Calculate months in reporting period
@@ -50,7 +54,9 @@ export const ReachAnalysisDialog = ({
   totalListenersPerEpisode = 0,
   quarter = '',
   dateRange,
-  totalReach = 0
+  totalReach = 0,
+  onEditTotalReach,
+  onEditTotalListenersPerEpisode,
 }: ReachAnalysisDialogProps) => {
   const [coverArtUrl, setCoverArtUrl] = useState<string | null>(null);
   const [isLoadingCoverArt, setIsLoadingCoverArt] = useState(false);
