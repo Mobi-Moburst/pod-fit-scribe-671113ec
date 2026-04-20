@@ -2,6 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LucideIcon, X, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { EditableNumber } from "./EditableNumber";
 
 interface KPICardProps {
   title: string;
@@ -11,16 +13,37 @@ interface KPICardProps {
   tooltip?: string;
   onClick?: () => void;
   onHide?: () => void;
+  /**
+   * When provided, the value becomes inline-editable via a pencil icon.
+   * Only used for numeric values; pass the raw number via `editableValue`.
+   */
+  onValueEdit?: (next: number) => void;
+  editableValue?: number;
+  editableFormat?: (n: number) => string;
 }
 
-export const KPICard = ({ title, value, subtitle, icon: Icon, tooltip, onClick, onHide }: KPICardProps) => {
+export const KPICard = ({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  tooltip,
+  onClick,
+  onHide,
+  onValueEdit,
+  editableValue,
+  editableFormat,
+}: KPICardProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const cardClickable = !!onClick && !isEditing;
+
   return (
-    <Card 
+    <Card
       className={cn(
         "group relative bg-card border border-border/60 shadow-none transition-all",
-        onClick && "cursor-pointer hover:shadow-md hover:border-border"
+        cardClickable && "cursor-pointer hover:shadow-md hover:border-border"
       )}
-      onClick={onClick}
+      onClick={cardClickable ? onClick : undefined}
     >
       {onHide && (
         <button
@@ -50,7 +73,19 @@ export const KPICard = ({ title, value, subtitle, icon: Icon, tooltip, onClick, 
                 </Tooltip>
               )}
             </div>
-            <p className="text-2xl font-bold tracking-tight">{value}</p>
+            {onValueEdit && typeof editableValue === "number" ? (
+              <div className="text-2xl font-bold tracking-tight">
+                <EditableNumber
+                  value={editableValue}
+                  onSave={onValueEdit}
+                  onEditingChange={setIsEditing}
+                  format={editableFormat ?? ((n) => n.toLocaleString())}
+                  ariaLabel={`Edit ${title}`}
+                />
+              </div>
+            ) : (
+              <p className="text-2xl font-bold tracking-tight">{value}</p>
+            )}
             {subtitle && (
               <p className="text-xs text-muted-foreground">{subtitle}</p>
             )}
