@@ -27,6 +27,9 @@ interface ReachAnalysisDialogProps {
   /** When provided, enables inline editing of the listenership figures */
   onEditTotalReach?: (next: number) => void;
   onEditTotalListenersPerEpisode?: (next: number) => void;
+  /** When provided, enables inline editing of an individual podcast's monthly_listens.
+   *  The matcher receives the podcast entry and should return true for the row to update. */
+  onEditPodcastMonthlyListens?: (podcast: PodcastReportEntry, next: number) => void;
 }
 
 // Calculate months in reporting period
