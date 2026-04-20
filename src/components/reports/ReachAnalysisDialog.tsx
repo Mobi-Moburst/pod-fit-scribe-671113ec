@@ -244,7 +244,16 @@ export const ReachAnalysisDialog = ({
                 {/* Show Info */}
                 <div className="flex-1 min-w-0">
                   <div className="text-2xl font-bold">
-                    {formatNumber(highestMonthlyListens)}
+                    {onEditPodcastMonthlyListens && highestReachShow ? (
+                      <EditableNumber
+                        value={highestMonthlyListens}
+                        onSave={(next) => onEditPodcastMonthlyListens(highestReachShow, next)}
+                        format={formatNumber}
+                        ariaLabel="Edit highest reach show monthly listeners"
+                      />
+                    ) : (
+                      formatNumber(highestMonthlyListens)
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">monthly listeners</p>
                   {highestReachShow?.apple_podcast_link ? (
