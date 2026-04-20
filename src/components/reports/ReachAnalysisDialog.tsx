@@ -149,7 +149,16 @@ export const ReachAnalysisDialog = ({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatNumber(totalListenersPerEpisode)}
+                {onEditTotalListenersPerEpisode ? (
+                  <EditableNumber
+                    value={totalListenersPerEpisode}
+                    onSave={onEditTotalListenersPerEpisode}
+                    format={formatNumber}
+                    ariaLabel="Edit total monthly listeners per episode"
+                  />
+                ) : (
+                  formatNumber(totalListenersPerEpisode)
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Combined reach this quarter
@@ -166,7 +175,16 @@ export const ReachAnalysisDialog = ({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatNumber(estimatedAnnualListenership)}
+                {onEditTotalReach ? (
+                  <EditableNumber
+                    value={totalReach}
+                    onSave={(next) => onEditTotalReach(next)}
+                    format={(n) => formatNumber(n * 12)}
+                    ariaLabel="Edit total monthly listeners (drives annual)"
+                  />
+                ) : (
+                  formatNumber(estimatedAnnualListenership)
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {quarter ? `Annual reach from podcasts booked in ${quarter}` : 'Annual reach projection'}
