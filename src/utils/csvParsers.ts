@@ -256,8 +256,97 @@ export function parseGEOCSV(csvText: string): GEOCSVRow[] {
   return podcastEntries;
 }
 
-// Parse Content Gap CSV (Spotlight Content Gap Analysis export)
-export function parseContentGapCSV(csvText: string): ContentGapCSVRow[] {
+// Detect if CSV is in AEO sources format (Domain, URL, Model, Topic, Prompt, Run Date)
+function isAEOSourcesFormat(headers: string[]): boolean {
+  const normalized = headers.map(h => h.toLowerCase().trim());
+  return normalized.includes('domain') && normalized.includes('model') && normalized.includes('prompt') &&
+    !normalized.some(h => h.includes('present') || h.includes('rank'));
+}
+
+// Convert AEO sources format to ContentGapCSVRow[]
+function convertAEOSourcesToContentGap(data: Record<string, string>[], clientDomain?: string): ContentGapCSVRow[] {
+  // Group by prompt + topic
+  const promptMap = new Map<string, { topic: string; run_date: string; entries: Array<{ domain: string; model: string }> }>();
+  
+  data.forEach(row => {
+    const prompt = row['Prompt'] || row['prompt'] || '';
+    const topic = row['Topic'] || row['topic'] || '';
+    const model = row['Model'] || row['model'] || '';
+    const domain = row['Domain'] || row['domain'] || '';
+    const runDate = row['Run Date'] || row['run_date'] || row['run date'] || '';
+    
+    if (!prompt) return;
+    
+    const key = `${prompt}|||${topic}`;
+    if (!promptMap.has(key)) {
+      promptMap.set(key, { topic, run_date: runDate, entries: [] });
+    }
+    promptMap.get(key)!.entries.push({ domain, model });
+  });
+  
+  // Get unique models/engines
+  const allModels = new Set<string>();
+  data.forEach(row => {
+    const model = row['Model'] || row['model'] || '';
+    if (model) allModels.add(model);
+  });
+  const engines = Array.from(allModels);
+  
+  // Normalize client domain for matching
+  const clientDomainNormalized = clientDomain?.toLowerCase().replace(/^www\./, '').replace(/\/$/, '') || '';
+  
+  console.log('[convertAEOSourcesToContentGap] Converting AEO sources:', {
+    totalRows: data.length,
+    uniquePrompts: promptMap.size,
+    engines,
+    clientDomain: clientDomainNormalized,
+  });
+  
+  // Convert each prompt group to a ContentGapCSVRow
+  const rows: ContentGapCSVRow[] = [];
+  promptMap.forEach(({ topic, run_date, entries }, key) => {
+    const prompt = key.split('|||')[0];
+    
+    const engineData: ContentGapEngineData[] = engines.map(engine => {
+      const engineEntries = entries.filter(e => e.model === engine);
+      const clientPresent = clientDomainNormalized 
+        ? engineEntries.some(e => e.domain.toLowerCase().replace(/^www\./, '') === clientDomainNormalized)
+        : false;
+      
+      // Other domains appearing for this engine+prompt are "mentioned brands" (competitors)
+      const otherBrands = engineEntries
+        .map(e => e.domain.toLowerCase().replace(/^www\./, ''))
+        .filter(d => d !== clientDomainNormalized)
+        .filter((d, i, arr) => arr.indexOf(d) === i) // dedupe
+        .slice(0, 10);
+      
+      // Rank: if client is present, find their position
+      const rank = clientPresent 
+        ? engineEntries.findIndex(e => e.domain.toLowerCase().replace(/^www\./, '') === clientDomainNormalized) + 1
+        : undefined;
+      
+      return {
+        name: engine.toLowerCase(),
+        present: clientPresent,
+        rank,
+        mentioned_brands: otherBrands,
+      };
+    });
+    
+    rows.push({
+      topic,
+      customer_journey: '', // Not available in this format
+      prompt,
+      run_date,
+      engines: engineData,
+    });
+  });
+  
+  return rows;
+}
+
+// Parse Content Gap CSV (Spotlight Content Gap Analysis export OR AEO sources export)
+export function parseContentGapCSV(csvText: string, clientDomain?: string): ContentGapCSVRow[] {
   const result = Papa.parse<Record<string, string>>(csvText, {
     header: true,
     skipEmptyLines: true,
@@ -265,9 +354,17 @@ export function parseContentGapCSV(csvText: string): ContentGapCSVRow[] {
   
   if (result.data.length === 0) return [];
   
+  const headers = result.meta?.fields || [];
+  
+  // Check if this is the AEO sources format (Domain, URL, Model, Topic, Prompt)
+  if (isAEOSourcesFormat(headers)) {
+    console.log('[parseContentGapCSV] Detected AEO sources format, converting...');
+    return convertAEOSourcesToContentGap(result.data, clientDomain);
+  }
+  
+  // Original Spotlight Content Gap format
   // Detect AI engines from column headers
   // Headers like "gemini - Present", "chatgpt - Rank", etc.
-  const headers = result.meta?.fields || [];
   const engineNames = new Set<string>();
   
   headers.forEach(header => {
