@@ -256,7 +256,8 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
       
       if (csvFiles.content_gap.newFile) {
         const csvText = await readFileAsText(csvFiles.content_gap.newFile);
-        newContentGapData = parseContentGapCSV(csvText);
+        const clientDomain = existingReportData.client?.company_url || '';
+        newContentGapData = parseContentGapCSV(csvText, clientDomain);
         updatedCSVTypes.push('content_gap');
       }
       
