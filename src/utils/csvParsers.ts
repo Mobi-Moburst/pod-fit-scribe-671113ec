@@ -220,21 +220,36 @@ export function extractCompetitorName(filename: string): string {
 
 // Parse GEO CSV (Spotlight AEO/GEO export)
 export function parseGEOCSV(csvText: string): GEOCSVRow[] {
-  const result = Papa.parse<GEOCSVRow>(csvText, {
+  const result = Papa.parse<Record<string, string>>(csvText, {
     header: true,
     skipEmptyLines: true,
     transformHeader: normalizeHeaderName,
   });
+
+  // Map alternative column names to expected GEO fields
+  // Spotlight format: uri, title, domain, type, llm, prompt_text, topic_name, has_analysis
+  // Alternative format: url, domain, model, topic, prompt, run_date
+  const mapped: GEOCSVRow[] = result.data.map(row => ({
+    uri: row.uri || row.url || '',
+    title: row.title || '',
+    domain: row.domain || '',
+    type: row.type || '',
+    llm: row.llm || row.model || '',
+    prompt_text: row.prompt_text || row.prompt || '',
+    topic_name: row.topic_name || row.topic || '',
+    has_analysis: row.has_analysis || '',
+  }));
   
   // Filter for podcasts.apple.com domain only
-  const podcastEntries = result.data.filter(row => 
+  const podcastEntries = mapped.filter(row => 
     row.domain && row.domain.toLowerCase().includes('podcasts.apple')
   );
   
   console.log('[parseGEOCSV] Parsed GEO CSV:', {
-    totalRows: result.data.length,
+    totalRows: mapped.length,
     podcastEntries: podcastEntries.length,
     uniqueEngines: [...new Set(podcastEntries.map(r => r.llm))],
+    sampleDomains: [...new Set(mapped.slice(0, 20).map(r => r.domain))],
     sampleRows: podcastEntries.slice(0, 3),
   });
   
