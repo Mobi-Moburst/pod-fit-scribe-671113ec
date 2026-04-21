@@ -47,6 +47,7 @@ export interface GEOCSVRow {
   prompt_text: string; // The query that surfaced this result
   topic_name: string; // Category/topic
   has_analysis: string; // "Yes" or "No"
+  run_date?: string; // Run date (Spotlight sources format)
 }
 
 // Content Gap CSV (from Spotlight Content Gap Analysis)

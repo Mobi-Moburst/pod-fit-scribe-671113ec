@@ -183,6 +183,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
       let newAirtableData: any[] | null = null;
       let newSOVData: any[] | null = null;
       let newGEOData: any[] | null = null;
+      let newGEOParseWarnings: string[] = [];
       let newContentGapData: any[] | null = null;
       let newRephonicData: any[] | null = null;
 
@@ -250,8 +251,13 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
       
       if (csvFiles.geo.newFile) {
         const csvText = await readFileAsText(csvFiles.geo.newFile);
-        newGEOData = parseGEOCSV(csvText);
+        const { rows: geoRows, parseWarnings } = parseGEOCSV(csvText);
+        newGEOData = geoRows;
+        newGEOParseWarnings = parseWarnings;
         updatedCSVTypes.push('geo');
+        if (parseWarnings.length > 0) {
+          console.warn('[UpdateCSVDialog] GEO parse warnings:', parseWarnings);
+        }
       }
       
       if (csvFiles.content_gap.newFile) {
@@ -282,6 +288,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
           airtableData: newAirtableData,
           sovData: newSOVData,
           geoData: newGEOData,
+          geoParseWarnings: newGEOParseWarnings,
           contentGapData: newContentGapData,
           rephonicData: newRephonicData,
         },

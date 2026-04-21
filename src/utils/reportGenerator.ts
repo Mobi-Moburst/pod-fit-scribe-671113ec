@@ -1,6 +1,7 @@
 import { MinimalClient, Speaker, Company } from '@/types/clients';
 import { BatchRow } from '@/types/batch';
-import { ReportData, PodcastReportEntry, ContentGapAnalysis, SpeakerBreakdown } from '@/types/reports';
+import { ReportData, PodcastReportEntry, ContentGapAnalysis, SpeakerBreakdown, GEOAnalysis } from '@/types/reports';
+import { matchPodcastsToGEO } from './geoPodcastMatcher';
 import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow, RephonicCSVRow } from '@/types/csv';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
@@ -1687,7 +1688,11 @@ function calculateSOVAnalysis(
 }
 
 // Calculate GEO analysis from Spotlight export
-function calculateGEOAnalysis(geoRows: GEOCSVRow[]): ReportData['geo_analysis'] {
+function calculateGEOAnalysis(
+  geoRows: GEOCSVRow[],
+  airtableRows?: AirtableCSVRow[],
+  parseWarnings?: string[]
+): GEOAnalysis | undefined {
   if (!geoRows || geoRows.length === 0) return undefined;
 
   // Basic counts
@@ -1757,6 +1762,11 @@ function calculateGEOAnalysis(geoRows: GEOCSVRow[]): ReportData['geo_analysis'] 
     topic: row.topic_name
   }));
   
+  // Run podcast → GEO matching if airtable data is available
+  const podcast_matches = airtableRows && airtableRows.length > 0
+    ? matchPodcastsToGEO(airtableRows, geoRows)
+    : undefined;
+
   return {
     total_podcasts_indexed,
     unique_ai_engines,
@@ -1769,7 +1779,9 @@ function calculateGEOAnalysis(geoRows: GEOCSVRow[]): ReportData['geo_analysis'] 
       topic_relevance: Math.round(topic_relevance),
       prompt_diversity: Math.round(prompt_diversity)
     },
-    podcast_entries
+    podcast_entries,
+    podcast_matches,
+    parse_warnings: parseWarnings && parseWarnings.length > 0 ? parseWarnings : undefined,
   };
 }
 
@@ -2905,6 +2917,7 @@ interface UpdatedCSVData {
   airtableData?: AirtableCSVRow[] | null;
   sovData?: SOVCSVRow[] | null;
   geoData?: GEOCSVRow[] | null;
+  geoParseWarnings?: string[];
   contentGapData?: ContentGapCSVRow[] | null;
   rephonicData?: RephonicCSVRow[] | null;
 }
@@ -3071,7 +3084,8 @@ export async function mergeUpdatedReportData(
   // Update GEO analysis if GEO CSV was updated
   if (updatedCSVTypes.includes('geo') && newData.geoData) {
     updatedReport.geo_csv_uploaded = true;
-    const geoAnalysis = calculateGEOAnalysis(newData.geoData);
+    const airtableRows = newData.airtableData || [];
+    const geoAnalysis = calculateGEOAnalysis(newData.geoData, airtableRows, newData.geoParseWarnings);
     if (geoAnalysis) {
       updatedReport.geo_analysis = geoAnalysis;
       updatedReport.kpis.geo_score = geoAnalysis.geo_score;
