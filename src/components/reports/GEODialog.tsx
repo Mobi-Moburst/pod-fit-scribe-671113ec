@@ -8,29 +8,45 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { ReportData } from '@/types/reports';
+import { AlertTriangle } from "lucide-react";
+import { GEOAnalysis } from '@/types/reports';
 
 interface GEODialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  geoAnalysis: ReportData['geo_analysis'];
+  geoAnalysis: GEOAnalysis | undefined;
 }
 
 export const GEODialog = ({ open, onOpenChange, geoAnalysis }: GEODialogProps) => {
   if (!geoAnalysis) return null;
 
-  const { 
-    geo_score, 
+  const {
+    geo_score,
     score_breakdown,
     total_podcasts_indexed,
     unique_ai_engines,
     ai_engine_counts,
     top_prompts,
     topic_distribution,
-    podcast_entries
+    podcast_entries,
+    podcast_matches,
+    parse_warnings,
   } = geoAnalysis;
+
+  const hasPodcastMatches = podcast_matches && podcast_matches.length > 0;
+  const confidenceColors: Record<string, string> = {
+    high: 'bg-green-100 text-green-800 border-green-200',
+    medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    low: 'bg-gray-100 text-gray-700 border-gray-200',
+  };
+  const matchTypeLabels: Record<string, string> = {
+    apple_id: 'Apple ID',
+    url_slug: 'URL slug',
+    prompt_text: 'Prompt text',
+  };
 
   // Colors for pie chart
   const COLORS = [
@@ -50,16 +66,28 @@ export const GEODialog = ({ open, onOpenChange, geoAnalysis }: GEODialogProps) =
         <DialogHeader>
           <DialogTitle>GEO Score Analysis</DialogTitle>
           <DialogDescription>
-            Your podcasts are indexed across <strong>{unique_ai_engines.length} AI engines</strong> with a composite score of <strong>{geo_score}/100</strong>
+            <strong>{total_podcasts_indexed} sources</strong> tracked across <strong>{unique_ai_engines.length} AI engine{unique_ai_engines.length !== 1 ? 's' : ''}</strong> — composite GEO score <strong>{geo_score}/100</strong>
           </DialogDescription>
         </DialogHeader>
 
+        {parse_warnings && parse_warnings.length > 0 && (
+          <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <ul className="space-y-1">
+              {parse_warnings.map((w, i) => <li key={i}>{w}</li>)}
+            </ul>
+          </div>
+        )}
+
         <Tabs defaultValue="breakdown" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className={`grid w-full ${hasPodcastMatches ? 'grid-cols-5' : 'grid-cols-4'}`}>
             <TabsTrigger value="breakdown">Score Breakdown</TabsTrigger>
             <TabsTrigger value="engines">AI Engines</TabsTrigger>
             <TabsTrigger value="prompts">Top Prompts</TabsTrigger>
             <TabsTrigger value="topics">Topics</TabsTrigger>
+            {hasPodcastMatches && (
+              <TabsTrigger value="podcast_impact">Podcast Impact</TabsTrigger>
+            )}
           </TabsList>
 
           {/* Tab 1: Score Breakdown */}
@@ -119,7 +147,7 @@ export const GEODialog = ({ open, onOpenChange, geoAnalysis }: GEODialogProps) =
 
                 <div className="pt-4 border-t">
                   <p className="text-sm">
-                    <strong>Total Indexed:</strong> {total_podcasts_indexed} podcast{total_podcasts_indexed !== 1 ? 's' : ''} on podcasts.apple.com
+                    <strong>Total Sources:</strong> {total_podcasts_indexed} entr{total_podcasts_indexed !== 1 ? 'ies' : 'y'} tracked across AI engines
                   </p>
                 </div>
               </CardContent>
@@ -245,6 +273,74 @@ export const GEODialog = ({ open, onOpenChange, geoAnalysis }: GEODialogProps) =
               </CardContent>
             </Card>
           </TabsContent>
+          {/* Tab 5: Podcast Impact */}
+          {hasPodcastMatches && (
+            <TabsContent value="podcast_impact" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Podcast GEO Impact</CardTitle>
+                  <CardDescription>
+                    {podcast_matches!.length} podcast{podcast_matches!.length !== 1 ? 's' : ''} from your campaign found in AI engine sources.
+                    Match confidence reflects how closely the source references the podcast.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {podcast_matches!.map((match, idx) => (
+                    <div key={idx} className="rounded-md border p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-sm">{match.podcast_name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{match.match_reason}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium capitalize ${confidenceColors[match.confidence]}`}>
+                            {match.confidence} confidence
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {match.total_appearances} appearance{match.total_appearances !== 1 ? 's' : ''}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[90px]">Match type</TableHead>
+                            <TableHead>URL</TableHead>
+                            <TableHead className="w-[110px]">Engine</TableHead>
+                            <TableHead className="w-[120px]">Topic</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {match.matched_entries.map((entry, eIdx) => (
+                            <TableRow key={eIdx}>
+                              <TableCell>
+                                <span className="text-xs text-muted-foreground">
+                                  {matchTypeLabels[entry.match_type] ?? entry.match_type}
+                                </span>
+                              </TableCell>
+                              <TableCell className="max-w-[300px]">
+                                <a
+                                  href={entry.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 hover:underline break-all"
+                                >
+                                  {entry.domain}
+                                </a>
+                              </TableCell>
+                              <TableCell className="text-xs">{entry.llm}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{entry.topic}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>

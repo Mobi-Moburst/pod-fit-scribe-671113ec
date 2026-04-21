@@ -218,42 +218,65 @@ export function extractCompetitorName(filename: string): string {
     .trim();
 }
 
-// Parse GEO CSV (Spotlight AEO/GEO export)
-export function parseGEOCSV(csvText: string): GEOCSVRow[] {
+// Parse GEO CSV (Spotlight AEO/GEO export or Spotlight sources_detailed export)
+// Accepts both formats:
+//   Spotlight GEO: uri, title, domain, type, llm, prompt_text, topic_name, has_analysis
+//   Spotlight sources_detailed: Domain, URL, Model, Topic, Prompt, Run Date
+export function parseGEOCSV(csvText: string): { rows: GEOCSVRow[]; parseWarnings: string[] } {
   const result = Papa.parse<Record<string, string>>(csvText, {
     header: true,
     skipEmptyLines: true,
     transformHeader: normalizeHeaderName,
   });
 
+  const warnings: string[] = [];
+
+  if (result.data.length === 0) {
+    warnings.push('No data rows found in the CSV file.');
+    return { rows: [], parseWarnings: warnings };
+  }
+
+  const headers = result.meta?.fields || [];
+  const hasRequiredColumns = headers.some(h => ['uri', 'url'].includes(h)) &&
+    headers.some(h => ['llm', 'model'].includes(h));
+
+  if (!hasRequiredColumns) {
+    warnings.push('Could not find expected columns (URL/URI and Model/LLM). Please check the file format.');
+  }
+
   // Map alternative column names to expected GEO fields
-  // Spotlight format: uri, title, domain, type, llm, prompt_text, topic_name, has_analysis
-  // Alternative format: url, domain, model, topic, prompt, run_date
-  const mapped: GEOCSVRow[] = result.data.map(row => ({
-    uri: row.uri || row.url || '',
-    title: row.title || '',
-    domain: row.domain || '',
-    type: row.type || '',
-    llm: row.llm || row.model || '',
-    prompt_text: row.prompt_text || row.prompt || '',
-    topic_name: row.topic_name || row.topic || '',
-    has_analysis: row.has_analysis || '',
-  }));
-  
-  // Filter for podcasts.apple.com domain only
-  const podcastEntries = mapped.filter(row => 
-    row.domain && row.domain.toLowerCase().includes('podcasts.apple')
-  );
-  
+  const mapped: GEOCSVRow[] = result.data
+    .map(row => ({
+      uri: row.uri || row.url || '',
+      title: row.title || '',
+      domain: row.domain || new URL(row.uri || row.url || 'http://unknown').hostname.replace(/^www\./, ''),
+      type: row.type || '',
+      llm: row.llm || row.model || '',
+      prompt_text: row.prompt_text || row.prompt || '',
+      topic_name: row.topic_name || row.topic || '',
+      has_analysis: row.has_analysis || '',
+      run_date: row.run_date || row.run_date || '',
+    }))
+    .filter(row => row.uri && row.llm);
+
+  if (mapped.length === 0) {
+    warnings.push('No valid rows found after parsing. Ensure the file has URL and Model/LLM columns with data.');
+  } else if (mapped.length < result.data.length) {
+    const skipped = result.data.length - mapped.length;
+    warnings.push(`${skipped} row${skipped !== 1 ? 's' : ''} skipped due to missing URL or engine data.`);
+  }
+
+  const uniqueEngines = [...new Set(mapped.map(r => r.llm))];
+  const uniqueDomains = [...new Set(mapped.map(r => r.domain))];
+
   console.log('[parseGEOCSV] Parsed GEO CSV:', {
     totalRows: mapped.length,
-    podcastEntries: podcastEntries.length,
-    uniqueEngines: [...new Set(podcastEntries.map(r => r.llm))],
-    sampleDomains: [...new Set(mapped.slice(0, 20).map(r => r.domain))],
-    sampleRows: podcastEntries.slice(0, 3),
+    uniqueEngines,
+    topDomains: uniqueDomains.slice(0, 10),
+    sampleRows: mapped.slice(0, 3),
   });
-  
-  return podcastEntries;
+
+  return { rows: mapped, parseWarnings: warnings };
 }
 
 // Detect if CSV is in AEO sources format (Domain, URL, Model, Topic, Prompt, Run Date)

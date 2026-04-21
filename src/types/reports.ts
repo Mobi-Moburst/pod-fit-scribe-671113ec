@@ -1,5 +1,50 @@
 import { MinimalClient } from './clients';
 
+// GEO Podcast match entry (one URL from GEO data that references the podcast)
+export interface GEOPodcastMatchEntry {
+  url: string;
+  domain: string;
+  llm: string;
+  topic: string;
+  prompt: string;
+  match_type: 'apple_id' | 'url_slug' | 'prompt_text';
+}
+
+// A single podcast matched against the GEO/Spotlight dataset
+export interface GEOPodcastMatch {
+  podcast_name: string;
+  apple_podcast_link?: string;
+  confidence: 'high' | 'medium' | 'low';
+  match_reason: string;
+  matched_entries: GEOPodcastMatchEntry[];
+  total_appearances: number;
+}
+
+// Full GEO analysis block stored on ReportData
+export interface GEOAnalysis {
+  total_podcasts_indexed: number; // Total GEO source entries
+  unique_ai_engines: string[];
+  ai_engine_counts: Array<{ engine: string; count: number }>;
+  top_prompts: Array<{ prompt: string; count: number }>;
+  topic_distribution: Array<{ topic: string; count: number }>;
+  geo_score: number; // 0-100 composite score
+  score_breakdown: {
+    ai_coverage: number;    // 0-40 points
+    topic_relevance: number; // 0-30 points
+    prompt_diversity: number; // 0-30 points
+  };
+  podcast_entries: Array<{
+    title: string;
+    uri: string;
+    llm: string;
+    prompt: string;
+    topic: string;
+  }>;
+  // Podcast matching results (populated when Airtable data is present)
+  podcast_matches?: GEOPodcastMatch[];
+  parse_warnings?: string[];
+}
+
 // Target Podcast for next quarter recommendations
 export interface TargetPodcast {
   podcast_name: string;
@@ -192,26 +237,7 @@ export interface ReportData {
   };
   
   // Optional GEO data (Generative Engine Optimization)
-  geo_analysis?: {
-    total_podcasts_indexed: number; // Count of podcasts.apple.com entries
-    unique_ai_engines: string[]; // ["perplexity", "gemini", ...]
-    ai_engine_counts: Array<{ engine: string; count: number }>;
-    top_prompts: Array<{ prompt: string; count: number }>;
-    topic_distribution: Array<{ topic: string; count: number }>;
-    geo_score: number; // 0-100 composite score
-    score_breakdown: {
-      ai_coverage: number; // 0-40 points
-      topic_relevance: number; // 0-30 points  
-      prompt_diversity: number; // 0-30 points
-    };
-    podcast_entries: Array<{
-      title: string;
-      uri: string;
-      llm: string;
-      prompt: string;
-      topic: string;
-    }>;
-  };
+  geo_analysis?: GEOAnalysis;
   
   // Next Quarter Strategy (Looking Ahead)
   next_quarter_strategy?: {
