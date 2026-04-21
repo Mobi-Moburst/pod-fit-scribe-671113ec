@@ -579,7 +579,7 @@ export default function Reports() {
         
         const sovRows = null;
         const geoRows = geoText ? parseGEOCSV(geoText) : [];
-        const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
+        const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText, selectedCompany?.company_url || '') : [];
         
         // Prepare manual SOV data (include episode URLs)
         const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -683,7 +683,7 @@ export default function Reports() {
 
       const sovRows = null;
       const geoRows = geoText ? parseGEOCSV(geoText) : [];
-      const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText) : [];
+      const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText, selectedCompany?.company_url || '') : [];
       
       // Prepare manual SOV data if in manual mode
       const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
