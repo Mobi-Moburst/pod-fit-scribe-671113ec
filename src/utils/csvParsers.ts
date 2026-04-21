@@ -292,8 +292,8 @@ function convertAEOSourcesToContentGap(data: Record<string, string>[], clientDom
   });
   const engines = Array.from(allModels);
   
-  // Normalize client domain for matching
-  const clientDomainNormalized = clientDomain?.toLowerCase().replace(/^www\./, '').replace(/\/$/, '') || '';
+  // Normalize client domain for matching (strip protocol, www, trailing slash)
+  const clientDomainNormalized = clientDomain?.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '') || '';
   
   console.log('[convertAEOSourcesToContentGap] Converting AEO sources:', {
     totalRows: data.length,
