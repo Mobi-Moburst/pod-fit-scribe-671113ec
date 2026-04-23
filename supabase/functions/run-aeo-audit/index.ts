@@ -13,10 +13,12 @@ const corsHeaders = {
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const GEMINI_MODEL = "gemini-2.5-flash";
+const OPENAI_MODEL = "gpt-5-mini";
 
 const CACHE_TTL_DAYS = 7;
 const DEFAULT_PROMPT_CAP = 25;
@@ -207,6 +209,47 @@ async function queryGemini(prompt: string): Promise<ClaudeResult> {
   return { text, citations };
 }
 
+async function queryOpenAI(prompt: string): Promise<ClaudeResult> {
+  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      tools: [{ type: "web_search" }],
+      input: prompt,
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`OpenAI error ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const textParts: string[] = [];
+  const citations: Array<{ url: string; title?: string }> = [];
+
+  for (const item of data.output ?? []) {
+    if (item.type === "message") {
+      for (const c of item.content ?? []) {
+        if (c.type === "output_text") {
+          if (c.text) textParts.push(c.text);
+          for (const ann of c.annotations ?? []) {
+            if (ann.type === "url_citation" && ann.url) {
+              citations.push({ url: ann.url, title: ann.title });
+            }
+          }
+        }
+      }
+    }
+  }
+  if (!textParts.length && typeof data.output_text === "string") {
+    textParts.push(data.output_text);
+  }
+  return { text: textParts.join("\n"), citations };
+}
 function detectPresence(
   result: ClaudeResult,
   clientDomain: string,
@@ -263,7 +306,7 @@ function buildPayloads(input: {
     competitorsPresent: string[];
     citations: Array<{ url: string; title?: string }>;
     enginesMissing?: string[];
-    engineCounts?: { claude: number; gemini: number };
+    engineCounts?: { claude: number; gemini: number; openai: number };
   }>;
   competitors: Array<{ name: string }>;
   enginesUsed: string[];
@@ -324,10 +367,11 @@ function buildPayloads(input: {
   };
 
   // GEO payload — per-engine counts
-  const engineCountTotals = { claude: 0, gemini: 0 };
+  const engineCountTotals = { claude: 0, gemini: 0, openai: 0 };
   for (const r of results) {
     engineCountTotals.claude += r.engineCounts?.claude ?? 0;
     engineCountTotals.gemini += r.engineCounts?.gemini ?? 0;
+    engineCountTotals.openai += r.engineCounts?.openai ?? 0;
   }
   const ai_engine_counts = enginesUsed.map((engine) => ({
     engine,
@@ -412,7 +456,7 @@ Deno.serve(async (req) => {
         .from("aeo_audit_cache")
         .select("prompt, engine, response_text, citations, client_present, competitors_present")
         .eq("company_id", body.company_id)
-        .in("engine", ["claude", "gemini"])
+        .in("engine", ["claude", "gemini", "openai"])
         .gte("created_at", cutoff);
       cached = data ?? [];
     }
@@ -421,12 +465,15 @@ Deno.serve(async (req) => {
     );
 
     const geminiEnabled = !!GEMINI_API_KEY;
-    const enginesUsed = geminiEnabled ? ["claude", "gemini"] : ["claude"];
+    const openaiEnabled = !!OPENAI_API_KEY;
+    const enginesUsed = ["claude"];
+    if (geminiEnabled) enginesUsed.push("gemini");
+    if (openaiEnabled) enginesUsed.push("openai");
 
-    // 3) query Claude (+ Gemini) per prompt with concurrency
+    // 3) query Claude (+ Gemini, + OpenAI) per prompt with concurrency
     const queried = await runWithConcurrency(prompts, CONCURRENCY, async (p) => {
       const runEngine = async (
-        engine: "claude" | "gemini",
+        engine: "claude" | "gemini" | "openai",
       ): Promise<{ clientPresent: boolean; competitorsPresent: string[]; citations: any[] } | null> => {
         const key = `${engine}::${p.prompt}`;
         const hit = cacheMap.get(key);
@@ -440,7 +487,9 @@ Deno.serve(async (req) => {
         try {
           const result = engine === "claude"
             ? await queryClaude(p.prompt, model)
-            : await queryGemini(p.prompt);
+            : engine === "gemini"
+              ? await queryGemini(p.prompt)
+              : await queryOpenAI(p.prompt);
           const { clientPresent, competitorsPresent } = detectPresence(
             result,
             clientDomain,
@@ -467,30 +516,35 @@ Deno.serve(async (req) => {
         }
       };
 
-      const [claudeRes, geminiRes] = await Promise.all([
+      const [claudeRes, geminiRes, openaiRes] = await Promise.all([
         runEngine("claude"),
         geminiEnabled ? runEngine("gemini") : Promise.resolve(null),
+        openaiEnabled ? runEngine("openai") : Promise.resolve(null),
       ]);
 
-      if (!claudeRes && !geminiRes) {
-        return { error: "both engines failed" } as any;
+      if (!claudeRes && !geminiRes && !openaiRes) {
+        return { error: "all engines failed" } as any;
       }
 
-      // Per-engine presence + merged
       const enginesMissing: string[] = [];
       if (claudeRes && !claudeRes.clientPresent) enginesMissing.push("claude");
       if (geminiRes && !geminiRes.clientPresent) enginesMissing.push("gemini");
+      if (openaiRes && !openaiRes.clientPresent) enginesMissing.push("openai");
 
-      const clientPresent = !!(claudeRes?.clientPresent || geminiRes?.clientPresent);
+      const clientPresent = !!(
+        claudeRes?.clientPresent || geminiRes?.clientPresent || openaiRes?.clientPresent
+      );
       const competitorsPresent = Array.from(
         new Set([
           ...(claudeRes?.competitorsPresent ?? []),
           ...(geminiRes?.competitorsPresent ?? []),
+          ...(openaiRes?.competitorsPresent ?? []),
         ]),
       );
       const citations = [
         ...(claudeRes?.citations ?? []),
         ...(geminiRes?.citations ?? []),
+        ...(openaiRes?.citations ?? []),
       ];
 
       return {
@@ -502,6 +556,7 @@ Deno.serve(async (req) => {
         engineCounts: {
           claude: claudeRes ? 1 : 0,
           gemini: geminiRes ? 1 : 0,
+          openai: openaiRes ? 1 : 0,
         },
       };
     });
