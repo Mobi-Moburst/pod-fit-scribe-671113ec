@@ -725,7 +725,8 @@ export default function Reports() {
 
       // Opt-in: kick off AEO audit immediately after generation (background job + poll)
       if (runAEOAfterGenerate && selectedCompany?.id) {
-        toast({ title: "AEO audit starting…", description: "Running ~25 prompts via Claude + Gemini + GPT in the background." });
+        setIsAuditRunning(true);
+        toast({ title: "AEO audit starting…", description: "Running ~25 prompts via Claude + Gemini + GPT in the background. This usually takes 2–4 minutes." });
         const competitorNames = (selectedSpeaker?.competitors as Competitor[] | undefined)?.map(c => c.name) ?? [];
         const { data: { user } } = await supabase.auth.getUser();
         (async () => {
