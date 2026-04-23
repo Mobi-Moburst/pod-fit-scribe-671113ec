@@ -419,9 +419,36 @@ Deno.serve(async (req) => {
     }
 
     const body = (await req.json()) as RunBody;
+
+    // Polling endpoint: GET-style status check via { run_id }
+    if ((body as any).run_id && !body.company_name) {
+      const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+      const { data, error } = await supabase
+        .from("aeo_audit_runs")
+        .select("id, status, error_message, prompts_run, prompts_failed, model, content_gap_analysis, geo_analysis, completed_at, created_at")
+        .eq("id", (body as any).run_id)
+        .maybeSingle();
+      if (error || !data) {
+        return new Response(
+          JSON.stringify({ error: "run not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify(data),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (!body.company_name) {
       return new Response(
         JSON.stringify({ error: "company_name required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (!body.company_id || !body.org_id) {
+      return new Response(
+        JSON.stringify({ error: "company_id and org_id required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -436,177 +463,55 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // 1) generate prompts
-    const prompts = await generatePrompts({
-      company_name: body.company_name,
-      speaker_name: body.speaker_name,
-      topics: body.topics ?? [],
-      competitor_names: competitors.map((c) => c.name),
-      campaign_strategy: body.campaign_strategy,
-      talking_points: body.talking_points,
-      credentials: body.professional_credentials,
-      cap,
-    });
+    // Insert pending run row immediately
+    const { data: runRow, error: runErr } = await supabase
+      .from("aeo_audit_runs")
+      .insert({
+        org_id: body.org_id,
+        company_id: body.company_id,
+        model,
+        prompts_run: 0,
+        prompts_failed: 0,
+        client_domain: clientDomain || null,
+        competitor_names: competitors.map((c) => c.name),
+        topics: body.topics ?? [],
+        triggered_by: body.triggered_by ?? null,
+        status: "pending",
+      })
+      .select("id")
+      .single();
 
-    // 2) cache lookup (per company, 7-day TTL) — load both engines
-    const cutoff = new Date(Date.now() - CACHE_TTL_DAYS * 86400_000).toISOString();
-    let cached: any[] = [];
-    if (body.company_id) {
-      const { data } = await supabase
-        .from("aeo_audit_cache")
-        .select("prompt, engine, response_text, citations, client_present, competitors_present")
-        .eq("company_id", body.company_id)
-        .in("engine", ["claude", "gemini", "openai"])
-        .gte("created_at", cutoff);
-      cached = data ?? [];
+    if (runErr || !runRow) {
+      return new Response(
+        JSON.stringify({ error: `failed to create run: ${runErr?.message ?? "unknown"}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
-    const cacheMap = new Map<string, any>(
-      cached.map((c: any) => [`${c.engine}::${c.prompt}`, c]),
+
+    // Kick off background processing
+    // @ts-ignore - EdgeRuntime is available in Supabase edge runtime
+    EdgeRuntime.waitUntil(
+      processAudit(supabase, runRow.id, body, {
+        cap,
+        model,
+        clientDomain,
+        competitors,
+      }).catch(async (e) => {
+        console.error("[run-aeo-audit] background failure:", e);
+        await supabase
+          .from("aeo_audit_runs")
+          .update({
+            status: "failed",
+            error_message: (e as Error).message?.slice(0, 1000) ?? "unknown error",
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", runRow.id);
+      }),
     );
 
-    const geminiEnabled = !!GEMINI_API_KEY;
-    const openaiEnabled = !!OPENAI_API_KEY;
-    const enginesUsed = ["claude"];
-    if (geminiEnabled) enginesUsed.push("gemini");
-    if (openaiEnabled) enginesUsed.push("openai");
-
-    // 3) query Claude (+ Gemini, + OpenAI) per prompt with concurrency
-    const queried = await runWithConcurrency(prompts, CONCURRENCY, async (p) => {
-      const runEngine = async (
-        engine: "claude" | "gemini" | "openai",
-      ): Promise<{ clientPresent: boolean; competitorsPresent: string[]; citations: any[] } | null> => {
-        const key = `${engine}::${p.prompt}`;
-        const hit = cacheMap.get(key);
-        if (hit) {
-          return {
-            clientPresent: !!hit.client_present,
-            competitorsPresent: hit.competitors_present ?? [],
-            citations: hit.citations ?? [],
-          };
-        }
-        try {
-          const result = engine === "claude"
-            ? await queryClaude(p.prompt, model)
-            : engine === "gemini"
-              ? await queryGemini(p.prompt)
-              : await queryOpenAI(p.prompt);
-          const { clientPresent, competitorsPresent } = detectPresence(
-            result,
-            clientDomain,
-            competitors,
-          );
-          if (body.company_id && body.org_id) {
-            await supabase.from("aeo_audit_cache").insert({
-              org_id: body.org_id,
-              company_id: body.company_id,
-              prompt: p.prompt,
-              engine,
-              topic: p.topic,
-              stage: p.stage,
-              response_text: result.text.slice(0, 8000),
-              citations: result.citations,
-              client_present: clientPresent,
-              competitors_present: competitorsPresent,
-            });
-          }
-          return { clientPresent, competitorsPresent, citations: result.citations };
-        } catch (e) {
-          console.warn(`[run-aeo-audit] ${engine} failed for prompt:`, (e as Error).message);
-          return null;
-        }
-      };
-
-      const [claudeRes, geminiRes, openaiRes] = await Promise.all([
-        runEngine("claude"),
-        geminiEnabled ? runEngine("gemini") : Promise.resolve(null),
-        openaiEnabled ? runEngine("openai") : Promise.resolve(null),
-      ]);
-
-      if (!claudeRes && !geminiRes && !openaiRes) {
-        return { error: "all engines failed" } as any;
-      }
-
-      const enginesMissing: string[] = [];
-      if (claudeRes && !claudeRes.clientPresent) enginesMissing.push("claude");
-      if (geminiRes && !geminiRes.clientPresent) enginesMissing.push("gemini");
-      if (openaiRes && !openaiRes.clientPresent) enginesMissing.push("openai");
-
-      const clientPresent = !!(
-        claudeRes?.clientPresent || geminiRes?.clientPresent || openaiRes?.clientPresent
-      );
-      const competitorsPresent = Array.from(
-        new Set([
-          ...(claudeRes?.competitorsPresent ?? []),
-          ...(geminiRes?.competitorsPresent ?? []),
-          ...(openaiRes?.competitorsPresent ?? []),
-        ]),
-      );
-      const citations = [
-        ...(claudeRes?.citations ?? []),
-        ...(geminiRes?.citations ?? []),
-        ...(openaiRes?.citations ?? []),
-      ];
-
-      return {
-        ...p,
-        clientPresent,
-        competitorsPresent,
-        citations,
-        enginesMissing,
-        engineCounts: {
-          claude: claudeRes ? 1 : 0,
-          gemini: geminiRes ? 1 : 0,
-          openai: openaiRes ? 1 : 0,
-        },
-      };
-    });
-
-    const valid = queried.filter((r: any) => r && !r.error);
-    const payloads = buildPayloads({ results: valid as any, competitors, enginesUsed });
-    const promptsRun = valid.length;
-    const promptsFailed = queried.length - valid.length;
-
-    // 4) Persist permanent run snapshot for run-over-run history
-    if (body.company_id && body.org_id) {
-      const { error: runErr, data: runData } = await supabase
-        .from("aeo_audit_runs")
-        .insert({
-          org_id: body.org_id,
-          company_id: body.company_id,
-          model,
-          prompts_run: promptsRun,
-          prompts_failed: promptsFailed,
-          content_gap_analysis: payloads.content_gap_analysis,
-          geo_analysis: payloads.geo_analysis,
-          client_domain: clientDomain || null,
-          competitor_names: competitors.map((c) => c.name),
-          topics: body.topics ?? [],
-          triggered_by: body.triggered_by ?? null,
-        })
-        .select("id")
-        .single();
-      if (runErr) {
-        console.error("[run-aeo-audit] failed to insert run history:", runErr);
-      } else {
-        console.log("[run-aeo-audit] saved run snapshot:", runData?.id);
-      }
-    } else {
-      console.warn(
-        "[run-aeo-audit] skipped run history — missing company_id/org_id",
-        { company_id: body.company_id, org_id: body.org_id },
-      );
-    }
-
     return new Response(
-      JSON.stringify({
-        ...payloads,
-        prompts_run: promptsRun,
-        prompts_failed: promptsFailed,
-        engines: enginesUsed,
-        model,
-        last_aeo_audit_at: new Date().toISOString(),
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ run_id: runRow.id, status: "pending" }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("[run-aeo-audit] error:", err);
