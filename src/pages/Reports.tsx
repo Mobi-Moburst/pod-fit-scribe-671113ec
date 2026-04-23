@@ -27,6 +27,7 @@ import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
+import { getGEOFraming, getGEOCardSubtitle } from "@/lib/geoFraming";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
 import { PodcastListDialog } from "@/components/reports/PodcastListDialog";
@@ -3086,23 +3087,26 @@ export default function Reports() {
                         onHide={() => toggleSection('sov')}
                       />
                     )}
-                    {visibleSections.geoScore && (
-                      <KPICard
-                        title="GEO Score"
-                        value={reportData.geo_analysis ? `${reportData.geo_analysis.geo_score}/100` : '0/100'}
-                        subtitle={
-                          reportData.geo_analysis 
-                            ? `${reportData.geo_analysis.total_podcasts_indexed} podcasts • ${reportData.geo_analysis.unique_ai_engines.length} AI engines • Click for details`
-                            : reportData.geo_csv_uploaded
-                              ? "No podcast visibility found in AI search"
-                              : "Upload GEO CSV to analyze"
-                        }
-                        icon={Sparkles}
-                        tooltip="Generative Engine Optimization score measuring how often your podcast appearances surface in AI search engines like Perplexity, Gemini, and ChatGPT."
-                        onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
-                        onHide={() => toggleSection('geoScore')}
-                      />
-                    )}
+                    {visibleSections.geoScore && (() => {
+                      const geoFraming = getGEOFraming(reportData.geo_analysis, reportData.client?.name);
+                      return (
+                        <KPICard
+                          title="AI Visibility"
+                          value={geoFraming ? geoFraming.tier.label : '—'}
+                          subtitle={
+                            geoFraming
+                              ? getGEOCardSubtitle(geoFraming)
+                              : reportData.geo_csv_uploaded
+                                ? "No AI visibility detected yet"
+                                : "Run AEO audit to analyze"
+                          }
+                          icon={Sparkles}
+                          tooltip="How AI assistants (Claude, ChatGPT, Gemini) surface your podcast appearances when buyers ask high-intent questions."
+                          onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
+                          onHide={() => toggleSection('geoScore')}
+                        />
+                      );
+                    })()}
                     {visibleSections.contentGap && (
                       <KPICard
                         title="Content Gap"

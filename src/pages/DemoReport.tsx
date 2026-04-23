@@ -23,6 +23,7 @@ import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
+import { getGEOFraming, getGEOCardSubtitle } from "@/lib/geoFraming";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
 import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOverviewEditDialog";
@@ -523,14 +524,18 @@ export default function DemoReport() {
                         onClick={() => setSOVDialogOpen(true)}
                       />
                     )}
-                    {visibleSections.geoScore && reportData.geo_analysis && (
-                      <KPICard
-                        title="GEO Score"
-                        value={`${reportData.geo_analysis.geo_score}/100`}
-                        icon={Search}
-                        onClick={() => setGeoDialogOpen(true)}
-                      />
-                    )}
+                    {visibleSections.geoScore && reportData.geo_analysis && (() => {
+                      const geoFraming = getGEOFraming(reportData.geo_analysis, reportData.client?.name);
+                      return (
+                        <KPICard
+                          title="AI Visibility"
+                          value={geoFraming?.tier.label ?? '—'}
+                          subtitle={getGEOCardSubtitle(geoFraming)}
+                          icon={Search}
+                          onClick={() => setGeoDialogOpen(true)}
+                        />
+                      );
+                    })()}
                     {visibleSections.contentGap && reportData.content_gap_analysis && (
                       <KPICard
                         title="Content Coverage"

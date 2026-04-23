@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { DollarSign, Users, Brain, Target, Sparkles, Share2, TrendingUp, PieChart, AlertTriangle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ReportData } from "@/types/reports";
+import { getGEOFraming, getGEOCardSubtitle } from "@/lib/geoFraming";
 
 interface VisibleSections {
   emv?: boolean;
@@ -125,16 +126,15 @@ export function ClientReportAdditionalMetrics({
   }
 
   if (visibleSections.geoScore) {
+    const geoFraming = getGEOFraming(reportData.geo_analysis, reportData.client?.name);
     metrics.push({
       key: 'geoScore',
       visible: true,
       icon: Sparkles,
-      value: reportData.geo_analysis ? `${reportData.geo_analysis.geo_score}/100` : '0/100',
-      label: "GEO Score",
-      subtitle: reportData.geo_analysis
-        ? `${reportData.geo_analysis.total_podcasts_indexed} podcasts • ${reportData.geo_analysis.unique_ai_engines.length} AI engines • Click for details`
-        : "AI engine indexing",
-      tooltip: "Generative Engine Optimization score measuring how often your podcast appearances surface in AI search engines like Perplexity, Gemini, and ChatGPT.",
+      value: geoFraming ? geoFraming.tier.label : '—',
+      label: "AI Visibility",
+      subtitle: geoFraming ? getGEOCardSubtitle(geoFraming) : "AI assistant visibility",
+      tooltip: "How AI assistants surface your podcast appearances when buyers ask high-intent questions.",
       onClick: reportData.geo_analysis ? onGeoClick : undefined,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
