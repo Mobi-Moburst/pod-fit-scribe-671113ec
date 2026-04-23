@@ -507,7 +507,7 @@ Deno.serve(async (req) => {
     });
 
     const valid = queried.filter((r: any) => r && !r.error);
-    const payloads = buildPayloads({ results: valid as any, competitors });
+    const payloads = buildPayloads({ results: valid as any, competitors, enginesUsed });
     const promptsRun = valid.length;
     const promptsFailed = queried.length - valid.length;
 
