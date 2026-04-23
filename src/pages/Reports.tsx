@@ -3392,6 +3392,7 @@ export default function Reports() {
                 open={contentGapDialogOpen}
                 onOpenChange={setContentGapDialogOpen}
                 gapAnalysis={reportData.content_gap_analysis || null}
+                hasSOVPeers={(reportData.sov_analysis?.competitors?.length ?? 0) > 0}
               />
               
               <SocialValueDialog
