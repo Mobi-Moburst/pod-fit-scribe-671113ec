@@ -3113,6 +3113,7 @@ export default function Reports() {
                     )}
                     {visibleSections.geoScore && (() => {
                       const geoFraming = getGEOFraming(reportData.geo_analysis, reportData.client?.name);
+                      const showLoading = isAuditRunning && !reportData.geo_analysis;
                       return (
                         <KPICard
                           title="AI Visibility"
@@ -3128,6 +3129,8 @@ export default function Reports() {
                           tooltip="How AI assistants (Claude, ChatGPT, Gemini) surface your podcast appearances when buyers ask high-intent questions."
                           onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
                           onHide={() => toggleSection('geoScore')}
+                          isLoading={showLoading}
+                          loadingLabel="Querying Claude, Gemini & GPT…"
                         />
                       );
                     })()}
@@ -3146,6 +3149,8 @@ export default function Reports() {
                         tooltip="Analyzes AI search prompts where competitors appear but you don't, identifying content opportunities to close visibility gaps."
                         onClick={reportData.content_gap_analysis ? () => setContentGapDialogOpen(true) : undefined}
                         onHide={() => toggleSection('contentGap')}
+                        isLoading={isAuditRunning && !reportData.content_gap_analysis}
+                        loadingLabel="Analyzing competitor coverage…"
                       />
                     )}
                     {visibleSections.socialValue && reportData.kpis.total_social_reach > 0 && (
