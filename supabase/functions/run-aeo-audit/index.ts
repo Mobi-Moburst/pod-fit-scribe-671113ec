@@ -1,0 +1,409 @@
+// Native AEO Audit using Anthropic Claude with web_search tool
+// Generates buyer-journey prompts, queries Claude with grounding, and returns
+// payloads matching the existing ContentGapAnalysis + geo_analysis shapes.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const CACHE_TTL_DAYS = 7;
+const DEFAULT_PROMPT_CAP = 25;
+const CONCURRENCY = 3;
+
+interface RunBody {
+  company_id?: string;
+  company_name: string;
+  client_domain?: string;
+  speaker_name?: string;
+  topics?: string[];
+  competitors?: Array<{ name: string; domain?: string } | string>;
+  prompt_cap?: number;
+  model?: string; // e.g. "claude-haiku-4-5" | "claude-sonnet-4-5"
+  org_id?: string;
+}
+
+function normalizeDomain(input: string): string {
+  if (!input) return "";
+  let d = input.trim().toLowerCase();
+  d = d.replace(/^https?:\/\//, "").replace(/^www\./, "");
+  d = d.split("/")[0].split("?")[0];
+  return d.replace(/\/$/, "");
+}
+
+function competitorName(c: any): string {
+  return typeof c === "string" ? c : c?.name ?? "";
+}
+function competitorDomain(c: any): string {
+  if (typeof c === "string") return "";
+  return normalizeDomain(c?.domain ?? "");
+}
+
+async function generatePrompts(input: {
+  company_name: string;
+  speaker_name?: string;
+  topics: string[];
+  cap: number;
+}): Promise<Array<{ prompt: string; topic: string; stage: string }>> {
+  const sys =
+    "You generate realistic buyer-journey search queries that real people would type into AI assistants (ChatGPT, Perplexity, Claude). Return strict JSON only.";
+  const user = `Generate ${input.cap} prompts to audit AI visibility for:
+Company: ${input.company_name}
+${input.speaker_name ? `Key person: ${input.speaker_name}` : ""}
+Topics: ${input.topics.join(", ") || "general industry"}
+
+Distribute across stages:
+- awareness (~40%): broad questions about the topic / category
+- consideration (~40%): comparison, "best", "top experts", "who should I follow"
+- decision (~20%): specific brand/person queries
+
+Return JSON: { "prompts": [ { "prompt": string, "topic": string, "stage": "awareness"|"consideration"|"decision" } ] }`;
+
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: sys },
+        { role: "user", content: user },
+      ],
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Prompt generation failed: ${res.status} ${t}`);
+  }
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content ?? "{}";
+  const parsed = JSON.parse(content);
+  const prompts = (parsed.prompts ?? []).slice(0, input.cap);
+  return prompts.map((p: any) => ({
+    prompt: String(p.prompt ?? "").trim(),
+    topic: String(p.topic ?? "general").trim(),
+    stage: ["awareness", "consideration", "decision"].includes(p.stage)
+      ? p.stage
+      : "awareness",
+  })).filter((p: any) => p.prompt.length > 0);
+}
+
+interface ClaudeResult {
+  text: string;
+  citations: Array<{ url: string; title?: string }>;
+}
+
+async function queryClaude(prompt: string, model: string): Promise<ClaudeResult> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      tools: [
+        { type: "web_search_20250305", name: "web_search", max_uses: 5 },
+      ],
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Claude error ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const data = await res.json();
+
+  const citations: Array<{ url: string; title?: string }> = [];
+  const textParts: string[] = [];
+
+  for (const block of data.content ?? []) {
+    if (block.type === "text") {
+      textParts.push(block.text ?? "");
+      const cits = block.citations ?? [];
+      for (const c of cits) {
+        if (c?.url) citations.push({ url: c.url, title: c.title });
+      }
+    } else if (block.type === "web_search_tool_result") {
+      const content = block.content ?? [];
+      for (const r of content) {
+        if (r?.url) citations.push({ url: r.url, title: r.title });
+      }
+    }
+  }
+
+  return { text: textParts.join("\n"), citations };
+}
+
+function detectPresence(
+  result: ClaudeResult,
+  clientDomain: string,
+  competitors: Array<{ name: string; domain: string }>,
+) {
+  const haystackText = result.text.toLowerCase();
+  const citationDomains = result.citations.map((c) => normalizeDomain(c.url));
+
+  const clientPresent = clientDomain
+    ? citationDomains.some((d) => d === clientDomain || d.endsWith("." + clientDomain))
+    : false;
+
+  const competitorsPresent: string[] = [];
+  for (const c of competitors) {
+    const domainHit = c.domain
+      ? citationDomains.some((d) => d === c.domain || d.endsWith("." + c.domain))
+      : false;
+    const nameHit = c.name && haystackText.includes(c.name.toLowerCase());
+    if (domainHit || nameHit) competitorsPresent.push(c.name);
+  }
+  return { clientPresent, competitorsPresent };
+}
+
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, idx: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const idx = cursor++;
+      if (idx >= items.length) return;
+      // jitter
+      await new Promise((r) => setTimeout(r, 100 + Math.random() * 300));
+      try {
+        results[idx] = await worker(items[idx], idx);
+      } catch (e) {
+        results[idx] = { error: (e as Error).message } as any;
+      }
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
+
+function buildPayloads(input: {
+  results: Array<{
+    prompt: string;
+    topic: string;
+    stage: string;
+    clientPresent: boolean;
+    competitorsPresent: string[];
+    citations: Array<{ url: string; title?: string }>;
+  }>;
+  competitors: Array<{ name: string }>;
+}) {
+  const { results } = input;
+  const total = results.length;
+  const gaps = results.filter((r) => !r.clientPresent);
+  const totalGaps = gaps.length;
+  const coverage = total === 0 ? 0 : ((total - totalGaps) / total) * 100;
+
+  // gaps_by_stage
+  const stageMap = new Map<string, { stage: string; gap_count: number; total: number }>();
+  for (const r of results) {
+    const cur = stageMap.get(r.stage) ?? { stage: r.stage, gap_count: 0, total: 0 };
+    cur.total += 1;
+    if (!r.clientPresent) cur.gap_count += 1;
+    stageMap.set(r.stage, cur);
+  }
+
+  // gaps_by_topic
+  const topicMap = new Map<string, { topic: string; gap_count: number; total: number }>();
+  for (const r of results) {
+    const cur = topicMap.get(r.topic) ?? { topic: r.topic, gap_count: 0, total: 0 };
+    cur.total += 1;
+    if (!r.clientPresent) cur.gap_count += 1;
+    topicMap.set(r.topic, cur);
+  }
+
+  // top_competitors
+  const compCount = new Map<string, number>();
+  for (const r of results) {
+    for (const c of r.competitorsPresent) {
+      compCount.set(c, (compCount.get(c) ?? 0) + 1);
+    }
+  }
+  const topCompetitors = [...compCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({ name, mention_count: count }));
+
+  // priority_prompts: gaps with most competitors present
+  const priorityPrompts = gaps
+    .map((g) => ({
+      prompt: g.prompt,
+      topic: g.topic,
+      stage: g.stage,
+      engines_missing: ["claude"],
+      competitors_present: g.competitorsPresent,
+    }))
+    .sort((a, b) => b.competitors_present.length - a.competitors_present.length)
+    .slice(0, 10);
+
+  const content_gap_analysis = {
+    total_gaps: totalGaps,
+    total_prompts: total,
+    coverage_percentage: Math.round(coverage * 10) / 10,
+    gaps_by_stage: [...stageMap.values()],
+    gaps_by_topic: [...topicMap.values()],
+    top_competitors: topCompetitors,
+    priority_prompts: priorityPrompts,
+  };
+
+  // GEO payload
+  const ai_engine_counts = [{ engine: "claude", count: total }];
+  const top_prompts = results
+    .map((r) => ({ prompt: r.prompt, count: 1 }))
+    .slice(0, 10);
+  const topic_distribution = [...topicMap.values()].map((t) => ({
+    topic: t.topic,
+    count: t.total,
+  }));
+  const ai_coverage = Math.min(40, Math.round((coverage / 100) * 40));
+  const topic_relevance = Math.min(
+    30,
+    Math.round((topic_distribution.length / Math.max(1, total)) * 60),
+  );
+  const prompt_diversity = Math.min(30, Math.round((total / DEFAULT_PROMPT_CAP) * 30));
+
+  const geo_analysis = {
+    total_podcasts_indexed: 0,
+    unique_ai_engines: ["claude"],
+    ai_engine_counts,
+    top_prompts,
+    topic_distribution,
+    geo_score: ai_coverage + topic_relevance + prompt_diversity,
+    score_breakdown: { ai_coverage, topic_relevance, prompt_diversity },
+    podcast_entries: [],
+  };
+
+  return { content_gap_analysis, geo_analysis };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const body = (await req.json()) as RunBody;
+    if (!body.company_name) {
+      return new Response(
+        JSON.stringify({ error: "company_name required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const cap = Math.min(body.prompt_cap ?? DEFAULT_PROMPT_CAP, 50);
+    const model = body.model ?? "claude-haiku-4-5";
+    const clientDomain = normalizeDomain(body.client_domain ?? "");
+    const competitors = (body.competitors ?? []).map((c) => ({
+      name: competitorName(c),
+      domain: competitorDomain(c),
+    })).filter((c) => c.name);
+
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    // 1) generate prompts
+    const prompts = await generatePrompts({
+      company_name: body.company_name,
+      speaker_name: body.speaker_name,
+      topics: body.topics ?? [],
+      cap,
+    });
+
+    // 2) cache lookup (per company, 7-day TTL)
+    const cutoff = new Date(Date.now() - CACHE_TTL_DAYS * 86400_000).toISOString();
+    let cached: any[] = [];
+    if (body.company_id) {
+      const { data } = await supabase
+        .from("aeo_audit_cache")
+        .select("prompt, response_text, citations, client_present, competitors_present")
+        .eq("company_id", body.company_id)
+        .eq("engine", "claude")
+        .gte("created_at", cutoff);
+      cached = data ?? [];
+    }
+    const cacheMap = new Map(cached.map((c: any) => [c.prompt, c]));
+
+    // 3) query Claude with concurrency
+    const queried = await runWithConcurrency(prompts, CONCURRENCY, async (p) => {
+      const hit = cacheMap.get(p.prompt);
+      if (hit) {
+        return {
+          ...p,
+          clientPresent: !!hit.client_present,
+          competitorsPresent: hit.competitors_present ?? [],
+          citations: hit.citations ?? [],
+        };
+      }
+      const result = await queryClaude(p.prompt, model);
+      const { clientPresent, competitorsPresent } = detectPresence(
+        result,
+        clientDomain,
+        competitors,
+      );
+      // persist (best-effort)
+      if (body.company_id && body.org_id) {
+        await supabase.from("aeo_audit_cache").insert({
+          org_id: body.org_id,
+          company_id: body.company_id,
+          prompt: p.prompt,
+          engine: "claude",
+          topic: p.topic,
+          stage: p.stage,
+          response_text: result.text.slice(0, 8000),
+          citations: result.citations,
+          client_present: clientPresent,
+          competitors_present: competitorsPresent,
+        });
+      }
+      return {
+        ...p,
+        clientPresent,
+        competitorsPresent,
+        citations: result.citations,
+      };
+    });
+
+    const valid = queried.filter((r: any) => r && !r.error);
+    const payloads = buildPayloads({ results: valid as any, competitors });
+
+    return new Response(
+      JSON.stringify({
+        ...payloads,
+        prompts_run: valid.length,
+        prompts_failed: queried.length - valid.length,
+        engine: "claude",
+        model,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (err) {
+    console.error("[run-aeo-audit] error:", err);
+    return new Response(
+      JSON.stringify({ error: (err as Error).message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});
