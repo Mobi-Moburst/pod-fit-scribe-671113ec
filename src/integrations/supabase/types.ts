@@ -67,6 +67,54 @@ export type Database = {
           },
         ]
       }
+      aeo_audit_runs: {
+        Row: {
+          client_domain: string | null
+          company_id: string | null
+          competitor_names: string[]
+          content_gap_analysis: Json | null
+          created_at: string
+          geo_analysis: Json | null
+          id: string
+          model: string
+          org_id: string
+          prompts_failed: number
+          prompts_run: number
+          topics: string[]
+          triggered_by: string | null
+        }
+        Insert: {
+          client_domain?: string | null
+          company_id?: string | null
+          competitor_names?: string[]
+          content_gap_analysis?: Json | null
+          created_at?: string
+          geo_analysis?: Json | null
+          id?: string
+          model: string
+          org_id: string
+          prompts_failed?: number
+          prompts_run?: number
+          topics?: string[]
+          triggered_by?: string | null
+        }
+        Update: {
+          client_domain?: string | null
+          company_id?: string | null
+          competitor_names?: string[]
+          content_gap_analysis?: Json | null
+          created_at?: string
+          geo_analysis?: Json | null
+          id?: string
+          model?: string
+          org_id?: string
+          prompts_failed?: number
+          prompts_run?: number
+          topics?: string[]
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       airtable_connections: {
         Row: {
           base_id: string
