@@ -409,21 +409,48 @@ function buildPayloads(input: {
 // Each prompt = up to 3 LLM calls (Claude+Gemini+OpenAI), so keep this small.
 const CHUNK_SIZE = 3;
 
+function scheduleBackgroundWork(work: Promise<unknown>) {
+  const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime;
+  if (edgeRuntime?.waitUntil) {
+    edgeRuntime.waitUntil(work);
+    return;
+  }
+
+  work.catch((error) => {
+    console.error("[run-aeo-audit] unscheduled background work failed:", error);
+  });
+}
+
 async function selfInvoke(payload: Record<string, unknown>) {
-  // Fire-and-forget self call. We do NOT await the response so the caller can return immediately.
-  // The next chunk runs in a fresh worker with a fresh CPU/wall-time budget.
-  try {
-    fetch(`${SUPABASE_URL}/functions/v1/run-aeo-audit`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
-        "apikey": SERVICE_ROLE_KEY,
-      },
-      body: JSON.stringify(payload),
-    }).catch((e) => console.error("[run-aeo-audit] selfInvoke fetch err:", e));
-  } catch (e) {
-    console.error("[run-aeo-audit] selfInvoke threw:", e);
+  const phase = String(payload.phase ?? "unknown");
+  const runId = String(payload.run_id ?? "unknown");
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/run-aeo-audit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+          "apikey": SERVICE_ROLE_KEY,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`selfInvoke ${phase} ${response.status}: ${body.slice(0, 300)}`);
+      }
+
+      console.log(`[run-aeo-audit] ${runId} queued ${phase} (attempt ${attempt})`);
+      return;
+    } catch (error) {
+      console.error(`[run-aeo-audit] ${runId} failed to queue ${phase} on attempt ${attempt}:`, error);
+      if (attempt === 3) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+    }
   }
 }
 
@@ -694,10 +721,8 @@ Deno.serve(async (req) => {
   // Internal phases: prepare / chunk / finalize. These run in fresh workers.
   const phase = body.phase as string | undefined;
   if (phase && body.run_id) {
-    // Respond to the caller IMMEDIATELY so the worker isn't held open by HTTP.
-    // The actual work runs after the response is sent via a microtask.
     const runId = body.run_id as string;
-    const work = async () => {
+    scheduleBackgroundWork((async () => {
       try {
         if (phase === "prepare") await handlePrepare(supabase, runId);
         else if (phase === "chunk") await handleChunk(supabase, runId);
@@ -707,13 +732,11 @@ Deno.serve(async (req) => {
         console.error(`[run-aeo-audit] phase ${phase} failed for ${runId}:`, e);
         await markFailed(supabase, runId, (e as Error).message ?? "unknown error");
       }
-    };
-    // Fire work synchronously; we'll await it before returning so the worker stays alive
-    // for the duration of THIS chunk only. Each chunk is small (CHUNK_SIZE prompts).
-    await work();
+    })());
+
     return new Response(
-      JSON.stringify({ ok: true, phase }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ ok: true, phase, run_id: runId }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 
@@ -798,8 +821,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Trigger prepare phase via self-invocation (returns immediately).
-    selfInvoke({ phase: "prepare", run_id: runRow.id });
+    scheduleBackgroundWork((async () => {
+      try {
+        await handlePrepare(supabase, runRow.id);
+      } catch (error) {
+        console.error(`[run-aeo-audit] initial prepare failed for ${runRow.id}:`, error);
+        await markFailed(supabase, runRow.id, (error as Error).message ?? "unknown error");
+      }
+    })());
 
     return new Response(
       JSON.stringify({ run_id: runRow.id, status: "pending" }),
