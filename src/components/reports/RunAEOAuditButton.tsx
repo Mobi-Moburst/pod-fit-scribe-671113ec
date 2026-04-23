@@ -54,6 +54,8 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline", lab
     }
     runAudit(model);
   };
+
+  const runAudit = async (model: string) => {
     if (!report) return;
     const reportData = report.report_data as ReportData;
 
