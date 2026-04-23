@@ -146,33 +146,77 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline", lab
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant={variant === "compact" ? "outline" : variant}
-          size={variant === "compact" ? "sm" : "default"}
-          disabled={isRunning}
-        >
-          {isRunning ? (
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-          ) : (
-            <Sparkles className="h-3 w-3 mr-1" />
-          )}
-          {isRunning ? "Running audit…" : (label ?? "Run AEO Audit")}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Choose Claude model</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {MODELS.map((m) => (
-          <DropdownMenuItem key={m.id} onClick={() => runAudit(m.id)}>
-            {m.label}
-            {m.recommended && (
-              <span className="ml-auto text-xs text-muted-foreground">default</span>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant={variant === "compact" ? "outline" : variant}
+            size={variant === "compact" ? "sm" : "default"}
+            disabled={isRunning}
+          >
+            {isRunning ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Sparkles className="h-3 w-3 mr-1" />
             )}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            {isRunning ? "Running audit…" : (label ?? "Run AEO Audit")}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel>Choose Claude model</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {MODELS.map((m) => (
+            <DropdownMenuItem key={m.id} onClick={() => handleSelectModel(m.id)}>
+              {m.label}
+              {m.recommended && (
+                <span className="ml-auto text-xs text-muted-foreground">default</span>
+              )}
+            </DropdownMenuItem>
+          ))}
+          {competitorCount === 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1.5 text-xs text-muted-foreground flex items-start gap-1.5">
+                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
+                <span>No SOV peers configured — competitor analysis will be limited.</span>
+              </div>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={!!pendingModel} onOpenChange={(o) => !o && setPendingModel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              No competitors configured
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                This report has no Share-of-Voice peers set. Without competitors, the audit
+                can still measure your AI visibility, but it won't be able to surface where
+                rivals out-rank you or identify head-to-head positioning gaps.
+              </span>
+              <span className="block">
+                For richer intelligence, add 4–6 peers in the Peer Comparison section first.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const m = pendingModel;
+                setPendingModel(null);
+                if (m) runAudit(m);
+              }}
+            >
+              Run anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
