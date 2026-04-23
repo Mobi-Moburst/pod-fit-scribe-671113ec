@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, FileText, Check, RefreshCw, Upload, ChevronDown, ChevronRight, User, Link2 } from "lucide-react";
+import { Loader2, FileText, Check, RefreshCw, Upload, ChevronDown, ChevronRight, User, Link2, Sparkles } from "lucide-react";
 import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { mergeUpdatedReportData } from "@/utils/reportGenerator";
 import { ReportData, SpeakerBreakdown } from "@/types/reports";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AirtableSyncButton } from "@/components/airtable/AirtableSyncButton";
 import { AirtableCSVRow } from "@/hooks/use-airtable-connection";
+import { RunAEOAuditButton } from "@/components/reports/RunAEOAuditButton";
 
 // Helper to read File as text
 const readFileAsText = (file: File): Promise<string> => {
@@ -474,6 +475,44 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
                 onFileChange={(file) => handleOptionalFileChange(config.type, file)}
               />
             ))}
+          </div>
+
+          {/* Native AEO Audit (replaces GEO + Content Gap CSV) */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-muted-foreground">Native AEO Audit</h4>
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Run live AEO audit (Claude)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Queries Claude with web search across ~25 buyer-journey prompts. Replaces the GEO + Content Gap CSVs.
+                  </p>
+                </div>
+              </div>
+              <RunAEOAuditButton
+                report={report}
+                variant="compact"
+                onComplete={async ({ content_gap_analysis, geo_analysis }) => {
+                  const updated = {
+                    ...(report.report_data as ReportData),
+                    content_gap_analysis,
+                    geo_analysis,
+                    geo_csv_uploaded: true,
+                    content_gap_csv_uploaded: true,
+                  };
+                  const { error } = await supabase
+                    .from('reports')
+                    .update({
+                      report_data: updated as any,
+                      generated_at: new Date().toISOString(),
+                    })
+                    .eq('id', report.id);
+                  if (error) throw error;
+                  onUpdated();
+                }}
+              />
+            </div>
           </div>
         </div>
 
