@@ -367,10 +367,11 @@ function buildPayloads(input: {
   };
 
   // GEO payload — per-engine counts
-  const engineCountTotals = { claude: 0, gemini: 0 };
+  const engineCountTotals = { claude: 0, gemini: 0, openai: 0 };
   for (const r of results) {
     engineCountTotals.claude += r.engineCounts?.claude ?? 0;
     engineCountTotals.gemini += r.engineCounts?.gemini ?? 0;
+    engineCountTotals.openai += r.engineCounts?.openai ?? 0;
   }
   const ai_engine_counts = enginesUsed.map((engine) => ({
     engine,
