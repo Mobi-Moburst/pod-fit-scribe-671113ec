@@ -262,16 +262,18 @@ function buildPayloads(input: {
     clientPresent: boolean;
     competitorsPresent: string[];
     citations: Array<{ url: string; title?: string }>;
+    enginesMissing?: string[];
+    engineCounts?: { claude: number; gemini: number };
   }>;
   competitors: Array<{ name: string }>;
+  enginesUsed: string[];
 }) {
-  const { results } = input;
+  const { results, enginesUsed } = input;
   const total = results.length;
   const gaps = results.filter((r) => !r.clientPresent);
   const totalGaps = gaps.length;
   const coverage = total === 0 ? 0 : ((total - totalGaps) / total) * 100;
 
-  // gaps_by_stage
   const stageMap = new Map<string, { stage: string; gap_count: number; total: number }>();
   for (const r of results) {
     const cur = stageMap.get(r.stage) ?? { stage: r.stage, gap_count: 0, total: 0 };
@@ -280,7 +282,6 @@ function buildPayloads(input: {
     stageMap.set(r.stage, cur);
   }
 
-  // gaps_by_topic
   const topicMap = new Map<string, { topic: string; gap_count: number; total: number }>();
   for (const r of results) {
     const cur = topicMap.get(r.topic) ?? { topic: r.topic, gap_count: 0, total: 0 };
@@ -289,7 +290,6 @@ function buildPayloads(input: {
     topicMap.set(r.topic, cur);
   }
 
-  // top_competitors
   const compCount = new Map<string, number>();
   for (const r of results) {
     for (const c of r.competitorsPresent) {
@@ -300,13 +300,14 @@ function buildPayloads(input: {
     .sort((a, b) => b[1] - a[1])
     .map(([name, count]) => ({ name, mention_count: count }));
 
-  // priority_prompts: gaps with most competitors present
   const priorityPrompts = gaps
     .map((g) => ({
       prompt: g.prompt,
       topic: g.topic,
       stage: g.stage,
-      engines_missing: ["claude"],
+      engines_missing: g.enginesMissing && g.enginesMissing.length > 0
+        ? g.enginesMissing
+        : enginesUsed,
       competitors_present: g.competitorsPresent,
     }))
     .sort((a, b) => b.competitors_present.length - a.competitors_present.length)
@@ -322,8 +323,16 @@ function buildPayloads(input: {
     priority_prompts: priorityPrompts,
   };
 
-  // GEO payload
-  const ai_engine_counts = [{ engine: "claude", count: total }];
+  // GEO payload — per-engine counts
+  const engineCountTotals = { claude: 0, gemini: 0 };
+  for (const r of results) {
+    engineCountTotals.claude += r.engineCounts?.claude ?? 0;
+    engineCountTotals.gemini += r.engineCounts?.gemini ?? 0;
+  }
+  const ai_engine_counts = enginesUsed.map((engine) => ({
+    engine,
+    count: (engineCountTotals as any)[engine] ?? 0,
+  }));
   const top_prompts = results
     .map((r) => ({ prompt: r.prompt, count: 1 }))
     .slice(0, 10);
@@ -340,7 +349,7 @@ function buildPayloads(input: {
 
   const geo_analysis = {
     total_podcasts_indexed: 0,
-    unique_ai_engines: ["claude"],
+    unique_ai_engines: enginesUsed,
     ai_engine_counts,
     top_prompts,
     topic_distribution,
