@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      aeo_audit_cache: {
+        Row: {
+          citations: Json
+          client_present: boolean
+          company_id: string | null
+          competitors_present: string[]
+          created_at: string
+          engine: string
+          id: string
+          org_id: string
+          prompt: string
+          response_text: string | null
+          stage: string | null
+          topic: string | null
+        }
+        Insert: {
+          citations?: Json
+          client_present?: boolean
+          company_id?: string | null
+          competitors_present?: string[]
+          created_at?: string
+          engine?: string
+          id?: string
+          org_id: string
+          prompt: string
+          response_text?: string | null
+          stage?: string | null
+          topic?: string | null
+        }
+        Update: {
+          citations?: Json
+          client_present?: boolean
+          company_id?: string | null
+          competitors_present?: string[]
+          created_at?: string
+          engine?: string
+          id?: string
+          org_id?: string
+          prompt?: string
+          response_text?: string | null
+          stage?: string | null
+          topic?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aeo_audit_cache_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       airtable_connections: {
         Row: {
           base_id: string
