@@ -423,20 +423,33 @@ Deno.serve(async (req) => {
 
     // 4) Persist permanent run snapshot for run-over-run history
     if (body.company_id && body.org_id) {
-      const { error: runErr } = await supabase.from("aeo_audit_runs").insert({
-        org_id: body.org_id,
-        company_id: body.company_id,
-        model,
-        prompts_run: promptsRun,
-        prompts_failed: promptsFailed,
-        content_gap_analysis: payloads.content_gap_analysis,
-        geo_analysis: payloads.geo_analysis,
-        client_domain: clientDomain || null,
-        competitor_names: competitors.map((c) => c.name),
-        topics: body.topics ?? [],
-        triggered_by: body.triggered_by ?? null,
-      });
-      if (runErr) console.error("[run-aeo-audit] failed to insert run history:", runErr);
+      const { error: runErr, data: runData } = await supabase
+        .from("aeo_audit_runs")
+        .insert({
+          org_id: body.org_id,
+          company_id: body.company_id,
+          model,
+          prompts_run: promptsRun,
+          prompts_failed: promptsFailed,
+          content_gap_analysis: payloads.content_gap_analysis,
+          geo_analysis: payloads.geo_analysis,
+          client_domain: clientDomain || null,
+          competitor_names: competitors.map((c) => c.name),
+          topics: body.topics ?? [],
+          triggered_by: body.triggered_by ?? null,
+        })
+        .select("id")
+        .single();
+      if (runErr) {
+        console.error("[run-aeo-audit] failed to insert run history:", runErr);
+      } else {
+        console.log("[run-aeo-audit] saved run snapshot:", runData?.id);
+      }
+    } else {
+      console.warn(
+        "[run-aeo-audit] skipped run history — missing company_id/org_id",
+        { company_id: body.company_id, org_id: body.org_id },
+      );
     }
 
     return new Response(
