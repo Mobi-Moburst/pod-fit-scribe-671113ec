@@ -777,6 +777,8 @@ export default function Reports() {
             throw new Error("Audit timed out");
           } catch (e: any) {
             toast({ title: "AEO audit failed", description: e?.message ?? "Unknown error", variant: "destructive" });
+          } finally {
+            setIsAuditRunning(false);
           }
         })();
       }
