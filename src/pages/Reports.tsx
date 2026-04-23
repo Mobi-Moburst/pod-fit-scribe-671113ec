@@ -16,7 +16,7 @@ import type { Company, Speaker, MinimalClient, Competitor } from "@/types/client
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints, generatePodcastCategories, scoreAirtablePodcasts } from "@/utils/reportGenerator";
-import { parseBatchCSV, parseAirtableCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
+import { parseBatchCSV, parseAirtableCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
@@ -47,6 +47,7 @@ import ClientReportHighlights from "@/components/client-report/ClientReportHighl
 import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOverviewEditDialog";
 import { NextQuarterEditDialog } from "@/components/reports/NextQuarterEditDialog";
 import { UpdateCSVDialog } from "@/components/reports/UpdateCSVDialog";
+import { RunAEOAuditButton } from "@/components/reports/RunAEOAuditButton";
 import { AirtableDataPreview } from "@/components/reports/AirtableDataPreview";
 import { ReportPasswordDialog } from "@/components/reports/ReportPasswordDialog";
 
@@ -79,9 +80,10 @@ export default function Reports() {
   
   // Company-level file uploads (shared for multi-speaker)
   const [sovFile, setSOVFile] = useState<File | null>(null); // kept for backward compat, always null
-  const [geoFile, setGeoFile] = useState<File | null>(null);
-  const [contentGapFile, setContentGapFile] = useState<File | null>(null);
   const [rephonicEmvFile, setRephonicEmvFile] = useState<File | null>(null);
+
+  // Opt-in: run AEO audit immediately after report is generated (Haiku, ~$2)
+  const [runAEOAfterGenerate, setRunAEOAfterGenerate] = useState<boolean>(false);
   
   // Manual SOV inputs
   const [manualSOVMode, setManualSOVMode] = useState(false);
@@ -565,21 +567,19 @@ export default function Reports() {
           });
         }
         
-        // Parse company-level CSVs
+        // Parse company-level CSVs (GEO + Content Gap CSVs removed — use Run AEO Audit instead)
         const sovText: string | null = null;
-        const geoText = geoFile ? await geoFile.text() : null;
-        const contentGapText = contentGapFile ? await contentGapFile.text() : null;
-        
+
         // Parse Rephonic CSV from per-speaker batchFile uploads
         let rephonicRows: ReturnType<typeof parseRephonicCSV> | undefined;
         const firstSpeakerFiles = speakerFiles[selectedSpeakerIds[0]];
         if (firstSpeakerFiles?.batchFile) {
           rephonicRows = parseRephonicCSV(await firstSpeakerFiles.batchFile.text());
         }
-        
+
         const sovRows = null;
-        const geoRows = geoText ? parseGEOCSV(geoText) : [];
-        const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText, selectedCompany?.company_url || '') : [];
+        const geoRows: any[] = [];
+        const contentGapRows: any[] = [];
         
         // Prepare manual SOV data (include episode URLs)
         const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -599,8 +599,8 @@ export default function Reports() {
           manualSOVCompetitors,
           cpmRate,
           rephonicRows,
-          !!geoFile, // geoCsvProvided
-          !!contentGapFile, // contentGapCsvProvided
+          false, // geoCsvProvided — removed from UI
+          false, // contentGapCsvProvided — removed from UI
           speakingTimePct / 100, // Convert percentage to decimal
           // Merge quarterly notes from all selected speakers
           selectedSpeakerIds.flatMap(id => {
@@ -651,11 +651,9 @@ export default function Reports() {
     setIsProcessing(true);
     
     try {
-      // Read CSV files
+      // Read CSV files (GEO + Content Gap CSVs removed — use Run AEO Audit instead)
       const sovText: string | null = null;
-      const geoText = geoFile ? await geoFile.text() : null;
-      const contentGapText = contentGapFile ? await contentGapFile.text() : null;
-      
+
       // Parse Airtable data - use synced data first, fall back to file
       let airtableRows: any[];
       if (airtableSyncedData && airtableSyncedData.length > 0) {
@@ -682,8 +680,8 @@ export default function Reports() {
         }));
 
       const sovRows = null;
-      const geoRows = geoText ? parseGEOCSV(geoText) : [];
-      const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText, selectedCompany?.company_url || '') : [];
+      const geoRows: any[] = [];
+      const contentGapRows: any[] = [];
       
       // Prepare manual SOV data if in manual mode
       const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -705,8 +703,8 @@ export default function Reports() {
         manualSOVCompetitors,
         cpmRate,
         rephonicRows,
-        !!geoFile, // geoCsvProvided
-        !!contentGapFile, // contentGapCsvProvided
+        false, // geoCsvProvided — removed from UI
+        false, // contentGapCsvProvided — removed from UI
         speakingTimePct / 100, // Convert percentage to decimal
         (selectedSpeaker?.quarterly_notes as Array<{ quarter: string; notes: string }>) || undefined
       );
