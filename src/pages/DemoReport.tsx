@@ -523,14 +523,18 @@ export default function DemoReport() {
                         onClick={() => setSOVDialogOpen(true)}
                       />
                     )}
-                    {visibleSections.geoScore && reportData.geo_analysis && (
-                      <KPICard
-                        title="GEO Score"
-                        value={`${reportData.geo_analysis.geo_score}/100`}
-                        icon={Search}
-                        onClick={() => setGeoDialogOpen(true)}
-                      />
-                    )}
+                    {visibleSections.geoScore && reportData.geo_analysis && (() => {
+                      const geoFraming = getGEOFraming(reportData.geo_analysis, reportData.client?.name);
+                      return (
+                        <KPICard
+                          title="AI Visibility"
+                          value={geoFraming?.tier.label ?? '—'}
+                          subtitle={getGEOCardSubtitle(geoFraming)}
+                          icon={Search}
+                          onClick={() => setGeoDialogOpen(true)}
+                        />
+                      );
+                    })()}
                     {visibleSections.contentGap && reportData.content_gap_analysis && (
                       <KPICard
                         title="Content Coverage"
