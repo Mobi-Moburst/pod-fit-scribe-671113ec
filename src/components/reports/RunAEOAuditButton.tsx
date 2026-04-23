@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +9,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ReportData } from "@/types/reports";
@@ -32,8 +42,18 @@ const MODELS = [
 export function RunAEOAuditButton({ report, onComplete, variant = "outline", label }: RunAEOAuditButtonProps) {
   const { toast } = useToast();
   const [isRunning, setIsRunning] = useState(false);
+  const [pendingModel, setPendingModel] = useState<string | null>(null);
 
-  const runAudit = async (model: string) => {
+  const competitorCount = (report?.report_data as ReportData | undefined)
+    ?.sov_analysis?.competitors?.length ?? 0;
+
+  const handleSelectModel = (model: string) => {
+    if (competitorCount === 0) {
+      setPendingModel(model);
+      return;
+    }
+    runAudit(model);
+  };
     if (!report) return;
     const reportData = report.report_data as ReportData;
 
