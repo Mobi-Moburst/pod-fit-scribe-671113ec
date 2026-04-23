@@ -547,7 +547,7 @@ Deno.serve(async (req) => {
         ...payloads,
         prompts_run: promptsRun,
         prompts_failed: promptsFailed,
-        engine: "claude",
+        engines: enginesUsed,
         model,
         last_aeo_audit_at: new Date().toISOString(),
       }),
