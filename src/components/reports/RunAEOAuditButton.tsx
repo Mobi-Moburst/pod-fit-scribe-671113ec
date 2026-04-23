@@ -120,20 +120,44 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline", lab
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (!data?.run_id) throw new Error("No run_id returned");
+
+      // Poll for completion (max ~6 minutes)
+      const runId = data.run_id;
+      const maxAttempts = 90; // 90 × 4s = 360s
+      let attempt = 0;
+      let final: any = null;
+      while (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 4000));
+        attempt++;
+        const { data: poll, error: pollErr } = await supabase.functions.invoke(
+          "run-aeo-audit",
+          { body: { run_id: runId } },
+        );
+        if (pollErr) {
+          console.warn("[run-aeo-audit] poll error:", pollErr);
+          continue;
+        }
+        if (poll?.status === "completed") {
+          final = poll;
+          break;
+        }
+        if (poll?.status === "failed") {
+          throw new Error(poll.error_message || "Audit failed");
+        }
+      }
+      if (!final) throw new Error("Audit timed out");
 
       await onComplete({
-        content_gap_analysis: data.content_gap_analysis,
-        geo_analysis: data.geo_analysis,
-        last_aeo_audit_at: data.last_aeo_audit_at,
+        content_gap_analysis: final.content_gap_analysis,
+        geo_analysis: final.geo_analysis,
+        last_aeo_audit_at: final.completed_at ?? new Date().toISOString(),
       });
 
-      const enginesLabel = Array.isArray(data.engines)
-        ? data.engines.join(" + ")
-        : "claude";
       toast({
         title: "AEO audit complete",
-        description: `Ran ${data.prompts_run} prompts via ${enginesLabel}${
-          data.prompts_failed ? ` (${data.prompts_failed} failed)` : ""
+        description: `Ran ${final.prompts_run} prompts${
+          final.prompts_failed ? ` (${final.prompts_failed} failed)` : ""
         }.`,
       });
     } catch (err) {

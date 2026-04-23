@@ -72,14 +72,17 @@ export type Database = {
           client_domain: string | null
           company_id: string | null
           competitor_names: string[]
+          completed_at: string | null
           content_gap_analysis: Json | null
           created_at: string
+          error_message: string | null
           geo_analysis: Json | null
           id: string
           model: string
           org_id: string
           prompts_failed: number
           prompts_run: number
+          status: string
           topics: string[]
           triggered_by: string | null
         }
@@ -87,14 +90,17 @@ export type Database = {
           client_domain?: string | null
           company_id?: string | null
           competitor_names?: string[]
+          completed_at?: string | null
           content_gap_analysis?: Json | null
           created_at?: string
+          error_message?: string | null
           geo_analysis?: Json | null
           id?: string
           model: string
           org_id: string
           prompts_failed?: number
           prompts_run?: number
+          status?: string
           topics?: string[]
           triggered_by?: string | null
         }
@@ -102,14 +108,17 @@ export type Database = {
           client_domain?: string | null
           company_id?: string | null
           competitor_names?: string[]
+          completed_at?: string | null
           content_gap_analysis?: Json | null
           created_at?: string
+          error_message?: string | null
           geo_analysis?: Json | null
           id?: string
           model?: string
           org_id?: string
           prompts_failed?: number
           prompts_run?: number
+          status?: string
           topics?: string[]
           triggered_by?: string | null
         }
