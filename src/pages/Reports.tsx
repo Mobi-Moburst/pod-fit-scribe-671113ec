@@ -115,6 +115,7 @@ export default function Reports() {
   const [dataSourcesOpen, setDataSourcesOpen] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAuditRunning, setIsAuditRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
   const [reachDialogOpen, setReachDialogOpen] = useState(false);
