@@ -800,6 +800,7 @@ export default function DemoReport() {
         open={contentGapDialogOpen}
         onOpenChange={setContentGapDialogOpen}
         gapAnalysis={reportData.content_gap_analysis}
+        hasSOVPeers={(reportData.sov_analysis?.competitors?.length ?? 0) > 0}
       />
       <SocialValueDialog
         open={socialValueDialogOpen}
