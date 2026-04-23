@@ -127,9 +127,12 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline", lab
         last_aeo_audit_at: data.last_aeo_audit_at,
       });
 
+      const enginesLabel = Array.isArray(data.engines)
+        ? data.engines.join(" + ")
+        : "claude";
       toast({
         title: "AEO audit complete",
-        description: `Ran ${data.prompts_run} prompts via Claude${
+        description: `Ran ${data.prompts_run} prompts via ${enginesLabel}${
           data.prompts_failed ? ` (${data.prompts_failed} failed)` : ""
         }.`,
       });

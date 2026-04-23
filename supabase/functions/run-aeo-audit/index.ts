@@ -12,8 +12,11 @@ const corsHeaders = {
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 const CACHE_TTL_DAYS = 7;
 const DEFAULT_PROMPT_CAP = 25;
@@ -174,6 +177,36 @@ async function queryClaude(prompt: string, model: string): Promise<ClaudeResult>
   return { text: textParts.join("\n"), citations };
 }
 
+async function queryGemini(prompt: string): Promise<ClaudeResult> {
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      tools: [{ google_search: {} }],
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Gemini error ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const cand = data.candidates?.[0];
+  const text = (cand?.content?.parts ?? [])
+    .map((p: any) => p?.text ?? "")
+    .filter(Boolean)
+    .join("\n");
+  const citations: Array<{ url: string; title?: string }> = [];
+  const chunks = cand?.groundingMetadata?.groundingChunks ?? [];
+  for (const ch of chunks) {
+    const w = ch?.web;
+    if (w?.uri) citations.push({ url: w.uri, title: w.title });
+  }
+  return { text, citations };
+}
+
 function detectPresence(
   result: ClaudeResult,
   clientDomain: string,
@@ -229,16 +262,18 @@ function buildPayloads(input: {
     clientPresent: boolean;
     competitorsPresent: string[];
     citations: Array<{ url: string; title?: string }>;
+    enginesMissing?: string[];
+    engineCounts?: { claude: number; gemini: number };
   }>;
   competitors: Array<{ name: string }>;
+  enginesUsed: string[];
 }) {
-  const { results } = input;
+  const { results, enginesUsed } = input;
   const total = results.length;
   const gaps = results.filter((r) => !r.clientPresent);
   const totalGaps = gaps.length;
   const coverage = total === 0 ? 0 : ((total - totalGaps) / total) * 100;
 
-  // gaps_by_stage
   const stageMap = new Map<string, { stage: string; gap_count: number; total: number }>();
   for (const r of results) {
     const cur = stageMap.get(r.stage) ?? { stage: r.stage, gap_count: 0, total: 0 };
@@ -247,7 +282,6 @@ function buildPayloads(input: {
     stageMap.set(r.stage, cur);
   }
 
-  // gaps_by_topic
   const topicMap = new Map<string, { topic: string; gap_count: number; total: number }>();
   for (const r of results) {
     const cur = topicMap.get(r.topic) ?? { topic: r.topic, gap_count: 0, total: 0 };
@@ -256,7 +290,6 @@ function buildPayloads(input: {
     topicMap.set(r.topic, cur);
   }
 
-  // top_competitors
   const compCount = new Map<string, number>();
   for (const r of results) {
     for (const c of r.competitorsPresent) {
@@ -267,13 +300,14 @@ function buildPayloads(input: {
     .sort((a, b) => b[1] - a[1])
     .map(([name, count]) => ({ name, mention_count: count }));
 
-  // priority_prompts: gaps with most competitors present
   const priorityPrompts = gaps
     .map((g) => ({
       prompt: g.prompt,
       topic: g.topic,
       stage: g.stage,
-      engines_missing: ["claude"],
+      engines_missing: g.enginesMissing && g.enginesMissing.length > 0
+        ? g.enginesMissing
+        : enginesUsed,
       competitors_present: g.competitorsPresent,
     }))
     .sort((a, b) => b.competitors_present.length - a.competitors_present.length)
@@ -289,8 +323,16 @@ function buildPayloads(input: {
     priority_prompts: priorityPrompts,
   };
 
-  // GEO payload
-  const ai_engine_counts = [{ engine: "claude", count: total }];
+  // GEO payload — per-engine counts
+  const engineCountTotals = { claude: 0, gemini: 0 };
+  for (const r of results) {
+    engineCountTotals.claude += r.engineCounts?.claude ?? 0;
+    engineCountTotals.gemini += r.engineCounts?.gemini ?? 0;
+  }
+  const ai_engine_counts = enginesUsed.map((engine) => ({
+    engine,
+    count: (engineCountTotals as any)[engine] ?? 0,
+  }));
   const top_prompts = results
     .map((r) => ({ prompt: r.prompt, count: 1 }))
     .slice(0, 10);
@@ -307,7 +349,7 @@ function buildPayloads(input: {
 
   const geo_analysis = {
     total_podcasts_indexed: 0,
-    unique_ai_engines: ["claude"],
+    unique_ai_engines: enginesUsed,
     ai_engine_counts,
     top_prompts,
     topic_distribution,
@@ -362,62 +404,110 @@ Deno.serve(async (req) => {
       cap,
     });
 
-    // 2) cache lookup (per company, 7-day TTL)
+    // 2) cache lookup (per company, 7-day TTL) — load both engines
     const cutoff = new Date(Date.now() - CACHE_TTL_DAYS * 86400_000).toISOString();
     let cached: any[] = [];
     if (body.company_id) {
       const { data } = await supabase
         .from("aeo_audit_cache")
-        .select("prompt, response_text, citations, client_present, competitors_present")
+        .select("prompt, engine, response_text, citations, client_present, competitors_present")
         .eq("company_id", body.company_id)
-        .eq("engine", "claude")
+        .in("engine", ["claude", "gemini"])
         .gte("created_at", cutoff);
       cached = data ?? [];
     }
-    const cacheMap = new Map(cached.map((c: any) => [c.prompt, c]));
+    const cacheMap = new Map<string, any>(
+      cached.map((c: any) => [`${c.engine}::${c.prompt}`, c]),
+    );
 
-    // 3) query Claude with concurrency
+    const geminiEnabled = !!GEMINI_API_KEY;
+    const enginesUsed = geminiEnabled ? ["claude", "gemini"] : ["claude"];
+
+    // 3) query Claude (+ Gemini) per prompt with concurrency
     const queried = await runWithConcurrency(prompts, CONCURRENCY, async (p) => {
-      const hit = cacheMap.get(p.prompt);
-      if (hit) {
-        return {
-          ...p,
-          clientPresent: !!hit.client_present,
-          competitorsPresent: hit.competitors_present ?? [],
-          citations: hit.citations ?? [],
-        };
+      const runEngine = async (
+        engine: "claude" | "gemini",
+      ): Promise<{ clientPresent: boolean; competitorsPresent: string[]; citations: any[] } | null> => {
+        const key = `${engine}::${p.prompt}`;
+        const hit = cacheMap.get(key);
+        if (hit) {
+          return {
+            clientPresent: !!hit.client_present,
+            competitorsPresent: hit.competitors_present ?? [],
+            citations: hit.citations ?? [],
+          };
+        }
+        try {
+          const result = engine === "claude"
+            ? await queryClaude(p.prompt, model)
+            : await queryGemini(p.prompt);
+          const { clientPresent, competitorsPresent } = detectPresence(
+            result,
+            clientDomain,
+            competitors,
+          );
+          if (body.company_id && body.org_id) {
+            await supabase.from("aeo_audit_cache").insert({
+              org_id: body.org_id,
+              company_id: body.company_id,
+              prompt: p.prompt,
+              engine,
+              topic: p.topic,
+              stage: p.stage,
+              response_text: result.text.slice(0, 8000),
+              citations: result.citations,
+              client_present: clientPresent,
+              competitors_present: competitorsPresent,
+            });
+          }
+          return { clientPresent, competitorsPresent, citations: result.citations };
+        } catch (e) {
+          console.warn(`[run-aeo-audit] ${engine} failed for prompt:`, (e as Error).message);
+          return null;
+        }
+      };
+
+      const [claudeRes, geminiRes] = await Promise.all([
+        runEngine("claude"),
+        geminiEnabled ? runEngine("gemini") : Promise.resolve(null),
+      ]);
+
+      if (!claudeRes && !geminiRes) {
+        return { error: "both engines failed" } as any;
       }
-      const result = await queryClaude(p.prompt, model);
-      const { clientPresent, competitorsPresent } = detectPresence(
-        result,
-        clientDomain,
-        competitors,
+
+      // Per-engine presence + merged
+      const enginesMissing: string[] = [];
+      if (claudeRes && !claudeRes.clientPresent) enginesMissing.push("claude");
+      if (geminiRes && !geminiRes.clientPresent) enginesMissing.push("gemini");
+
+      const clientPresent = !!(claudeRes?.clientPresent || geminiRes?.clientPresent);
+      const competitorsPresent = Array.from(
+        new Set([
+          ...(claudeRes?.competitorsPresent ?? []),
+          ...(geminiRes?.competitorsPresent ?? []),
+        ]),
       );
-      // persist (best-effort)
-      if (body.company_id && body.org_id) {
-        await supabase.from("aeo_audit_cache").insert({
-          org_id: body.org_id,
-          company_id: body.company_id,
-          prompt: p.prompt,
-          engine: "claude",
-          topic: p.topic,
-          stage: p.stage,
-          response_text: result.text.slice(0, 8000),
-          citations: result.citations,
-          client_present: clientPresent,
-          competitors_present: competitorsPresent,
-        });
-      }
+      const citations = [
+        ...(claudeRes?.citations ?? []),
+        ...(geminiRes?.citations ?? []),
+      ];
+
       return {
         ...p,
         clientPresent,
         competitorsPresent,
-        citations: result.citations,
+        citations,
+        enginesMissing,
+        engineCounts: {
+          claude: claudeRes ? 1 : 0,
+          gemini: geminiRes ? 1 : 0,
+        },
       };
     });
 
     const valid = queried.filter((r: any) => r && !r.error);
-    const payloads = buildPayloads({ results: valid as any, competitors });
+    const payloads = buildPayloads({ results: valid as any, competitors, enginesUsed });
     const promptsRun = valid.length;
     const promptsFailed = queried.length - valid.length;
 
@@ -457,7 +547,7 @@ Deno.serve(async (req) => {
         ...payloads,
         prompts_run: promptsRun,
         prompts_failed: promptsFailed,
-        engine: "claude",
+        engines: enginesUsed,
         model,
         last_aeo_audit_at: new Date().toISOString(),
       }),
