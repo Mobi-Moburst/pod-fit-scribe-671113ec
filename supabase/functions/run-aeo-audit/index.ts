@@ -306,7 +306,7 @@ function buildPayloads(input: {
     competitorsPresent: string[];
     citations: Array<{ url: string; title?: string }>;
     enginesMissing?: string[];
-    engineCounts?: { claude: number; gemini: number };
+    engineCounts?: { claude: number; gemini: number; openai: number };
   }>;
   competitors: Array<{ name: string }>;
   enginesUsed: string[];
