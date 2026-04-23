@@ -115,6 +115,7 @@ export default function Reports() {
   const [dataSourcesOpen, setDataSourcesOpen] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAuditRunning, setIsAuditRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
   const [reachDialogOpen, setReachDialogOpen] = useState(false);
@@ -724,7 +725,8 @@ export default function Reports() {
 
       // Opt-in: kick off AEO audit immediately after generation (background job + poll)
       if (runAEOAfterGenerate && selectedCompany?.id) {
-        toast({ title: "AEO audit starting…", description: "Running ~25 prompts via Claude + Gemini + GPT in the background." });
+        setIsAuditRunning(true);
+        toast({ title: "AEO audit starting…", description: "Running ~25 prompts via Claude + Gemini + GPT in the background. This usually takes 2–4 minutes." });
         const competitorNames = (selectedSpeaker?.competitors as Competitor[] | undefined)?.map(c => c.name) ?? [];
         const { data: { user } } = await supabase.auth.getUser();
         (async () => {
@@ -775,6 +777,8 @@ export default function Reports() {
             throw new Error("Audit timed out");
           } catch (e: any) {
             toast({ title: "AEO audit failed", description: e?.message ?? "Unknown error", variant: "destructive" });
+          } finally {
+            setIsAuditRunning(false);
           }
         })();
       }
@@ -3109,6 +3113,7 @@ export default function Reports() {
                     )}
                     {visibleSections.geoScore && (() => {
                       const geoFraming = getGEOFraming(reportData.geo_analysis, reportData.client?.name);
+                      const showLoading = isAuditRunning && !reportData.geo_analysis;
                       return (
                         <KPICard
                           title="AI Visibility"
@@ -3124,6 +3129,8 @@ export default function Reports() {
                           tooltip="How AI assistants (Claude, ChatGPT, Gemini) surface your podcast appearances when buyers ask high-intent questions."
                           onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
                           onHide={() => toggleSection('geoScore')}
+                          isLoading={showLoading}
+                          loadingLabel="Querying Claude, Gemini & GPT…"
                         />
                       );
                     })()}
@@ -3142,6 +3149,8 @@ export default function Reports() {
                         tooltip="Analyzes AI search prompts where competitors appear but you don't, identifying content opportunities to close visibility gaps."
                         onClick={reportData.content_gap_analysis ? () => setContentGapDialogOpen(true) : undefined}
                         onHide={() => toggleSection('contentGap')}
+                        isLoading={isAuditRunning && !reportData.content_gap_analysis}
+                        loadingLabel="Analyzing competitor coverage…"
                       />
                     )}
                     {visibleSections.socialValue && reportData.kpis.total_social_reach > 0 && (
