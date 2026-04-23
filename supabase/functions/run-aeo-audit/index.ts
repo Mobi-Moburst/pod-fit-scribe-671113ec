@@ -405,25 +405,55 @@ function buildPayloads(input: {
   return { content_gap_analysis, geo_analysis };
 }
 
-async function processAudit(
-  supabase: any,
-  runId: string,
-  body: RunBody,
-  ctx: {
-    cap: number;
-    model: string;
-    clientDomain: string;
-    competitors: Array<{ name: string; domain: string }>;
-  },
-) {
-  const { cap, model, clientDomain, competitors } = ctx;
+// Chunk size: how many prompts to process per self-invocation.
+// Each prompt = up to 3 LLM calls (Claude+Gemini+OpenAI), so keep this small.
+const CHUNK_SIZE = 3;
 
+async function selfInvoke(payload: Record<string, unknown>) {
+  // Fire-and-forget self call. We do NOT await the response so the caller can return immediately.
+  // The next chunk runs in a fresh worker with a fresh CPU/wall-time budget.
+  try {
+    fetch(`${SUPABASE_URL}/functions/v1/run-aeo-audit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+        "apikey": SERVICE_ROLE_KEY,
+      },
+      body: JSON.stringify(payload),
+    }).catch((e) => console.error("[run-aeo-audit] selfInvoke fetch err:", e));
+  } catch (e) {
+    console.error("[run-aeo-audit] selfInvoke threw:", e);
+  }
+}
+
+async function markFailed(supabase: any, runId: string, message: string) {
   await supabase
     .from("aeo_audit_runs")
-    .update({ status: "processing" })
+    .update({
+      status: "failed",
+      error_message: message.slice(0, 1000),
+      completed_at: new Date().toISOString(),
+    })
     .eq("id", runId);
+}
 
-  // 1) generate prompts
+// Phase 1: prepare prompts and store them in the queue, then trigger first chunk.
+async function handlePrepare(supabase: any, runId: string) {
+  const { data: run, error } = await supabase
+    .from("aeo_audit_runs")
+    .select("body_snapshot, status")
+    .eq("id", runId)
+    .maybeSingle();
+  if (error || !run) throw new Error(`run not found: ${error?.message ?? "missing"}`);
+
+  const body = run.body_snapshot as RunBody;
+  const cap = Math.min(body.prompt_cap ?? DEFAULT_PROMPT_CAP, 50);
+  const competitors = (body.competitors ?? []).map((c) => ({
+    name: competitorName(c),
+    domain: competitorDomain(c),
+  })).filter((c) => c.name);
+
   const prompts = await generatePrompts({
     company_name: body.company_name,
     speaker_name: body.speaker_name,
@@ -435,30 +465,78 @@ async function processAudit(
     cap,
   });
 
-  // 2) cache lookup
+  const enginesUsed = ["claude"];
+  if (GEMINI_API_KEY) enginesUsed.push("gemini");
+  if (OPENAI_API_KEY) enginesUsed.push("openai");
+
+  await supabase
+    .from("aeo_audit_runs")
+    .update({
+      status: "processing",
+      prompts_queue: prompts,
+      results_collected: [],
+      processed_count: 0,
+      engines_used: enginesUsed,
+    })
+    .eq("id", runId);
+
+  console.log(`[run-aeo-audit] ${runId} prepared with ${prompts.length} prompts; firing first chunk`);
+  await selfInvoke({ phase: "chunk", run_id: runId });
+}
+
+// Phase 2: process the next CHUNK_SIZE prompts, then either trigger next chunk or finalize.
+async function handleChunk(supabase: any, runId: string) {
+  const { data: run, error } = await supabase
+    .from("aeo_audit_runs")
+    .select("body_snapshot, prompts_queue, results_collected, processed_count, engines_used, model, client_domain, status")
+    .eq("id", runId)
+    .maybeSingle();
+  if (error || !run) throw new Error(`run not found: ${error?.message ?? "missing"}`);
+  if (run.status === "completed" || run.status === "failed") {
+    console.log(`[run-aeo-audit] ${runId} already ${run.status}, skipping chunk`);
+    return;
+  }
+
+  const body = run.body_snapshot as RunBody;
+  const allPrompts: Array<{ prompt: string; topic: string; stage: string }> = run.prompts_queue ?? [];
+  const collected: any[] = run.results_collected ?? [];
+  const processed: number = run.processed_count ?? 0;
+  const enginesUsed: string[] = run.engines_used ?? ["claude"];
+  const model: string = run.model ?? "claude-haiku-4-5";
+  const clientDomain: string = run.client_domain ?? "";
+  const competitors = (body.competitors ?? []).map((c) => ({
+    name: competitorName(c),
+    domain: competitorDomain(c),
+  })).filter((c) => c.name);
+
+  const chunk = allPrompts.slice(processed, processed + CHUNK_SIZE);
+  if (chunk.length === 0) {
+    console.log(`[run-aeo-audit] ${runId} no more prompts, finalizing`);
+    await selfInvoke({ phase: "finalize", run_id: runId });
+    return;
+  }
+
+  // Cache lookup for just the prompts in this chunk
   const cutoff = new Date(Date.now() - CACHE_TTL_DAYS * 86400_000).toISOString();
-  let cached: any[] = [];
+  const cacheMap = new Map<string, any>();
   if (body.company_id) {
-    const { data } = await supabase
+    const { data: cached } = await supabase
       .from("aeo_audit_cache")
       .select("prompt, engine, response_text, citations, client_present, competitors_present")
       .eq("company_id", body.company_id)
-      .in("engine", ["claude", "gemini", "openai"])
+      .in("prompt", chunk.map((p) => p.prompt))
+      .in("engine", enginesUsed)
       .gte("created_at", cutoff);
-    cached = data ?? [];
+    for (const c of cached ?? []) {
+      cacheMap.set(`${c.engine}::${c.prompt}`, c);
+    }
   }
-  const cacheMap = new Map<string, any>(
-    cached.map((c: any) => [`${c.engine}::${c.prompt}`, c]),
-  );
 
-  const geminiEnabled = !!GEMINI_API_KEY;
-  const openaiEnabled = !!OPENAI_API_KEY;
-  const enginesUsed = ["claude"];
-  if (geminiEnabled) enginesUsed.push("gemini");
-  if (openaiEnabled) enginesUsed.push("openai");
+  const geminiEnabled = enginesUsed.includes("gemini") && !!GEMINI_API_KEY;
+  const openaiEnabled = enginesUsed.includes("openai") && !!OPENAI_API_KEY;
 
-  // 3) query Claude (+ Gemini, + OpenAI) per prompt with concurrency
-  const queried = await runWithConcurrency(prompts, CONCURRENCY, async (p) => {
+  // Process this chunk concurrently across prompts (each prompt fires up to 3 engines in parallel)
+  const chunkResults = await runWithConcurrency(chunk, CONCURRENCY, async (p) => {
     const runEngine = async (
       engine: "claude" | "gemini" | "openai",
     ): Promise<{ clientPresent: boolean; competitorsPresent: string[]; citations: any[] } | null> => {
@@ -510,7 +588,7 @@ async function processAudit(
     ]);
 
     if (!claudeRes && !geminiRes && !openaiRes) {
-      return { error: "all engines failed" } as any;
+      return { error: "all engines failed", ...p } as any;
     }
 
     const enginesMissing: string[] = [];
@@ -518,27 +596,19 @@ async function processAudit(
     if (geminiRes && !geminiRes.clientPresent) enginesMissing.push("gemini");
     if (openaiRes && !openaiRes.clientPresent) enginesMissing.push("openai");
 
-    const clientPresent = !!(
-      claudeRes?.clientPresent || geminiRes?.clientPresent || openaiRes?.clientPresent
-    );
-    const competitorsPresent = Array.from(
-      new Set([
+    return {
+      ...p,
+      clientPresent: !!(claudeRes?.clientPresent || geminiRes?.clientPresent || openaiRes?.clientPresent),
+      competitorsPresent: Array.from(new Set([
         ...(claudeRes?.competitorsPresent ?? []),
         ...(geminiRes?.competitorsPresent ?? []),
         ...(openaiRes?.competitorsPresent ?? []),
-      ]),
-    );
-    const citations = [
-      ...(claudeRes?.citations ?? []),
-      ...(geminiRes?.citations ?? []),
-      ...(openaiRes?.citations ?? []),
-    ];
-
-    return {
-      ...p,
-      clientPresent,
-      competitorsPresent,
-      citations,
+      ])),
+      citations: [
+        ...(claudeRes?.citations ?? []),
+        ...(geminiRes?.citations ?? []),
+        ...(openaiRes?.citations ?? []),
+      ],
       enginesMissing,
       engineCounts: {
         claude: claudeRes ? 1 : 0,
@@ -548,10 +618,46 @@ async function processAudit(
     };
   });
 
-  const valid = queried.filter((r: any) => r && !r.error);
-  const payloads = buildPayloads({ results: valid as any, competitors, enginesUsed });
+  const newCollected = [...collected, ...chunkResults];
+  const newProcessed = processed + chunk.length;
+
+  await supabase
+    .from("aeo_audit_runs")
+    .update({
+      results_collected: newCollected,
+      processed_count: newProcessed,
+    })
+    .eq("id", runId);
+
+  console.log(`[run-aeo-audit] ${runId} chunk done: ${newProcessed}/${allPrompts.length}`);
+
+  if (newProcessed >= allPrompts.length) {
+    await selfInvoke({ phase: "finalize", run_id: runId });
+  } else {
+    await selfInvoke({ phase: "chunk", run_id: runId });
+  }
+}
+
+// Phase 3: aggregate collected results into final payloads.
+async function handleFinalize(supabase: any, runId: string) {
+  const { data: run, error } = await supabase
+    .from("aeo_audit_runs")
+    .select("results_collected, engines_used, body_snapshot")
+    .eq("id", runId)
+    .maybeSingle();
+  if (error || !run) throw new Error(`run not found: ${error?.message ?? "missing"}`);
+
+  const body = run.body_snapshot as RunBody;
+  const competitors = (body.competitors ?? []).map((c) => ({ name: competitorName(c) }));
+  const collected: any[] = run.results_collected ?? [];
+  const valid = collected.filter((r: any) => r && !r.error);
+  const payloads = buildPayloads({
+    results: valid as any,
+    competitors,
+    enginesUsed: run.engines_used ?? ["claude"],
+  });
   const promptsRun = valid.length;
-  const promptsFailed = queried.length - valid.length;
+  const promptsFailed = collected.length - valid.length;
 
   await supabase
     .from("aeo_audit_runs")
@@ -565,7 +671,7 @@ async function processAudit(
     })
     .eq("id", runId);
 
-  console.log(`[run-aeo-audit] run ${runId} completed: ${promptsRun} ok, ${promptsFailed} failed`);
+  console.log(`[run-aeo-audit] run ${runId} finalized: ${promptsRun} ok, ${promptsFailed} failed`);
 }
 
 Deno.serve(async (req) => {
@@ -573,6 +679,70 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch (_e) {
+    return new Response(
+      JSON.stringify({ error: "invalid JSON" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  // Internal phases: prepare / chunk / finalize. These run in fresh workers.
+  const phase = body.phase as string | undefined;
+  if (phase && body.run_id) {
+    // Respond to the caller IMMEDIATELY so the worker isn't held open by HTTP.
+    // The actual work runs after the response is sent via a microtask.
+    const runId = body.run_id as string;
+    const work = async () => {
+      try {
+        if (phase === "prepare") await handlePrepare(supabase, runId);
+        else if (phase === "chunk") await handleChunk(supabase, runId);
+        else if (phase === "finalize") await handleFinalize(supabase, runId);
+        else console.warn(`[run-aeo-audit] unknown phase: ${phase}`);
+      } catch (e) {
+        console.error(`[run-aeo-audit] phase ${phase} failed for ${runId}:`, e);
+        await markFailed(supabase, runId, (e as Error).message ?? "unknown error");
+      }
+    };
+    // Fire work synchronously; we'll await it before returning so the worker stays alive
+    // for the duration of THIS chunk only. Each chunk is small (CHUNK_SIZE prompts).
+    await work();
+    return new Response(
+      JSON.stringify({ ok: true, phase }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // Polling endpoint: status check via { run_id } only
+  if (body.run_id && !body.company_name && !phase) {
+    const { data, error } = await supabase
+      .from("aeo_audit_runs")
+      .select("id, status, error_message, prompts_run, prompts_failed, processed_count, prompts_queue, model, content_gap_analysis, geo_analysis, completed_at, created_at")
+      .eq("id", body.run_id)
+      .maybeSingle();
+    if (error || !data) {
+      return new Response(
+        JSON.stringify({ error: "run not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    // Add progress hint for the client UI
+    const total = Array.isArray(data.prompts_queue) ? data.prompts_queue.length : 0;
+    return new Response(
+      JSON.stringify({
+        ...data,
+        progress: { processed: data.processed_count ?? 0, total },
+        prompts_queue: undefined, // strip large field from response
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // Initial entrypoint: create run row and kick off prepare phase
   try {
     if (!ANTHROPIC_API_KEY) {
       return new Response(
@@ -581,65 +751,42 @@ Deno.serve(async (req) => {
       );
     }
 
-    const body = (await req.json()) as RunBody;
-
-    // Polling endpoint: GET-style status check via { run_id }
-    if ((body as any).run_id && !body.company_name) {
-      const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-      const { data, error } = await supabase
-        .from("aeo_audit_runs")
-        .select("id, status, error_message, prompts_run, prompts_failed, model, content_gap_analysis, geo_analysis, completed_at, created_at")
-        .eq("id", (body as any).run_id)
-        .maybeSingle();
-      if (error || !data) {
-        return new Response(
-          JSON.stringify({ error: "run not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(
-        JSON.stringify(data),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    if (!body.company_name) {
+    const runBody = body as RunBody;
+    if (!runBody.company_name) {
       return new Response(
         JSON.stringify({ error: "company_name required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    if (!body.company_id || !body.org_id) {
+    if (!runBody.company_id || !runBody.org_id) {
       return new Response(
         JSON.stringify({ error: "company_id and org_id required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const cap = Math.min(body.prompt_cap ?? DEFAULT_PROMPT_CAP, 50);
-    const model = body.model ?? "claude-haiku-4-5";
-    const clientDomain = normalizeDomain(body.client_domain ?? "");
-    const competitors = (body.competitors ?? []).map((c) => ({
+    const cap = Math.min(runBody.prompt_cap ?? DEFAULT_PROMPT_CAP, 50);
+    const model = runBody.model ?? "claude-haiku-4-5";
+    const clientDomain = normalizeDomain(runBody.client_domain ?? "");
+    const competitors = (runBody.competitors ?? []).map((c) => ({
       name: competitorName(c),
       domain: competitorDomain(c),
     })).filter((c) => c.name);
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-    // Insert pending run row immediately
     const { data: runRow, error: runErr } = await supabase
       .from("aeo_audit_runs")
       .insert({
-        org_id: body.org_id,
-        company_id: body.company_id,
+        org_id: runBody.org_id,
+        company_id: runBody.company_id,
         model,
         prompts_run: 0,
         prompts_failed: 0,
         client_domain: clientDomain || null,
         competitor_names: competitors.map((c) => c.name),
-        topics: body.topics ?? [],
-        triggered_by: body.triggered_by ?? null,
+        topics: runBody.topics ?? [],
+        triggered_by: runBody.triggered_by ?? null,
         status: "pending",
+        body_snapshot: { ...runBody, prompt_cap: cap },
       })
       .select("id")
       .single();
@@ -651,26 +798,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Kick off background processing
-    // @ts-ignore - EdgeRuntime is available in Supabase edge runtime
-    EdgeRuntime.waitUntil(
-      processAudit(supabase, runRow.id, body, {
-        cap,
-        model,
-        clientDomain,
-        competitors,
-      }).catch(async (e) => {
-        console.error("[run-aeo-audit] background failure:", e);
-        await supabase
-          .from("aeo_audit_runs")
-          .update({
-            status: "failed",
-            error_message: (e as Error).message?.slice(0, 1000) ?? "unknown error",
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", runRow.id);
-      }),
-    );
+    // Trigger prepare phase via self-invocation (returns immediately).
+    selfInvoke({ phase: "prepare", run_id: runRow.id });
 
     return new Response(
       JSON.stringify({ run_id: runRow.id, status: "pending" }),
