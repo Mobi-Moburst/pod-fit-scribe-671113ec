@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { DollarSign, Users, Brain, Target, Sparkles, Share2, TrendingUp, PieChart, AlertTriangle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ReportData } from "@/types/reports";
+import { getGEOFraming, getGEOCardSubtitle } from "@/lib/geoFraming";
 
 interface VisibleSections {
   emv?: boolean;

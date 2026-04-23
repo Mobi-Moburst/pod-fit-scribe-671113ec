@@ -27,6 +27,7 @@ import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
 import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
+import { getGEOFraming, getGEOCardSubtitle } from "@/lib/geoFraming";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
 import { PodcastListDialog } from "@/components/reports/PodcastListDialog";
