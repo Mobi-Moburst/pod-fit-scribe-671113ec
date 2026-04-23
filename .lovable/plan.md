@@ -1,52 +1,54 @@
 
 
-# Native AEO Audit — Use Claude (Anthropic) Instead of Perplexity
+# AEO Audit — Phase 2: Remove CSVs, Manual Toggle, Run History
 
-Swap the engine in the previously-approved plan from Perplexity Sonar to Anthropic Claude with **web search** enabled. Claude's `web_search_20250305` tool returns grounded answers with real citation URLs, which is what the audit needs to detect client vs competitor presence in AI responses.
+## 1. Remove GEO + Content Gap CSV uploads
 
-## Engine choice
+- Remove the GEO CSV and Content Gap CSV slots from `UpdateCSVDialog.tsx` and the report intake flow in `Reports.tsx`.
+- Existing reports with CSV-derived data continue to render unchanged — only the upload UI is removed.
+- The "Run AEO Audit" button becomes the sole path to populate `geo_analysis` + `content_gap_analysis`.
 
-| Option | Citations | Recommendation |
-|---|---|---|
-| Claude + `web_search` tool | Yes — returns `url` + `title` per citation | Primary engine for Phase 1 |
-| Perplexity Sonar | Yes | Skip — no key available |
-| ChatGPT / Gemini | Phase 2 add-on | Defer |
+## 2. Surface AEO Audit as first-class, opt-in
 
-Claude alone gives us a real, single-engine AEO signal. We can layer additional engines later without changing the data shape.
+**Report dashboard (`Reports.tsx`):**
+- Add `RunAEOAuditButton` (compact) to the report header action row.
+- Empty-state CTA in the GEO + Content Gap card areas when data is missing.
+- When data exists: "Last run: <timestamp> · Re-run" link on each card.
 
-## What changes vs the prior plan
+**Report intake flow:**
+- Add an opt-in checkbox: **"Run AEO audit after generating (Haiku, ~$2)"** — default OFF.
+- If checked, kick off the audit immediately after report creation; show inline progress.
 
-Only the engine integration layer differs. Everything else (UI button, caching table, payload shape, domain matching, GEO + Content Gap rendering) stays identical.
+**Richer prompt context** (carried over from prior unfinished item):
+- `RunAEOAuditButton` payload expanded to include `campaign_strategy`, `talking_points`, `professional_credentials`, and competitor names/domains.
+- `run-aeo-audit` `generatePrompts()` updated to ground prompts in this context (multi-speaker reports aggregate + dedupe).
 
-### Edge function: `run-aeo-audit`
-- Replace Perplexity call with Anthropic Messages API:
-  - Endpoint: `https://api.anthropic.com/v1/messages`
-  - Model: `claude-sonnet-4-5` (or `claude-haiku-4-5` for cheaper runs)
-  - Header: `x-api-key: ${ANTHROPIC_API_KEY}`, `anthropic-version: 2023-06-01`
-  - Body includes `tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }]`
-- Parse response: walk `content[]` blocks, collect every `web_search_tool_result` → `citations[].url`, plus any `text` blocks' inline `citations[]`.
-- Domain match against client + competitors using the shared normalizer (protocol/`www.`/trailing slash strip, already fixed in `csvParsers.ts`).
-- Concurrency: 3 parallel requests with 300 ms jitter (Anthropic rate limits are tighter than Perplexity's).
-- Engine label stored as `"claude"` so future Perplexity/Gemini runs append, not overwrite.
+## 3. Run history at company level
 
-### Required setup
-- Add **`ANTHROPIC_API_KEY`** secret. The user will be prompted after plan approval; key comes from https://console.anthropic.com/settings/keys.
-- No connector needed — Anthropic is a direct-API integration.
+New table `aeo_audit_runs` for permanent run-over-run snapshots (separate from the 7-day `aeo_audit_cache` dedup table):
 
-### Unchanged from prior plan
-- New table `aeo_audit_cache` (7-day TTL).
-- "Run AEO Audit" button in `UpdateCSVDialog.tsx` and `Reports.tsx`.
-- Output written to `report_data.content_gap_analysis` + `report_data.geo_analysis`; existing `GEODialog`, `ContentGapRecommendations`, `ClientReportCategories` render it untouched.
-- Per-company toggle: Native AEO vs Spotlight CSV.
-- Cap: 25 prompts/run, 1 run/week per company unless overridden.
+```text
+aeo_audit_runs
+  id, org_id, company_id,
+  model, prompts_run, prompts_failed,
+  content_gap_analysis jsonb,
+  geo_analysis jsonb,
+  client_domain, competitor_names text[], topics text[],
+  triggered_by uuid, created_at
+```
 
-## Cost note
+- Edge function inserts one row per successful run with full snapshot + input context.
+- New `AEOAuditHistory` component on the **company page** showing all past runs as a timeline (date, model, GEO score, coverage %, top gaps).
+- Click a run → side-panel diff vs latest (Δ coverage %, new/closed gaps, competitor movement).
+- Once 2+ runs exist for a company, surface "↑ +12% coverage vs last run" badge on GEO + Content Gap cards in the active report.
+- Phase 1 = company-level only (multi-speaker reports roll up to the parent company).
 
-Claude Sonnet 4.5 with web search ≈ $10/audit at 25 prompts × 5 searches each. Haiku 4.5 ≈ $2/audit. Default to Haiku, expose model choice on the run button.
+## Files touched
 
-## Open questions
-
-1. **Model default**: Haiku 4.5 (cheap, ~$2/run) or Sonnet 4.5 (better synthesis, ~$10/run)?
-2. **Tie-breaker**: When both a Spotlight CSV and a native Claude audit exist for a company, which renders in the report — most recent, or always native?
-3. **Phase 2 engines**: Add Perplexity later if the user gets a key, or stay Claude-only and add Gemini via the existing Lovable AI gateway instead?
+- `supabase/functions/run-aeo-audit/index.ts` — INSERT into `aeo_audit_runs` on success; expand prompt context
+- `src/components/reports/RunAEOAuditButton.tsx` — pass full client context; emit `last_aeo_audit_at`
+- `src/components/reports/UpdateCSVDialog.tsx` — remove GEO + Content Gap CSV slots
+- `src/pages/Reports.tsx` — header button, empty-state CTAs, intake checkbox, drop CSV inputs
+- `src/pages/Companies.tsx` (+ new `src/components/companies/AEOAuditHistory.tsx`) — timeline + diff viewer
+- Migration: create `aeo_audit_runs` table with org-scoped RLS mirroring `aeo_audit_cache`
 
