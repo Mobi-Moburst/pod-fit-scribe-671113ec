@@ -35,8 +35,8 @@ interface RunAEOAuditButtonProps {
 }
 
 const MODELS = [
-  { id: "claude-haiku-4-5", label: "Haiku 4.5 (~$2/run)", recommended: true },
-  { id: "claude-sonnet-4-5", label: "Sonnet 4.5 (~$10/run)" },
+  { id: "claude-haiku-4-5", label: "Haiku 4.5", recommended: true },
+  { id: "claude-sonnet-4-5", label: "Sonnet 4.5" },
 ];
 
 export function RunAEOAuditButton({ report, onComplete, variant = "outline", label }: RunAEOAuditButtonProps) {
