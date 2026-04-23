@@ -25,7 +25,14 @@ interface AEOAuditHistoryProps {
   companyName: string;
 }
 
-function delta(current: number, previous: number) {
+interface Delta {
+  value: number;
+  label: string;
+  positive: boolean;
+  neutral: boolean;
+}
+
+function calcDelta(current: number, previous: number): Delta {
   const d = current - previous;
   const sign = d > 0 ? "+" : "";
   return { value: d, label: `${sign}${d.toFixed(1)}`, positive: d > 0, neutral: d === 0 };
@@ -56,13 +63,13 @@ export function AEOAuditHistory({ open, onOpenChange, companyId, companyName }: 
   const previous = selected ? runs[runs.findIndex((r) => r.id === selected.id) + 1] : null;
 
   const coverageDelta = selected && previous
-    ? delta(
+    ? calcDelta(
         selected.content_gap_analysis?.coverage_percentage ?? 0,
         previous.content_gap_analysis?.coverage_percentage ?? 0,
       )
     : null;
   const geoDelta = selected && previous
-    ? delta(selected.geo_analysis?.geo_score ?? 0, previous.geo_analysis?.geo_score ?? 0)
+    ? calcDelta(selected.geo_analysis?.geo_score ?? 0, previous.geo_analysis?.geo_score ?? 0)
     : null;
 
   return (
@@ -201,7 +208,7 @@ function DeltaCard({
 }: {
   label: string;
   current: number;
-  delta: ReturnType<typeof delta> | null;
+  delta: Delta | null;
   suffix?: string;
 }) {
   return (
