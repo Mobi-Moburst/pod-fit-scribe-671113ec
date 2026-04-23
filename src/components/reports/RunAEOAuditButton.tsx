@@ -122,14 +122,19 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline", lab
       if (data?.error) throw new Error(data.error);
       if (!data?.run_id) throw new Error("No run_id returned");
 
-      // Poll for completion (max ~6 minutes)
+      // Poll for completion. Multi-engine audits can take longer, so only fail
+      // if the run truly stalls instead of using a short fixed timeout.
       const runId = data.run_id;
-      const maxAttempts = 90; // 90 × 4s = 360s
-      let attempt = 0;
+      const pollIntervalMs = 4000;
+      const absoluteTimeoutMs = 20 * 60 * 1000;
+      const stallTimeoutMs = 2 * 60 * 1000;
+      const startedAt = Date.now();
+      let lastProgressAt = Date.now();
+      let lastProcessed = -1;
+      let lastTotal = 0;
       let final: any = null;
-      while (attempt < maxAttempts) {
-        await new Promise((r) => setTimeout(r, 4000));
-        attempt++;
+      while (Date.now() - startedAt < absoluteTimeoutMs) {
+        await new Promise((r) => setTimeout(r, pollIntervalMs));
         const { data: poll, error: pollErr } = await supabase.functions.invoke(
           "run-aeo-audit",
           { body: { run_id: runId } },
@@ -145,8 +150,31 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline", lab
         if (poll?.status === "failed") {
           throw new Error(poll.error_message || "Audit failed");
         }
+
+        const processed = poll?.progress?.processed ?? 0;
+        const total = poll?.progress?.total ?? 0;
+
+        if (processed > lastProcessed) {
+          lastProcessed = processed;
+          lastTotal = total;
+          lastProgressAt = Date.now();
+        }
+
+        if (Date.now() - lastProgressAt > stallTimeoutMs) {
+          throw new Error(
+            total > 0
+              ? `Audit stalled at ${processed}/${total} prompts. Please try again.`
+              : "Audit stalled before processing prompts. Please try again.",
+          );
+        }
       }
-      if (!final) throw new Error("Audit timed out");
+      if (!final) {
+        throw new Error(
+          lastTotal > 0
+            ? `Audit is taking longer than expected (${lastProcessed}/${lastTotal} prompts processed). Please try again.`
+            : "Audit is taking longer than expected. Please try again.",
+        );
+      }
 
       await onComplete({
         content_gap_analysis: final.content_gap_analysis,
