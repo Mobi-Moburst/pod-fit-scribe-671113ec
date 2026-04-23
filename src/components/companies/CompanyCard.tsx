@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, ChevronDown, ChevronRight, Plus, Pencil, Trash, Link2, Archive, RotateCcw } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, Plus, Pencil, Trash, Link2, Archive, RotateCcw, History } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { Company, Speaker } from "@/types/clients";
 
@@ -13,6 +13,7 @@ interface CompanyCardProps {
   onDelete: () => void;
   onAddSpeaker: () => void;
   onAirtable: () => void;
+  onHistory?: () => void;
   isArchived?: boolean;
   onArchive?: () => void;
   onRestore?: () => void;
@@ -27,6 +28,7 @@ export function CompanyCard({
   onDelete,
   onAddSpeaker,
   onAirtable,
+  onHistory,
   isArchived,
   onArchive,
   onRestore,
@@ -143,6 +145,11 @@ export function CompanyCard({
                   <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                     <Pencil className="h-3.5 w-3.5 mr-1" />Edit
                   </Button>
+                  {onHistory && (
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onHistory(); }}>
+                      <History className="h-3.5 w-3.5 mr-1" />AEO History
+                    </Button>
+                  )}
                 </>
               )}
               <div className="flex-1" />

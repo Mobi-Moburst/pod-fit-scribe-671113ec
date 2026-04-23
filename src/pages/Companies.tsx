@@ -342,6 +342,7 @@ const Companies = () => {
               onDelete={() => removeCompany(company.id)}
               onAddSpeaker={() => startNewSpeaker(company.id)}
               onAirtable={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}
+              onHistory={() => setAeoHistoryFor({ id: company.id, name: company.name })}
               isArchived={!!company.archived_at}
               onArchive={() => archiveCompany(company.id)}
               onRestore={() => restoreCompany(company.id)}
@@ -594,6 +595,14 @@ const Companies = () => {
 
         {/* Airtable Connection Dialog */}
         <AirtableConnectionDialog open={!!airtableDialog} onOpenChange={(open) => !open && setAirtableDialog(null)} companyId={airtableDialog?.companyId} speakerId={airtableDialog?.speakerId} entityName={airtableDialog?.entityName || ''} />
+
+        {/* AEO Audit History Panel */}
+        <AEOAuditHistory
+          open={!!aeoHistoryFor}
+          onOpenChange={(open) => !open && setAeoHistoryFor(null)}
+          companyId={aeoHistoryFor?.id ?? ''}
+          companyName={aeoHistoryFor?.name ?? ''}
+        />
       </main>
     </div>
   );
