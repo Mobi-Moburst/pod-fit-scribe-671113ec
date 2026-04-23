@@ -405,6 +405,169 @@ function buildPayloads(input: {
   return { content_gap_analysis, geo_analysis };
 }
 
+async function processAudit(
+  supabase: any,
+  runId: string,
+  body: RunBody,
+  ctx: {
+    cap: number;
+    model: string;
+    clientDomain: string;
+    competitors: Array<{ name: string; domain: string }>;
+  },
+) {
+  const { cap, model, clientDomain, competitors } = ctx;
+
+  await supabase
+    .from("aeo_audit_runs")
+    .update({ status: "processing" })
+    .eq("id", runId);
+
+  // 1) generate prompts
+  const prompts = await generatePrompts({
+    company_name: body.company_name,
+    speaker_name: body.speaker_name,
+    topics: body.topics ?? [],
+    competitor_names: competitors.map((c) => c.name),
+    campaign_strategy: body.campaign_strategy,
+    talking_points: body.talking_points,
+    credentials: body.professional_credentials,
+    cap,
+  });
+
+  // 2) cache lookup
+  const cutoff = new Date(Date.now() - CACHE_TTL_DAYS * 86400_000).toISOString();
+  let cached: any[] = [];
+  if (body.company_id) {
+    const { data } = await supabase
+      .from("aeo_audit_cache")
+      .select("prompt, engine, response_text, citations, client_present, competitors_present")
+      .eq("company_id", body.company_id)
+      .in("engine", ["claude", "gemini", "openai"])
+      .gte("created_at", cutoff);
+    cached = data ?? [];
+  }
+  const cacheMap = new Map<string, any>(
+    cached.map((c: any) => [`${c.engine}::${c.prompt}`, c]),
+  );
+
+  const geminiEnabled = !!GEMINI_API_KEY;
+  const openaiEnabled = !!OPENAI_API_KEY;
+  const enginesUsed = ["claude"];
+  if (geminiEnabled) enginesUsed.push("gemini");
+  if (openaiEnabled) enginesUsed.push("openai");
+
+  // 3) query Claude (+ Gemini, + OpenAI) per prompt with concurrency
+  const queried = await runWithConcurrency(prompts, CONCURRENCY, async (p) => {
+    const runEngine = async (
+      engine: "claude" | "gemini" | "openai",
+    ): Promise<{ clientPresent: boolean; competitorsPresent: string[]; citations: any[] } | null> => {
+      const key = `${engine}::${p.prompt}`;
+      const hit = cacheMap.get(key);
+      if (hit) {
+        return {
+          clientPresent: !!hit.client_present,
+          competitorsPresent: hit.competitors_present ?? [],
+          citations: hit.citations ?? [],
+        };
+      }
+      try {
+        const result = engine === "claude"
+          ? await queryClaude(p.prompt, model)
+          : engine === "gemini"
+            ? await queryGemini(p.prompt)
+            : await queryOpenAI(p.prompt);
+        const { clientPresent, competitorsPresent } = detectPresence(
+          result,
+          clientDomain,
+          competitors,
+        );
+        if (body.company_id && body.org_id) {
+          await supabase.from("aeo_audit_cache").insert({
+            org_id: body.org_id,
+            company_id: body.company_id,
+            prompt: p.prompt,
+            engine,
+            topic: p.topic,
+            stage: p.stage,
+            response_text: result.text.slice(0, 8000),
+            citations: result.citations,
+            client_present: clientPresent,
+            competitors_present: competitorsPresent,
+          });
+        }
+        return { clientPresent, competitorsPresent, citations: result.citations };
+      } catch (e) {
+        console.warn(`[run-aeo-audit] ${engine} failed for prompt:`, (e as Error).message);
+        return null;
+      }
+    };
+
+    const [claudeRes, geminiRes, openaiRes] = await Promise.all([
+      runEngine("claude"),
+      geminiEnabled ? runEngine("gemini") : Promise.resolve(null),
+      openaiEnabled ? runEngine("openai") : Promise.resolve(null),
+    ]);
+
+    if (!claudeRes && !geminiRes && !openaiRes) {
+      return { error: "all engines failed" } as any;
+    }
+
+    const enginesMissing: string[] = [];
+    if (claudeRes && !claudeRes.clientPresent) enginesMissing.push("claude");
+    if (geminiRes && !geminiRes.clientPresent) enginesMissing.push("gemini");
+    if (openaiRes && !openaiRes.clientPresent) enginesMissing.push("openai");
+
+    const clientPresent = !!(
+      claudeRes?.clientPresent || geminiRes?.clientPresent || openaiRes?.clientPresent
+    );
+    const competitorsPresent = Array.from(
+      new Set([
+        ...(claudeRes?.competitorsPresent ?? []),
+        ...(geminiRes?.competitorsPresent ?? []),
+        ...(openaiRes?.competitorsPresent ?? []),
+      ]),
+    );
+    const citations = [
+      ...(claudeRes?.citations ?? []),
+      ...(geminiRes?.citations ?? []),
+      ...(openaiRes?.citations ?? []),
+    ];
+
+    return {
+      ...p,
+      clientPresent,
+      competitorsPresent,
+      citations,
+      enginesMissing,
+      engineCounts: {
+        claude: claudeRes ? 1 : 0,
+        gemini: geminiRes ? 1 : 0,
+        openai: openaiRes ? 1 : 0,
+      },
+    };
+  });
+
+  const valid = queried.filter((r: any) => r && !r.error);
+  const payloads = buildPayloads({ results: valid as any, competitors, enginesUsed });
+  const promptsRun = valid.length;
+  const promptsFailed = queried.length - valid.length;
+
+  await supabase
+    .from("aeo_audit_runs")
+    .update({
+      status: "completed",
+      prompts_run: promptsRun,
+      prompts_failed: promptsFailed,
+      content_gap_analysis: payloads.content_gap_analysis,
+      geo_analysis: payloads.geo_analysis,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", runId);
+
+  console.log(`[run-aeo-audit] run ${runId} completed: ${promptsRun} ok, ${promptsFailed} failed`);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
