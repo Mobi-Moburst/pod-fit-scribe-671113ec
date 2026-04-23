@@ -177,6 +177,36 @@ async function queryClaude(prompt: string, model: string): Promise<ClaudeResult>
   return { text: textParts.join("\n"), citations };
 }
 
+async function queryGemini(prompt: string): Promise<ClaudeResult> {
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      tools: [{ google_search: {} }],
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Gemini error ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const cand = data.candidates?.[0];
+  const text = (cand?.content?.parts ?? [])
+    .map((p: any) => p?.text ?? "")
+    .filter(Boolean)
+    .join("\n");
+  const citations: Array<{ url: string; title?: string }> = [];
+  const chunks = cand?.groundingMetadata?.groundingChunks ?? [];
+  for (const ch of chunks) {
+    const w = ch?.web;
+    if (w?.uri) citations.push({ url: w.uri, title: w.title });
+  }
+  return { text, citations };
+}
+
 function detectPresence(
   result: ClaudeResult,
   clientDomain: string,
