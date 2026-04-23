@@ -2761,10 +2761,10 @@ export default function Reports() {
                       <div className="flex-1">
                         <Label htmlFor="run-aeo-after-generate" className="text-xs font-medium cursor-pointer">
                           Run AEO audit after generating
-                          <Badge variant="secondary" className="ml-2 text-[10px]">Haiku · ~$2</Badge>
+                          <Badge variant="secondary" className="ml-2 text-[10px]">Claude + Gemini + GPT · ~$3</Badge>
                         </Label>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Queries Claude with web search across ~25 buyer-journey prompts to populate GEO + Content Gap analyses. You can also run it later from the report list.
+                          Queries Claude (Haiku), Gemini 2.5 Flash, and GPT-5-mini in parallel with web search across ~25 buyer-journey prompts to populate GEO + Content Gap analyses. You can also run it later from the report list.
                         </p>
                       </div>
                     </div>
