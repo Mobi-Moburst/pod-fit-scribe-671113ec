@@ -1961,6 +1961,29 @@ export default function Reports() {
                                     <RefreshCw className="h-3.5 w-3.5 mr-1" />
                                     Update
                                   </Button>
+                                  <RunAEOAuditButton
+                                    report={report}
+                                    variant="compact"
+                                    label="AEO"
+                                    onComplete={async ({ content_gap_analysis, geo_analysis }) => {
+                                      const updated = {
+                                        ...(report.report_data as ReportData),
+                                        content_gap_analysis,
+                                        geo_analysis,
+                                        geo_csv_uploaded: true,
+                                        content_gap_csv_uploaded: true,
+                                      };
+                                      const { error } = await supabase
+                                        .from('reports')
+                                        .update({
+                                          report_data: updated as any,
+                                          generated_at: new Date().toISOString(),
+                                        })
+                                        .eq('id', report.id);
+                                      if (error) throw error;
+                                      loadAllReports();
+                                    }}
+                                  />
                                   {report.is_published ? (
                                     <>
                                       <Button
