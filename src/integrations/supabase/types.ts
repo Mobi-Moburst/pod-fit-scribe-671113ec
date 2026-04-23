@@ -69,55 +69,70 @@ export type Database = {
       }
       aeo_audit_runs: {
         Row: {
+          body_snapshot: Json | null
           client_domain: string | null
           company_id: string | null
           competitor_names: string[]
           completed_at: string | null
           content_gap_analysis: Json | null
           created_at: string
+          engines_used: string[]
           error_message: string | null
           geo_analysis: Json | null
           id: string
           model: string
           org_id: string
+          processed_count: number
           prompts_failed: number
+          prompts_queue: Json
           prompts_run: number
+          results_collected: Json
           status: string
           topics: string[]
           triggered_by: string | null
         }
         Insert: {
+          body_snapshot?: Json | null
           client_domain?: string | null
           company_id?: string | null
           competitor_names?: string[]
           completed_at?: string | null
           content_gap_analysis?: Json | null
           created_at?: string
+          engines_used?: string[]
           error_message?: string | null
           geo_analysis?: Json | null
           id?: string
           model: string
           org_id: string
+          processed_count?: number
           prompts_failed?: number
+          prompts_queue?: Json
           prompts_run?: number
+          results_collected?: Json
           status?: string
           topics?: string[]
           triggered_by?: string | null
         }
         Update: {
+          body_snapshot?: Json | null
           client_domain?: string | null
           company_id?: string | null
           competitor_names?: string[]
           completed_at?: string | null
           content_gap_analysis?: Json | null
           created_at?: string
+          engines_used?: string[]
           error_message?: string | null
           geo_analysis?: Json | null
           id?: string
           model?: string
           org_id?: string
+          processed_count?: number
           prompts_failed?: number
+          prompts_queue?: Json
           prompts_run?: number
+          results_collected?: Json
           status?: string
           topics?: string[]
           triggered_by?: string | null
