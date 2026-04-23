@@ -455,7 +455,7 @@ Deno.serve(async (req) => {
         .from("aeo_audit_cache")
         .select("prompt, engine, response_text, citations, client_present, competitors_present")
         .eq("company_id", body.company_id)
-        .in("engine", ["claude", "gemini"])
+        .in("engine", ["claude", "gemini", "openai"])
         .gte("created_at", cutoff);
       cached = data ?? [];
     }
@@ -464,7 +464,10 @@ Deno.serve(async (req) => {
     );
 
     const geminiEnabled = !!GEMINI_API_KEY;
-    const enginesUsed = geminiEnabled ? ["claude", "gemini"] : ["claude"];
+    const openaiEnabled = !!OPENAI_API_KEY;
+    const enginesUsed = ["claude"];
+    if (geminiEnabled) enginesUsed.push("gemini");
+    if (openaiEnabled) enginesUsed.push("openai");
 
     // 3) query Claude (+ Gemini) per prompt with concurrency
     const queried = await runWithConcurrency(prompts, CONCURRENCY, async (p) => {
