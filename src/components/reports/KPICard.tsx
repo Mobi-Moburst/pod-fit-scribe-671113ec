@@ -36,9 +36,11 @@ export const KPICard = ({
   onValueEdit,
   editableValue,
   editableFormat,
+  isLoading,
+  loadingLabel,
 }: KPICardProps) => {
   const [isEditing, setIsEditing] = useState(false);
-  const cardClickable = !!onClick && !isEditing;
+  const cardClickable = !!onClick && !isEditing && !isLoading;
 
   return (
     <Card
