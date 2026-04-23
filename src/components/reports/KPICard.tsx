@@ -78,7 +78,12 @@ export const KPICard = ({
                 </Tooltip>
               )}
             </div>
-            {onValueEdit && typeof editableValue === "number" ? (
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-2xl font-bold tracking-tight text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-base font-medium">Analyzing…</span>
+              </div>
+            ) : onValueEdit && typeof editableValue === "number" ? (
               <div className="text-2xl font-bold tracking-tight">
                 <EditableNumber
                   value={editableValue}
@@ -91,13 +96,15 @@ export const KPICard = ({
             ) : (
               <p className="text-2xl font-bold tracking-tight">{value}</p>
             )}
-            {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            {(isLoading ? loadingLabel : subtitle) && (
+              <p className="text-xs text-muted-foreground">
+                {isLoading ? (loadingLabel ?? "AEO audit running…") : subtitle}
+              </p>
             )}
           </div>
           {Icon && (
             <div className="rounded-full bg-muted/60 p-3">
-              <Icon className="h-5 w-5 text-muted-foreground" />
+              <Icon className={cn("h-5 w-5 text-muted-foreground", isLoading && "opacity-50")} />
             </div>
           )}
         </div>
