@@ -720,6 +720,43 @@ export default function Reports() {
         title: "Report generated",
         description: `Successfully processed ${report.kpis.total_interviews} podcasts with ${report.kpis.total_booked} booked and ${report.kpis.total_published} published.`,
       });
+
+      // Opt-in: kick off AEO audit immediately after generation (Haiku, ~$2)
+      if (runAEOAfterGenerate && selectedCompany?.id) {
+        toast({ title: "AEO audit starting…", description: "Running ~25 prompts via Claude Haiku in the background." });
+        const competitorNames = (selectedSpeaker?.competitors as Competitor[] | undefined)?.map(c => c.name) ?? [];
+        const { data: { user } } = await supabase.auth.getUser();
+        supabase.functions.invoke("run-aeo-audit", {
+          body: {
+            company_id: selectedCompany.id,
+            org_id: TEAM_ORG_ID,
+            company_name: selectedCompany.name,
+            client_domain: selectedCompany.company_url,
+            speaker_name: selectedSpeaker?.name,
+            topics: report.campaign_overview?.target_audiences ?? [],
+            competitors: competitorNames.map(name => ({ name })),
+            campaign_strategy: selectedSpeaker?.campaign_strategy ?? "",
+            talking_points: selectedSpeaker?.talking_points ?? [],
+            professional_credentials: selectedSpeaker?.professional_credentials ?? [],
+            model: "claude-haiku-4-5",
+            prompt_cap: 25,
+            triggered_by: user?.id,
+          },
+        }).then(({ data, error }) => {
+          if (error || data?.error) {
+            toast({ title: "AEO audit failed", description: error?.message ?? data?.error, variant: "destructive" });
+            return;
+          }
+          setReportData(prev => prev ? {
+            ...prev,
+            content_gap_analysis: data.content_gap_analysis,
+            geo_analysis: data.geo_analysis,
+            geo_csv_uploaded: true,
+            content_gap_csv_uploaded: true,
+          } : prev);
+          toast({ title: "AEO audit complete", description: `Ran ${data.prompts_run} prompts.` });
+        });
+      }
     } catch (error) {
       console.error("Error generating report:", error);
       toast({
