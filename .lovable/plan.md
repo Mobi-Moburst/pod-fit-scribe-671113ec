@@ -1,36 +1,52 @@
-## Future Work: Enforce Read-Only Mode for Viewers
 
-The `viewer` role exists in the `user_roles` table and the `useUserRole` hook exposes `isViewer`. However, read-only enforcement is NOT yet wired up across the platform. When ready, hide all create/edit/delete buttons (companies, speakers, reports, evaluations, batch) for users with the `viewer` role. The hook is already in place — just need to conditionally render action buttons based on `isViewer`.
 
----
+# Native AEO Audit — Use Claude (Anthropic) Instead of Perplexity
 
-## Fix Multi-Speaker Double-Counting When Speakers Share the Same Airtable Table
+Swap the engine in the previously-approved plan from Perplexity Sonar to Anthropic Claude with **web search** enabled. Claude's `web_search_20250305` tool returns grounded answers with real citation URLs, which is what the audit needs to detect client vs competitor presence in AI responses.
 
-### Problem
-When multiple speakers share the same Airtable base/table, each speaker's sync returns filtered rows (filtered by speaker name). But when the system aggregates all speakers' rows into `allAirtableRows`, there's no deduplication. If the Airtable speaker filter doesn't work perfectly (e.g., missing `speaker_column_name`, multi-value fields, or formula rejection fallback), the same booking row appears in multiple speakers' datasets, doubling the company-level KPI counts (e.g., 9 bookings → 18).
+## Engine choice
 
-### Changes
+| Option | Citations | Recommendation |
+|---|---|---|
+| Claude + `web_search` tool | Yes — returns `url` + `title` per citation | Primary engine for Phase 1 |
+| Perplexity Sonar | Yes | Skip — no key available |
+| ChatGPT / Gemini | Phase 2 add-on | Defer |
 
-**1. Edge function: Include Airtable record ID in response**
-- File: `supabase/functions/fetch-airtable-data/index.ts`
-- Add `record_id: string` to the `AirtableCSVRow` interface
-- In `mapRecordToRow`, include `record_id: record.id` from the Airtable response
-- This gives the frontend a stable unique key for deduplication
+Claude alone gives us a real, single-engine AEO signal. We can layer additional engines later without changing the data shape.
 
-**2. Client-side type: Add record_id to AirtableCSVRow**
-- Files: `src/hooks/use-airtable-connection.ts`, `src/types/csv.ts` (if it has AirtableCSVRow)
-- Add optional `record_id?: string` field
+## What changes vs the prior plan
 
-**3. Deduplicate allAirtableRows in multi-speaker aggregation**
-- File: `src/utils/reportGenerator.ts`
-- After line 2514 where `allAirtableRows` is assembled, deduplicate by `record_id` (primary) or fallback composite key (`podcast_name + action + scheduled_date_time`) when record_id is missing
-- The per-speaker `airtableRows` remain untouched (speaker accordion sections stay accurate)
-- Only the company-level aggregation arrays get deduped
+Only the engine integration layer differs. Everything else (UI button, caching table, payload shape, domain matching, GEO + Content Gap rendering) stays identical.
 
-**4. Recalculate aggregate KPIs from deduped rows**
-- File: `src/utils/reportGenerator.ts`
-- In `calculateAggregatedKPIs`, the `total_booked`, `total_published`, `total_recorded`, `total_intro_calls`, and `total_interviews` counts already use `allAirtableRows` directly (lines 2765+), so deduping the input array fixes those
-- For `total_booked`/`total_published`/`total_recorded`/`total_intro_calls` (lines 2726-2729), switch from summing speaker breakdowns to counting from the deduped `allAirtableRows` directly, same way `calculateSpeakerKPIs` does it — this prevents double-counting even if per-speaker KPIs overlap
+### Edge function: `run-aeo-audit`
+- Replace Perplexity call with Anthropic Messages API:
+  - Endpoint: `https://api.anthropic.com/v1/messages`
+  - Model: `claude-sonnet-4-5` (or `claude-haiku-4-5` for cheaper runs)
+  - Header: `x-api-key: ${ANTHROPIC_API_KEY}`, `anthropic-version: 2023-06-01`
+  - Body includes `tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }]`
+- Parse response: walk `content[]` blocks, collect every `web_search_tool_result` → `citations[].url`, plus any `text` blocks' inline `citations[]`.
+- Domain match against client + competitors using the shared normalizer (protocol/`www.`/trailing slash strip, already fixed in `csvParsers.ts`).
+- Concurrency: 3 parallel requests with 300 ms jitter (Anthropic rate limits are tighter than Perplexity's).
+- Engine label stored as `"claude"` so future Perplexity/Gemini runs append, not overwrite.
 
-### Technical Detail
-The key insight: per-speaker KPI cards in accordions should still show that speaker's individual counts. Only the top-level company KPI cards need deduplication. So the fix is isolated to the aggregation layer — speaker breakdowns remain unchanged.
+### Required setup
+- Add **`ANTHROPIC_API_KEY`** secret. The user will be prompted after plan approval; key comes from https://console.anthropic.com/settings/keys.
+- No connector needed — Anthropic is a direct-API integration.
+
+### Unchanged from prior plan
+- New table `aeo_audit_cache` (7-day TTL).
+- "Run AEO Audit" button in `UpdateCSVDialog.tsx` and `Reports.tsx`.
+- Output written to `report_data.content_gap_analysis` + `report_data.geo_analysis`; existing `GEODialog`, `ContentGapRecommendations`, `ClientReportCategories` render it untouched.
+- Per-company toggle: Native AEO vs Spotlight CSV.
+- Cap: 25 prompts/run, 1 run/week per company unless overridden.
+
+## Cost note
+
+Claude Sonnet 4.5 with web search ≈ $10/audit at 25 prompts × 5 searches each. Haiku 4.5 ≈ $2/audit. Default to Haiku, expose model choice on the run button.
+
+## Open questions
+
+1. **Model default**: Haiku 4.5 (cheap, ~$2/run) or Sonnet 4.5 (better synthesis, ~$10/run)?
+2. **Tie-breaker**: When both a Spotlight CSV and a native Claude audit exist for a company, which renders in the report — most recent, or always native?
+3. **Phase 2 engines**: Add Perplexity later if the user gets a key, or stay Claude-only and add Gemini via the existing Lovable AI gateway instead?
+
