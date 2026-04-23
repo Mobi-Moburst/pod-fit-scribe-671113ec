@@ -209,7 +209,49 @@ async function queryGemini(prompt: string): Promise<ClaudeResult> {
   return { text, citations };
 }
 
-function detectPresence(
+async function queryOpenAI(prompt: string): Promise<ClaudeResult> {
+  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      tools: [{ type: "web_search" }],
+      input: prompt,
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`OpenAI error ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const textParts: string[] = [];
+  const citations: Array<{ url: string; title?: string }> = [];
+
+  for (const item of data.output ?? []) {
+    if (item.type === "message") {
+      for (const c of item.content ?? []) {
+        if (c.type === "output_text") {
+          if (c.text) textParts.push(c.text);
+          for (const ann of c.annotations ?? []) {
+            if (ann.type === "url_citation" && ann.url) {
+              citations.push({ url: ann.url, title: ann.title });
+            }
+          }
+        }
+      }
+    }
+  }
+  if (!textParts.length && typeof data.output_text === "string") {
+    textParts.push(data.output_text);
+  }
+  return { text: textParts.join("\n"), citations };
+}
+
+
   result: ClaudeResult,
   clientDomain: string,
   competitors: Array<{ name: string; domain: string }>,
