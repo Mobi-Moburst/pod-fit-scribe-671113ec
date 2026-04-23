@@ -250,8 +250,7 @@ async function queryOpenAI(prompt: string): Promise<ClaudeResult> {
   }
   return { text: textParts.join("\n"), citations };
 }
-
-
+function detectPresence(
   result: ClaudeResult,
   clientDomain: string,
   competitors: Array<{ name: string; domain: string }>,
