@@ -177,7 +177,7 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline", lab
             <>
               <DropdownMenuSeparator />
               <div className="px-2 py-1.5 text-xs text-muted-foreground flex items-start gap-1.5">
-                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0 text-amber-500" />
+                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0 text-accent" />
                 <span>No SOV peers configured — competitor analysis will be limited.</span>
               </div>
             </>
@@ -189,7 +189,7 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline", lab
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-accent" />
               No competitors configured
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
