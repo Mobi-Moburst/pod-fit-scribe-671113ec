@@ -20,6 +20,9 @@ interface KPICardProps {
   onValueEdit?: (next: number) => void;
   editableValue?: number;
   editableFormat?: (n: number) => string;
+  /** When true, shows a spinner overlay and a "loading" subtitle hint instead of the value. */
+  isLoading?: boolean;
+  loadingLabel?: string;
 }
 
 export const KPICard = ({
