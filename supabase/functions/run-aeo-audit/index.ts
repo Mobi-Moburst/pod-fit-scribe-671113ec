@@ -29,6 +29,11 @@ interface RunBody {
   prompt_cap?: number;
   model?: string; // e.g. "claude-haiku-4-5" | "claude-sonnet-4-5"
   org_id?: string;
+  triggered_by?: string;
+  // Richer context
+  campaign_strategy?: string;
+  talking_points?: string[];
+  professional_credentials?: string[];
 }
 
 function normalizeDomain(input: string): string {
@@ -51,19 +56,40 @@ async function generatePrompts(input: {
   company_name: string;
   speaker_name?: string;
   topics: string[];
+  competitor_names: string[];
+  campaign_strategy?: string;
+  talking_points?: string[];
+  credentials?: string[];
   cap: number;
 }): Promise<Array<{ prompt: string; topic: string; stage: string }>> {
   const sys =
-    "You generate realistic buyer-journey search queries that real people would type into AI assistants (ChatGPT, Perplexity, Claude). Return strict JSON only.";
+    "You generate realistic buyer-journey search queries that real people would type into AI assistants (ChatGPT, Perplexity, Claude). Ground prompts in the company's actual positioning and named competitors — avoid generic industry boilerplate. Return strict JSON only.";
+
+  const contextLines: string[] = [
+    `Company: ${input.company_name}`,
+    input.speaker_name ? `Key person: ${input.speaker_name}` : "",
+    input.credentials?.length ? `Credentials: ${input.credentials.slice(0, 4).join("; ")}` : "",
+    input.campaign_strategy
+      ? `Positioning: ${input.campaign_strategy.slice(0, 600)}`
+      : "",
+    `Topics: ${input.topics.join(", ") || "general industry"}`,
+    input.talking_points?.length
+      ? `Talking points: ${input.talking_points.slice(0, 8).join("; ")}`
+      : "",
+    input.competitor_names.length
+      ? `Named competitors: ${input.competitor_names.join(", ")}`
+      : "",
+  ].filter(Boolean);
+
   const user = `Generate ${input.cap} prompts to audit AI visibility for:
-Company: ${input.company_name}
-${input.speaker_name ? `Key person: ${input.speaker_name}` : ""}
-Topics: ${input.topics.join(", ") || "general industry"}
+${contextLines.join("\n")}
 
 Distribute across stages:
-- awareness (~40%): broad questions about the topic / category
-- consideration (~40%): comparison, "best", "top experts", "who should I follow"
-- decision (~20%): specific brand/person queries
+- awareness (~40%): broad questions about the topics / category a buyer would research first
+- consideration (~40%): comparison and "best", "top experts", "who should I follow", explicitly include named competitors where natural
+- decision (~20%): brand- or person-led queries (e.g. "is X credible", "{Company} vs {Competitor}")
+
+Use the positioning + talking points to derive specific, realistic queries — not generic ones.
 
 Return JSON: { "prompts": [ { "prompt": string, "topic": string, "stage": "awareness"|"consideration"|"decision" } ] }`;
 
@@ -329,6 +355,10 @@ Deno.serve(async (req) => {
       company_name: body.company_name,
       speaker_name: body.speaker_name,
       topics: body.topics ?? [],
+      competitor_names: competitors.map((c) => c.name),
+      campaign_strategy: body.campaign_strategy,
+      talking_points: body.talking_points,
+      credentials: body.professional_credentials,
       cap,
     });
 
@@ -388,14 +418,35 @@ Deno.serve(async (req) => {
 
     const valid = queried.filter((r: any) => r && !r.error);
     const payloads = buildPayloads({ results: valid as any, competitors });
+    const promptsRun = valid.length;
+    const promptsFailed = queried.length - valid.length;
+
+    // 4) Persist permanent run snapshot for run-over-run history
+    if (body.company_id && body.org_id) {
+      const { error: runErr } = await supabase.from("aeo_audit_runs").insert({
+        org_id: body.org_id,
+        company_id: body.company_id,
+        model,
+        prompts_run: promptsRun,
+        prompts_failed: promptsFailed,
+        content_gap_analysis: payloads.content_gap_analysis,
+        geo_analysis: payloads.geo_analysis,
+        client_domain: clientDomain || null,
+        competitor_names: competitors.map((c) => c.name),
+        topics: body.topics ?? [],
+        triggered_by: body.triggered_by ?? null,
+      });
+      if (runErr) console.error("[run-aeo-audit] failed to insert run history:", runErr);
+    }
 
     return new Response(
       JSON.stringify({
         ...payloads,
-        prompts_run: valid.length,
-        prompts_failed: queried.length - valid.length,
+        prompts_run: promptsRun,
+        prompts_failed: promptsFailed,
         engine: "claude",
         model,
+        last_aeo_audit_at: new Date().toISOString(),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

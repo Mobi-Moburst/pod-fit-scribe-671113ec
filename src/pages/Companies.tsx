@@ -14,12 +14,13 @@ import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, Archive } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, Archive, History } from 'lucide-react';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
 import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtableDialog';
 import { SyncFathomButton } from '@/components/call-notes/SyncFathomButton';
 import { CompanyCard } from '@/components/companies/CompanyCard';
 import { SpeakerProfileCard } from '@/components/companies/SpeakerProfileCard';
+import { AEOAuditHistory } from '@/components/companies/AEOAuditHistory';
 
 const emptyCompany: Omit<Company, 'id'> = {
   name: '', company_url: '', logo_url: '', brand_colors: undefined, campaign_manager: '', airtable_embed_url: '', product_type: '', tags: [], notes: '',
@@ -51,6 +52,7 @@ const Companies = () => {
   const [logoError, setLogoError] = useState(false);
   const [airtableDialog, setAirtableDialog] = useState<{ companyId?: string; speakerId?: string; entityName: string } | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [aeoHistoryFor, setAeoHistoryFor] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
 
   // ── Data fetching ──

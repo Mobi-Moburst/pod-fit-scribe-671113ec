@@ -18,8 +18,10 @@ interface RunAEOAuditButtonProps {
   onComplete: (updates: {
     content_gap_analysis: any;
     geo_analysis: any;
+    last_aeo_audit_at?: string;
   }) => Promise<void> | void;
   variant?: "default" | "outline" | "compact";
+  label?: string;
 }
 
 const MODELS = [
@@ -27,7 +29,7 @@ const MODELS = [
   { id: "claude-sonnet-4-5", label: "Sonnet 4.5 (~$10/run)" },
 ];
 
-export function RunAEOAuditButton({ report, onComplete, variant = "outline" }: RunAEOAuditButtonProps) {
+export function RunAEOAuditButton({ report, onComplete, variant = "outline", label }: RunAEOAuditButtonProps) {
   const { toast } = useToast();
   const [isRunning, setIsRunning] = useState(false);
 
@@ -49,6 +51,31 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline" }: R
         ]),
       ).slice(0, 8);
 
+      // Aggregate richer context — multi-speaker reports merge across speakers
+      const isMulti = reportData.report_type === "multi";
+      const breakdowns = reportData.speaker_breakdowns ?? [];
+      const dedupe = (arr: string[]) => Array.from(new Set(arr.filter(Boolean)));
+
+      const talking_points = isMulti
+        ? dedupe(breakdowns.flatMap((s) => s.talking_points ?? []))
+        : dedupe([
+            ...(reportData.campaign_overview?.talking_points ?? []),
+            ...(breakdowns[0]?.talking_points ?? []),
+          ]);
+
+      const professional_credentials = isMulti
+        ? dedupe(breakdowns.flatMap((s) => s.professional_credentials ?? []))
+        : dedupe(breakdowns[0]?.professional_credentials ?? []);
+
+      const campaign_strategy = isMulti
+        ? breakdowns
+            .map((s) => (s.campaign_strategy ? `${s.speaker_name}: ${s.campaign_strategy}` : ""))
+            .filter(Boolean)
+            .join("\n\n")
+        : breakdowns[0]?.campaign_strategy ?? reportData.campaign_overview?.strategy ?? "";
+
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { data, error } = await supabase.functions.invoke("run-aeo-audit", {
         body: {
           company_id: report.company_id,
@@ -60,8 +87,12 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline" }: R
             reportData.report_type === "single" ? reportData.client?.name : undefined,
           topics,
           competitors,
+          campaign_strategy,
+          talking_points,
+          professional_credentials,
           model,
           prompt_cap: 25,
+          triggered_by: user?.id,
         },
       });
 
@@ -71,6 +102,7 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline" }: R
       await onComplete({
         content_gap_analysis: data.content_gap_analysis,
         geo_analysis: data.geo_analysis,
+        last_aeo_audit_at: data.last_aeo_audit_at,
       });
 
       toast({
@@ -104,7 +136,7 @@ export function RunAEOAuditButton({ report, onComplete, variant = "outline" }: R
           ) : (
             <Sparkles className="h-3 w-3 mr-1" />
           )}
-          {isRunning ? "Running audit…" : "Run AEO Audit"}
+          {isRunning ? "Running audit…" : (label ?? "Run AEO Audit")}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

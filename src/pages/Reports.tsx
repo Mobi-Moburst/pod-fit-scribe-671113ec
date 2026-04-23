@@ -16,7 +16,7 @@ import type { Company, Speaker, MinimalClient, Competitor } from "@/types/client
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints, generatePodcastCategories, scoreAirtablePodcasts } from "@/utils/reportGenerator";
-import { parseBatchCSV, parseAirtableCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
+import { parseBatchCSV, parseAirtableCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
@@ -47,6 +47,7 @@ import ClientReportHighlights from "@/components/client-report/ClientReportHighl
 import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOverviewEditDialog";
 import { NextQuarterEditDialog } from "@/components/reports/NextQuarterEditDialog";
 import { UpdateCSVDialog } from "@/components/reports/UpdateCSVDialog";
+import { RunAEOAuditButton } from "@/components/reports/RunAEOAuditButton";
 import { AirtableDataPreview } from "@/components/reports/AirtableDataPreview";
 import { ReportPasswordDialog } from "@/components/reports/ReportPasswordDialog";
 
@@ -79,9 +80,10 @@ export default function Reports() {
   
   // Company-level file uploads (shared for multi-speaker)
   const [sovFile, setSOVFile] = useState<File | null>(null); // kept for backward compat, always null
-  const [geoFile, setGeoFile] = useState<File | null>(null);
-  const [contentGapFile, setContentGapFile] = useState<File | null>(null);
   const [rephonicEmvFile, setRephonicEmvFile] = useState<File | null>(null);
+
+  // Opt-in: run AEO audit immediately after report is generated (Haiku, ~$2)
+  const [runAEOAfterGenerate, setRunAEOAfterGenerate] = useState<boolean>(false);
   
   // Manual SOV inputs
   const [manualSOVMode, setManualSOVMode] = useState(false);
@@ -565,21 +567,19 @@ export default function Reports() {
           });
         }
         
-        // Parse company-level CSVs
+        // Parse company-level CSVs (GEO + Content Gap CSVs removed — use Run AEO Audit instead)
         const sovText: string | null = null;
-        const geoText = geoFile ? await geoFile.text() : null;
-        const contentGapText = contentGapFile ? await contentGapFile.text() : null;
-        
+
         // Parse Rephonic CSV from per-speaker batchFile uploads
         let rephonicRows: ReturnType<typeof parseRephonicCSV> | undefined;
         const firstSpeakerFiles = speakerFiles[selectedSpeakerIds[0]];
         if (firstSpeakerFiles?.batchFile) {
           rephonicRows = parseRephonicCSV(await firstSpeakerFiles.batchFile.text());
         }
-        
+
         const sovRows = null;
-        const geoRows = geoText ? parseGEOCSV(geoText) : [];
-        const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText, selectedCompany?.company_url || '') : [];
+        const geoRows: any[] = [];
+        const contentGapRows: any[] = [];
         
         // Prepare manual SOV data (include episode URLs)
         const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -599,8 +599,8 @@ export default function Reports() {
           manualSOVCompetitors,
           cpmRate,
           rephonicRows,
-          !!geoFile, // geoCsvProvided
-          !!contentGapFile, // contentGapCsvProvided
+          false, // geoCsvProvided — removed from UI
+          false, // contentGapCsvProvided — removed from UI
           speakingTimePct / 100, // Convert percentage to decimal
           // Merge quarterly notes from all selected speakers
           selectedSpeakerIds.flatMap(id => {
@@ -651,11 +651,9 @@ export default function Reports() {
     setIsProcessing(true);
     
     try {
-      // Read CSV files
+      // Read CSV files (GEO + Content Gap CSVs removed — use Run AEO Audit instead)
       const sovText: string | null = null;
-      const geoText = geoFile ? await geoFile.text() : null;
-      const contentGapText = contentGapFile ? await contentGapFile.text() : null;
-      
+
       // Parse Airtable data - use synced data first, fall back to file
       let airtableRows: any[];
       if (airtableSyncedData && airtableSyncedData.length > 0) {
@@ -682,8 +680,8 @@ export default function Reports() {
         }));
 
       const sovRows = null;
-      const geoRows = geoText ? parseGEOCSV(geoText) : [];
-      const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText, selectedCompany?.company_url || '') : [];
+      const geoRows: any[] = [];
+      const contentGapRows: any[] = [];
       
       // Prepare manual SOV data if in manual mode
       const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -705,8 +703,8 @@ export default function Reports() {
         manualSOVCompetitors,
         cpmRate,
         rephonicRows,
-        !!geoFile, // geoCsvProvided
-        !!contentGapFile, // contentGapCsvProvided
+        false, // geoCsvProvided — removed from UI
+        false, // contentGapCsvProvided — removed from UI
         speakingTimePct / 100, // Convert percentage to decimal
         (selectedSpeaker?.quarterly_notes as Array<{ quarter: string; notes: string }>) || undefined
       );
@@ -722,6 +720,43 @@ export default function Reports() {
         title: "Report generated",
         description: `Successfully processed ${report.kpis.total_interviews} podcasts with ${report.kpis.total_booked} booked and ${report.kpis.total_published} published.`,
       });
+
+      // Opt-in: kick off AEO audit immediately after generation (Haiku, ~$2)
+      if (runAEOAfterGenerate && selectedCompany?.id) {
+        toast({ title: "AEO audit starting…", description: "Running ~25 prompts via Claude Haiku in the background." });
+        const competitorNames = (selectedSpeaker?.competitors as Competitor[] | undefined)?.map(c => c.name) ?? [];
+        const { data: { user } } = await supabase.auth.getUser();
+        supabase.functions.invoke("run-aeo-audit", {
+          body: {
+            company_id: selectedCompany.id,
+            org_id: TEAM_ORG_ID,
+            company_name: selectedCompany.name,
+            client_domain: selectedCompany.company_url,
+            speaker_name: selectedSpeaker?.name,
+            topics: report.campaign_overview?.target_audiences ?? [],
+            competitors: competitorNames.map(name => ({ name })),
+            campaign_strategy: selectedSpeaker?.campaign_strategy ?? "",
+            talking_points: selectedSpeaker?.talking_points ?? [],
+            professional_credentials: selectedSpeaker?.professional_credentials ?? [],
+            model: "claude-haiku-4-5",
+            prompt_cap: 25,
+            triggered_by: user?.id,
+          },
+        }).then(({ data, error }) => {
+          if (error || data?.error) {
+            toast({ title: "AEO audit failed", description: error?.message ?? data?.error, variant: "destructive" });
+            return;
+          }
+          setReportData(prev => prev ? {
+            ...prev,
+            content_gap_analysis: data.content_gap_analysis,
+            geo_analysis: data.geo_analysis,
+            geo_csv_uploaded: true,
+            content_gap_csv_uploaded: true,
+          } : prev);
+          toast({ title: "AEO audit complete", description: `Ran ${data.prompts_run} prompts.` });
+        });
+      }
     } catch (error) {
       console.error("Error generating report:", error);
       toast({
@@ -1963,6 +1998,29 @@ export default function Reports() {
                                     <RefreshCw className="h-3.5 w-3.5 mr-1" />
                                     Update
                                   </Button>
+                                  <RunAEOAuditButton
+                                    report={report}
+                                    variant="compact"
+                                    label="AEO"
+                                    onComplete={async ({ content_gap_analysis, geo_analysis }) => {
+                                      const updated = {
+                                        ...(report.report_data as ReportData),
+                                        content_gap_analysis,
+                                        geo_analysis,
+                                        geo_csv_uploaded: true,
+                                        content_gap_csv_uploaded: true,
+                                      };
+                                      const { error } = await supabase
+                                        .from('reports')
+                                        .update({
+                                          report_data: updated as any,
+                                          generated_at: new Date().toISOString(),
+                                        })
+                                        .eq('id', report.id);
+                                      if (error) throw error;
+                                      loadAllReports();
+                                    }}
+                                  />
                                   {report.is_published ? (
                                     <>
                                       <Button
@@ -2690,42 +2748,23 @@ export default function Reports() {
                     </div>
                   )}
 
-                  {/* Step 4d: GEO & Content Gap (shows after Airtable) */}
+                  {/* Step 4d: AEO Audit opt-in (replaces GEO + Content Gap CSVs) */}
                   {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs font-medium">GEO CSV</Label>
-                          <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{geoFile ? "Uploaded" : "Optional"}</Badge>
-                        </div>
-                        {geoFile ? (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                            <span className="text-xs flex-1 truncate">{geoFile.name}</span>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setGeoFile(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Input type="file" accept=".csv" onChange={(e) => setGeoFile(e.target.files?.[0] || null)} />
-                        )}
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs font-medium">Content Gap CSV</Label>
-                          <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{contentGapFile ? "Uploaded" : "Optional"}</Badge>
-                        </div>
-                        {contentGapFile ? (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                            <span className="text-xs flex-1 truncate">{contentGapFile.name}</span>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setContentGapFile(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
-                        )}
+                    <div className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/20">
+                      <Checkbox
+                        id="run-aeo-after-generate"
+                        checked={runAEOAfterGenerate}
+                        onCheckedChange={(v) => setRunAEOAfterGenerate(!!v)}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="run-aeo-after-generate" className="text-xs font-medium cursor-pointer">
+                          Run AEO audit after generating
+                          <Badge variant="secondary" className="ml-2 text-[10px]">Haiku · ~$2</Badge>
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Queries Claude with web search across ~25 buyer-journey prompts to populate GEO + Content Gap analyses. You can also run it later from the report list.
+                        </p>
                       </div>
                     </div>
                   )}
