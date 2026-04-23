@@ -2688,42 +2688,23 @@ export default function Reports() {
                     </div>
                   )}
 
-                  {/* Step 4d: GEO & Content Gap (shows after Airtable) */}
+                  {/* Step 4d: AEO Audit opt-in (replaces GEO + Content Gap CSVs) */}
                   {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs font-medium">GEO CSV</Label>
-                          <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{geoFile ? "Uploaded" : "Optional"}</Badge>
-                        </div>
-                        {geoFile ? (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                            <span className="text-xs flex-1 truncate">{geoFile.name}</span>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setGeoFile(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Input type="file" accept=".csv" onChange={(e) => setGeoFile(e.target.files?.[0] || null)} />
-                        )}
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs font-medium">Content Gap CSV</Label>
-                          <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{contentGapFile ? "Uploaded" : "Optional"}</Badge>
-                        </div>
-                        {contentGapFile ? (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                            <span className="text-xs flex-1 truncate">{contentGapFile.name}</span>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setContentGapFile(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
-                        )}
+                    <div className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/20">
+                      <Checkbox
+                        id="run-aeo-after-generate"
+                        checked={runAEOAfterGenerate}
+                        onCheckedChange={(v) => setRunAEOAfterGenerate(!!v)}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="run-aeo-after-generate" className="text-xs font-medium cursor-pointer">
+                          Run AEO audit after generating
+                          <Badge variant="secondary" className="ml-2 text-[10px]">Haiku · ~$2</Badge>
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Queries Claude with web search across ~25 buyer-journey prompts to populate GEO + Content Gap analyses. You can also run it later from the report list.
+                        </p>
                       </div>
                     </div>
                   )}
