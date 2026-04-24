@@ -3160,7 +3160,9 @@ export default function Reports() {
                         onClick={reportData.content_gap_analysis ? () => setContentGapDialogOpen(true) : undefined}
                         onHide={() => toggleSection('contentGap')}
                         isLoading={isAuditRunning && !reportData.content_gap_analysis}
-                        loadingLabel="Analyzing competitor coverage…"
+                        loadingLabel={auditProgress && auditProgress.total > 0
+                          ? `Analyzing competitor coverage… ${auditProgress.processed}/${auditProgress.total}`
+                          : "Analyzing competitor coverage…"}
                       />
                     )}
                     {visibleSections.socialValue && reportData.kpis.total_social_reach > 0 && (
