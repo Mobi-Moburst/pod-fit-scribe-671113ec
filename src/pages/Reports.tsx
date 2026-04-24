@@ -760,6 +760,12 @@ export default function Reports() {
               const { data: poll } = await supabase.functions.invoke("run-aeo-audit", {
                 body: { run_id: runId },
               });
+              if (poll?.progress) {
+                setAuditProgress({
+                  processed: poll.progress.processed ?? 0,
+                  total: poll.progress.total ?? 0,
+                });
+              }
               if (poll?.status === "completed") {
                 setReportData(prev => prev ? {
                   ...prev,
@@ -780,6 +786,7 @@ export default function Reports() {
             toast({ title: "AEO audit failed", description: e?.message ?? "Unknown error", variant: "destructive" });
           } finally {
             setIsAuditRunning(false);
+            setAuditProgress(null);
           }
         })();
       }
