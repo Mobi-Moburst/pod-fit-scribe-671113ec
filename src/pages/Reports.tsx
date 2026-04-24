@@ -53,6 +53,10 @@ import { AirtableDataPreview } from "@/components/reports/AirtableDataPreview";
 import { ReportPasswordDialog } from "@/components/reports/ReportPasswordDialog";
 
 export default function Reports() {
+  const auditPollIntervalMs = 4000;
+  const auditAbsoluteTimeoutMs = 20 * 60 * 1000;
+  const auditStallTimeoutMs = 2 * 60 * 1000;
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -727,7 +731,7 @@ export default function Reports() {
       // Opt-in: kick off AEO audit immediately after generation (background job + poll)
       if (runAEOAfterGenerate && selectedCompany?.id) {
         setIsAuditRunning(true);
-        toast({ title: "AEO audit starting…", description: "Running ~25 prompts via Claude + Gemini + GPT in the background. This usually takes 2–4 minutes." });
+        toast({ title: "AEO audit starting…", description: "Running ~25 prompts via Claude + Gemini + GPT in the background. This can take several minutes." });
         const competitorNames = (selectedSpeaker?.competitors as Competitor[] | undefined)?.map(c => c.name) ?? [];
         const { data: { user } } = await supabase.auth.getUser();
         (async () => {
@@ -754,18 +758,35 @@ export default function Reports() {
             }
 
             const runId = kick.run_id;
-            const maxAttempts = 90; // ~6 min
-            for (let i = 0; i < maxAttempts; i++) {
-              await new Promise(r => setTimeout(r, 4000));
-              const { data: poll } = await supabase.functions.invoke("run-aeo-audit", {
+            const startedAt = Date.now();
+            let lastProgressAt = Date.now();
+            let lastProcessed = -1;
+            let lastTotal = 0;
+
+            while (Date.now() - startedAt < auditAbsoluteTimeoutMs) {
+              await new Promise(r => setTimeout(r, auditPollIntervalMs));
+              const { data: poll, error: pollErr } = await supabase.functions.invoke("run-aeo-audit", {
                 body: { run_id: runId },
               });
-              if (poll?.progress) {
-                setAuditProgress({
-                  processed: poll.progress.processed ?? 0,
-                  total: poll.progress.total ?? 0,
-                });
+
+              if (pollErr) {
+                console.warn("[run-aeo-audit] auto-run poll error:", pollErr);
+                continue;
               }
+
+              if (poll?.progress) {
+                const processed = poll.progress.processed ?? 0;
+                const total = poll.progress.total ?? 0;
+
+                setAuditProgress({ processed, total });
+
+                if (processed > lastProcessed) {
+                  lastProcessed = processed;
+                  lastTotal = total;
+                  lastProgressAt = Date.now();
+                }
+              }
+
               if (poll?.status === "completed") {
                 setReportData(prev => prev ? {
                   ...prev,
@@ -780,8 +801,21 @@ export default function Reports() {
               if (poll?.status === "failed") {
                 throw new Error(poll.error_message || "Audit failed");
               }
+
+              if (Date.now() - lastProgressAt > auditStallTimeoutMs) {
+                throw new Error(
+                  lastTotal > 0
+                    ? `Audit stalled at ${lastProcessed}/${lastTotal} prompts. Please try again.`
+                    : "Audit stalled before processing prompts. Please try again.",
+                );
+              }
             }
-            throw new Error("Audit timed out");
+
+            throw new Error(
+              lastTotal > 0
+                ? `Audit is taking longer than expected (${lastProcessed}/${lastTotal} prompts processed). Please try again.`
+                : "Audit is taking longer than expected. Please try again.",
+            );
           } catch (e: any) {
             toast({ title: "AEO audit failed", description: e?.message ?? "Unknown error", variant: "destructive" });
           } finally {
