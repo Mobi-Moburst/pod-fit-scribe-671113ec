@@ -116,6 +116,7 @@ export default function Reports() {
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAuditRunning, setIsAuditRunning] = useState(false);
+  const [auditProgress, setAuditProgress] = useState<{ processed: number; total: number } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
   const [reachDialogOpen, setReachDialogOpen] = useState(false);
@@ -759,6 +760,12 @@ export default function Reports() {
               const { data: poll } = await supabase.functions.invoke("run-aeo-audit", {
                 body: { run_id: runId },
               });
+              if (poll?.progress) {
+                setAuditProgress({
+                  processed: poll.progress.processed ?? 0,
+                  total: poll.progress.total ?? 0,
+                });
+              }
               if (poll?.status === "completed") {
                 setReportData(prev => prev ? {
                   ...prev,
@@ -779,6 +786,7 @@ export default function Reports() {
             toast({ title: "AEO audit failed", description: e?.message ?? "Unknown error", variant: "destructive" });
           } finally {
             setIsAuditRunning(false);
+            setAuditProgress(null);
           }
         })();
       }
@@ -3130,7 +3138,9 @@ export default function Reports() {
                           onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
                           onHide={() => toggleSection('geoScore')}
                           isLoading={showLoading}
-                          loadingLabel="Querying Claude, Gemini & GPT…"
+                          loadingLabel={auditProgress && auditProgress.total > 0
+                            ? `Querying Claude, Gemini & GPT… ${auditProgress.processed}/${auditProgress.total}`
+                            : "Querying Claude, Gemini & GPT…"}
                         />
                       );
                     })()}
@@ -3150,7 +3160,9 @@ export default function Reports() {
                         onClick={reportData.content_gap_analysis ? () => setContentGapDialogOpen(true) : undefined}
                         onHide={() => toggleSection('contentGap')}
                         isLoading={isAuditRunning && !reportData.content_gap_analysis}
-                        loadingLabel="Analyzing competitor coverage…"
+                        loadingLabel={auditProgress && auditProgress.total > 0
+                          ? `Analyzing competitor coverage… ${auditProgress.processed}/${auditProgress.total}`
+                          : "Analyzing competitor coverage…"}
                       />
                     )}
                     {visibleSections.socialValue && reportData.kpis.total_social_reach > 0 && (
