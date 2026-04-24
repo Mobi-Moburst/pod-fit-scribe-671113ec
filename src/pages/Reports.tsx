@@ -3138,7 +3138,9 @@ export default function Reports() {
                           onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
                           onHide={() => toggleSection('geoScore')}
                           isLoading={showLoading}
-                          loadingLabel="Querying Claude, Gemini & GPT…"
+                          loadingLabel={auditProgress && auditProgress.total > 0
+                            ? `Querying Claude, Gemini & GPT… ${auditProgress.processed}/${auditProgress.total}`
+                            : "Querying Claude, Gemini & GPT…"}
                         />
                       );
                     })()}
