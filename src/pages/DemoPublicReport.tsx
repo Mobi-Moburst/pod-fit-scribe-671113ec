@@ -14,6 +14,34 @@ import { ClientReportNextQuarter } from "@/components/client-report/ClientReport
 
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
 import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
+import { DEMO_CLIENTS, applyQuarterToReportData } from "@/data/demoClients";
+
+const DEFAULT_DEMO_CLIENT_ID = "signalforge";
+
+const DEMO_VISIBLE_SECTIONS = {
+  totalBooked: true,
+  totalPublished: true,
+  socialReach: true,
+  totalReach: true,
+  averageScore: false,
+  emv: true,
+  sov: true,
+  geoScore: true,
+  contentGap: true,
+  socialValue: true,
+  campaignOverview: true,
+  topCategories: true,
+  nextQuarterStrategy: true,
+  targetPodcasts: false,
+  contentGapRecommendations: true,
+  highlights: true,
+};
+
+function getCurrentQuarter(): string {
+  const now = new Date();
+  const q = Math.floor(now.getMonth() / 3) + 1;
+  return `Q${q} ${now.getFullYear()}`;
+}
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,42 +92,42 @@ export default function DemoPublicReport() {
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
   const [socialValueDialogOpen, setSocialValueDialogOpen] = useState(false);
 
+  const [isSelfSeeded, setIsSelfSeeded] = useState(false);
+
   useEffect(() => {
     const storedData = sessionStorage.getItem("demoPublishedReport");
-    if (!storedData) {
-      setError("No demo report found");
+
+    if (storedData) {
+      try {
+        const parsed = JSON.parse(storedData);
+        setReportData(parsed.reportData);
+        setReportName(parsed.reportName);
+        setQuarter(parsed.quarter);
+        setVisibleSections(parsed.visibleSections || DEMO_VISIBLE_SECTIONS);
+        setIsLoading(false);
+        return;
+      } catch (e) {
+        // fall through to self-seed
+      }
+    }
+
+    // Self-seed with the default demo client so prospects can land directly on
+    // /demo/report/public without ever passing through the editor.
+    const client = DEMO_CLIENTS[DEFAULT_DEMO_CLIENT_ID];
+    if (!client) {
+      setError("Demo report not available");
       setIsLoading(false);
       return;
     }
 
-    try {
-      const parsed = JSON.parse(storedData);
-      setReportData(parsed.reportData);
-      setReportName(parsed.reportName);
-      setQuarter(parsed.quarter);
-      setVisibleSections(parsed.visibleSections || {
-        totalBooked: true,
-        totalPublished: true,
-        socialReach: true,
-        totalReach: true,
-        averageScore: false,
-        emv: true,
-        sov: true,
-        geoScore: true,
-        contentGap: true,
-        socialValue: true,
-        campaignOverview: true,
-        topCategories: true,
-        nextQuarterStrategy: true,
-        targetPodcasts: false,
-        contentGapRecommendations: true,
-        highlights: true,
-      });
-      setIsLoading(false);
-    } catch (e) {
-      setError("Failed to load demo report");
-      setIsLoading(false);
-    }
+    const currentQuarter = getCurrentQuarter();
+    const processed = applyQuarterToReportData(client.reportData, currentQuarter);
+    setReportData(processed);
+    setReportName(`${client.company.name} - ${currentQuarter} Campaign Report`);
+    setQuarter(currentQuarter);
+    setVisibleSections(DEMO_VISIBLE_SECTIONS);
+    setIsSelfSeeded(true);
+    setIsLoading(false);
   }, []);
 
   const handlePresent = () => {
@@ -165,17 +193,19 @@ export default function DemoPublicReport() {
       <BackgroundFX />
       
       {/* Fixed Action Buttons */}
-      <div className="fixed top-6 left-6 z-50">
-        <Button 
-          onClick={handleBack}
-          variant="outline"
-          size="lg"
-          className="shadow-lg"
-        >
-          <ArrowLeft className="h-5 w-5 mr-2" />
-          Back to Editor
-        </Button>
-      </div>
+      {!isSelfSeeded && (
+        <div className="fixed top-6 left-6 z-50">
+          <Button
+            onClick={handleBack}
+            variant="outline"
+            size="lg"
+            className="shadow-lg"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            Back to Editor
+          </Button>
+        </div>
+      )}
       <div className="fixed top-6 right-6 z-50">
         <Button 
           onClick={handlePresent}
