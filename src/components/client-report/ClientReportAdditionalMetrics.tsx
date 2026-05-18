@@ -19,7 +19,7 @@ interface ClientReportAdditionalMetricsProps {
   onSovClick: () => void;
   onGeoClick: () => void;
   onContentGapClick: () => void;
-  onSocialValueClick: () => void;
+  onSocialValueClick?: () => void;
 }
 
 const formatCurrency = (amount: number): string => {
