@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   ArrowRight,
   Calendar,
@@ -18,13 +17,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
-
-const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: "-80px" },
-  transition: { duration: 0.5, ease: "easeOut" },
-};
 
 const layers = [
   {
@@ -151,15 +143,12 @@ export default function Showcase() {
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent,hsl(var(--background)))]" />
         </div>
         <div className="container mx-auto px-4 pt-24 pb-28 md:pt-32 md:pb-36 max-w-5xl">
-          <motion.p
-            {...fadeUp}
+          <p
             className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-6"
           >
             The Kitcaster Campaign Command Center
-          </motion.p>
-          <motion.h1
-            {...fadeUp}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
+          </p>
+          <h1
             className="text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.05]"
           >
             Every booking, every download,
@@ -167,19 +156,15 @@ export default function Showcase() {
             <span className="text-muted-foreground">every dollar of earned media —</span>
             <br />
             tracked in one place.
-          </motion.h1>
-          <motion.p
-            {...fadeUp}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.12 }}
+          </h1>
+          <p
             className="mt-8 text-base md:text-lg text-muted-foreground max-w-2xl"
           >
             A purpose-built campaign dashboard for podcast PR. Verifiable metrics, named-peer
             benchmarks, and AI-driven strategy — delivered as a beautiful report your client can
             actually read.
-          </motion.p>
-          <motion.div
-            {...fadeUp}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.18 }}
+          </p>
+          <div
             className="mt-10 flex flex-wrap items-center gap-3"
           >
             <Link to="/demo/report">
@@ -193,12 +178,10 @@ export default function Showcase() {
                 Talk to the team
               </Button>
             </a>
-          </motion.div>
+          </div>
 
           {/* Mini KPI strip */}
-          <motion.div
-            {...fadeUp}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.24 }}
+          <div
             className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-3"
           >
             {[
@@ -217,14 +200,14 @@ export default function Showcase() {
                 <span className="text-sm text-muted-foreground">{label}</span>
               </div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* Three layers */}
       <section className="border-t border-border/60">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-6xl">
-          <motion.div {...fadeUp} className="max-w-3xl mb-16">
+          <div className="max-w-3xl mb-16">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-4">
               What gets measured
             </p>
@@ -234,14 +217,12 @@ export default function Showcase() {
             <p className="mt-4 text-base text-muted-foreground">
               Activity proves we're working. Reach proves it landed. Impact proves it mattered.
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid md:grid-cols-3 gap-4">
             {layers.map((layer, i) => (
-              <motion.div
+              <div
                 key={layer.label}
-                {...fadeUp}
-                transition={{ duration: 0.5, ease: "easeOut", delay: i * 0.08 }}
                 className="rounded-2xl border border-border/60 bg-card p-6 flex flex-col"
               >
                 <div className="flex items-center gap-2 mb-6">
@@ -262,7 +243,7 @@ export default function Showcase() {
                     </li>
                   ))}
                 </ul>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -271,7 +252,7 @@ export default function Showcase() {
       {/* Demo embed */}
       <section className="border-t border-border/60 bg-muted/20">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-6xl">
-          <motion.div {...fadeUp} className="max-w-3xl mb-12">
+          <div className="max-w-3xl mb-12">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-4">
               See it in action
             </p>
@@ -282,9 +263,9 @@ export default function Showcase() {
               Click through a fully interactive quarterly report — same one we deliver to clients,
               populated with representative data.
             </p>
-          </motion.div>
+          </div>
 
-          <motion.div {...fadeUp} className="relative">
+          <div className="relative">
             <Link
               to="/demo/report"
               className="group block rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-border transition-colors"
@@ -320,28 +301,26 @@ export default function Showcase() {
                 <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* Differentiators */}
       <section className="border-t border-border/60">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-6xl">
-          <motion.div {...fadeUp} className="max-w-3xl mb-16">
+          <div className="max-w-3xl mb-16">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-4">
               What makes it different
             </p>
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight">
               Built for PR teams who get asked, "but what did it actually do?"
             </h2>
-          </motion.div>
+          </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {differentiators.map((d, i) => (
-              <motion.div
+              <div
                 key={d.title}
-                {...fadeUp}
-                transition={{ duration: 0.5, ease: "easeOut", delay: (i % 3) * 0.06 }}
                 className="rounded-2xl border border-border/60 bg-card p-6"
               >
                 <div className="rounded-lg bg-muted/60 p-2 w-fit">
@@ -349,7 +328,7 @@ export default function Showcase() {
                 </div>
                 <h3 className="mt-5 text-base font-semibold tracking-tight">{d.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{d.body}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -358,34 +337,29 @@ export default function Showcase() {
       {/* Trust strip */}
       <section className="border-t border-border/60 bg-muted/20">
         <div className="container mx-auto px-4 py-20 max-w-4xl text-center">
-          <motion.p
-            {...fadeUp}
+          <p
             className="text-2xl md:text-3xl font-medium tracking-tight text-balance"
           >
             Every metric is sourced, verifiable, and tied to a date range.
             <br />
             <span className="text-muted-foreground">No vanity numbers.</span>
-          </motion.p>
+          </p>
         </div>
       </section>
 
       {/* CTA */}
       <section className="border-t border-border/60">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-4xl text-center">
-          <motion.h2 {...fadeUp} className="text-3xl md:text-5xl font-semibold tracking-tight">
+          <h2 className="text-3xl md:text-5xl font-semibold tracking-tight">
             Ready to see your campaigns this way?
-          </motion.h2>
-          <motion.p
-            {...fadeUp}
-            transition={{ duration: 0.5, ease: "easeOut", delay: 0.06 }}
+          </h2>
+          <p
             className="mt-5 text-base text-muted-foreground max-w-xl mx-auto"
           >
             Walk through a live report with the Kitcaster team and see how the Command Center would
             tell your client's story.
-          </motion.p>
-          <motion.div
-            {...fadeUp}
-            transition={{ duration: 0.5, ease: "easeOut", delay: 0.12 }}
+          </p>
+          <div
             className="mt-10 flex flex-wrap justify-center items-center gap-3"
           >
             <Link to="/demo/report">
@@ -399,7 +373,7 @@ export default function Showcase() {
                 Book an intro call
               </Button>
             </a>
-          </motion.div>
+          </div>
         </div>
       </section>
 
