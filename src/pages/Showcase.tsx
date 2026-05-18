@@ -153,7 +153,7 @@ export default function Showcase() {
           >
             Every booking, every download,
             <br />
-            <span className="text-muted-foreground">every dollar of earned media —</span>
+            <span className="text-muted-foreground">every measurable result —</span>
             <br />
             tracked in one place.
           </h1>
