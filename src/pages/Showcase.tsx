@@ -51,7 +51,7 @@ const differentiators = [
   {
     icon: Users,
     title: "Share of Voice vs named peers",
-    body: "Benchmark against the specific competitors your client actually cares about — not a generic industry average.",
+    body: "Benchmark against the specific peers you actually care about — not a generic industry average.",
   },
   {
     icon: Brain,
