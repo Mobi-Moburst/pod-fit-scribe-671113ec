@@ -121,7 +121,7 @@ export default function Showcase() {
             <span className="text-sm font-medium tracking-tight">Campaign Command Center</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Link to="/demo/report">
+            <Link to="/demo/report/public">
               <Button variant="ghost" size="sm" className="text-sm">
                 See the demo report
               </Button>
@@ -166,7 +166,7 @@ export default function Showcase() {
           <div
             className="mt-10 flex flex-wrap items-center gap-3"
           >
-            <Link to="/demo/report">
+            <Link to="/demo/report/public">
               <Button size="lg" className="text-sm">
                 Open a live demo report
                 <ArrowRight className="h-4 w-4" />
@@ -266,7 +266,7 @@ export default function Showcase() {
 
           <div className="relative">
             <Link
-              to="/demo/report"
+              to="/demo/report/public"
               className="group block rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-border transition-colors"
             >
               <div className="aspect-[16/9] relative bg-gradient-to-br from-background via-card to-muted/30 flex items-center justify-center">
@@ -361,7 +361,7 @@ export default function Showcase() {
           <div
             className="mt-10 flex flex-wrap justify-center items-center gap-3"
           >
-            <Link to="/demo/report">
+            <Link to="/demo/report/public">
               <Button size="lg" className="text-sm">
                 Explore the demo
                 <ArrowRight className="h-4 w-4" />
@@ -386,7 +386,7 @@ export default function Showcase() {
             </span>
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <Link to="/demo/report" className="hover:text-foreground transition-colors">
+            <Link to="/demo/report/public" className="hover:text-foreground transition-colors">
               Demo report
             </Link>
             <a
