@@ -51,12 +51,12 @@ const differentiators = [
   {
     icon: Users,
     title: "Share of Voice vs named peers",
-    body: "Benchmark against the specific competitors your client actually cares about — not a generic industry average.",
+    body: "Benchmark against the specific peers you actually care about — not a generic industry average.",
   },
   {
     icon: Brain,
     title: "GEO & AEO scoring",
-    body: "How often does your client show up when ChatGPT, Claude, and Gemini answer the questions that matter? We measure it.",
+    body: "How often do you show up when ChatGPT, Claude, and Gemini answer the questions that matter in your space? We measure it.",
   },
   {
     icon: Database,
@@ -71,7 +71,7 @@ const differentiators = [
   {
     icon: ShieldCheck,
     title: "Verifiable by default",
-    body: "Every metric is sourced, every number tied to a date range. No vanity numbers — only data we can defend in a client call.",
+    body: "Every metric is sourced, every number tied to a date range. No vanity numbers — only data that holds up in the boardroom.",
   },
 ];
 
@@ -161,7 +161,7 @@ export default function Showcase() {
             className="mt-8 text-base md:text-lg text-muted-foreground max-w-2xl"
           >
             A purpose-built campaign dashboard for podcast PR. Only the metrics we can source and
-            defend — presented in a report your client can actually read.
+            defend — presented in a report you can actually read.
           </p>
           <div
             className="mt-10 flex flex-wrap items-center gap-3"
@@ -259,8 +259,8 @@ export default function Showcase() {
               A real report. No screenshots, no slides.
             </h2>
             <p className="mt-4 text-base text-muted-foreground">
-              Click through a fully interactive quarterly report — same one we deliver to clients,
-              populated with representative data.
+              Click through a fully interactive quarterly report — the same format you'd receive
+              from us, populated with representative data.
             </p>
           </div>
 
@@ -312,7 +312,7 @@ export default function Showcase() {
               What makes it different
             </p>
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight">
-              Built for PR teams who get asked, "but what did it actually do?"
+              Built for leaders who get asked, "but what did it actually do?"
             </h2>
           </div>
 
@@ -350,13 +350,13 @@ export default function Showcase() {
       <section className="border-t border-border/60">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-4xl text-center">
           <h2 className="text-3xl md:text-5xl font-semibold tracking-tight">
-            Ready to see your campaigns this way?
+            Ready to see your campaign this way?
           </h2>
           <p
             className="mt-5 text-base text-muted-foreground max-w-xl mx-auto"
           >
             Walk through a live report with the Kitcaster team and see how the Command Center would
-            tell your client's story.
+            tell your story.
           </p>
           <div
             className="mt-10 flex flex-wrap justify-center items-center gap-3"
