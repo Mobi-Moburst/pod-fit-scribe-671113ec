@@ -15,7 +15,7 @@ interface VisibleSections {
 interface ClientReportAdditionalMetricsProps {
   reportData: ReportData;
   visibleSections: VisibleSections;
-  onEmvClick: () => void;
+  onEmvClick?: () => void;
   onSovClick: () => void;
   onGeoClick: () => void;
   onContentGapClick: () => void;
