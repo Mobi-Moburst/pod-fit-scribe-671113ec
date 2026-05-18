@@ -29,7 +29,7 @@ const layers = [
   {
     label: "Reach",
     title: "Real listenership. Real social weight.",
-    body: "Episode-level listenership from Rephonic, combined with podcast social followings and YouTube subscribers — verified, never estimated.",
+    body: "Episode-level listenership pulled from trusted industry data, combined with podcast social followings and YouTube subscribers — so you see the real footprint of every placement.",
     icon: Headphones,
     bullets: ["Total Listenership", "Social Reach", "Episodes Published"],
   },
