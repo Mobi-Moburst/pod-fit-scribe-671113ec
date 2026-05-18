@@ -312,7 +312,7 @@ export default function Showcase() {
               What makes it different
             </p>
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight">
-              Built for PR teams who get asked, "but what did it actually do?"
+              Built for leaders who get asked, "but what did it actually do?"
             </h2>
           </div>
 
