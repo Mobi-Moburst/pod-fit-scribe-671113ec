@@ -14,6 +14,34 @@ import { ClientReportNextQuarter } from "@/components/client-report/ClientReport
 
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
 import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
+import { DEMO_CLIENTS, applyQuarterToReportData } from "@/data/demoClients";
+
+const DEFAULT_DEMO_CLIENT_ID = "signalforge";
+
+const DEMO_VISIBLE_SECTIONS = {
+  totalBooked: true,
+  totalPublished: true,
+  socialReach: true,
+  totalReach: true,
+  averageScore: false,
+  emv: true,
+  sov: true,
+  geoScore: true,
+  contentGap: true,
+  socialValue: true,
+  campaignOverview: true,
+  topCategories: true,
+  nextQuarterStrategy: true,
+  targetPodcasts: false,
+  contentGapRecommendations: true,
+  highlights: true,
+};
+
+function getCurrentQuarter(): string {
+  const now = new Date();
+  const q = Math.floor(now.getMonth() / 3) + 1;
+  return `Q${q} ${now.getFullYear()}`;
+}
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
 import { SpeakerAccordion } from "@/components/reports/SpeakerAccordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
