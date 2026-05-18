@@ -35,10 +35,10 @@ const layers = [
   },
   {
     label: "Impact",
-    title: "Earned media value tied to outcomes.",
-    body: "True EMV from episode duration × listenership, Share of Voice against named peers, and brand visibility scores across ChatGPT, Claude, and Gemini.",
+    title: "The signal in a noisy market.",
+    body: "How your voice stacks up against the peers you care about, where your brand is showing up in the conversations that shape your category, and the value those placements represent.",
     icon: BarChart3,
-    bullets: ["EMV", "Share of Voice", "GEO / AEO Score"],
+    bullets: ["Earned Media Value", "Share of Voice", "Brand Presence"],
   },
 ];
 
