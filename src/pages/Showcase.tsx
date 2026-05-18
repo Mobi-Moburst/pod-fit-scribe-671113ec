@@ -256,7 +256,7 @@ export default function Showcase() {
               See it in action
             </p>
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight">
-              A real report. No screenshots, no slides.
+              Not a mockup. A working report.
             </h2>
             <p className="mt-4 text-base text-muted-foreground">
               Click through a fully interactive quarterly report — the same format you'd receive
