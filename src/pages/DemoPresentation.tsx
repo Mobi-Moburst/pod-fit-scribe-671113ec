@@ -12,7 +12,7 @@ import { AdditionalMetricsSlide } from "@/components/client-report/slides/Additi
 import { CampaignOverviewSlide } from "@/components/client-report/slides/CampaignOverviewSlide";
 import { CategoriesSlide } from "@/components/client-report/slides/CategoriesSlide";
 import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterSlide";
-import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
+
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
 
 import { SpeakerSpotlightSlide } from "@/components/client-report/slides/SpeakerSpotlightSlide";
