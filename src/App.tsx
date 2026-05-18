@@ -21,6 +21,7 @@ import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
+import Showcase from "./pages/Showcase";
 
 // Singleton pattern for QueryClient to prevent recreation during HMR
 let browserQueryClient: QueryClient | undefined = undefined;
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/demo/report" element={<DemoReport />} />
               <Route path="/demo/report/public" element={<DemoPublicReport />} />
               <Route path="/demo/report/present" element={<DemoPresentation />} />
+              <Route path="/showcase" element={<Showcase />} />
 
               {/* Protected routes — require CM login */}
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
