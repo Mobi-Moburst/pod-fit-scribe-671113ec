@@ -160,8 +160,8 @@ export default function Showcase() {
           <p
             className="mt-8 text-base md:text-lg text-muted-foreground max-w-2xl"
           >
-            A purpose-built campaign dashboard for podcast PR. Only the metrics we can source and
-            defend — presented in a report you can actually read.
+            A purpose-built dashboard for your podcasting campaign. Real numbers, sourced from the
+            platforms that matter — presented in a report you'll actually want to read.
           </p>
           <div
             className="mt-10 flex flex-wrap items-center gap-3"
