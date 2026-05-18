@@ -92,19 +92,6 @@ export default function DemoPublicReport() {
   const [contentGapDialogOpen, setContentGapDialogOpen] = useState(false);
   const [socialValueDialogOpen, setSocialValueDialogOpen] = useState(false);
 
-  useEffect(() => {
-    const storedData = sessionStorage.getItem("demoPublishedReport");
-    if (!storedData) {
-      setError("No demo report found");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(storedData);
-      setReportData(parsed.reportData);
-      setReportName(parsed.reportName);
-      setQuarter(parsed.quarter);
   const [isSelfSeeded, setIsSelfSeeded] = useState(false);
 
   useEffect(() => {
