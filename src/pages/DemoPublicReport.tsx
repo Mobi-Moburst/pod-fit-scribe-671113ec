@@ -240,7 +240,7 @@ export default function DemoPublicReport() {
           <ClientReportAdditionalMetrics
             reportData={reportData}
             visibleSections={visibleSections}
-            onEmvClick={() => setEmvDialogOpen(true)}
+            onEmvClick={undefined}
             onSovClick={() => setSovDialogOpen(true)}
             onGeoClick={() => setGeoDialogOpen(true)}
             onContentGapClick={() => setContentGapDialogOpen(true)}
