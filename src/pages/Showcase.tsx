@@ -71,7 +71,7 @@ const differentiators = [
   {
     icon: ShieldCheck,
     title: "Verifiable by default",
-    body: "Every metric is sourced, every number tied to a date range. No vanity numbers — only data we can defend in a client call.",
+    body: "Every metric is sourced, every number tied to a date range. No vanity numbers — only data that holds up in the boardroom.",
   },
 ];
 
