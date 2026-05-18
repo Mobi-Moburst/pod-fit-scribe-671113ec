@@ -100,7 +100,7 @@ export function ClientReportAdditionalMetrics({
       label: "Earned Media Value",
       subtitle: reportData.kpis.total_published === 0
         ? "Requires published episodes"
-        : "Total campaign EMV • Click to view analysis",
+        : onEmvClick ? "Total campaign EMV • Click to view analysis" : "Total campaign EMV",
       tooltip: "Based on audience size × industry CPM rate × guest speaking time. Reflects the equivalent cost to reach this audience through paid podcast advertising.",
       onClick: onEmvClick,
       color: "text-emerald-500",
