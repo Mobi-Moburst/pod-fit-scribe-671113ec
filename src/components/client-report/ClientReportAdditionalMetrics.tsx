@@ -19,7 +19,7 @@ interface ClientReportAdditionalMetricsProps {
   onSovClick: () => void;
   onGeoClick: () => void;
   onContentGapClick: () => void;
-  onSocialValueClick: () => void;
+  onSocialValueClick?: () => void;
 }
 
 const formatCurrency = (amount: number): string => {
@@ -165,7 +165,7 @@ export function ClientReportAdditionalMetrics({
       icon: Share2,
       value: formatCurrency(totalSocialValue),
       label: "Social Value",
-      subtitle: "Equivalent ad spend • Click to view breakdown",
+      subtitle: onSocialValueClick ? "Equivalent ad spend • Click to view breakdown" : "Equivalent ad spend",
       tooltip: "Calculated from follower reach across LinkedIn, Meta, YouTube, TikTok, and X using platform-specific ad rates with visibility and premium content multipliers.",
       onClick: onSocialValueClick,
       color: "text-pink-500",

@@ -244,7 +244,7 @@ export default function DemoPublicReport() {
             onSovClick={() => setSovDialogOpen(true)}
             onGeoClick={() => setGeoDialogOpen(true)}
             onContentGapClick={() => setContentGapDialogOpen(true)}
-            onSocialValueClick={() => setSocialValueDialogOpen(true)}
+            onSocialValueClick={undefined}
           />
         )}
 

@@ -168,7 +168,7 @@ export default function DemoPresentation() {
             onSovClick={() => setSovDialogOpen(true)}
             onGeoClick={() => setGeoDialogOpen(true)}
             onContentGapClick={() => setContentGapDialogOpen(true)}
-            onSocialValueClick={() => setSocialValueDialogOpen(true)}
+            onSocialValueClick={undefined}
           />
         ),
       });
