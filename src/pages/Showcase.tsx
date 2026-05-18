@@ -56,7 +56,7 @@ const differentiators = [
   {
     icon: Brain,
     title: "GEO & AEO scoring",
-    body: "How often does your client show up when ChatGPT, Claude, and Gemini answer the questions that matter? We measure it.",
+    body: "How often do you show up when ChatGPT, Claude, and Gemini answer the questions that matter in your space? We measure it.",
   },
   {
     icon: Database,
