@@ -11,7 +11,7 @@ import { ClientReportAdditionalMetrics } from "@/components/client-report/Client
 import { ClientReportCampaignOverview } from "@/components/client-report/ClientReportCampaignOverview";
 import { ClientReportCategories } from "@/components/client-report/ClientReportCategories";
 import { ClientReportNextQuarter } from "@/components/client-report/ClientReportNextQuarter";
-import { ClientReportTargetPodcasts } from "@/components/client-report/ClientReportTargetPodcasts";
+
 import { ClientReportFooter } from "@/components/client-report/ClientReportFooter";
 import ClientReportHighlights from "@/components/client-report/ClientReportHighlights";
 import { PublishedEpisodesCarousel } from "@/components/reports/PublishedEpisodesCarousel";
@@ -82,7 +82,7 @@ export default function DemoPublicReport() {
         totalPublished: true,
         socialReach: true,
         totalReach: true,
-        averageScore: true,
+        averageScore: false,
         emv: true,
         sov: true,
         geoScore: true,
@@ -91,7 +91,7 @@ export default function DemoPublicReport() {
         campaignOverview: true,
         topCategories: true,
         nextQuarterStrategy: true,
-        targetPodcasts: true,
+        targetPodcasts: false,
         contentGapRecommendations: true,
         highlights: true,
       });
@@ -264,12 +264,6 @@ export default function DemoPublicReport() {
           />
         )}
 
-        {/* Target Podcasts */}
-        {visibleSections.targetPodcasts && reportData.target_podcasts && reportData.target_podcasts.length > 0 && (
-          <ClientReportTargetPodcasts 
-            podcasts={reportData.target_podcasts}
-          />
-        )}
 
         {/* Content Gap Recommendations */}
         {visibleSections.contentGapRecommendations && 
