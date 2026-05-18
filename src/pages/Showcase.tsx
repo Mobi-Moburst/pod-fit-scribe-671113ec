@@ -22,7 +22,7 @@ const layers = [
   {
     label: "Activity",
     title: "Every booking, recording, and intro call.",
-    body: "The full pipeline in one view — from first conversation to confirmed recording. Always current, never double-counted.",
+    body: "The full pipeline in one view — from first conversation to confirmed recording — updated in real time as your campaign progresses.",
     icon: Calendar,
     bullets: ["Podcasts Booked", "Total Recorded", "Intro Calls"],
   },
