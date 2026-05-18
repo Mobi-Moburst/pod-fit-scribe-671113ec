@@ -214,7 +214,7 @@ export default function Showcase() {
               Three layers. One source of truth.
             </h2>
             <p className="mt-4 text-base text-muted-foreground">
-              Activity proves we're working. Reach proves it landed. Impact proves it mattered.
+              Activity is the pipeline. Reach is the audience. Impact is the outcome.
             </p>
           </div>
 
