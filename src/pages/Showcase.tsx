@@ -60,8 +60,8 @@ const differentiators = [
   },
   {
     icon: Database,
-    title: "Live Airtable sync",
-    body: "Activity flows in directly from the campaign manager's working base — no spreadsheet exports, no stale data.",
+    title: "Always-current pipeline",
+    body: "Every booking, recording, and update flows in live from the team running your campaign — no spreadsheet exports, no stale numbers.",
   },
   {
     icon: Sparkles,
