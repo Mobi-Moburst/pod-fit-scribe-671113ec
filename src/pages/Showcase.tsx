@@ -22,7 +22,7 @@ const layers = [
   {
     label: "Activity",
     title: "Every booking, recording, and intro call.",
-    body: "Live Airtable sync tracks the full pipeline — from first conversation to confirmed recording — with strict date boundaries so nothing is double-counted.",
+    body: "The full pipeline in one view — from first conversation to confirmed recording. Always current, never double-counted.",
     icon: Calendar,
     bullets: ["Podcasts Booked", "Total Recorded", "Intro Calls"],
   },
