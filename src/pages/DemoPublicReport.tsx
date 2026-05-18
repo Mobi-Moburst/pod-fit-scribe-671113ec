@@ -193,17 +193,19 @@ export default function DemoPublicReport() {
       <BackgroundFX />
       
       {/* Fixed Action Buttons */}
-      <div className="fixed top-6 left-6 z-50">
-        <Button 
-          onClick={handleBack}
-          variant="outline"
-          size="lg"
-          className="shadow-lg"
-        >
-          <ArrowLeft className="h-5 w-5 mr-2" />
-          Back to Editor
-        </Button>
-      </div>
+      {!isSelfSeeded && (
+        <div className="fixed top-6 left-6 z-50">
+          <Button
+            onClick={handleBack}
+            variant="outline"
+            size="lg"
+            className="shadow-lg"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            Back to Editor
+          </Button>
+        </div>
+      )}
       <div className="fixed top-6 right-6 z-50">
         <Button 
           onClick={handlePresent}
