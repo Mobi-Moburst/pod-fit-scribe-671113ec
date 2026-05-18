@@ -259,8 +259,8 @@ export default function Showcase() {
               A real report. No screenshots, no slides.
             </h2>
             <p className="mt-4 text-base text-muted-foreground">
-              Click through a fully interactive quarterly report — same one we deliver to clients,
-              populated with representative data.
+              Click through a fully interactive quarterly report — the same format you'd receive
+              from us, populated with representative data.
             </p>
           </div>
 
