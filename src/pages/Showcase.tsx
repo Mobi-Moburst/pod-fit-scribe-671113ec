@@ -350,13 +350,13 @@ export default function Showcase() {
       <section className="border-t border-border/60">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-4xl text-center">
           <h2 className="text-3xl md:text-5xl font-semibold tracking-tight">
-            Ready to see your campaigns this way?
+            Ready to see your campaign this way?
           </h2>
           <p
             className="mt-5 text-base text-muted-foreground max-w-xl mx-auto"
           >
             Walk through a live report with the Kitcaster team and see how the Command Center would
-            tell your client's story.
+            tell your story.
           </p>
           <div
             className="mt-10 flex flex-wrap justify-center items-center gap-3"
