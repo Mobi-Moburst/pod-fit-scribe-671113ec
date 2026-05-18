@@ -1,54 +1,63 @@
+## Goal
+Create a standalone marketing/showcase page that tells the story of the Kitcaster Campaign Command Center dashboard — completely isolated from existing app routes, components, and data flows.
 
+## Isolation Strategy
+- New route: `/showcase` (public, no auth)
+- New page file: `src/pages/Showcase.tsx`
+- New components folder: `src/components/showcase/` (self-contained, no shared imports beyond shadcn/ui primitives and `KitcasterLogo`)
+- No edits to existing pages, report components, edge functions, or data hooks
+- Only touch `src/App.tsx` to register the new route
 
-# AEO Audit — Phase 2: Remove CSVs, Manual Toggle, Run History
+## Page Structure
 
-## 1. Remove GEO + Content Gap CSV uploads
+1. **Hero**
+   - Headline: "Every booking, every download, every dollar of earned media — tracked in one place."
+   - Sub: positioning line about verifiable data, no vanity metrics
+   - Two CTAs: "See a live demo report" → `/demo/report`, "Book a call" → mailto/external link
 
-- Remove the GEO CSV and Content Gap CSV slots from `UpdateCSVDialog.tsx` and the report intake flow in `Reports.tsx`.
-- Existing reports with CSV-derived data continue to render unchanged — only the upload UI is removed.
-- The "Run AEO Audit" button becomes the sole path to populate `geo_analysis` + `content_gap_analysis`.
+2. **The three layers we measure** (3-column section)
+   - Activity — bookings, recordings, intro calls
+   - Reach — listenership, social, episodes published
+   - Impact — EMV, Share of Voice, GEO/AEO scores
 
-## 2. Surface AEO Audit as first-class, opt-in
+3. **Interactive demo embed**
+   - Large framed preview card linking to `/demo/report`
+   - "Open the full interactive report →"
+   - Optional: screenshot/thumbnail image (placeholder for now, can swap later)
 
-**Report dashboard (`Reports.tsx`):**
-- Add `RunAEOAuditButton` (compact) to the report header action row.
-- Empty-state CTA in the GEO + Content Gap card areas when data is missing.
-- When data exists: "Last run: <timestamp> · Re-run" link on each card.
+4. **What makes it different** (feature grid, 6 tiles)
+   - True EMV (duration × listenership, not estimates)
+   - Share of Voice vs named competitors
+   - GEO/AEO scoring across ChatGPT, Claude, Gemini
+   - Live Airtable sync
+   - AI "Looking Ahead" strategy
+   - Verifiable sourcing on every metric
 
-**Report intake flow:**
-- Add an opt-in checkbox: **"Run AEO audit after generating (Haiku, ~$2)"** — default OFF.
-- If checked, kick off the audit immediately after report creation; show inline progress.
+5. **Trust strip**
+   - "Every metric is sourced, verifiable, and tied to a date range."
 
-**Richer prompt context** (carried over from prior unfinished item):
-- `RunAEOAuditButton` payload expanded to include `campaign_strategy`, `talking_points`, `professional_credentials`, and competitor names/domains.
-- `run-aeo-audit` `generatePrompts()` updated to ground prompts in this context (multi-speaker reports aggregate + dedupe).
+6. **CTA footer**
+   - Repeat primary CTA, Kitcaster logo
 
-## 3. Run history at company level
+## Visual Direction
+- Reuses existing design tokens (dark-first, Geist, `text-sm` body) so it feels on-brand
+- Generous whitespace, large display headings, muted section labels — consistent with the premium internal-tool aesthetic already in memory
+- Framer-motion fade/slide on section entry (already in deps)
+- SEO: proper `<title>`, meta description, single H1, canonical
 
-New table `aeo_audit_runs` for permanent run-over-run snapshots (separate from the 7-day `aeo_audit_cache` dedup table):
+## Technical Notes
+- Page is fully static — no Supabase calls, no edge functions, no report data dependencies
+- Safe to delete entirely without affecting anything else
+- Files created:
+  - `src/pages/Showcase.tsx`
+  - `src/components/showcase/ShowcaseHero.tsx`
+  - `src/components/showcase/ShowcaseLayers.tsx`
+  - `src/components/showcase/ShowcaseDemoEmbed.tsx`
+  - `src/components/showcase/ShowcaseDifferentiators.tsx`
+  - `src/components/showcase/ShowcaseCTA.tsx`
+- File edited: `src/App.tsx` (one new `<Route>` line + import)
 
-```text
-aeo_audit_runs
-  id, org_id, company_id,
-  model, prompts_run, prompts_failed,
-  content_gap_analysis jsonb,
-  geo_analysis jsonb,
-  client_domain, competitor_names text[], topics text[],
-  triggered_by uuid, created_at
-```
-
-- Edge function inserts one row per successful run with full snapshot + input context.
-- New `AEOAuditHistory` component on the **company page** showing all past runs as a timeline (date, model, GEO score, coverage %, top gaps).
-- Click a run → side-panel diff vs latest (Δ coverage %, new/closed gaps, competitor movement).
-- Once 2+ runs exist for a company, surface "↑ +12% coverage vs last run" badge on GEO + Content Gap cards in the active report.
-- Phase 1 = company-level only (multi-speaker reports roll up to the parent company).
-
-## Files touched
-
-- `supabase/functions/run-aeo-audit/index.ts` — INSERT into `aeo_audit_runs` on success; expand prompt context
-- `src/components/reports/RunAEOAuditButton.tsx` — pass full client context; emit `last_aeo_audit_at`
-- `src/components/reports/UpdateCSVDialog.tsx` — remove GEO + Content Gap CSV slots
-- `src/pages/Reports.tsx` — header button, empty-state CTAs, intake checkbox, drop CSV inputs
-- `src/pages/Companies.tsx` (+ new `src/components/companies/AEOAuditHistory.tsx`) — timeline + diff viewer
-- Migration: create `aeo_audit_runs` table with org-scoped RLS mirroring `aeo_audit_cache`
-
+## Open Questions (can answer after approval)
+- Preferred URL slug: `/showcase` vs `/product` vs `/dashboard-story`?
+- Primary CTA destination — `/demo/report`, an email, or a Calendly link?
+- Should I include a real screenshot of the demo report, or use a styled placeholder for now?
