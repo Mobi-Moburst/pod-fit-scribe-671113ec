@@ -1,0 +1,1 @@
+CREATE POLICY "Admins can view all fireflies connections" ON public.fireflies_connections FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
