@@ -70,7 +70,7 @@ const Companies = () => {
   const [companies, setCompanies] = useState<CompanyWithSpeakers[]>([]);
   const [editingCompany, setEditingCompany] = useState<(Company & { isNew?: boolean }) | null>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<(Speaker & { isNew?: boolean; avoid_text?: string }) | null>(null);
-  const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
+  const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [industryFilter, setIndustryFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'with_speakers' | 'no_speakers'>('all');
