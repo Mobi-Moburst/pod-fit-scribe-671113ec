@@ -54,7 +54,13 @@ function getWindowRange(window: WindowKey): { start: string; end: string } {
 }
 
 function isPodcastRecording(action: unknown): boolean {
-  return typeof action === "string" && action.toLowerCase().includes("podcast recording");
+  const toText = (v: unknown): string => {
+    if (typeof v === "string") return v;
+    if (Array.isArray(v)) return v.map(toText).join(" ");
+    if (v && typeof v === "object") return JSON.stringify(v);
+    return "";
+  };
+  return toText(action).toLowerCase().includes("podcast recording");
 }
 
 function inRange(value: string | undefined, start: Date, end: Date): boolean {
