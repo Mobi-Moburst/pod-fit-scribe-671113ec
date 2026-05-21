@@ -47,12 +47,14 @@ type LtvRow = {
   renewal_date: string | null;
   renewed: boolean | null;
   last_client_checkin: string | null;
+  zz_complete: boolean | null;
   synced_at: string;
 };
 
 const ACTIVE_STATUSES = new Set(["On track", "Behind", "Billing Paused"]);
 
 function isActive(r: LtvRow) {
+  if (r.zz_complete === true) return false;
   return ACTIVE_STATUSES.has(r.status ?? "");
 }
 
@@ -130,7 +132,7 @@ const Overview = () => {
     const { data, error } = await supabase
       .from("ltv_snapshots")
       .select(
-        "id, client_name, campaign_manager, cohort, primary_industry, status, campaign_success_status, cumulative_pct_fulfilled, current_month_cumulative_pct_fulfilled, deliverables_completed_this_month, trend_vs_last_month, renewal_date, renewed, last_client_checkin, synced_at"
+        "id, client_name, campaign_manager, cohort, primary_industry, status, campaign_success_status, cumulative_pct_fulfilled, current_month_cumulative_pct_fulfilled, deliverables_completed_this_month, trend_vs_last_month, renewal_date, renewed, last_client_checkin, zz_complete, synced_at"
       )
       .order("client_name");
     if (error) {
@@ -162,8 +164,11 @@ const Overview = () => {
     return Array.from(set).sort();
   }, [rows]);
 
+  // Globally exclude completed/offboarded clients (ZZ - Complete in Airtable)
+  const livingRows = useMemo(() => rows.filter((r) => r.zz_complete !== true), [rows]);
+
   const filtered = useMemo(() => {
-    return rows.filter((r) => {
+    return livingRows.filter((r) => {
       if (cmFilter !== "all" && r.campaign_manager !== cmFilter) return false;
       if (statusFilter === "active" && !isActive(r)) return false;
       if (statusFilter === "at_risk" && !isAtRisk(r)) return false;
@@ -175,11 +180,11 @@ const Overview = () => {
       }
       return true;
     });
-  }, [rows, cmFilter, statusFilter]);
+  }, [livingRows, cmFilter, statusFilter]);
 
   const scope = useMemo(
-    () => (cmFilter === "all" ? rows : rows.filter((r) => r.campaign_manager === cmFilter)),
-    [rows, cmFilter]
+    () => (cmFilter === "all" ? livingRows : livingRows.filter((r) => r.campaign_manager === cmFilter)),
+    [livingRows, cmFilter]
   );
 
   const kpis = useMemo(() => {

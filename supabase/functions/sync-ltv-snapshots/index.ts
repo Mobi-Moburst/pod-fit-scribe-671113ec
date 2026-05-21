@@ -36,6 +36,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   last_client_checkin: ["Last Client Check-In", "Last Client Check In"],
   next_checkin_scheduled: ["Check-in Call (Upcoming)", "Check-in Call Upcoming"],
   eow_recap_sent: ["EOW Recap Sent?", "EOW Recap Sent"],
+  zz_complete: ["ZZ - Complete?", "ZZ - Complete", "ZZ-Complete", "ZZ Complete"],
 };
 
 function getField(fields: Record<string, any>, key: string): any {
@@ -166,6 +167,7 @@ Deno.serve(async (req) => {
         last_client_checkin: toDate(getField(f, "last_client_checkin")),
         next_checkin_scheduled: toDate(getField(f, "next_checkin_scheduled")),
         eow_recap_sent: toBool(getField(f, "eow_recap_sent")),
+        zz_complete: toBool(getField(f, "zz_complete")),
         raw_fields: f,
         synced_at: new Date().toISOString(),
       };
@@ -183,12 +185,26 @@ Deno.serve(async (req) => {
       upserted += chunk.length;
     }
 
+    // Delete stale rows (in DB but no longer in Airtable response)
+    const liveIds = rows.map((r) => r.airtable_record_id);
+    let deleted = 0;
+    if (liveIds.length > 0) {
+      const { data: del } = await supabase
+        .from("ltv_snapshots")
+        .delete()
+        .eq("org_id", TEAM_ORG_ID)
+        .not("airtable_record_id", "in", `(${liveIds.map((id) => `"${id}"`).join(",")})`)
+        .select("id");
+      deleted = del?.length ?? 0;
+    }
+
     const matchedCount = rows.filter((r) => r.company_id).length;
     return new Response(
       JSON.stringify({
         success: true,
         fetched: records.length,
         upserted,
+        deleted,
         matched_to_companies: matchedCount,
         unmatched: upserted - matchedCount,
         synced_at: new Date().toISOString(),
