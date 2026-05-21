@@ -369,87 +369,391 @@ const Companies = () => {
     <div>
       <BackgroundFX />
       <Navbar />
-      <main className="container mx-auto px-3 py-6 grid gap-6">
-        {/* Header */}
-        <Card className="p-4 card-surface flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl font-semibold">Companies</h1>
-            <p className="text-sm text-muted-foreground">Manage companies and their speakers for podcast campaigns.</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            
-            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
-              <Download className="h-4 w-4 mr-2" />Import from Airtable
-            </Button>
-            <Button variant="hero" onClick={startNewCompany}>
-              <Building2 className="h-4 w-4 mr-2" />New Company
-            </Button>
-          </div>
-        </Card>
-
+      <main className="w-full px-4 lg:px-6 py-4">
         <ImportFromAirtableDialog open={showImportDialog} onOpenChange={setShowImportDialog} existingCompanies={companies.map(c => ({ id: c.id, name: c.name }))} onImportComplete={loadData} />
 
-        {/* View mode tabs + Filter */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'active' | 'archived')} className="w-auto">
-            <TabsList className="h-9">
-              <TabsTrigger value="active" className="text-xs px-3">Active</TabsTrigger>
-              <TabsTrigger value="archived" className="text-xs px-3">
-                <Archive className="h-3 w-3 mr-1.5" />Archived{archivedCount > 0 && ` (${archivedCount})`}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {managers.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Label className="text-sm shrink-0">Campaign Manager</Label>
-              <select className="h-9 rounded-md border bg-background px-3 text-sm" value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)}>
-                <option value="">All</option>
-                {managers.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
+        <div className="flex gap-6 items-start">
+          {/* ═══ Sidebar ═══ */}
+          <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto pr-1">
+            {/* Primary actions */}
+            <div className="flex flex-col gap-2 mb-5">
+              <Button variant="hero" size="sm" className="justify-center h-9" onClick={startNewCompany}>
+                <Plus className="h-4 w-4 mr-1.5" />New Client
+              </Button>
+              <Button variant="soft" size="sm" className="justify-center h-9" onClick={() => setShowImportDialog(true)}>
+                <Download className="h-4 w-4 mr-1.5" />Import from Airtable
+              </Button>
             </div>
-          )}
-          
+
+            {/* Pinned */}
+            {pinnedCount > 0 && (
+              <div className="mb-5">
+                <p className="px-2 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Pinned</p>
+                <nav className="flex flex-col gap-0.5">
+                  {companies.filter(c => pinned.has(c.id) && !c.archived_at).slice(0, 8).map(c => (
+                    <button key={c.id} onClick={() => { setNavView('all'); setSearch(c.name); }} className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/60 text-left">
+                      <div className="w-5 h-5 rounded bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/40">
+                        {c.logo_url ? <img src={c.logo_url} alt="" className="w-full h-full object-contain p-0.5" /> : <Building2 className="h-3 w-3 text-muted-foreground" />}
+                      </div>
+                      <span className="text-sm truncate flex-1">{c.name}</span>
+                      <Pin className="h-3 w-3 text-muted-foreground/60 fill-current" />
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            )}
+
+            {/* Navigation */}
+            <nav className="flex flex-col gap-0.5 mb-5">
+              {([
+                { key: 'my', label: 'My Clients', icon: User },
+                { key: 'all', label: 'All Clients', icon: Users },
+                { key: 'recent', label: 'Recently Active', icon: Clock },
+                { key: 'archived', label: 'Archived', icon: Archive, count: archivedCount },
+              ] as const).map(item => {
+                const Icon = item.icon;
+                const active = navView === item.key;
+                return (
+                  <button key={item.key} onClick={() => setNavView(item.key)} className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {'count' in item && item.count ? <span className="text-[11px] text-muted-foreground/70">{item.count}</span> : null}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Campaign Managers */}
+            {managers.length > 0 && (
+              <div className="mb-5">
+                <p className="px-2 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Campaign Managers</p>
+                <nav className="flex flex-col gap-0.5">
+                  {managers.map(([name, count]) => {
+                    const active = managerFilter === name;
+                    return (
+                      <button key={name} onClick={() => setManagerFilter(active ? '' : name)} className={`group flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+                        <Avatar className="h-5 w-5"><AvatarFallback className="text-[9px] bg-muted">{name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+                        <span className="flex-1 truncate">{name}</span>
+                        <span className="text-[11px] text-muted-foreground/60">{count}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+            )}
+
+            {/* Industries */}
+            {industries.length > 0 && (
+              <div className="mb-5">
+                <p className="px-2 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Industries</p>
+                <nav className="flex flex-col gap-0.5">
+                  {industries.slice(0, 12).map(([tag, count]) => {
+                    const active = industryFilter === tag;
+                    return (
+                      <button key={tag} onClick={() => setIndustryFilter(active ? '' : tag)} className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+                        <span className="flex-1 truncate">{tag}</span>
+                        <span className="text-[11px] text-muted-foreground/60">{count}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+            )}
+          </aside>
+
+          {/* ═══ Main content ═══ */}
+          <section className="flex-1 min-w-0">
+            {/* Page heading */}
+            <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {navView === 'archived' ? 'Archived' : navView === 'recent' ? 'Recently Active' : navView === 'pinned' ? 'Pinned' : navView === 'my' ? 'My Clients' : 'All Clients'}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-0.5">Browse and manage all your client campaigns.</p>
+              </div>
+              <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-card">
+                <button onClick={() => setViewMode('list')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="List view"><List className="h-3.5 w-3.5" /></button>
+                <button onClick={() => setViewMode('grid')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="Grid view"><LayoutGrid className="h-3.5 w-3.5" /></button>
+              </div>
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients, speakers, industries…" className="h-9 pl-9 bg-card" />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="soft" size="sm" className="h-9">
+                    Campaign Manager{managerFilter ? `: ${managerFilter}` : ''}
+                    <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto">
+                  <DropdownMenuItem onClick={() => setManagerFilter('')}>All managers</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {managers.map(([name, count]) => (
+                    <DropdownMenuCheckboxItem key={name} checked={managerFilter === name} onCheckedChange={() => setManagerFilter(managerFilter === name ? '' : name)}>
+                      {name} <span className="ml-auto text-xs text-muted-foreground">{count}</span>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="soft" size="sm" className="h-9">
+                    Industry{industryFilter ? `: ${industryFilter}` : ''}
+                    <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto">
+                  <DropdownMenuItem onClick={() => setIndustryFilter('')}>All industries</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {industries.map(([tag, count]) => (
+                    <DropdownMenuCheckboxItem key={tag} checked={industryFilter === tag} onCheckedChange={() => setIndustryFilter(industryFilter === tag ? '' : tag)}>
+                      {tag} <span className="ml-auto text-xs text-muted-foreground">{count}</span>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="soft" size="sm" className="h-9">
+                    Status{statusFilter !== 'all' ? `: ${statusFilter === 'with_speakers' ? 'With speakers' : 'No speakers'}` : ''}
+                    <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuCheckboxItem checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>All</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={statusFilter === 'with_speakers'} onCheckedChange={() => setStatusFilter('with_speakers')}>With speakers</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={statusFilter === 'no_speakers'} onCheckedChange={() => setStatusFilter('no_speakers')}>No speakers</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="soft" size="sm" className="h-9">
+                    <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
+                    {sortMode === 'recent' ? 'Recently Active' : sortMode === 'alpha' ? 'Alphabetical' : sortMode === 'created' ? 'Recently Added' : 'Most Speakers'}
+                    <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem checked={sortMode === 'recent'} onCheckedChange={() => setSortMode('recent')}>Recently Active</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={sortMode === 'alpha'} onCheckedChange={() => setSortMode('alpha')}>Alphabetical</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={sortMode === 'created'} onCheckedChange={() => setSortMode('created')}>Recently Added</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={sortMode === 'speakers'} onCheckedChange={() => setSortMode('speakers')}>Most Speakers</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Result count + active filter chips */}
+            <div className="flex items-center gap-2 mb-3 flex-wrap text-xs text-muted-foreground">
+              <span>{filtered.length} {filtered.length === 1 ? 'client' : 'clients'}</span>
+              {(managerFilter || industryFilter || statusFilter !== 'all' || search) && (
+                <>
+                  <span className="text-border">·</span>
+                  {managerFilter && (
+                    <button onClick={() => setManagerFilter('')} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-foreground hover:bg-secondary/80">
+                      CM: {managerFilter} <X className="h-3 w-3" />
+                    </button>
+                  )}
+                  {industryFilter && (
+                    <button onClick={() => setIndustryFilter('')} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-foreground hover:bg-secondary/80">
+                      {industryFilter} <X className="h-3 w-3" />
+                    </button>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <button onClick={() => setStatusFilter('all')} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-foreground hover:bg-secondary/80">
+                      {statusFilter === 'with_speakers' ? 'With speakers' : 'No speakers'} <X className="h-3 w-3" />
+                    </button>
+                  )}
+                  {search && (
+                    <button onClick={() => setSearch('')} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-foreground hover:bg-secondary/80">
+                      "{search}" <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Directory table */}
+            <div className="rounded-lg border border-border/60 bg-card overflow-hidden">
+              {/* Header row */}
+              <div className="hidden md:grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 px-4 py-2.5 border-b border-border/50 text-[11px] font-medium uppercase tracking-wider text-muted-foreground bg-muted/20">
+                <div>Client</div>
+                <div>Speaker(s)</div>
+                <div>Industry</div>
+                <div>Recent Activity</div>
+                <div />
+              </div>
+
+              {filtered.length === 0 ? (
+                <div className="p-12 text-center text-sm text-muted-foreground">
+                  {navView === 'archived' ? 'No archived clients.' : 'No clients match your filters.'}
+                </div>
+              ) : (
+                <div className="divide-y divide-border/40">
+                  {filtered.map(company => {
+                    const expanded = expandedCompanies.has(company.id);
+                    const isPinned = pinned.has(company.id);
+                    return (
+                      <div key={company.id}>
+                        {/* Row */}
+                        <div
+                          className="group grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 items-center px-4 py-3 cursor-pointer hover:bg-secondary/30 transition-colors"
+                          onClick={() => toggleCompany(company.id)}
+                        >
+                          {/* Client */}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/40">
+                              {company.logo_url ? (
+                                <img src={company.logo_url} alt="" className="w-full h-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              ) : (
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex items-center gap-1.5">
+                              <span className="font-medium text-[15px] truncate">{company.name}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); togglePin(company.id); }}
+                                className={`shrink-0 p-1 rounded transition-opacity ${isPinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-60 hover:!opacity-100'}`}
+                                title={isPinned ? 'Unpin' : 'Pin'}
+                              >
+                                {isPinned ? <Pin className="h-3 w-3 fill-current" /> : <Pin className="h-3 w-3" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Speakers */}
+                          <div className="flex items-center gap-2 min-w-0">
+                            {company.speakers.length === 0 ? (
+                              <span className="text-xs text-muted-foreground italic">No speakers</span>
+                            ) : (
+                              <>
+                                <div className="flex items-center -space-x-2">
+                                  {company.speakers.slice(0, 2).map(s => (
+                                    <Avatar key={s.id} className="w-6 h-6 ring-2 ring-card">
+                                      <AvatarImage src={s.headshot_url || undefined} alt={s.name} />
+                                      <AvatarFallback className="text-[9px] bg-muted">{s.name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                  ))}
+                                </div>
+                                <span className="text-sm truncate">
+                                  {company.speakers[0].name}
+                                  {company.speakers.length > 1 && <span className="text-muted-foreground"> +{company.speakers.length - 1}</span>}
+                                </span>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Industry */}
+                          <div className="min-w-0">
+                            {company.tags && company.tags.length > 0 ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-secondary/70 text-foreground/80 border border-border/40">
+                                {company.tags[0]}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </div>
+
+                          {/* Recent Activity */}
+                          <div className="text-xs text-muted-foreground">
+                            {relativeTime(company.updated_at || company.created_at)}
+                          </div>
+
+                          {/* Chevron */}
+                          <div className="text-muted-foreground flex justify-end">
+                            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </div>
+                        </div>
+
+                        {/* Expanded panel */}
+                        {expanded && (
+                          <div className="bg-muted/10 border-t border-border/40">
+                            {/* Action bar */}
+                            <div className="flex items-center gap-1 px-4 py-2 border-b border-border/30">
+                              {!company.archived_at && (
+                                <>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => startNewSpeaker(company.id)}>
+                                    <Plus className="h-3.5 w-3.5 mr-1" />Speaker
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}>
+                                    <Link2 className="h-3.5 w-3.5 mr-1" />Airtable
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => startEditCompany(company)}>
+                                    <Pencil className="h-3.5 w-3.5 mr-1" />Edit
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAeoHistoryFor({ id: company.id, name: company.name })}>
+                                    <History className="h-3.5 w-3.5 mr-1" />AEO History
+                                  </Button>
+                                </>
+                              )}
+                              <div className="flex-1" />
+                              {company.archived_at ? (
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => restoreCompany(company.id)}>
+                                  <RotateCcw className="h-3.5 w-3.5 mr-1" />Restore
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => archiveCompany(company.id)}>
+                                  <Archive className="h-3.5 w-3.5 mr-1" />Archive
+                                </Button>
+                              )}
+                              {!company.archived_at && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive">
+                                      <Trash className="h-3.5 w-3.5 mr-1" />Delete
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete client?</AlertDialogTitle>
+                                      <AlertDialogDescription>This will permanently remove {company.name} and all its speakers.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => removeCompany(company.id)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </div>
+
+                            {/* Speaker list */}
+                            <div className="divide-y divide-border/30 px-2">
+                              {company.speakers.length === 0 ? (
+                                <p className="text-sm text-muted-foreground py-6 text-center">No speakers yet. Add one to get started.</p>
+                              ) : (
+                                company.speakers.map(speaker => (
+                                  <SpeakerProfileCard
+                                    key={speaker.id}
+                                    speaker={speaker}
+                                    companyName={company.name}
+                                    onEdit={() => startEditSpeaker(speaker)}
+                                    onDelete={() => removeSpeaker(speaker.id)}
+                                    onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
+                                    onUpdate={loadData}
+                                    isArchived={!!speaker.archived_at}
+                                    onArchive={() => archiveSpeaker(speaker.id)}
+                                    onRestore={() => restoreSpeaker(speaker.id)}
+                                  />
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
         </div>
 
-        {/* Company Card Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(company => (
-            <CompanyCard
-              key={company.id}
-              company={company}
-              isExpanded={expandedCompanies.has(company.id)}
-              onToggle={() => toggleCompany(company.id)}
-              onEdit={() => startEditCompany(company)}
-              onDelete={() => removeCompany(company.id)}
-              onAddSpeaker={() => startNewSpeaker(company.id)}
-              onAirtable={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}
-              onHistory={() => setAeoHistoryFor({ id: company.id, name: company.name })}
-              isArchived={!!company.archived_at}
-              onArchive={() => archiveCompany(company.id)}
-              onRestore={() => restoreCompany(company.id)}
-            >
-              {company.speakers.map(speaker => (
-                <SpeakerProfileCard
-                  key={speaker.id}
-                  speaker={speaker}
-                  companyName={company.name}
-                  onEdit={() => startEditSpeaker(speaker)}
-                  onDelete={() => removeSpeaker(speaker.id)}
-                  onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
-                  onUpdate={loadData}
-                  isArchived={!!speaker.archived_at}
-                  onArchive={() => archiveSpeaker(speaker.id)}
-                  onRestore={() => restoreSpeaker(speaker.id)}
-                />
-              ))}
-            </CompanyCard>
-          ))}
-          {!filtered.length && (
-            <p className="text-sm text-muted-foreground col-span-full">
-              {viewMode === 'archived' ? 'No archived companies.' : 'No companies yet.'}
-            </p>
-          )}
-        </div>
 
         {/* ═══ Company Edit Sheet ═══ */}
         <Sheet open={!!editingCompany} onOpenChange={(open) => !open && cancelCompany()}>
