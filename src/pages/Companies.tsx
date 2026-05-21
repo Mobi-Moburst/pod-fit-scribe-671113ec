@@ -290,7 +290,25 @@ const Companies = () => {
     setActiveCompanyId(prev => (prev === id ? null : id));
   };
   const openCompany = (id: string) => setActiveCompanyId(id);
-  const closePanel = () => setActiveCompanyId(null);
+  const closePanel = () => {
+    setActiveCompanyId(null);
+    if (searchParams.get('company')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('company');
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  // Open a company when arriving with ?company=<id> (e.g. from the Overview page)
+  useEffect(() => {
+    const target = searchParams.get('company');
+    if (!target || companies.length === 0) return;
+    if (companies.some(c => c.id === target)) {
+      setActiveCompanyId(target);
+    }
+  }, [searchParams, companies]);
+
+
 
   // ── Company CRUD ──
   const startNewCompany = () => { setEditingCompany({ ...emptyCompany, id: crypto.randomUUID(), isNew: true }); setShowManualLogoInput(false); setLogoError(false); };
