@@ -242,6 +242,45 @@ const Companies = () => {
 
   useEffect(() => { loadData(); }, []);
 
+  const inferIndustries = async (companyIds?: string[], { silent = false } = {}) => {
+    const targets = companyIds && companyIds.length
+      ? companyIds
+      : companies.filter(c => !c.archived_at && !c.industry).map(c => c.id);
+    if (!targets.length) {
+      if (!silent) toast({ title: 'All clients already categorized' });
+      return;
+    }
+    setIsInferring(true);
+    try {
+      // Batch in chunks of 20 to keep prompt small
+      const chunks: string[][] = [];
+      for (let i = 0; i < targets.length; i += 20) chunks.push(targets.slice(i, i + 20));
+      let total = 0;
+      for (const chunk of chunks) {
+        const { data, error } = await supabase.functions.invoke('infer-company-industries', { body: { company_ids: chunk } });
+        if (error) throw error;
+        total += (data?.results || []).length;
+      }
+      await loadData();
+      if (!silent) toast({ title: 'Industries inferred', description: `${total} client${total === 1 ? '' : 's'} categorized.` });
+    } catch (e) {
+      if (!silent) toast({ title: 'Inference failed', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsInferring(false);
+    }
+  };
+
+  // Auto-infer in background on first load (one-shot per session)
+  const [autoInferred, setAutoInferred] = useState(false);
+  useEffect(() => {
+    if (autoInferred) return;
+    const missing = companies.filter(c => !c.archived_at && !c.industry);
+    if (missing.length === 0 || companies.length === 0) return;
+    setAutoInferred(true);
+    inferIndustries(missing.slice(0, 40).map(c => c.id), { silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length, autoInferred]);
+
   const toggleCompany = (id: string) => {
     setExpandedCompanies(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   };
