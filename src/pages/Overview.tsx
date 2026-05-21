@@ -120,6 +120,7 @@ function statusBadge(css: string | null, status: string | null) {
 
 const Overview = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<LtvRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -131,14 +132,20 @@ const Overview = () => {
     load();
   }, []);
 
+  const goToCompany = (companyId: string | null) => {
+    if (!companyId) return;
+    navigate(`/companies?company=${companyId}`);
+  };
+
   async function load() {
     setLoading(true);
     const { data, error } = await supabase
       .from("ltv_snapshots")
       .select(
-        "id, client_name, campaign_manager, cohort, primary_industry, status, campaign_success_status, cumulative_pct_fulfilled, current_month_cumulative_pct_fulfilled, deliverables_completed_this_month, trend_vs_last_month, renewal_date, renewed, last_client_checkin, zz_complete, synced_at"
+        "id, company_id, client_name, campaign_manager, cohort, primary_industry, status, campaign_success_status, cumulative_pct_fulfilled, current_month_cumulative_pct_fulfilled, deliverables_completed_this_month, trend_vs_last_month, renewal_date, renewed, last_client_checkin, zz_complete, synced_at"
       )
       .order("client_name");
+
     if (error) {
       toast({ title: "Failed to load LTV data", description: error.message, variant: "destructive" });
     } else {
