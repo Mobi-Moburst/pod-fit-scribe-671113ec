@@ -164,8 +164,11 @@ const Overview = () => {
     return Array.from(set).sort();
   }, [rows]);
 
+  // Globally exclude completed/offboarded clients (ZZ - Complete in Airtable)
+  const livingRows = useMemo(() => rows.filter((r) => r.zz_complete !== true), [rows]);
+
   const filtered = useMemo(() => {
-    return rows.filter((r) => {
+    return livingRows.filter((r) => {
       if (cmFilter !== "all" && r.campaign_manager !== cmFilter) return false;
       if (statusFilter === "active" && !isActive(r)) return false;
       if (statusFilter === "at_risk" && !isAtRisk(r)) return false;
@@ -177,11 +180,11 @@ const Overview = () => {
       }
       return true;
     });
-  }, [rows, cmFilter, statusFilter]);
+  }, [livingRows, cmFilter, statusFilter]);
 
   const scope = useMemo(
-    () => (cmFilter === "all" ? rows : rows.filter((r) => r.campaign_manager === cmFilter)),
-    [rows, cmFilter]
+    () => (cmFilter === "all" ? livingRows : livingRows.filter((r) => r.campaign_manager === cmFilter)),
+    [livingRows, cmFilter]
   );
 
   const kpis = useMemo(() => {
