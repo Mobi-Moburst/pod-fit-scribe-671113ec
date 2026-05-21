@@ -70,7 +70,7 @@ const Companies = () => {
   const [companies, setCompanies] = useState<CompanyWithSpeakers[]>([]);
   const [editingCompany, setEditingCompany] = useState<(Company & { isNew?: boolean }) | null>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<(Speaker & { isNew?: boolean; avoid_text?: string }) | null>(null);
-  const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
+  const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [industryFilter, setIndustryFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'with_speakers' | 'no_speakers'>('all');
@@ -282,8 +282,10 @@ const Companies = () => {
   }, [companies.length, autoInferred]);
 
   const toggleCompany = (id: string) => {
-    setExpandedCompanies(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+    setActiveCompanyId(prev => (prev === id ? null : id));
   };
+  const openCompany = (id: string) => setActiveCompanyId(id);
+  const closePanel = () => setActiveCompanyId(null);
 
   // ── Company CRUD ──
   const startNewCompany = () => { setEditingCompany({ ...emptyCompany, id: crypto.randomUUID(), isNew: true }); setShowManualLogoInput(false); setLogoError(false); };
@@ -319,7 +321,7 @@ const Companies = () => {
   // ── Speaker CRUD ──
   const startNewSpeaker = (companyId: string) => {
     setEditingSpeaker({ ...emptySpeaker, id: crypto.randomUUID(), company_id: companyId, isNew: true, avoid_text: '' });
-    setExpandedCompanies(prev => new Set(prev).add(companyId));
+    setActiveCompanyId(companyId);
   };
   const startEditSpeaker = (s: Speaker) => { setEditingSpeaker({ ...s, avoid_text: (s.avoid || []).join(', ') }); };
   const cancelSpeaker = () => setEditingSpeaker(null);
@@ -650,18 +652,20 @@ const Companies = () => {
               ) : (
                 <div className="px-2 pb-2">
                   {filtered.map(company => {
-                    const expanded = expandedCompanies.has(company.id);
+                    const isActive = activeCompanyId === company.id;
                     const isPinned = pinned.has(company.id);
                     const ind = company.industry;
                     const indStyle = industryStyle(ind);
                     return (
-                      <div key={company.id} className="mb-1 last:mb-0">
-                        {/* Row */}
+                      <div key={company.id} className="mb-0.5 last:mb-0">
                         <div
-                          className="group grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 items-center px-3 py-3 rounded-lg cursor-pointer hover:bg-secondary/40 transition-colors"
-                          onClick={() => toggleCompany(company.id)}
+                          className={`group grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${
+                            isActive
+                              ? 'bg-secondary/70 ring-1 ring-primary/30'
+                              : 'hover:bg-secondary/40'
+                          }`}
+                          onClick={() => openCompany(company.id)}
                         >
-                          {/* Client */}
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/40">
                               {company.logo_url ? (
@@ -682,7 +686,6 @@ const Companies = () => {
                             </div>
                           </div>
 
-                          {/* Speakers */}
                           <div className="flex items-center gap-2 min-w-0">
                             {company.speakers.length === 0 ? (
                               <span className="text-xs text-muted-foreground italic">No speakers</span>
@@ -704,7 +707,6 @@ const Companies = () => {
                             )}
                           </div>
 
-                          {/* Industry */}
                           <div className="min-w-0">
                             {ind ? (
                               <span
@@ -720,92 +722,14 @@ const Companies = () => {
                             )}
                           </div>
 
-                          {/* Recent Activity */}
                           <div className="text-xs text-muted-foreground">
                             {relativeTime(company.updated_at || company.created_at)}
                           </div>
 
-                          {/* Chevron */}
-                          <div className="text-muted-foreground flex justify-end">
-                            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          <div className={`flex justify-end transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                            <ChevronRight className="h-4 w-4" />
                           </div>
                         </div>
-
-                        {/* Expanded panel */}
-                        {expanded && (
-                          <div className="bg-muted/10 border-t border-border/40">
-                            {/* Action bar */}
-                            <div className="flex items-center gap-1 px-4 py-2 border-b border-border/30">
-                              {!company.archived_at && (
-                                <>
-                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => startNewSpeaker(company.id)}>
-                                    <Plus className="h-3.5 w-3.5 mr-1" />Speaker
-                                  </Button>
-                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}>
-                                    <Link2 className="h-3.5 w-3.5 mr-1" />Airtable
-                                  </Button>
-                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => startEditCompany(company)}>
-                                    <Pencil className="h-3.5 w-3.5 mr-1" />Edit
-                                  </Button>
-                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAeoHistoryFor({ id: company.id, name: company.name })}>
-                                    <History className="h-3.5 w-3.5 mr-1" />AEO History
-                                  </Button>
-                                </>
-                              )}
-                              <div className="flex-1" />
-                              {company.archived_at ? (
-                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => restoreCompany(company.id)}>
-                                  <RotateCcw className="h-3.5 w-3.5 mr-1" />Restore
-                                </Button>
-                              ) : (
-                                <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => archiveCompany(company.id)}>
-                                  <Archive className="h-3.5 w-3.5 mr-1" />Archive
-                                </Button>
-                              )}
-                              {!company.archived_at && (
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive">
-                                      <Trash className="h-3.5 w-3.5 mr-1" />Delete
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete client?</AlertDialogTitle>
-                                      <AlertDialogDescription>This will permanently remove {company.name} and all its speakers.</AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => removeCompany(company.id)}>Delete</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              )}
-                            </div>
-
-                            {/* Speaker list */}
-                            <div className="divide-y divide-border/30 px-2">
-                              {company.speakers.length === 0 ? (
-                                <p className="text-sm text-muted-foreground py-6 text-center">No speakers yet. Add one to get started.</p>
-                              ) : (
-                                company.speakers.map(speaker => (
-                                  <SpeakerProfileCard
-                                    key={speaker.id}
-                                    speaker={speaker}
-                                    companyName={company.name}
-                                    onEdit={() => startEditSpeaker(speaker)}
-                                    onDelete={() => removeSpeaker(speaker.id)}
-                                    onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
-                                    onUpdate={loadData}
-                                    isArchived={!!speaker.archived_at}
-                                    onArchive={() => archiveSpeaker(speaker.id)}
-                                    onRestore={() => restoreSpeaker(speaker.id)}
-                                  />
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -813,7 +737,127 @@ const Companies = () => {
               )}
             </div>
           </section>
+
+          {/* ═══ Right-side workspace panel ═══ */}
+          {activeCompanyId && (() => {
+            const company = companies.find(c => c.id === activeCompanyId);
+            if (!company) return null;
+            const ind = company.industry;
+            const indStyle = industryStyle(ind);
+            return (
+              <aside
+                key={company.id}
+                className="hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.25)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"
+              >
+                <div className="flex items-start gap-3 p-5 border-b border-border/50 bg-gradient-to-b from-secondary/30 to-transparent">
+                  <div className="w-12 h-12 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/40">
+                    {company.logo_url ? (
+                      <img src={company.logo_url} alt="" className="w-full h-full object-contain p-1.5" />
+                    ) : (
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-semibold text-base tracking-tight truncate">{company.name}</h2>
+                    {company.company_url && (
+                      <a href={company.company_url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground truncate block" onClick={(e) => e.stopPropagation()}>
+                        {company.company_url.replace(/^https?:\/\//, '')}
+                      </a>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                      {ind && (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-medium border"
+                          style={{ backgroundColor: indStyle.bg, color: indStyle.fg, borderColor: indStyle.ring }}
+                        >
+                          {ind}
+                        </span>
+                      )}
+                      {(company.campaign_manager || '').split(',').map(m => m.trim()).filter(Boolean).map(cm => (
+                        <span key={cm} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] text-muted-foreground bg-secondary/60 border border-border/40">
+                          CM: {cm}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 -mr-1" onClick={closePanel} title="Close">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-1 px-3 py-2 border-b border-border/40 bg-background/30">
+                  {!company.archived_at && (
+                    <>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => startNewSpeaker(company.id)}>
+                        <Plus className="h-3.5 w-3.5 mr-1" />Speaker
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}>
+                        <Link2 className="h-3.5 w-3.5 mr-1" />Airtable
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => startEditCompany(company)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" />Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAeoHistoryFor({ id: company.id, name: company.name })}>
+                        <History className="h-3.5 w-3.5 mr-1" />AEO
+                      </Button>
+                    </>
+                  )}
+                  <div className="flex-1" />
+                  {company.archived_at ? (
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => restoreCompany(company.id)}>
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" />Restore
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => archiveCompany(company.id)} title="Archive">
+                      <Archive className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {!company.archived_at && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete">
+                          <Trash className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete client?</AlertDialogTitle>
+                          <AlertDialogDescription>This will permanently remove {company.name} and all its speakers.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => { removeCompany(company.id); closePanel(); }}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto divide-y divide-border/30">
+                  {company.speakers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-10 text-center px-4">No speakers yet. Add one to get started.</p>
+                  ) : (
+                    company.speakers.map(speaker => (
+                      <SpeakerProfileCard
+                        key={speaker.id}
+                        speaker={speaker}
+                        companyName={company.name}
+                        onEdit={() => startEditSpeaker(speaker)}
+                        onDelete={() => removeSpeaker(speaker.id)}
+                        onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
+                        onUpdate={loadData}
+                        isArchived={!!speaker.archived_at}
+                        onArchive={() => archiveSpeaker(speaker.id)}
+                        onRestore={() => restoreSpeaker(speaker.id)}
+                      />
+                    ))
+                  )}
+                </div>
+              </aside>
+            );
+          })()}
         </div>
+
 
 
         {/* ═══ Company Edit Sheet ═══ */}
