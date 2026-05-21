@@ -167,6 +167,7 @@ Deno.serve(async (req) => {
         last_client_checkin: toDate(getField(f, "last_client_checkin")),
         next_checkin_scheduled: toDate(getField(f, "next_checkin_scheduled")),
         eow_recap_sent: toBool(getField(f, "eow_recap_sent")),
+        zz_complete: toBool(getField(f, "zz_complete")),
         raw_fields: f,
         synced_at: new Date().toISOString(),
       };
