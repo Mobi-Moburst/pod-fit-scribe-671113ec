@@ -7,12 +7,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { LogOut, Settings } from "lucide-react";
 
 const tabs = [
-  { to: "/", label: "Evaluate" },
-  { to: "/batch", label: "Batch" },
   { to: "/companies", label: "Companies" },
-  { to: "/history", label: "History" },
+  { to: "/research", label: "Research" },
   { to: "/reports", label: "Reports" },
 ];
+
+const researchRoutes = ["/", "/batch", "/history", "/research"];
 
 export const Navbar = () => {
   const { pathname } = useLocation();
