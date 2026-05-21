@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { Navbar } from "@/components/layout/Navbar";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { Card } from "@/components/ui/card";
