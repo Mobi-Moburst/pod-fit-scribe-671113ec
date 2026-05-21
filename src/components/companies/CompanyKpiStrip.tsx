@@ -1,75 +1,140 @@
-import { useEffect, useState } from "react";
-import { Calendar, Activity, Send, Clock } from "lucide-react";
-import { useAirtableConnection } from "@/hooks/use-airtable-connection";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Calendar, Activity, Send, Clock, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface CompanyKpiStripProps {
   companyId: string;
 }
 
+type WindowKey = "quarter" | "90d" | "all";
+
 interface Kpis {
   bookings: number | null;
-  estReach: number | null;
   published: number | null;
   upcoming: number | null;
+  est_reach: number | null;
+  computed_at?: string;
+  cached?: boolean;
 }
 
-const EMPTY: Kpis = { bookings: null, estReach: null, published: null, upcoming: null };
+const EMPTY: Kpis = { bookings: null, published: null, upcoming: null, est_reach: null };
+const REFRESH_INTERVAL_MS = 60_000;
 
 function formatCount(n: number | null): string {
   if (n === null || n === undefined) return "—";
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
   return String(n);
 }
 
+const WINDOW_OPTIONS: { key: WindowKey; label: string }[] = [
+  { key: "quarter", label: "Quarter" },
+  { key: "90d", label: "90d" },
+  { key: "all", label: "All" },
+];
+
 export function CompanyKpiStrip({ companyId }: CompanyKpiStripProps) {
-  const { connection, hasConnection, syncData } = useAirtableConnection({ companyId });
+  const [window, setWindow] = useState<WindowKey>("quarter");
   const [kpis, setKpis] = useState<Kpis>(EMPTY);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const lastCompanyId = useRef<string>(companyId);
 
-  useEffect(() => {
-    setKpis(EMPTY);
-    if (!hasConnection || !connection) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const now = new Date();
-      const start = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      const end = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
-      const rows = await syncData({
-        dateRangeStart: start.toISOString().slice(0, 10),
-        dateRangeEnd: end.toISOString().slice(0, 10),
-      });
-      if (cancelled || !rows) {
+  const fetchKpis = useCallback(
+    async (opts: { force?: boolean } = {}) => {
+      if (!companyId) return;
+      const isInitial = !opts.force && kpis.bookings === null;
+      if (opts.force) setRefreshing(true);
+      else if (isInitial) setLoading(true);
+
+      try {
+        const { data, error } = await supabase.functions.invoke("compute-company-kpis", {
+          body: { company_id: companyId, window, force: !!opts.force },
+        });
+        if (error) throw error;
+        setKpis({
+          bookings: data?.bookings ?? null,
+          published: data?.published ?? null,
+          upcoming: data?.upcoming ?? null,
+          est_reach: data?.est_reach ?? null,
+          computed_at: data?.computed_at,
+          cached: data?.cached,
+        });
+      } catch (err) {
+        console.error("compute-company-kpis failed:", err);
+      } finally {
         setLoading(false);
-        return;
+        setRefreshing(false);
       }
-      const today = Date.now();
-      let bookings = 0,
-        published = 0,
-        upcoming = 0;
-      for (const r of rows) {
-        if (r.date_booked) bookings++;
-        if (r.date_published) published++;
-        const sched = r.scheduled_date_time ? new Date(r.scheduled_date_time).getTime() : NaN;
-        if (!r.date_published && !isNaN(sched) && sched > today) upcoming++;
-      }
-      setKpis({ bookings, estReach: null, published, upcoming });
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [companyId, window],
+  );
+
+  // Reset on company change, then load
+  useEffect(() => {
+    if (lastCompanyId.current !== companyId) {
+      lastCompanyId.current = companyId;
+      setKpis(EMPTY);
+    }
+    fetchKpis();
+  }, [companyId, window, fetchKpis]);
+
+  // Auto-refresh on interval + on tab focus, for a real-time feel
+  useEffect(() => {
+    const interval = setInterval(() => fetchKpis({ force: true }), REFRESH_INTERVAL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchKpis({ force: true });
     };
-  }, [hasConnection, connection?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [fetchKpis]);
 
   const items = [
     { label: "Bookings", value: kpis.bookings, icon: Calendar, tint: "from-sky-500/20 to-sky-500/0", iconClass: "text-sky-400" },
-    { label: "Est. Reach", value: kpis.estReach, icon: Activity, tint: "from-cyan-500/20 to-cyan-500/0", iconClass: "text-cyan-400" },
+    { label: "Est. Reach", value: kpis.est_reach, icon: Activity, tint: "from-cyan-500/20 to-cyan-500/0", iconClass: "text-cyan-400" },
     { label: "Published", value: kpis.published, icon: Send, tint: "from-violet-500/20 to-violet-500/0", iconClass: "text-violet-400" },
     { label: "Upcoming", value: kpis.upcoming, icon: Clock, tint: "from-amber-500/20 to-amber-500/0", iconClass: "text-amber-400" },
   ];
 
   return (
     <div className="px-4 pt-3 pb-2">
+      {/* Window selector + refresh */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="inline-flex items-center gap-0.5 rounded-md border border-border/50 bg-muted/30 p-0.5">
+          {WINDOW_OPTIONS.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setWindow(opt.key)}
+              className={cn(
+                "px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide transition-colors",
+                window === opt.key
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => fetchKpis({ force: true })}
+          className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted/40"
+          title={
+            kpis.computed_at
+              ? `Updated ${new Date(kpis.computed_at).toLocaleTimeString()}${kpis.cached ? " (cached)" : ""}`
+              : "Refresh"
+          }
+          disabled={refreshing}
+        >
+          <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
+        </button>
+      </div>
+
       <div className="grid grid-cols-4 gap-2">
         {items.map(({ label, value, icon: Icon, tint, iconClass }) => (
           <div
@@ -88,11 +153,6 @@ export function CompanyKpiStrip({ companyId }: CompanyKpiStripProps) {
           </div>
         ))}
       </div>
-      {!hasConnection && (
-        <p className="text-[10px] text-muted-foreground/70 mt-2 text-center">
-          Connect Airtable to populate live KPIs
-        </p>
-      )}
     </div>
   );
 }

@@ -459,6 +459,42 @@ export type Database = {
         }
         Relationships: []
       }
+      company_kpi_cache: {
+        Row: {
+          company_id: string
+          computed_at: string
+          created_at: string
+          expires_at: string
+          id: string
+          kpis: Json
+          org_id: string
+          updated_at: string
+          window: string
+        }
+        Insert: {
+          company_id: string
+          computed_at?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kpis?: Json
+          org_id: string
+          updated_at?: string
+          window: string
+        }
+        Update: {
+          company_id?: string
+          computed_at?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kpis?: Json
+          org_id?: string
+          updated_at?: string
+          window?: string
+        }
+        Relationships: []
+      }
       evaluations: {
         Row: {
           batch_session_id: string | null
