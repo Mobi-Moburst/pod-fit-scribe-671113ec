@@ -704,12 +704,17 @@ const Companies = () => {
 
                           {/* Industry */}
                           <div className="min-w-0">
-                            {company.tags && company.tags.length > 0 ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-secondary/70 text-foreground/80 border border-border/40">
-                                {company.tags[0]}
+                            {ind ? (
+                              <span
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium border"
+                                style={{ backgroundColor: indStyle.bg, color: indStyle.fg, borderColor: indStyle.ring }}
+                              >
+                                {ind}
                               </span>
                             ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] text-muted-foreground/70 italic">
+                                {isInferring ? 'Categorizing…' : 'Uncategorized'}
+                              </span>
                             )}
                           </div>
 
