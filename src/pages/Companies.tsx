@@ -282,8 +282,10 @@ const Companies = () => {
   }, [companies.length, autoInferred]);
 
   const toggleCompany = (id: string) => {
-    setExpandedCompanies(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+    setActiveCompanyId(prev => (prev === id ? null : id));
   };
+  const openCompany = (id: string) => setActiveCompanyId(id);
+  const closePanel = () => setActiveCompanyId(null);
 
   // ── Company CRUD ──
   const startNewCompany = () => { setEditingCompany({ ...emptyCompany, id: crypto.randomUUID(), isNew: true }); setShowManualLogoInput(false); setLogoError(false); };
