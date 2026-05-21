@@ -1,0 +1,2 @@
+DELETE FROM public.call_notes WHERE source = 'fireflies';
+UPDATE public.fireflies_connections SET last_synced_at = NULL, last_sync_status = NULL, last_sync_error = NULL WHERE fireflies_email = 'troy.higgins@moburst.com';
