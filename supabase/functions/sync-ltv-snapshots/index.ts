@@ -130,15 +130,44 @@ Deno.serve(async (req) => {
       .select("id, name")
       .eq("org_id", TEAM_ORG_ID);
     const companyMap = new Map<string, string>();
+    const companyList: Array<{ id: string; name: string; norm: string }> = [];
     for (const c of companies ?? []) {
-      companyMap.set(normalize(c.name), c.id);
+      const n = normalize(c.name);
+      if (!n) continue;
+      companyMap.set(n, c.id);
+      companyList.push({ id: c.id, name: c.name, norm: n });
+    }
+    // Sort by descending norm length so substring matches prefer the most specific company.
+    companyList.sort((a, b) => b.norm.length - a.norm.length);
+
+    function matchCompany(clientName: string): string | null {
+      if (!clientName) return null;
+      const full = normalize(clientName);
+      // 1) exact
+      const exact = companyMap.get(full);
+      if (exact) return exact;
+      // 2) split on " - " or "/" and try each segment exact
+      const parts = clientName
+        .split(/\s*[-/]\s*/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      for (const p of parts) {
+        const hit = companyMap.get(normalize(p));
+        if (hit) return hit;
+      }
+      // 3) longest company name that is a substring of the (normalized) client name
+      for (const c of companyList) {
+        if (c.norm.length >= 4 && full.includes(c.norm)) return c.id;
+      }
+      return null;
     }
 
     // Build upsert rows
     const rows = records.map((rec) => {
       const f = rec.fields ?? {};
       const clientName = toText(getField(f, "client_name")) ?? "";
-      const matched = clientName ? companyMap.get(normalize(clientName)) ?? null : null;
+      const matched = matchCompany(clientName);
+
 
       return {
         org_id: TEAM_ORG_ID,

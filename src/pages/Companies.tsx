@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+
 import { Navbar } from '@/components/layout/Navbar';
 import { BackgroundFX } from '@/components/BackgroundFX';
 import { Card } from '@/components/ui/card';
@@ -24,6 +26,8 @@ import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtab
 import { SpeakerProfileCard } from '@/components/companies/SpeakerProfileCard';
 import { AEOAuditHistory } from '@/components/companies/AEOAuditHistory';
 import { CompanyKpiStrip } from '@/components/companies/CompanyKpiStrip';
+import { CampaignHealthCard } from '@/components/companies/CampaignHealthCard';
+
 import { industryStyle } from '@/lib/industryColors';
 
 // Relative timestamp helper
@@ -72,6 +76,8 @@ const Companies = () => {
   const [editingCompany, setEditingCompany] = useState<(Company & { isNew?: boolean }) | null>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<(Speaker & { isNew?: boolean; avoid_text?: string }) | null>(null);
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [industryFilter, setIndustryFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'with_speakers' | 'no_speakers'>('all');
@@ -286,7 +292,25 @@ const Companies = () => {
     setActiveCompanyId(prev => (prev === id ? null : id));
   };
   const openCompany = (id: string) => setActiveCompanyId(id);
-  const closePanel = () => setActiveCompanyId(null);
+  const closePanel = () => {
+    setActiveCompanyId(null);
+    if (searchParams.get('company')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('company');
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  // Open a company when arriving with ?company=<id> (e.g. from the Overview page)
+  useEffect(() => {
+    const target = searchParams.get('company');
+    if (!target || companies.length === 0) return;
+    if (companies.some(c => c.id === target)) {
+      setActiveCompanyId(target);
+    }
+  }, [searchParams, companies]);
+
+
 
   // ── Company CRUD ──
   const startNewCompany = () => { setEditingCompany({ ...emptyCompany, id: crypto.randomUUID(), isNew: true }); setShowManualLogoInput(false); setLogoError(false); };
@@ -858,6 +882,10 @@ const Companies = () => {
 
                 {/* ── Scrollable speakers / workspace content ── */}
                 <div className="flex-1 overflow-y-auto">
+                  <div className="p-3">
+                    <CampaignHealthCard companyId={company.id} />
+                  </div>
+
                   {company.speakers.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-10 text-center px-4">No speakers yet. Add one to get started.</p>
                   ) : (

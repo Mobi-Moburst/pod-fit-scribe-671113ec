@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { Navbar } from "@/components/layout/Navbar";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { Card } from "@/components/ui/card";
@@ -34,6 +36,7 @@ import {
 
 type LtvRow = {
   id: string;
+  company_id: string | null;
   client_name: string;
   campaign_manager: string | null;
   cohort: string | null;
@@ -50,6 +53,7 @@ type LtvRow = {
   zz_complete: boolean | null;
   synced_at: string;
 };
+
 
 const ACTIVE_STATUSES = new Set(["On track", "Behind", "Billing Paused"]);
 
@@ -116,6 +120,7 @@ function statusBadge(css: string | null, status: string | null) {
 
 const Overview = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<LtvRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -127,14 +132,20 @@ const Overview = () => {
     load();
   }, []);
 
+  const goToCompany = (companyId: string | null) => {
+    if (!companyId) return;
+    navigate(`/companies?company=${companyId}`);
+  };
+
   async function load() {
     setLoading(true);
     const { data, error } = await supabase
       .from("ltv_snapshots")
       .select(
-        "id, client_name, campaign_manager, cohort, primary_industry, status, campaign_success_status, cumulative_pct_fulfilled, current_month_cumulative_pct_fulfilled, deliverables_completed_this_month, trend_vs_last_month, renewal_date, renewed, last_client_checkin, zz_complete, synced_at"
+        "id, company_id, client_name, campaign_manager, cohort, primary_industry, status, campaign_success_status, cumulative_pct_fulfilled, current_month_cumulative_pct_fulfilled, deliverables_completed_this_month, trend_vs_last_month, renewal_date, renewed, last_client_checkin, zz_complete, synced_at"
       )
       .order("client_name");
+
     if (error) {
       toast({ title: "Failed to load LTV data", description: error.message, variant: "destructive" });
     } else {
@@ -353,32 +364,40 @@ const Overview = () => {
               </p>
             ) : (
               <ul className="space-y-2">
-                {needsAttentionFeed.map((item, i) => (
-                  <li
-                    key={`${item.row.id}-${i}`}
-                    className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/40 transition-colors"
-                  >
-                    <span
-                      className={`mt-1 h-1.5 w-1.5 rounded-full flex-shrink-0 ${
-                        item.severity === "high" ? "bg-red-500" : "bg-amber-500"
+                {needsAttentionFeed.map((item, i) => {
+                  const clickable = !!item.row.company_id;
+                  return (
+                    <li
+                      key={`${item.row.id}-${i}`}
+                      onClick={() => clickable && goToCompany(item.row.company_id)}
+                      className={`flex items-start gap-2 p-2 rounded-md transition-colors ${
+                        clickable ? "hover:bg-muted/40 cursor-pointer" : "opacity-90"
                       }`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">
-                        {item.row.client_name}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.reason}
-                      </div>
-                      {item.row.campaign_manager && (
-                        <div className="text-xs text-muted-foreground/60 mt-0.5">
-                          {item.row.campaign_manager}
+                      title={clickable ? "Open company" : "Not linked to a company profile yet"}
+                    >
+                      <span
+                        className={`mt-1 h-1.5 w-1.5 rounded-full flex-shrink-0 ${
+                          item.severity === "high" ? "bg-red-500" : "bg-amber-500"
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">
+                          {item.row.client_name}
                         </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
+                        <div className="text-xs text-muted-foreground">
+                          {item.reason}
+                        </div>
+                        {item.row.campaign_manager && (
+                          <div className="text-xs text-muted-foreground/60 mt-0.5">
+                            {item.row.campaign_manager}
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
+
             )}
           </Card>
 
@@ -420,9 +439,19 @@ const Overview = () => {
                   ) : (
                     filtered.map((r) => {
                       const dRenew = daysUntil(r.renewal_date);
+                      const clickable = !!r.company_id;
                       return (
-                        <TableRow key={r.id}>
-                          <TableCell className="pl-4 font-medium">{r.client_name}</TableCell>
+                        <TableRow
+                          key={r.id}
+                          onClick={() => clickable && goToCompany(r.company_id)}
+                          className={clickable ? "cursor-pointer" : ""}
+                          title={clickable ? "Open company" : "Not linked to a company profile yet"}
+                        >
+                          <TableCell className="pl-4 font-medium">
+                            <span className={clickable ? "hover:underline" : "text-muted-foreground"}>
+                              {r.client_name}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-muted-foreground text-xs">
                             {r.campaign_manager ?? "—"}
                           </TableCell>
@@ -454,6 +483,7 @@ const Overview = () => {
                         </TableRow>
                       );
                     })
+
                   )}
                 </TableBody>
               </Table>
