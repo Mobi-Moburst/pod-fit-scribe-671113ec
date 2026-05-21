@@ -439,9 +439,19 @@ const Overview = () => {
                   ) : (
                     filtered.map((r) => {
                       const dRenew = daysUntil(r.renewal_date);
+                      const clickable = !!r.company_id;
                       return (
-                        <TableRow key={r.id}>
-                          <TableCell className="pl-4 font-medium">{r.client_name}</TableCell>
+                        <TableRow
+                          key={r.id}
+                          onClick={() => clickable && goToCompany(r.company_id)}
+                          className={clickable ? "cursor-pointer" : ""}
+                          title={clickable ? "Open company" : "Not linked to a company profile yet"}
+                        >
+                          <TableCell className="pl-4 font-medium">
+                            <span className={clickable ? "hover:underline" : "text-muted-foreground"}>
+                              {r.client_name}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-muted-foreground text-xs">
                             {r.campaign_manager ?? "—"}
                           </TableCell>
@@ -473,6 +483,7 @@ const Overview = () => {
                         </TableRow>
                       );
                     })
+
                   )}
                 </TableBody>
               </Table>
