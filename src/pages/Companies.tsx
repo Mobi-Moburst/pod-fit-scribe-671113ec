@@ -60,6 +60,7 @@ const emptySpeaker: Omit<Speaker, 'id' | 'company_id'> = {
 
 interface CompanyWithSpeakers extends Company {
   speakers: Speaker[];
+  industry?: string | null;
   updated_at?: string;
   created_at?: string;
 }
