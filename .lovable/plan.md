@@ -1,46 +1,31 @@
-## Plan
+## Disconnect Fathom from the platform
 
-Add a hard intake gate to the Fireflies sync before any `call_notes` row is stored.
+Remove the Fathom call-notes integration end-to-end so it no longer appears in the dashboard or syncs data.
 
-### What will change
+### Scope
 
-1. **Limit Fireflies results to the connected CM**
-   - Update the Fireflies transcript query to request transcripts for the stored `fireflies_user_id` instead of relying on whatever the API key can see.
-   - Keep this as the first filter, but do not trust it as the only filter.
+1. **UI removal**
+   - Remove the Fathom connection card/section from `/settings/synced-calls` (and any other settings surface that shows it).
+   - Remove Fathom from any sync source filters, badges, or labels in the Synced Calls dashboard.
+   - Remove Fathom-specific navigation, buttons, and "Connect Fathom" flows.
 
-2. **Verify the connected CM is actually on the call**
-   - Before insert, require the connected CM’s Fireflies email / platform email to appear in one of:
-     - `participants`
-     - `host_email`
-     - `organizer_email`
-   - If Troy is not on the transcript, skip it.
+2. **Edge functions**
+   - Delete Fathom-related edge functions (e.g. `sync-fathom-*`, `connect-fathom`, any webhook handlers).
 
-3. **Verify the CM is a real platform user**
-   - Use the platform user tied to the Fireflies connection as the source of truth.
-   - If the Fireflies email does not line up with the connected platform user identity, skip sync for that connection and report an error.
+3. **Secrets**
+   - Delete the `FATHOM_API_KEY` secret.
 
-4. **Only store calls tied to that CM’s assigned clients**
-   - Load active companies where `campaign_manager` includes the connected CM’s name, including exact full-name matches and safe aliases like `Troy` vs `Troy Higgins`.
-   - A transcript must match one of those assigned companies before storage.
-   - Matching will use conservative signals:
-     - company name in the meeting title, or
-     - client website domain matching an external participant email domain, or
-     - assigned speaker name in the meeting title/participant text.
+4. **Data cleanup (migration)**
+   - Delete existing `call_notes` rows where `source = 'fathom'`.
+   - Drop any Fathom-specific connection table/rows (e.g. `fathom_connections` if present).
+   - Leave Fireflies data and schema untouched.
 
-5. **Attach routing on insert**
-   - When a call passes the gate, insert it with the matched `company_id` and best `speaker_id` when confidently detected.
-   - If no assigned client match is found, the call is skipped rather than stored as unmatched noise.
+5. **Code cleanup**
+   - Remove Fathom types, helpers, and references from frontend hooks/components.
+   - Keep Fireflies sync logic intact.
 
-6. **Improve sync diagnostics**
-   - Return skipped counts by reason, e.g. `not_cm_participant`, `no_assigned_client_match`, `duplicate`, `impromptu`.
-   - Surface this in the sync response so we can immediately tell why Troy’s rerun did or did not import meetings.
+### Out of scope
+- No changes to Fireflies sync behavior.
+- No schema changes to `call_notes` beyond deleting Fathom rows (the `source` column stays so Fireflies keeps working).
 
-### Technical details
-
-- Main file: `supabase/functions/sync-fireflies-meetings/index.ts`
-- No schema change is required for the strict gate itself.
-- I will avoid changing the existing synced-calls UI unless needed, because this is primarily an ingestion/routing fix.
-
-### Expected result
-
-After rerunning Troy’s sync, meetings like `John<>Creative Team - Check In`, all-hands, finance check-ins, and other Moburst-wide or non-client meetings should be skipped before storage. Only Troy’s calls that can be tied to Troy-assigned companies/speakers should enter `call_notes`.
+Confirm and I'll execute.
