@@ -495,8 +495,10 @@ const Companies = () => {
                 <nav className="flex flex-col gap-0.5">
                   {industries.slice(0, 12).map(([tag, count]) => {
                     const active = industryFilter === tag;
+                    const s = industryStyle(tag);
                     return (
                       <button key={tag} onClick={() => setIndustryFilter(active ? '' : tag)} className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.fg }} />
                         <span className="flex-1 truncate">{tag}</span>
                         <span className="text-[11px] text-muted-foreground/60">{count}</span>
                       </button>
