@@ -89,6 +89,7 @@ const Companies = () => {
       return next;
     });
   };
+  const [isInferring, setIsInferring] = useState(false);
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const [isScrapingStrategy, setIsScrapingStrategy] = useState(false);
