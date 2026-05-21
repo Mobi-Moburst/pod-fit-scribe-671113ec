@@ -132,7 +132,7 @@ const Overview = () => {
     const { data, error } = await supabase
       .from("ltv_snapshots")
       .select(
-        "id, client_name, campaign_manager, cohort, primary_industry, status, campaign_success_status, cumulative_pct_fulfilled, current_month_cumulative_pct_fulfilled, deliverables_completed_this_month, trend_vs_last_month, renewal_date, renewed, last_client_checkin, synced_at"
+        "id, client_name, campaign_manager, cohort, primary_industry, status, campaign_success_status, cumulative_pct_fulfilled, current_month_cumulative_pct_fulfilled, deliverables_completed_this_month, trend_vs_last_month, renewal_date, renewed, last_client_checkin, zz_complete, synced_at"
       )
       .order("client_name");
     if (error) {
