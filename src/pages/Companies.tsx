@@ -158,19 +158,54 @@ const Companies = () => {
   };
 
   const managers = useMemo(() => {
-    const names = new Set<string>();
-    companies.forEach((c) => (c.campaign_manager || '').split(',').map(m => m.trim()).filter(Boolean).forEach(m => names.add(m)));
-    return Array.from(names).sort();
+    const counts = new Map<string, number>();
+    companies.filter(c => !c.archived_at).forEach((c) => (c.campaign_manager || '').split(',').map(m => m.trim()).filter(Boolean).forEach(m => counts.set(m, (counts.get(m) || 0) + 1)));
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [companies]);
-  const filtered = useMemo(() => {
-    const byView = companies.filter((c) => viewMode === 'active' ? !c.archived_at : !!c.archived_at);
-    return byView.filter((c) => !managerFilter || (c.campaign_manager || '').split(',').map(m => m.trim()).includes(managerFilter)).sort((a, b) => a.name.localeCompare(b.name));
-  }, [companies, managerFilter, viewMode]);
+  const industries = useMemo(() => {
+    const counts = new Map<string, number>();
+    companies.filter(c => !c.archived_at).forEach(c => (c.tags || []).forEach(t => counts.set(t, (counts.get(t) || 0) + 1)));
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [companies]);
   const archivedCount = useMemo(() => companies.filter(c => !!c.archived_at).length, [companies]);
+  const pinnedCount = useMemo(() => companies.filter(c => pinned.has(c.id) && !c.archived_at).length, [companies, pinned]);
+
+  const filtered = useMemo(() => {
+    let list = companies.slice();
+    // Nav view
+    if (navView === 'archived') list = list.filter(c => !!c.archived_at);
+    else list = list.filter(c => !c.archived_at);
+    if (navView === 'pinned') list = list.filter(c => pinned.has(c.id));
+    if (navView === 'recent') {
+      list.sort((a, b) => new Date(b.updated_at || b.created_at || 0).getTime() - new Date(a.updated_at || a.created_at || 0).getTime());
+    }
+    // Filters
+    if (managerFilter) list = list.filter(c => (c.campaign_manager || '').split(',').map(m => m.trim()).includes(managerFilter));
+    if (industryFilter) list = list.filter(c => (c.tags || []).includes(industryFilter));
+    if (statusFilter === 'with_speakers') list = list.filter(c => c.speakers.length > 0);
+    if (statusFilter === 'no_speakers') list = list.filter(c => c.speakers.length === 0);
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        (c.tags || []).some(t => t.toLowerCase().includes(q)) ||
+        c.speakers.some(s => s.name.toLowerCase().includes(q))
+      );
+    }
+    // Sort (recent is already applied above; allow override)
+    if (navView !== 'recent') {
+      if (sortMode === 'recent') list.sort((a, b) => new Date(b.updated_at || b.created_at || 0).getTime() - new Date(a.updated_at || a.created_at || 0).getTime());
+      else if (sortMode === 'alpha') list.sort((a, b) => a.name.localeCompare(b.name));
+      else if (sortMode === 'created') list.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      else if (sortMode === 'speakers') list.sort((a, b) => b.speakers.length - a.speakers.length);
+    }
+    return list;
+  }, [companies, navView, pinned, managerFilter, industryFilter, statusFilter, search, sortMode]);
 
   const loadData = async () => {
     const [companiesRes, speakersRes] = await Promise.all([
-      supabase.from('companies').select('*').order('created_at', { ascending: false }),
+      supabase.from('companies').select('*').order('updated_at', { ascending: false }),
       supabase.from('speakers').select('*').order('created_at', { ascending: false }),
     ]);
     if (companiesRes.error) { toast({ title: 'Error', description: 'Failed to load companies.', variant: 'destructive' }); return; }
@@ -194,6 +229,7 @@ const Companies = () => {
       airtable_embed_url: c.airtable_embed_url || '', product_type: c.product_type || '',
       tags: c.tags || [], notes: c.notes || '', speakers: speakersMap.get(c.id) || [],
       archived_at: c.archived_at || null,
+      updated_at: c.updated_at, created_at: c.created_at,
     })));
   };
 
