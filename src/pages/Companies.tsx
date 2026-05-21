@@ -17,7 +17,7 @@ import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, Archive, History } from 'lucide-react';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
 import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtableDialog';
-import { SyncFathomButton } from '@/components/call-notes/SyncFathomButton';
+
 import { CompanyCard } from '@/components/companies/CompanyCard';
 import { SpeakerProfileCard } from '@/components/companies/SpeakerProfileCard';
 import { AEOAuditHistory } from '@/components/companies/AEOAuditHistory';
@@ -327,7 +327,7 @@ const Companies = () => {
               </select>
             </div>
           )}
-          {managerFilter && <SyncFathomButton onSyncComplete={loadData} />}
+          
         </div>
 
         {/* Company Card Grid */}

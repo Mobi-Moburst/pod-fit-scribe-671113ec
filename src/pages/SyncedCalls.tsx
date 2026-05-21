@@ -53,7 +53,7 @@ export default function SyncedCalls() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   // Filters
-  const [source, setSource] = useState<"all" | "fireflies" | "fathom">("all");
+  const [source, setSource] = useState<"all" | "fireflies">("all");
   const [matchStatus, setMatchStatus] = useState<"all" | "matched" | "unmatched" | "excluded">("all");
   const [search, setSearch] = useState("");
   const [days, setDays] = useState<"7" | "30" | "90" | "all">("30");
@@ -119,8 +119,7 @@ export default function SyncedCalls() {
     const matched = filtered.filter((r) => r.speaker_id || r.company_id).length;
     const excluded = filtered.filter((r) => r.excluded_at).length;
     const ff = filtered.filter((r) => r.source === "fireflies").length;
-    const fa = filtered.filter((r) => r.source === "fathom").length;
-    return { total, matched, unmatched: total - matched - excluded, excluded, ff, fa };
+    return { total, matched, unmatched: total - matched - excluded, excluded, ff };
   }, [filtered]);
 
   const toggleCheck = (id: string) => {
@@ -198,7 +197,7 @@ export default function SyncedCalls() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Synced Calls</h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Review every meeting imported from Fireflies and Fathom. Diagnose bad matches and remove noise.
+              Review every meeting imported from Fireflies. Diagnose bad matches and remove noise.
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
@@ -213,7 +212,7 @@ export default function SyncedCalls() {
           <StatCard label="Matched" value={stats.matched} tone="success" />
           <StatCard label="Unmatched" value={stats.unmatched} tone="warning" />
           <StatCard label="Excluded" value={stats.excluded} tone="muted" />
-          <StatCard label="Fireflies / Fathom" value={`${stats.ff} / ${stats.fa}`} />
+          <StatCard label="Fireflies" value={stats.ff} />
         </div>
 
         {/* Filters */}
@@ -224,7 +223,6 @@ export default function SyncedCalls() {
               <SelectContent>
                 <SelectItem value="all">All sources</SelectItem>
                 <SelectItem value="fireflies">Fireflies</SelectItem>
-                <SelectItem value="fathom">Fathom</SelectItem>
               </SelectContent>
             </Select>
             <Select value={matchStatus} onValueChange={(v: any) => setMatchStatus(v)}>
