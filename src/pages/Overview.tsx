@@ -36,6 +36,7 @@ import {
 
 type LtvRow = {
   id: string;
+  company_id: string | null;
   client_name: string;
   campaign_manager: string | null;
   cohort: string | null;
@@ -52,6 +53,7 @@ type LtvRow = {
   zz_complete: boolean | null;
   synced_at: string;
 };
+
 
 const ACTIVE_STATUSES = new Set(["On track", "Behind", "Billing Paused"]);
 
