@@ -630,10 +630,10 @@ const Companies = () => {
               )}
             </div>
 
-            {/* Directory table */}
-            <div className="rounded-lg border border-border/60 bg-card overflow-hidden">
+            {/* Directory list */}
+            <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
               {/* Header row */}
-              <div className="hidden md:grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 px-4 py-2.5 border-b border-border/50 text-[11px] font-medium uppercase tracking-wider text-muted-foreground bg-muted/20">
+              <div className="hidden md:grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
                 <div>Client</div>
                 <div>Speaker(s)</div>
                 <div>Industry</div>
@@ -646,15 +646,17 @@ const Companies = () => {
                   {navView === 'archived' ? 'No archived clients.' : 'No clients match your filters.'}
                 </div>
               ) : (
-                <div className="divide-y divide-border/40">
+                <div className="px-2 pb-2">
                   {filtered.map(company => {
                     const expanded = expandedCompanies.has(company.id);
                     const isPinned = pinned.has(company.id);
+                    const ind = company.industry;
+                    const indStyle = industryStyle(ind);
                     return (
-                      <div key={company.id}>
+                      <div key={company.id} className="mb-1 last:mb-0">
                         {/* Row */}
                         <div
-                          className="group grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 items-center px-4 py-3 cursor-pointer hover:bg-secondary/30 transition-colors"
+                          className="group grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 items-center px-3 py-3 rounded-lg cursor-pointer hover:bg-secondary/40 transition-colors"
                           onClick={() => toggleCompany(company.id)}
                         >
                           {/* Client */}
