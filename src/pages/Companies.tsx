@@ -117,24 +117,7 @@ const Companies = () => {
     } finally { setIsFetchingBrand(false); }
   };
 
-  // ── Data fetching ──
-  const fetchCompanyBrand = async () => {
-    if (!editingCompany?.company_url) { toast({ title: 'Enter a company URL first', variant: 'destructive' }); return; }
-    setIsFetchingBrand(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-company-brand', { body: { url: editingCompany.company_url } });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Failed to fetch brand');
-      let updated = { ...editingCompany };
-      if (data.logo_url) { updated.logo_url = data.logo_url; setShowManualLogoInput(false); setLogoError(false); }
-      if (data.brand_colors) updated.brand_colors = data.brand_colors;
-      if (data.logo_url || data.brand_colors) toast({ title: 'Brand fetched', description: data.logo_url ? 'Logo and colors loaded.' : 'Brand colors loaded.' });
-      else toast({ title: 'No branding found', variant: 'destructive' });
-      setEditingCompany(updated);
-    } catch (error) {
-      toast({ title: 'Failed to fetch brand', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
-    } finally { setIsFetchingBrand(false); }
-  };
+
 
   const scrapeStrategyFromMediaKit = async () => {
     if (!editingSpeaker?.media_kit_url) { toast({ title: 'Enter a media kit URL first', variant: 'destructive' }); return; }
