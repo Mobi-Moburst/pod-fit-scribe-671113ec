@@ -137,27 +137,69 @@ Deno.serve(async (req) => {
 
     const speakerIds = (speakers || []).map((s: any) => s.id);
 
+    // Fetch all candidate connections for this company + its speakers
+    const orParts = [`company_id.eq.${company_id}`];
+    if (speakerIds.length) orParts.push(`speaker_id.in.(${speakerIds.join(",")})`);
     const { data: conns } = await admin
       .from("airtable_connections")
       .select("*")
-      .or(
-        [
-          `company_id.eq.${company_id}`,
-          speakerIds.length
-            ? `speaker_id.in.(${speakerIds.join(",")})`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(","),
-      );
+      .or(orParts.join(","));
 
-    const connections = (conns || []) as any[];
+    const allConnections = (conns || []) as any[];
+    const companyConnections = allConnections.filter(
+      (c) => c.company_id === company_id && !c.speaker_id,
+    );
+    const speakerConnections = allConnections.filter((c) => !!c.speaker_id);
+
+    // Routing rules (per product spec):
+    //   - Multi-speaker company → use company-level connection(s).
+    //     Fan out per speaker name when a speaker column is configured.
+    //     Fallback to speaker-level connections only if no company connection exists.
+    //   - Single-speaker company → use that speaker's connection.
+    //     Fallback to company-level connection if no speaker connection exists.
+    type Job = { conn: any; speakerName?: string };
+    const jobs: Job[] = [];
+    const speakerCount = (speakers || []).length;
+
+    if (speakerCount > 1) {
+      if (companyConnections.length > 0) {
+        for (const conn of companyConnections) {
+          if (conn.speaker_column_name) {
+            for (const s of speakers || []) jobs.push({ conn, speakerName: s.name });
+          } else {
+            jobs.push({ conn });
+          }
+        }
+      } else {
+        // Fallback: aggregate speaker-level connections
+        for (const conn of speakerConnections) {
+          const s = (speakers || []).find((x: any) => x.id === conn.speaker_id);
+          jobs.push({ conn, speakerName: conn.speaker_column_name ? s?.name : undefined });
+        }
+      }
+    } else {
+      // Single speaker (or zero)
+      if (speakerConnections.length > 0) {
+        for (const conn of speakerConnections) {
+          const s = (speakers || []).find((x: any) => x.id === conn.speaker_id);
+          jobs.push({ conn, speakerName: conn.speaker_column_name ? s?.name : undefined });
+        }
+      } else if (companyConnections.length > 0 && speakerCount === 1) {
+        const only = (speakers || [])[0];
+        for (const conn of companyConnections) {
+          jobs.push({ conn, speakerName: conn.speaker_column_name ? only?.name : undefined });
+        }
+      }
+    }
+
+    console.log(
+      `KPI routing for ${company_id}: speakers=${speakerCount} companyConns=${companyConnections.length} speakerConns=${speakerConnections.length} jobs=${jobs.length}`,
+    );
 
     const range = getWindowRange(window);
     const startDate = new Date(range.start);
     const endDate = new Date(range.end);
 
-    // 3) Fetch rows from every connection (respecting speaker filter for shared tables)
     type Row = {
       record_id: string;
       action: string;
@@ -170,29 +212,20 @@ Deno.serve(async (req) => {
     };
     const allRows: Row[] = [];
 
-    for (const conn of connections) {
-      // If this is a shared multi-speaker table, fan out per speaker name
-      const speakerNames: (string | undefined)[] = conn.speaker_id
-        ? [(speakers || []).find((s: any) => s.id === conn.speaker_id)?.name]
-        : conn.speaker_column_name
-        ? (speakers || []).map((s: any) => s.name)
-        : [undefined];
-
-      for (const speakerName of speakerNames) {
-        try {
-          const resp = await admin.functions.invoke("fetch-airtable-data", {
-            body: {
-              connection_id: conn.id,
-              date_range_start: range.start,
-              date_range_end: range.end,
-              speaker_name: speakerName || undefined,
-            },
-          });
-          const rows = (resp.data?.data || []) as Row[];
-          allRows.push(...rows);
-        } catch (err) {
-          console.error(`fetch-airtable-data failed for ${conn.id}:`, err);
-        }
+    for (const job of jobs) {
+      try {
+        const resp = await admin.functions.invoke("fetch-airtable-data", {
+          body: {
+            connection_id: job.conn.id,
+            date_range_start: range.start,
+            date_range_end: range.end,
+            speaker_name: job.speakerName || undefined,
+          },
+        });
+        const rows = (resp.data?.data || []) as Row[];
+        allRows.push(...rows);
+      } catch (err) {
+        console.error(`fetch-airtable-data failed for ${job.conn.id}:`, err);
       }
     }
 
