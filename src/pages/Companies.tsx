@@ -517,9 +517,15 @@ const Companies = () => {
                 </h1>
                 <p className="text-sm text-muted-foreground mt-0.5">Browse and manage all your client campaigns.</p>
               </div>
-              <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-card">
-                <button onClick={() => setViewMode('list')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="List view"><List className="h-3.5 w-3.5" /></button>
-                <button onClick={() => setViewMode('grid')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="Grid view"><LayoutGrid className="h-3.5 w-3.5" /></button>
+              <div className="flex items-center gap-2">
+                <Button variant="soft" size="sm" className="h-9" onClick={() => inferIndustries()} disabled={isInferring}>
+                  {isInferring ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                  {isInferring ? 'Categorizing…' : 'Auto-categorize'}
+                </Button>
+                <div className="flex items-center gap-1 p-0.5 rounded-md border border-border/60 bg-card">
+                  <button onClick={() => setViewMode('list')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="List view"><List className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setViewMode('grid')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="Grid view"><LayoutGrid className="h-3.5 w-3.5" /></button>
+                </div>
               </div>
             </div>
 
