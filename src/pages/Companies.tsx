@@ -59,6 +59,8 @@ const emptySpeaker: Omit<Speaker, 'id' | 'company_id'> = {
 
 interface CompanyWithSpeakers extends Company {
   speakers: Speaker[];
+  updated_at?: string;
+  created_at?: string;
 }
 
 const Companies = () => {
@@ -68,7 +70,23 @@ const Companies = () => {
   const [editingSpeaker, setEditingSpeaker] = useState<(Speaker & { isNew?: boolean; avoid_text?: string }) | null>(null);
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const [managerFilter, setManagerFilter] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+  const [industryFilter, setIndustryFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'with_speakers' | 'no_speakers'>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const [search, setSearch] = useState('');
+  const [navView, setNavView] = useState<NavView>('all');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [pinned, setPinned] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('companies:pinned') || '[]')); } catch { return new Set(); }
+  });
+  const togglePin = (id: string) => {
+    setPinned(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      localStorage.setItem('companies:pinned', JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const [isScrapingStrategy, setIsScrapingStrategy] = useState(false);
@@ -79,6 +97,25 @@ const Companies = () => {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [aeoHistoryFor, setAeoHistoryFor] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
+
+  // ── Data fetching ──
+  const fetchCompanyBrand = async () => {
+    if (!editingCompany?.company_url) { toast({ title: 'Enter a company URL first', variant: 'destructive' }); return; }
+    setIsFetchingBrand(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-company-brand', { body: { url: editingCompany.company_url } });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch brand');
+      let updated = { ...editingCompany };
+      if (data.logo_url) { updated.logo_url = data.logo_url; setShowManualLogoInput(false); setLogoError(false); }
+      if (data.brand_colors) updated.brand_colors = data.brand_colors;
+      if (data.logo_url || data.brand_colors) toast({ title: 'Brand fetched', description: data.logo_url ? 'Logo and colors loaded.' : 'Brand colors loaded.' });
+      else toast({ title: 'No branding found', variant: 'destructive' });
+      setEditingCompany(updated);
+    } catch (error) {
+      toast({ title: 'Failed to fetch brand', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    } finally { setIsFetchingBrand(false); }
+  };
 
   // ── Data fetching ──
   const fetchCompanyBrand = async () => {
