@@ -167,7 +167,10 @@ const Companies = () => {
   }, [companies]);
   const industries = useMemo(() => {
     const counts = new Map<string, number>();
-    companies.filter(c => !c.archived_at).forEach(c => (c.tags || []).forEach(t => counts.set(t, (counts.get(t) || 0) + 1)));
+    companies.filter(c => !c.archived_at).forEach(c => {
+      const ind = (c.industry || '').trim();
+      if (ind) counts.set(ind, (counts.get(ind) || 0) + 1);
+    });
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [companies]);
   const archivedCount = useMemo(() => companies.filter(c => !!c.archived_at).length, [companies]);
