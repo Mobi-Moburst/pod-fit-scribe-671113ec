@@ -23,6 +23,8 @@ import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import Showcase from "./pages/Showcase";
 import Research from "./pages/Research";
+import Overview from "./pages/Overview";
+import Studio from "./pages/Studio";
 
 // Singleton pattern for QueryClient to prevent recreation during HMR
 let browserQueryClient: QueryClient | undefined = undefined;
@@ -64,7 +66,9 @@ const App = () => (
 
               {/* Protected routes — require CM login */}
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/overview" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
               <Route path="/research" element={<ProtectedRoute><Research /></ProtectedRoute>} />
+              <Route path="/studio" element={<ProtectedRoute><Studio /></ProtectedRoute>} />
               <Route path="/batch" element={<ProtectedRoute><Batch /></ProtectedRoute>} />
               <Route path="/companies" element={<ProtectedRoute><Companies /></ProtectedRoute>} />
               <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
