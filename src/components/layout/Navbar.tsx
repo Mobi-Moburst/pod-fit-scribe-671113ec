@@ -27,18 +27,24 @@ export const Navbar = () => {
         </Link>
 
         <nav className="flex items-center gap-1">
-          {tabs.map((t) => (
-            <Link key={t.to} to={t.to} className="hidden sm:block">
-              <Button
-                variant={pathname === t.to ? "soft" : "ghost"}
-                size="sm"
-                className={cn("rounded-full", pathname === t.to && "border")}
-                aria-current={pathname === t.to ? "page" : undefined}
-              >
-                {t.label}
-              </Button>
-            </Link>
-          ))}
+          {tabs.map((t) => {
+            const isActive =
+              t.to === "/research"
+                ? researchRoutes.includes(pathname)
+                : pathname === t.to || pathname.startsWith(t.to + "/");
+            return (
+              <Link key={t.to} to={t.to} className="hidden sm:block">
+                <Button
+                  variant={isActive ? "soft" : "ghost"}
+                  size="sm"
+                  className={cn("rounded-full", isActive && "border")}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  {t.label}
+                </Button>
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="flex items-center gap-2">
