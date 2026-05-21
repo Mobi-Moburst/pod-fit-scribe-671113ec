@@ -11,8 +11,8 @@ const FIREFLIES_GRAPHQL = "https://api.fireflies.ai/graphql";
 interface FFTranscript {
   id: string;
   title: string | null;
-  date: number | null; // ms timestamp
-  duration: number | null; // minutes
+  date: number | null;
+  duration: number | null;
   participants: string[] | null;
   host_email: string | null;
   organizer_email: string | null;
@@ -26,11 +26,14 @@ interface FFTranscript {
   } | null;
 }
 
-async function fetchFirefliesTranscripts(apiKey: string, fromDate: string): Promise<FFTranscript[]> {
+async function fetchFirefliesTranscripts(
+  apiKey: string,
+  fromDate: string,
+  ffUserId: string | null,
+): Promise<FFTranscript[]> {
   const results: FFTranscript[] = [];
   let skip = 0;
   const pageSize = 50;
-  // Cap to 10 pages = 500 transcripts per sync, safety net
   for (let page = 0; page < 10; page++) {
     const res = await fetch(FIREFLIES_GRAPHQL, {
       method: "POST",
@@ -40,27 +43,14 @@ async function fetchFirefliesTranscripts(apiKey: string, fromDate: string): Prom
       },
       body: JSON.stringify({
         query: `
-          query Transcripts($limit: Int, $skip: Int, $fromDate: DateTime) {
-            transcripts(limit: $limit, skip: $skip, fromDate: $fromDate) {
-              id
-              title
-              date
-              duration
-              participants
-              host_email
-              organizer_email
-              transcript_url
-              summary {
-                overview
-                short_summary
-                action_items
-                bullet_gist
-                keywords
-              }
+          query Transcripts($limit: Int, $skip: Int, $fromDate: DateTime, $userId: String) {
+            transcripts(limit: $limit, skip: $skip, fromDate: $fromDate, user_id: $userId) {
+              id title date duration participants host_email organizer_email transcript_url
+              summary { overview short_summary action_items bullet_gist keywords }
             }
           }
         `,
-        variables: { limit: pageSize, skip, fromDate },
+        variables: { limit: pageSize, skip, fromDate, userId: ffUserId || undefined },
       }),
     });
 
@@ -80,9 +70,143 @@ async function fetchFirefliesTranscripts(apiKey: string, fromDate: string): Prom
   return results;
 }
 
-async function syncOne(adminClient: any, conn: any): Promise<{ imported: number; skipped: number; error?: string }> {
+function nameAliases(fullName: string | null | undefined): string[] {
+  if (!fullName) return [];
+  const trimmed = fullName.trim();
+  if (!trimmed) return [];
+  const parts = trimmed.split(/\s+/);
+  const aliases = new Set<string>([trimmed.toLowerCase()]);
+  if (parts[0]) aliases.add(parts[0].toLowerCase());
+  return [...aliases];
+}
+
+function domainFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
   try {
-    // Determine fromDate: backfill_days override > last_synced_at > 30 days
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return u.hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function domainFromEmail(email: string): string | null {
+  const at = email.indexOf("@");
+  if (at < 0) return null;
+  return email.slice(at + 1).toLowerCase();
+}
+
+interface Company {
+  id: string;
+  name: string;
+  company_url: string | null;
+  campaign_manager: string | null;
+}
+interface Speaker { id: string; name: string; company_id: string; }
+
+function matchTranscriptToClient(
+  t: FFTranscript,
+  companies: Company[],
+  speakersByCompany: Map<string, Speaker[]>,
+): { company_id: string; speaker_id: string | null } | null {
+  const title = (t.title || "").toLowerCase();
+  const participants = (t.participants || []).map((p) => String(p).toLowerCase());
+  const externalDomains = new Set(
+    participants
+      .map(domainFromEmail)
+      .filter((d): d is string => !!d && !d.endsWith("moburst.com") && !d.endsWith("fireflies.ai") && !d.includes("calendar.google")),
+  );
+
+  for (const co of companies) {
+    const coName = co.name.toLowerCase();
+    const coDomain = domainFromUrl(co.company_url);
+    const speakers = speakersByCompany.get(co.id) || [];
+
+    let companyHit = false;
+    if (coName && title.includes(coName)) companyHit = true;
+    if (!companyHit && coDomain) {
+      for (const d of externalDomains) {
+        if (d === coDomain || d.endsWith(`.${coDomain}`) || coDomain.endsWith(`.${d}`)) {
+          companyHit = true;
+          break;
+        }
+      }
+    }
+
+    let matchedSpeaker: Speaker | null = null;
+    for (const s of speakers) {
+      for (const alias of nameAliases(s.name)) {
+        if (alias.length < 3) continue;
+        if (title.includes(alias)) { matchedSpeaker = s; break; }
+      }
+      if (matchedSpeaker) break;
+    }
+
+    if (companyHit || matchedSpeaker) {
+      return { company_id: co.id, speaker_id: matchedSpeaker?.id ?? null };
+    }
+  }
+  return null;
+}
+
+async function syncOne(adminClient: any, conn: any) {
+  const reasons: Record<string, number> = {
+    not_cm_participant: 0,
+    no_assigned_client_match: 0,
+    duplicate: 0,
+    impromptu: 0,
+    insert_error: 0,
+  };
+  try {
+    if (!conn.fireflies_email) {
+      throw new Error("Connection missing fireflies_email — reconnect required.");
+    }
+
+    // Find platform user email to cross-check
+    const { data: { user: platformUser } } = await adminClient.auth.admin.getUserById(conn.user_id);
+    const platformEmail = platformUser?.email?.toLowerCase() || null;
+    const ffEmail = conn.fireflies_email.toLowerCase();
+    if (platformEmail && platformEmail !== ffEmail) {
+      throw new Error(`Fireflies email (${ffEmail}) does not match platform user (${platformEmail}).`);
+    }
+
+    // Derive CM "name" used in companies.campaign_manager
+    const cmName = conn.fireflies_name?.trim() || (platformEmail?.split("@")[0] ?? "");
+    const cmAliases = nameAliases(cmName);
+
+    // Load this CM's assigned companies + their speakers
+    const { data: allCompanies, error: coErr } = await adminClient
+      .from("companies")
+      .select("id, name, company_url, campaign_manager")
+      .is("archived_at", null);
+    if (coErr) throw coErr;
+
+    const assignedCompanies: Company[] = (allCompanies || []).filter((c: Company) => {
+      const managers = (c.campaign_manager || "")
+        .split(",")
+        .map((m: string) => m.trim().toLowerCase())
+        .filter(Boolean);
+      return managers.some((m: string) => cmAliases.includes(m) || cmAliases.some((a) => m.startsWith(a)));
+    });
+
+    if (assignedCompanies.length === 0) {
+      return { imported: 0, skipped: 0, reasons, warning: `No companies assigned to "${cmName}"` };
+    }
+
+    const { data: speakers } = await adminClient
+      .from("speakers")
+      .select("id, name, company_id")
+      .is("archived_at", null)
+      .in("company_id", assignedCompanies.map((c) => c.id));
+
+    const speakersByCompany = new Map<string, Speaker[]>();
+    (speakers || []).forEach((s: Speaker) => {
+      const arr = speakersByCompany.get(s.company_id) || [];
+      arr.push(s);
+      speakersByCompany.set(s.company_id, arr);
+    });
+
+    // Date range
     const now = new Date();
     let fromDate: string;
     if (conn.__backfill_days) {
@@ -93,9 +217,9 @@ async function syncOne(adminClient: any, conn: any): Promise<{ imported: number;
       fromDate = new Date(now.getTime() - 30 * 86400000).toISOString();
     }
 
-    const transcripts = await fetchFirefliesTranscripts(conn.api_key, fromDate);
+    const transcripts = await fetchFirefliesTranscripts(conn.api_key, fromDate, conn.fireflies_user_id);
 
-    // Dedupe against existing fireflies_transcript_id
+    // Dedupe
     const ids = transcripts.map((t) => t.id).filter(Boolean);
     let existingIds = new Set<string>();
     if (ids.length > 0) {
@@ -108,22 +232,35 @@ async function syncOne(adminClient: any, conn: any): Promise<{ imported: number;
 
     let imported = 0;
     let skipped = 0;
+
     for (const t of transcripts) {
-      if (!t.id || existingIds.has(t.id)) { skipped++; continue; }
+      if (!t.id) { skipped++; continue; }
+      if (existingIds.has(t.id)) { skipped++; reasons.duplicate++; continue; }
+
       const title = t.title || "Untitled Meeting";
-      if (title.toLowerCase().includes("impromptu")) { skipped++; continue; }
+      if (title.toLowerCase().includes("impromptu")) { skipped++; reasons.impromptu++; continue; }
+
+      // Gate 1: CM must be on the call
+      const parts = (t.participants || []).map((p) => String(p).toLowerCase());
+      const cmOnCall =
+        parts.includes(ffEmail) ||
+        (t.host_email || "").toLowerCase() === ffEmail ||
+        (t.organizer_email || "").toLowerCase() === ffEmail;
+      if (!cmOnCall) { skipped++; reasons.not_cm_participant++; continue; }
+
+      // Gate 2: Must match an assigned client
+      const match = matchTranscriptToClient(t, assignedCompanies, speakersByCompany);
+      if (!match) { skipped++; reasons.no_assigned_client_match++; continue; }
 
       const meetingDate = t.date ? new Date(t.date).toISOString() : new Date().toISOString();
       const durationSeconds = typeof t.duration === "number" ? Math.round(t.duration * 60) : null;
 
-      // Build summary text from available fields
       const summaryParts: string[] = [];
       if (t.summary?.overview) summaryParts.push(t.summary.overview);
       else if (t.summary?.short_summary) summaryParts.push(t.summary.short_summary);
       if (t.summary?.bullet_gist) summaryParts.push("\n\n**Key points:**\n" + t.summary.bullet_gist);
       const summary = summaryParts.join("") || null;
 
-      // action_items in Fireflies is a string; split into items
       let actionItemsArr: any[] = [];
       if (t.summary?.action_items) {
         actionItemsArr = t.summary.action_items
@@ -133,8 +270,6 @@ async function syncOne(adminClient: any, conn: any): Promise<{ imported: number;
           .map((text) => ({ text }));
       }
 
-      const participants = Array.isArray(t.participants) ? t.participants : [];
-
       const { error } = await adminClient.from("call_notes").insert({
         org_id: ORG_ID,
         fireflies_transcript_id: t.id,
@@ -143,14 +278,17 @@ async function syncOne(adminClient: any, conn: any): Promise<{ imported: number;
         duration_seconds: durationSeconds,
         summary,
         action_items: actionItemsArr,
-        transcript: null, // sentences not pulled by default to keep payload small
-        participants,
+        transcript: null,
+        participants: t.participants || [],
         source: "fireflies",
+        company_id: match.company_id,
+        speaker_id: match.speaker_id,
       });
 
       if (error) {
         console.error(`Insert failed for ${t.id}:`, error.message);
         skipped++;
+        reasons.insert_error++;
       } else {
         imported++;
       }
@@ -165,7 +303,7 @@ async function syncOne(adminClient: any, conn: any): Promise<{ imported: number;
       })
       .eq("user_id", conn.user_id);
 
-    return { imported, skipped };
+    return { imported, skipped, reasons, fetched: transcripts.length };
   } catch (err: any) {
     console.error(`Sync failed for user ${conn.user_id}:`, err.message);
     await adminClient
@@ -175,7 +313,7 @@ async function syncOne(adminClient: any, conn: any): Promise<{ imported: number;
         last_sync_error: err.message.slice(0, 500),
       })
       .eq("user_id", conn.user_id);
-    return { imported: 0, skipped: 0, error: err.message };
+    return { imported: 0, skipped: 0, reasons, error: err.message };
   }
 }
 
