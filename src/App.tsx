@@ -77,6 +77,7 @@ const App = () => (
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/settings/integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
+              <Route path="/settings/synced-calls" element={<ProtectedRoute><SyncedCalls /></ProtectedRoute>} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
