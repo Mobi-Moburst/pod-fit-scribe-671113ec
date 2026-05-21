@@ -255,6 +255,8 @@ export type Database = {
           company_id: string | null
           created_at: string
           duration_seconds: number | null
+          excluded_at: string | null
+          excluded_reason: string | null
           fathom_meeting_id: string | null
           fireflies_transcript_id: string | null
           id: string
@@ -272,6 +274,8 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           duration_seconds?: number | null
+          excluded_at?: string | null
+          excluded_reason?: string | null
           fathom_meeting_id?: string | null
           fireflies_transcript_id?: string | null
           id?: string
@@ -289,6 +293,8 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           duration_seconds?: number | null
+          excluded_at?: string | null
+          excluded_reason?: string | null
           fathom_meeting_id?: string | null
           fireflies_transcript_id?: string | null
           id?: string
