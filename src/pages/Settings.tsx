@@ -166,6 +166,25 @@ export default function Settings() {
           </Link>
         </Card>
 
+        {isAdmin && (
+          <Card>
+            <Link to="/settings/synced-calls" className="block group">
+              <CardHeader className="flex-row items-center justify-between space-y-0">
+                <div className="flex items-center gap-3">
+                  <Phone className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  <div>
+                    <CardTitle className="text-base">Synced Calls</CardTitle>
+                    <CardDescription className="text-xs">
+                      Review and triage every meeting imported from Fireflies and Fathom.
+                    </CardDescription>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              </CardHeader>
+            </Link>
+          </Card>
+        )}
+
         {/* Change Password — available to all CMs */}
         <Card>
           <CardHeader>
