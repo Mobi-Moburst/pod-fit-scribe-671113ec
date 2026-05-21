@@ -1,94 +1,67 @@
 ## Goal
 
-Replace Fathom with Fireflies as the meeting notetaker source. Each Kitcaster CM connects their own Fireflies API key. Scope = **setup only**: connection storage, UI, sync. Fathom removal and matching/insights rewiring come next.
+Give admins a single place to inspect every meeting that has been synced into `call_notes` (Fireflies + Fathom), see how it was matched (or not), and delete bad ones — so you can diagnose why irrelevant calls are coming through Troy's connection and others.
 
----
+## Where it lives
 
-## 1. Database
+New route: `/settings/synced-calls` (admin-only, redirects non-admins).
+Entry card added to `src/pages/Settings.tsx` next to the existing "Integrations" card.
 
-New table `fireflies_connections` (one row per CM):
+## Page layout
 
-| Column | Notes |
-|---|---|
-| `id` | uuid PK |
-| `user_id` | auth.uid, unique |
-| `org_id` | for RLS |
-| `api_key` | the CM's Fireflies key |
-| `fireflies_user_id`, `fireflies_email`, `fireflies_name` | captured on connect via `users` query |
-| `last_synced_at`, `last_sync_status`, `last_sync_error` | for admin dash |
-| `created_at`, `updated_at` | standard |
+**Top bar — filters**
+- Source: All / Fireflies / Fathom
+- Connected CM (Fireflies owner): dropdown of users from `fireflies_connections` — derived by joining synced rows with the user via the transcript owner. For Fathom, this filter is hidden.
+- Match status: All / Matched / Unmatched
+- Date range (default: last 30 days)
+- Free-text search on `meeting_title` and participant emails
 
-**RLS:**
-- CM can read/insert/update/delete only their own row (`user_id = auth.uid()`)
-- Admins can read all rows (for the admin dash)
+**Summary strip**
+- Total synced (in current filter)
+- Matched to speaker / company
+- Unmatched
+- Per-source counts
 
-Add column to `call_notes`:
-- `fireflies_transcript_id text` with unique partial index for dedupe. Existing `source` column already supports `'fireflies'`.
+**Main table** (paginated, 50/page)
 
----
+| Date | Title | Source | Participants | Duration | Matched Speaker | Matched Company | Actions |
+|------|-------|--------|--------------|----------|-----------------|-----------------|---------|
 
-## 2. Settings page — `/settings/integrations`
+- Row click opens a side panel (Sheet) with: full summary (markdown), action items, participant list with emails/domains, raw transcript ID, and the reasoning fields the matcher would use (title, participant domains, attendee names).
+- Row actions: **Delete** (removes the `call_notes` row), **Reassign** (manual speaker/company picker), **Mark as irrelevant** (soft flag — see below).
 
-Brand-new page (option A). Adds an "Integrations" entry to the existing Settings nav.
+**Bulk actions**
+- Select multiple rows → Delete, or Reassign to a single speaker/company.
 
-**Notetaker card (per-user view, every CM sees this):**
-- **Not connected:** explainer + "Connect Fireflies" button → dialog with API key input + link to `https://app.fireflies.ai/integrations/custom/fireflies`
-- **Connected:** Fireflies name/email, last sync time, "Sync now", "Disconnect"
+## Diagnosing "calls that shouldn't have come through"
 
-**Admin section (only visible to `admin` role):**
-- Table of all CMs (from `auth.users` + `user_roles`) joined to `fireflies_connections`
-- Columns: CM name/email, Connected (yes/no), Last sync, Status, Error
-- Lets admin see at a glance who still needs to connect
+Two likely causes the page surfaces:
+1. **Wrong scope on Fireflies sync** — we currently pull every transcript visible to the API key. Troy's key may see all Moburst meetings in his Fireflies workspace, not just his own. The participants column makes this obvious at a glance (e.g. no Kitcaster CM in attendees).
+2. **No filter on Fireflies group** — you mentioned a "Kitcaster CMs" group in Fireflies. We're not using it.
 
----
+To support diagnosis without changing sync logic yet, the side panel will clearly show:
+- The Fireflies user_id who owns the transcript (the connected CM)
+- Whether any participant email matches a known speaker/company domain
+- Whether the connected CM was actually in the meeting
 
-## 3. Edge functions
+This data is enough for you to confirm the root cause before we change the sync filter (which would be a follow-up — likely "only import transcripts where the host = connected user", or filter by Fireflies group ID).
 
-All call Fireflies GraphQL directly at `https://api.fireflies.ai/graphql` with `Authorization: Bearer <cm_api_key>`. JWT-validated against the calling CM.
+## Soft-delete / irrelevant flag (optional, lightweight)
 
-- **`connect-fireflies`** — validates submitted key via `users { user_id name email }`, upserts row, returns identity
-- **`sync-fireflies-meetings`** — accepts optional `user_id`. If provided, syncs that one CM (used by "Sync now" and cron loop). If absent + called by admin, syncs everyone. Pulls `transcripts(fromDate)` since `last_synced_at` (or 30 days back on first connect), fetches detail per transcript, upserts into `call_notes` with `source='fireflies'` and `fireflies_transcript_id` for dedupe. Skips meetings whose title contains "Impromptu" (matching current Fathom rule).
-- **`disconnect-fireflies`** — deletes the current user's row
+Add nullable `excluded_at timestamptz` and `excluded_reason text` columns to `call_notes`. "Mark as irrelevant" sets these; Strategy Insights and the rematch function ignore rows where `excluded_at IS NOT NULL`. Hard delete remains available. This lets you triage without losing the audit trail.
 
----
+## Technical details
 
-## 4. Initial backfill
+- New file: `src/pages/SyncedCalls.tsx`
+- New file: `src/components/settings/SyncedCallDetailSheet.tsx`
+- Route added in `src/App.tsx` (protected, admin gate via `useUserRole`)
+- Entry link in `src/pages/Settings.tsx`
+- Migration: add `excluded_at`, `excluded_reason` to `call_notes`
+- Reads `call_notes` directly via RLS (org-scoped, already in place); joins `speakers`, `companies`, `fireflies_connections` for display
+- Delete/update operations go through existing RLS — admin check enforced client-side + we can add an `is_admin` guard via a new edge function if you'd rather not rely on UI
 
-When a CM connects, `connect-fireflies` triggers an immediate `sync-fireflies-meetings` pass with a 30-day window so they see notes right away.
+## Out of scope (for this step)
 
----
-
-## 5. Scheduled sync — once per day
-
-A pg_cron job runs daily (e.g. 6:00 UTC) that invokes `sync-fireflies-meetings` for every connected CM, looping through `fireflies_connections` and pulling anything newer than `last_synced_at`.
-
----
-
-## 6. Explicitly NOT in this plan (next phase)
-
-- Turning off the Fathom webhook + `sync-fathom-meetings`
-- Speaker/company matching for Fireflies notes (reuse the 7-tier cascade from Fathom)
-- Wiring Fireflies notes into Strategy Insights + `rematch-call-notes`
-- Removing `FATHOM_API_KEY` and Fathom edge functions
-- Migrating historical Fathom rows
-
-Fathom and Fireflies coexist during transition via the `source` column.
-
----
-
-## Technical appendix
-
-```text
-auth.users (CM)
-   └── fireflies_connections (1:1)
-            │  api_key, last_synced_at
-            ▼
-   sync-fireflies-meetings ─── Fireflies GraphQL
-            │
-            ▼ upsert by fireflies_transcript_id
-        call_notes  (source='fireflies')
-
-pg_cron (daily) ──► sync-fireflies-meetings (no user_id, loops all CMs)
-```
-
-API key storage note: stored in Postgres protected by RLS. Stronger options (pgsodium encryption) can be layered in later if needed.
+- Changing Fireflies sync filter logic (group-based, host-only, etc.)
+- Auto-matching the 98 existing Fireflies rows to speakers/companies
+- Both deferred until you've used this view to confirm the diagnosis
