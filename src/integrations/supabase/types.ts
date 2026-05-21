@@ -641,6 +641,7 @@ export type Database = {
           total_planned_bookings_by_eom: number | null
           trend_vs_last_month: string | null
           updated_at: string
+          zz_complete: boolean | null
         }
         Insert: {
           actual_bookings_to_date?: number | null
@@ -674,6 +675,7 @@ export type Database = {
           total_planned_bookings_by_eom?: number | null
           trend_vs_last_month?: string | null
           updated_at?: string
+          zz_complete?: boolean | null
         }
         Update: {
           actual_bookings_to_date?: number | null
@@ -707,6 +709,7 @@ export type Database = {
           total_planned_bookings_by_eom?: number | null
           trend_vs_last_month?: string | null
           updated_at?: string
+          zz_complete?: boolean | null
         }
         Relationships: [
           {
