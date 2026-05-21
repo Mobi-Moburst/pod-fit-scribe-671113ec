@@ -364,32 +364,40 @@ const Overview = () => {
               </p>
             ) : (
               <ul className="space-y-2">
-                {needsAttentionFeed.map((item, i) => (
-                  <li
-                    key={`${item.row.id}-${i}`}
-                    className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/40 transition-colors"
-                  >
-                    <span
-                      className={`mt-1 h-1.5 w-1.5 rounded-full flex-shrink-0 ${
-                        item.severity === "high" ? "bg-red-500" : "bg-amber-500"
+                {needsAttentionFeed.map((item, i) => {
+                  const clickable = !!item.row.company_id;
+                  return (
+                    <li
+                      key={`${item.row.id}-${i}`}
+                      onClick={() => clickable && goToCompany(item.row.company_id)}
+                      className={`flex items-start gap-2 p-2 rounded-md transition-colors ${
+                        clickable ? "hover:bg-muted/40 cursor-pointer" : "opacity-90"
                       }`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">
-                        {item.row.client_name}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.reason}
-                      </div>
-                      {item.row.campaign_manager && (
-                        <div className="text-xs text-muted-foreground/60 mt-0.5">
-                          {item.row.campaign_manager}
+                      title={clickable ? "Open company" : "Not linked to a company profile yet"}
+                    >
+                      <span
+                        className={`mt-1 h-1.5 w-1.5 rounded-full flex-shrink-0 ${
+                          item.severity === "high" ? "bg-red-500" : "bg-amber-500"
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">
+                          {item.row.client_name}
                         </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
+                        <div className="text-xs text-muted-foreground">
+                          {item.reason}
+                        </div>
+                        {item.row.campaign_manager && (
+                          <div className="text-xs text-muted-foreground/60 mt-0.5">
+                            {item.row.campaign_manager}
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
+
             )}
           </Card>
 
