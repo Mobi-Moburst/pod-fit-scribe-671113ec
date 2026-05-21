@@ -7,20 +7,45 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, Archive, History } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, Archive, History, Search, ChevronRight, ChevronDown, Pin, PinOff, Users, Clock, LayoutGrid, List, ArrowUpDown, Filter, MoreHorizontal, RotateCcw } from 'lucide-react';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
 import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtableDialog';
 
-import { CompanyCard } from '@/components/companies/CompanyCard';
 import { SpeakerProfileCard } from '@/components/companies/SpeakerProfileCard';
 import { AEOAuditHistory } from '@/components/companies/AEOAuditHistory';
+
+// Relative timestamp helper
+function relativeTime(iso?: string | null): string {
+  if (!iso) return '—';
+  const then = new Date(iso).getTime();
+  const diff = Date.now() - then;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return 'Yesterday';
+  if (d < 7) return `${d}d ago`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return `${w}w ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(d / 365)}y ago`;
+}
+
+type NavView = 'pinned' | 'my' | 'all' | 'recent' | 'archived';
+type SortMode = 'recent' | 'alpha' | 'created' | 'speakers';
 
 const emptyCompany: Omit<Company, 'id'> = {
   name: '', company_url: '', logo_url: '', brand_colors: undefined, campaign_manager: '', airtable_embed_url: '', product_type: '', tags: [], notes: '',
