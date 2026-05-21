@@ -187,7 +187,7 @@ const Companies = () => {
     }
     // Filters
     if (managerFilter) list = list.filter(c => (c.campaign_manager || '').split(',').map(m => m.trim()).includes(managerFilter));
-    if (industryFilter) list = list.filter(c => (c.tags || []).includes(industryFilter));
+    if (industryFilter) list = list.filter(c => (c.industry || '') === industryFilter);
     if (statusFilter === 'with_speakers') list = list.filter(c => c.speakers.length > 0);
     if (statusFilter === 'no_speakers') list = list.filter(c => c.speakers.length === 0);
     // Search
