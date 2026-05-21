@@ -185,6 +185,19 @@ Deno.serve(async (req) => {
       upserted += chunk.length;
     }
 
+    // Delete stale rows (in DB but no longer in Airtable response)
+    const liveIds = rows.map((r) => r.airtable_record_id);
+    let deleted = 0;
+    if (liveIds.length > 0) {
+      const { data: del } = await supabase
+        .from("ltv_snapshots")
+        .delete()
+        .eq("org_id", TEAM_ORG_ID)
+        .not("airtable_record_id", "in", `(${liveIds.map((id) => `"${id}"`).join(",")})`)
+        .select("id");
+      deleted = del?.length ?? 0;
+    }
+
     const matchedCount = rows.filter((r) => r.company_id).length;
     return new Response(
       JSON.stringify({
