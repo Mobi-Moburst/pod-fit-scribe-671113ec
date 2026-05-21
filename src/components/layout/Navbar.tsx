@@ -7,9 +7,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { LogOut, Settings } from "lucide-react";
 
 const tabs = [
+  { to: "/overview", label: "Overview" },
   { to: "/companies", label: "Companies" },
   { to: "/research", label: "Research" },
   { to: "/reports", label: "Reports" },
+  { to: "/studio", label: "Studio" },
 ];
 
 const researchRoutes = ["/", "/batch", "/history", "/research"];
