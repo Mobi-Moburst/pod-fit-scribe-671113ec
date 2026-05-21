@@ -748,10 +748,14 @@ const Companies = () => {
             return (
               <aside
                 key={company.id}
-                className="hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.25)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"
+                className="hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"
               >
-                <div className="flex items-start gap-3 p-5 border-b border-border/50 bg-gradient-to-b from-secondary/30 to-transparent">
-                  <div className="w-12 h-12 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/40">
+                {/* Ambient gradient glow */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/[0.07] via-cyan-500/[0.04] to-transparent" />
+
+                {/* ── Header ── */}
+                <div className="relative flex items-start gap-3 p-5 pb-4">
+                  <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center shrink-0 overflow-hidden border border-border/40 shadow-sm">
                     {company.logo_url ? (
                       <img src={company.logo_url} alt="" className="w-full h-full object-contain p-1.5" />
                     ) : (
@@ -759,13 +763,19 @@ const Companies = () => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="font-semibold text-base tracking-tight truncate">{company.name}</h2>
+                    <h2 className="font-semibold text-[17px] tracking-tight truncate leading-tight">{company.name}</h2>
                     {company.company_url && (
-                      <a href={company.company_url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground truncate block" onClick={(e) => e.stopPropagation()}>
-                        {company.company_url.replace(/^https?:\/\//, '')}
+                      <a
+                        href={company.company_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-muted-foreground hover:text-foreground truncate block mt-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {company.company_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
                       </a>
                     )}
-                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
                       {ind && (
                         <span
                           className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-medium border"
@@ -779,6 +789,12 @@ const Companies = () => {
                           CM: {cm}
                         </span>
                       ))}
+                      {!company.archived_at && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_hsl(142_70%_55%/0.8)]" />
+                          Active
+                        </span>
+                      )}
                     </div>
                   </div>
                   <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 -mr-1" onClick={closePanel} title="Close">
@@ -786,37 +802,38 @@ const Companies = () => {
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-1 px-3 py-2 border-b border-border/40 bg-background/30">
+                {/* ── Action row ── */}
+                <div className="relative flex items-center gap-0.5 px-3 pb-3">
                   {!company.archived_at && (
                     <>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => startNewSpeaker(company.id)}>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => startNewSpeaker(company.id)}>
                         <Plus className="h-3.5 w-3.5 mr-1" />Speaker
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}>
                         <Link2 className="h-3.5 w-3.5 mr-1" />Airtable
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => startEditCompany(company)}>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => startEditCompany(company)}>
                         <Pencil className="h-3.5 w-3.5 mr-1" />Edit
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAeoHistoryFor({ id: company.id, name: company.name })}>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setAeoHistoryFor({ id: company.id, name: company.name })}>
                         <History className="h-3.5 w-3.5 mr-1" />AEO
                       </Button>
                     </>
                   )}
                   <div className="flex-1" />
                   {company.archived_at ? (
-                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => restoreCompany(company.id)}>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => restoreCompany(company.id)}>
                       <RotateCcw className="h-3.5 w-3.5 mr-1" />Restore
                     </Button>
                   ) : (
-                    <Button size="sm" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => archiveCompany(company.id)} title="Archive">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => archiveCompany(company.id)} title="Archive">
                       <Archive className="h-3.5 w-3.5" />
                     </Button>
                   )}
                   {!company.archived_at && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete">
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" title="Delete">
                           <Trash className="h-3.5 w-3.5" />
                         </Button>
                       </AlertDialogTrigger>
@@ -834,24 +851,32 @@ const Companies = () => {
                   )}
                 </div>
 
-                <div className="flex-1 overflow-y-auto divide-y divide-border/30">
+                {/* ── KPI strip ── */}
+                <div className="relative border-y border-border/40 bg-background/20">
+                  <CompanyKpiStrip companyId={company.id} />
+                </div>
+
+                {/* ── Scrollable speakers / workspace content ── */}
+                <div className="flex-1 overflow-y-auto">
                   {company.speakers.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-10 text-center px-4">No speakers yet. Add one to get started.</p>
                   ) : (
-                    company.speakers.map(speaker => (
-                      <SpeakerProfileCard
-                        key={speaker.id}
-                        speaker={speaker}
-                        companyName={company.name}
-                        onEdit={() => startEditSpeaker(speaker)}
-                        onDelete={() => removeSpeaker(speaker.id)}
-                        onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
-                        onUpdate={loadData}
-                        isArchived={!!speaker.archived_at}
-                        onArchive={() => archiveSpeaker(speaker.id)}
-                        onRestore={() => restoreSpeaker(speaker.id)}
-                      />
-                    ))
+                    <div className="p-3 space-y-3">
+                      {company.speakers.map(speaker => (
+                        <SpeakerProfileCard
+                          key={speaker.id}
+                          speaker={speaker}
+                          companyName={company.name}
+                          onEdit={() => startEditSpeaker(speaker)}
+                          onDelete={() => removeSpeaker(speaker.id)}
+                          onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
+                          onUpdate={loadData}
+                          isArchived={!!speaker.archived_at}
+                          onArchive={() => archiveSpeaker(speaker.id)}
+                          onRestore={() => restoreSpeaker(speaker.id)}
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
               </aside>
