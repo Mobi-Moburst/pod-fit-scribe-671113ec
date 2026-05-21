@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.list-airtable-bases]
 verify_jwt = false
+
+[functions.sync-fireflies-meetings]
+verify_jwt = false

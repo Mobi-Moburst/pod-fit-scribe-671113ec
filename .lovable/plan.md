@@ -1,65 +1,94 @@
 ## Goal
 
-Reduce the top navigation to three tabs — **Companies**, **Research**, **Reports** — and move Evaluate, Batch, and History into a Research workspace where they're listed on the left and open in a modal/pop-up.
+Replace Fathom with Fireflies as the meeting notetaker source. Each Kitcaster CM connects their own Fireflies API key. Scope = **setup only**: connection storage, UI, sync. Fathom removal and matching/insights rewiring come next.
 
-## Top navigation changes (`src/components/layout/Navbar.tsx`)
+---
 
-Replace the current five-tab array with:
-- Companies → `/companies`
-- Research → `/research`
-- Reports → `/reports`
+## 1. Database
 
-Keep the logo, theme toggle, settings, and sign-out controls as they are.
+New table `fireflies_connections` (one row per CM):
 
-## New Research page (`src/pages/Research.tsx`, route `/research`)
+| Column | Notes |
+|---|---|
+| `id` | uuid PK |
+| `user_id` | auth.uid, unique |
+| `org_id` | for RLS |
+| `api_key` | the CM's Fireflies key |
+| `fireflies_user_id`, `fireflies_email`, `fireflies_name` | captured on connect via `users` query |
+| `last_synced_at`, `last_sync_status`, `last_sync_error` | for admin dash |
+| `created_at`, `updated_at` | standard |
 
-Layout:
+**RLS:**
+- CM can read/insert/update/delete only their own row (`user_id = auth.uid()`)
+- Admins can read all rows (for the admin dash)
+
+Add column to `call_notes`:
+- `fireflies_transcript_id text` with unique partial index for dedupe. Existing `source` column already supports `'fireflies'`.
+
+---
+
+## 2. Settings page — `/settings/integrations`
+
+Brand-new page (option A). Adds an "Integrations" entry to the existing Settings nav.
+
+**Notetaker card (per-user view, every CM sees this):**
+- **Not connected:** explainer + "Connect Fireflies" button → dialog with API key input + link to `https://app.fireflies.ai/integrations/custom/fireflies`
+- **Connected:** Fireflies name/email, last sync time, "Sync now", "Disconnect"
+
+**Admin section (only visible to `admin` role):**
+- Table of all CMs (from `auth.users` + `user_roles`) joined to `fireflies_connections`
+- Columns: CM name/email, Connected (yes/no), Last sync, Status, Error
+- Lets admin see at a glance who still needs to connect
+
+---
+
+## 3. Edge functions
+
+All call Fireflies GraphQL directly at `https://api.fireflies.ai/graphql` with `Authorization: Bearer <cm_api_key>`. JWT-validated against the calling CM.
+
+- **`connect-fireflies`** — validates submitted key via `users { user_id name email }`, upserts row, returns identity
+- **`sync-fireflies-meetings`** — accepts optional `user_id`. If provided, syncs that one CM (used by "Sync now" and cron loop). If absent + called by admin, syncs everyone. Pulls `transcripts(fromDate)` since `last_synced_at` (or 30 days back on first connect), fetches detail per transcript, upserts into `call_notes` with `source='fireflies'` and `fireflies_transcript_id` for dedupe. Skips meetings whose title contains "Impromptu" (matching current Fathom rule).
+- **`disconnect-fireflies`** — deletes the current user's row
+
+---
+
+## 4. Initial backfill
+
+When a CM connects, `connect-fireflies` triggers an immediate `sync-fireflies-meetings` pass with a 30-day window so they see notes right away.
+
+---
+
+## 5. Scheduled sync — once per day
+
+A pg_cron job runs daily (e.g. 6:00 UTC) that invokes `sync-fireflies-meetings` for every connected CM, looping through `fireflies_connections` and pulling anything newer than `last_synced_at`.
+
+---
+
+## 6. Explicitly NOT in this plan (next phase)
+
+- Turning off the Fathom webhook + `sync-fathom-meetings`
+- Speaker/company matching for Fireflies notes (reuse the 7-tier cascade from Fathom)
+- Wiring Fireflies notes into Strategy Insights + `rematch-call-notes`
+- Removing `FATHOM_API_KEY` and Fathom edge functions
+- Migrating historical Fathom rows
+
+Fathom and Fireflies coexist during transition via the `source` column.
+
+---
+
+## Technical appendix
+
 ```text
-┌─────────────────────────────────────────────────┐
-│  Navbar                                         │
-├──────────────┬──────────────────────────────────┤
-│ Research     │                                  │
-│ ───────────  │   (empty state / intro copy)     │
-│ • Evaluate   │                                  │
-│ • Batch      │                                  │
-│ • History    │                                  │
-└──────────────┴──────────────────────────────────┘
+auth.users (CM)
+   └── fireflies_connections (1:1)
+            │  api_key, last_synced_at
+            ▼
+   sync-fireflies-meetings ─── Fireflies GraphQL
+            │
+            ▼ upsert by fireflies_transcript_id
+        call_notes  (source='fireflies')
+
+pg_cron (daily) ──► sync-fireflies-meetings (no user_id, loops all CMs)
 ```
 
-- Left rail: vertical list of the three tools with icon + label + short description.
-- Clicking a tool opens a large modal (shadcn `Dialog` at `max-w-7xl`, near-fullscreen height with internal scroll) that renders the existing page component inside.
-- Right side shows intro/empty state when no tool is open.
-- Add a protected route entry in `src/App.tsx` for `/research`.
-
-## Reusing existing pages inside the modal
-
-The current `Evaluate`, `Batch`, and `History` pages each render their own `<Navbar />` plus page chrome. To embed them cleanly:
-
-1. Extract the inner content of each page into a sibling component:
-   - `src/pages/Evaluate.tsx` → `src/components/research/EvaluateView.tsx`
-   - `src/pages/Batch.tsx` → `src/components/research/BatchView.tsx`
-   - `src/pages/History.tsx` → `src/components/research/HistoryView.tsx`
-2. Each `*View` component contains the page body only (no `<Navbar />`, no outer page padding).
-3. The original page files become thin wrappers that render `<Navbar />` + `<XView />`, so existing routes `/`, `/batch`, `/history` keep working (deep links from other parts of the app, e.g. Showcase, don't break).
-4. The Research modal renders the `*View` components directly.
-
-## Behavior details
-
-- Modal close returns the user to the Research landing state (no tool selected).
-- Only one tool open at a time; switching from the left rail swaps the modal content.
-- Active top-tab highlighting: Research highlights for `/research`; the legacy routes (`/`, `/batch`, `/history`) still highlight Research as well so navigation feels consistent if someone lands there directly.
-- Settings page link/icon behavior unchanged.
-
-## Out of scope
-
-- No changes to Evaluate/Batch/History internals, business logic, data fetching, or styling beyond the extraction.
-- No changes to Companies, Reports, Demo, Showcase, or public report routes.
-- No removal of the legacy `/`, `/batch`, `/history` routes — they remain as fallbacks.
-
-## Files touched
-
-- `src/components/layout/Navbar.tsx` — new three-tab list, active-state logic.
-- `src/App.tsx` — add `/research` route.
-- `src/pages/Research.tsx` — new.
-- `src/components/research/EvaluateView.tsx`, `BatchView.tsx`, `HistoryView.tsx` — new (extracted bodies).
-- `src/pages/Evaluate.tsx`, `Batch.tsx`, `History.tsx` — slim down to wrapper using the new View components.
+API key storage note: stored in Postgres protected by RLS. Stronger options (pgsodium encryption) can be layered in later if needed.

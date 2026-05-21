@@ -256,6 +256,7 @@ export type Database = {
           created_at: string
           duration_seconds: number | null
           fathom_meeting_id: string | null
+          fireflies_transcript_id: string | null
           id: string
           meeting_date: string | null
           meeting_title: string | null
@@ -272,6 +273,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           fathom_meeting_id?: string | null
+          fireflies_transcript_id?: string | null
           id?: string
           meeting_date?: string | null
           meeting_title?: string | null
@@ -288,6 +290,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           fathom_meeting_id?: string | null
+          fireflies_transcript_id?: string | null
           id?: string
           meeting_date?: string | null
           meeting_title?: string | null
@@ -514,6 +517,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fireflies_connections: {
+        Row: {
+          api_key: string
+          created_at: string
+          fireflies_email: string | null
+          fireflies_name: string | null
+          fireflies_user_id: string | null
+          id: string
+          last_sync_error: string | null
+          last_sync_status: string | null
+          last_synced_at: string | null
+          org_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          fireflies_email?: string | null
+          fireflies_name?: string | null
+          fireflies_user_id?: string | null
+          id?: string
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          org_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          fireflies_email?: string | null
+          fireflies_name?: string | null
+          fireflies_user_id?: string | null
+          id?: string
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          org_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       podcast_metadata_cache: {
         Row: {
