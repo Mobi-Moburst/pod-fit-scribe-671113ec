@@ -1,19 +1,65 @@
-# Send Showcase visitors straight to the published demo report
+## Goal
 
-Right now Showcase's "demo" links go to `/demo/report`, the editor view. We'll route them directly to the prospect-facing `/demo/report/public` view and make that route self-seed so it works without ever passing through the editor.
+Reduce the top navigation to three tabs — **Companies**, **Research**, **Reports** — and move Evaluate, Batch, and History into a Research workspace where they're listed on the left and open in a modal/pop-up.
 
-## Changes
+## Top navigation changes (`src/components/layout/Navbar.tsx`)
 
-### 1. `src/pages/DemoPublicReport.tsx` — self-seed when there's no session data
-- When `sessionStorage["demoPublishedReport"]` is missing, instead of erroring, load a default demo client (proposed: **SignalForge**, current quarter) using the same `applyQuarterToReportData` pipeline already used in `DemoReport.tsx`, with the standard prospect visibility profile (`averageScore: false`, `targetPodcasts: false`, everything else on).
-- This means visiting `/demo/report/public` cold renders a full, populated published report immediately.
-- The "Back to Editor" button in the top-left becomes confusing for prospects who never went through the editor. Hide it when the page is self-seeded (only show it when arriving from the editor).
+Replace the current five-tab array with:
+- Companies → `/companies`
+- Research → `/research`
+- Reports → `/reports`
 
-### 2. `src/pages/Showcase.tsx` — point every demo link at the public view
-- Replace all four `<Link to="/demo/report">` references (lines 124, 169, 269, 364) and the footer link (line 389) with `/demo/report/public`.
+Keep the logo, theme toggle, settings, and sign-out controls as they are.
 
-### 3. Leave `/demo` and `/demo/report` alone
-- Internal team still uses them to pick a client, swap quarters, and publish — not removing them.
+## New Research page (`src/pages/Research.tsx`, route `/research`)
 
-## Open question
-- Default demo client for the self-seeded public view: **SignalForge** (single-speaker, cleanest demo) or **AtlasBridge** (multi-speaker, shows the company-level aggregation)? I'll use SignalForge unless you say otherwise.
+Layout:
+```text
+┌─────────────────────────────────────────────────┐
+│  Navbar                                         │
+├──────────────┬──────────────────────────────────┤
+│ Research     │                                  │
+│ ───────────  │   (empty state / intro copy)     │
+│ • Evaluate   │                                  │
+│ • Batch      │                                  │
+│ • History    │                                  │
+└──────────────┴──────────────────────────────────┘
+```
+
+- Left rail: vertical list of the three tools with icon + label + short description.
+- Clicking a tool opens a large modal (shadcn `Dialog` at `max-w-7xl`, near-fullscreen height with internal scroll) that renders the existing page component inside.
+- Right side shows intro/empty state when no tool is open.
+- Add a protected route entry in `src/App.tsx` for `/research`.
+
+## Reusing existing pages inside the modal
+
+The current `Evaluate`, `Batch`, and `History` pages each render their own `<Navbar />` plus page chrome. To embed them cleanly:
+
+1. Extract the inner content of each page into a sibling component:
+   - `src/pages/Evaluate.tsx` → `src/components/research/EvaluateView.tsx`
+   - `src/pages/Batch.tsx` → `src/components/research/BatchView.tsx`
+   - `src/pages/History.tsx` → `src/components/research/HistoryView.tsx`
+2. Each `*View` component contains the page body only (no `<Navbar />`, no outer page padding).
+3. The original page files become thin wrappers that render `<Navbar />` + `<XView />`, so existing routes `/`, `/batch`, `/history` keep working (deep links from other parts of the app, e.g. Showcase, don't break).
+4. The Research modal renders the `*View` components directly.
+
+## Behavior details
+
+- Modal close returns the user to the Research landing state (no tool selected).
+- Only one tool open at a time; switching from the left rail swaps the modal content.
+- Active top-tab highlighting: Research highlights for `/research`; the legacy routes (`/`, `/batch`, `/history`) still highlight Research as well so navigation feels consistent if someone lands there directly.
+- Settings page link/icon behavior unchanged.
+
+## Out of scope
+
+- No changes to Evaluate/Batch/History internals, business logic, data fetching, or styling beyond the extraction.
+- No changes to Companies, Reports, Demo, Showcase, or public report routes.
+- No removal of the legacy `/`, `/batch`, `/history` routes — they remain as fallbacks.
+
+## Files touched
+
+- `src/components/layout/Navbar.tsx` — new three-tab list, active-state logic.
+- `src/App.tsx` — add `/research` route.
+- `src/pages/Research.tsx` — new.
+- `src/components/research/EvaluateView.tsx`, `BatchView.tsx`, `HistoryView.tsx` — new (extracted bodies).
+- `src/pages/Evaluate.tsx`, `Batch.tsx`, `History.tsx` — slim down to wrapper using the new View components.
