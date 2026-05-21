@@ -882,6 +882,10 @@ const Companies = () => {
 
                 {/* ── Scrollable speakers / workspace content ── */}
                 <div className="flex-1 overflow-y-auto">
+                  <div className="p-3">
+                    <CampaignHealthCard companyId={company.id} />
+                  </div>
+
                   {company.speakers.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-10 text-center px-4">No speakers yet. Add one to get started.</p>
                   ) : (
