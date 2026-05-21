@@ -47,12 +47,14 @@ type LtvRow = {
   renewal_date: string | null;
   renewed: boolean | null;
   last_client_checkin: string | null;
+  zz_complete: boolean | null;
   synced_at: string;
 };
 
 const ACTIVE_STATUSES = new Set(["On track", "Behind", "Billing Paused"]);
 
 function isActive(r: LtvRow) {
+  if (r.zz_complete === true) return false;
   return ACTIVE_STATUSES.has(r.status ?? "");
 }
 
