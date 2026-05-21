@@ -175,7 +175,7 @@ export default function Settings() {
                   <div>
                     <CardTitle className="text-base">Synced Calls</CardTitle>
                     <CardDescription className="text-xs">
-                      Review and triage every meeting imported from Fireflies and Fathom.
+                      Review and triage every meeting imported from Fireflies.
                     </CardDescription>
                   </div>
                 </div>
