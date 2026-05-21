@@ -124,55 +124,95 @@ Deno.serve(async (req) => {
 
     console.log(`Fetched ${records.length} LTV rows`);
 
-    // Load companies for name -> id matching
+    // Load companies + speakers for matching
     const { data: companies } = await supabase
       .from("companies")
       .select("id, name")
-      .eq("org_id", TEAM_ORG_ID);
+      .eq("org_id", TEAM_ORG_ID)
+      .is("archived_at", null);
+    const { data: speakers } = await supabase
+      .from("speakers")
+      .select("id, name, company_id")
+      .eq("org_id", TEAM_ORG_ID)
+      .is("archived_at", null);
+
     const companyMap = new Map<string, string>();
-    const companyList: Array<{ id: string; name: string; norm: string }> = [];
+    const companyList: Array<{ id: string; norm: string }> = [];
     for (const c of companies ?? []) {
       const n = normalize(c.name);
       if (!n) continue;
-      companyMap.set(n, c.id);
-      companyList.push({ id: c.id, name: c.name, norm: n });
+      if (!companyMap.has(n)) companyMap.set(n, c.id);
+      companyList.push({ id: c.id, norm: n });
     }
-    // Sort by descending norm length so substring matches prefer the most specific company.
     companyList.sort((a, b) => b.norm.length - a.norm.length);
 
-    function matchCompany(clientName: string): string | null {
-      if (!clientName) return null;
-      const full = normalize(clientName);
-      // 1) exact
-      const exact = companyMap.get(full);
-      if (exact) return exact;
-      // 2) split on " - " or "/" and try each segment exact
-      const parts = clientName
-        .split(/\s*[-/]\s*/)
-        .map((p) => p.trim())
+    const speakerMap = new Map<string, { id: string; company_id: string }>();
+    const speakerList: Array<{ id: string; company_id: string; norm: string }> = [];
+    for (const s of speakers ?? []) {
+      const n = normalize(s.name);
+      if (!n) continue;
+      if (!speakerMap.has(n)) speakerMap.set(n, { id: s.id, company_id: s.company_id });
+      speakerList.push({ id: s.id, company_id: s.company_id, norm: n });
+    }
+    speakerList.sort((a, b) => b.norm.length - a.norm.length);
+
+    function tokenize(s: string): string[] {
+      return s
+        .split(/\s*(?:[-/+&,]|\b(?:and|x)\b)\s*/i)
+        .map((p) => p.replace(/\s+/g, " ").trim())
         .filter(Boolean);
+    }
+
+    function matchClient(clientName: string): { company_id: string | null; speaker_id: string | null } {
+      if (!clientName) return { company_id: null, speaker_id: null };
+      const cleaned = clientName.replace(/\s+/g, " ").trim();
+      const full = normalize(cleaned);
+
+      // 1) Exact whole-string speaker, then company
+      const exactS = speakerMap.get(full);
+      if (exactS) return { company_id: exactS.company_id, speaker_id: exactS.id };
+      const exactC = companyMap.get(full);
+      if (exactC) return { company_id: exactC, speaker_id: null };
+
+      // 2) Tokenize on -, /, +, &, ",", "and", "x" — try speakers first, then companies
+      const parts = tokenize(cleaned);
       for (const p of parts) {
-        const hit = companyMap.get(normalize(p));
-        if (hit) return hit;
+        const np = normalize(p);
+        const sp = np ? speakerMap.get(np) : null;
+        if (sp) return { company_id: sp.company_id, speaker_id: sp.id };
       }
-      // 3) longest company name that is a substring of the (normalized) client name
+      for (const p of parts) {
+        const np = normalize(p);
+        const co = np ? companyMap.get(np) : null;
+        if (co) return { company_id: co, speaker_id: null };
+      }
+
+      // 3) Substring fallback — longer matches first, speakers before companies
+      for (const s of speakerList) {
+        if (s.norm.length >= 5 && full.includes(s.norm)) {
+          return { company_id: s.company_id, speaker_id: s.id };
+        }
+      }
       for (const c of companyList) {
-        if (c.norm.length >= 4 && full.includes(c.norm)) return c.id;
+        if (c.norm.length >= 4 && full.includes(c.norm)) {
+          return { company_id: c.id, speaker_id: null };
+        }
       }
-      return null;
+
+      return { company_id: null, speaker_id: null };
     }
 
     // Build upsert rows
     const rows = records.map((rec) => {
       const f = rec.fields ?? {};
       const clientName = toText(getField(f, "client_name")) ?? "";
-      const matched = matchCompany(clientName);
-
+      const m = matchClient(clientName);
 
       return {
         org_id: TEAM_ORG_ID,
         airtable_record_id: rec.id,
-        company_id: matched,
+        company_id: m.company_id,
+        speaker_id: m.speaker_id,
         client_name: clientName,
         campaign_manager: toText(getField(f, "campaign_manager")),
         cohort: toText(getField(f, "cohort")),

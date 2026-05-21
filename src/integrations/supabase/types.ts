@@ -635,6 +635,7 @@ export type Database = {
           raw_fields: Json
           renewal_date: string | null
           renewed: boolean | null
+          speaker_id: string | null
           status: string | null
           synced_at: string
           total_bookings_per_month: number | null
@@ -669,6 +670,7 @@ export type Database = {
           raw_fields?: Json
           renewal_date?: string | null
           renewed?: boolean | null
+          speaker_id?: string | null
           status?: string | null
           synced_at?: string
           total_bookings_per_month?: number | null
@@ -703,6 +705,7 @@ export type Database = {
           raw_fields?: Json
           renewal_date?: string | null
           renewed?: boolean | null
+          speaker_id?: string | null
           status?: string | null
           synced_at?: string
           total_bookings_per_month?: number | null
