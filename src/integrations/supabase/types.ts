@@ -608,6 +608,116 @@ export type Database = {
         }
         Relationships: []
       }
+      ltv_snapshots: {
+        Row: {
+          actual_bookings_to_date: number | null
+          adjusted_goal: number | null
+          airtable_record_id: string
+          campaign_manager: string | null
+          campaign_success_status: string | null
+          client_name: string
+          cohort: string | null
+          company_id: string | null
+          created_at: string
+          cumulative_pct_fulfilled: number | null
+          current_month_cumulative_pct_fulfilled: number | null
+          deliverables_completed_this_month: number | null
+          eow_recap_sent: boolean | null
+          fulfilled: boolean | null
+          goal_this_month: number | null
+          id: string
+          last_client_checkin: string | null
+          next_checkin_scheduled: string | null
+          offboarding: boolean | null
+          org_id: string
+          payment_paused: boolean | null
+          primary_industry: string | null
+          raw_fields: Json
+          renewal_date: string | null
+          renewed: boolean | null
+          status: string | null
+          synced_at: string
+          total_bookings_per_month: number | null
+          total_planned_bookings_by_eom: number | null
+          trend_vs_last_month: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_bookings_to_date?: number | null
+          adjusted_goal?: number | null
+          airtable_record_id: string
+          campaign_manager?: string | null
+          campaign_success_status?: string | null
+          client_name: string
+          cohort?: string | null
+          company_id?: string | null
+          created_at?: string
+          cumulative_pct_fulfilled?: number | null
+          current_month_cumulative_pct_fulfilled?: number | null
+          deliverables_completed_this_month?: number | null
+          eow_recap_sent?: boolean | null
+          fulfilled?: boolean | null
+          goal_this_month?: number | null
+          id?: string
+          last_client_checkin?: string | null
+          next_checkin_scheduled?: string | null
+          offboarding?: boolean | null
+          org_id: string
+          payment_paused?: boolean | null
+          primary_industry?: string | null
+          raw_fields?: Json
+          renewal_date?: string | null
+          renewed?: boolean | null
+          status?: string | null
+          synced_at?: string
+          total_bookings_per_month?: number | null
+          total_planned_bookings_by_eom?: number | null
+          trend_vs_last_month?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_bookings_to_date?: number | null
+          adjusted_goal?: number | null
+          airtable_record_id?: string
+          campaign_manager?: string | null
+          campaign_success_status?: string | null
+          client_name?: string
+          cohort?: string | null
+          company_id?: string | null
+          created_at?: string
+          cumulative_pct_fulfilled?: number | null
+          current_month_cumulative_pct_fulfilled?: number | null
+          deliverables_completed_this_month?: number | null
+          eow_recap_sent?: boolean | null
+          fulfilled?: boolean | null
+          goal_this_month?: number | null
+          id?: string
+          last_client_checkin?: string | null
+          next_checkin_scheduled?: string | null
+          offboarding?: boolean | null
+          org_id?: string
+          payment_paused?: boolean | null
+          primary_industry?: string | null
+          raw_fields?: Json
+          renewal_date?: string | null
+          renewed?: boolean | null
+          status?: string | null
+          synced_at?: string
+          total_bookings_per_month?: number | null
+          total_planned_bookings_by_eom?: number | null
+          trend_vs_last_month?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltv_snapshots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       podcast_metadata_cache: {
         Row: {
           apple_podcast_url: string
