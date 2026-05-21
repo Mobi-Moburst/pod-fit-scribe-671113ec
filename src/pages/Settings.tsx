@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, Trash2, Shield, ShieldCheck, Lock, Mail, Plug, ChevronRight, Phone } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Shield, ShieldCheck, Lock, Mail, Plug, ChevronRight, Phone, FileText } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
 
@@ -184,6 +184,24 @@ export default function Settings() {
             </Link>
           </Card>
         )}
+
+        {/* Manual upload of meeting notes — available to everyone */}
+        <Card>
+          <Link to="/settings/upload-notes" className="block group">
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <div>
+                  <CardTitle className="text-base">Upload meeting notes</CardTitle>
+                  <CardDescription className="text-xs">
+                    Paste a Google Meet, Zoom, or any meeting summary — for meetings that don't sync via Fireflies.
+                  </CardDescription>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </CardHeader>
+          </Link>
+        </Card>
 
         {/* Change Password — available to all CMs */}
         <Card>

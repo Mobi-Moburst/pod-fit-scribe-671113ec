@@ -27,6 +27,7 @@ import Overview from "./pages/Overview";
 import Studio from "./pages/Studio";
 import Integrations from "./pages/Integrations";
 import SyncedCalls from "./pages/SyncedCalls";
+import UploadNotes from "./pages/UploadNotes";
 
 // Singleton pattern for QueryClient to prevent recreation during HMR
 let browserQueryClient: QueryClient | undefined = undefined;
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/settings/integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
               <Route path="/settings/synced-calls" element={<ProtectedRoute><SyncedCalls /></ProtectedRoute>} />
+              <Route path="/settings/upload-notes" element={<ProtectedRoute><UploadNotes /></ProtectedRoute>} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
