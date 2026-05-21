@@ -74,6 +74,8 @@ const Companies = () => {
   const [editingCompany, setEditingCompany] = useState<(Company & { isNew?: boolean }) | null>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<(Speaker & { isNew?: boolean; avoid_text?: string }) | null>(null);
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [industryFilter, setIndustryFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'with_speakers' | 'no_speakers'>('all');
