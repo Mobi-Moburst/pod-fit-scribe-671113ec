@@ -29,13 +29,13 @@ function formatCount(n: number | null): string {
 }
 
 const WINDOW_OPTIONS: { key: WindowKey; label: string }[] = [
-  { key: "quarter", label: "Quarter" },
-  { key: "90d", label: "90d" },
   { key: "all", label: "All" },
+  { key: "90d", label: "90d" },
+  { key: "quarter", label: "Quarter" },
 ];
 
 export function CompanyKpiStrip({ companyId }: CompanyKpiStripProps) {
-  const [window, setWindow] = useState<WindowKey>("quarter");
+  const [window, setWindow] = useState<WindowKey>("all");
   const [kpis, setKpis] = useState<Kpis>(EMPTY);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
