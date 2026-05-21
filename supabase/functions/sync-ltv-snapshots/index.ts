@@ -204,6 +204,7 @@ Deno.serve(async (req) => {
         success: true,
         fetched: records.length,
         upserted,
+        deleted,
         matched_to_companies: matchedCount,
         unmatched: upserted - matchedCount,
         synced_at: new Date().toISOString(),
