@@ -23,6 +23,7 @@ import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtab
 
 import { SpeakerProfileCard } from '@/components/companies/SpeakerProfileCard';
 import { AEOAuditHistory } from '@/components/companies/AEOAuditHistory';
+import { industryStyle } from '@/lib/industryColors';
 
 // Relative timestamp helper
 function relativeTime(iso?: string | null): string {
@@ -59,6 +60,7 @@ const emptySpeaker: Omit<Speaker, 'id' | 'company_id'> = {
 
 interface CompanyWithSpeakers extends Company {
   speakers: Speaker[];
+  industry?: string | null;
   updated_at?: string;
   created_at?: string;
 }
@@ -87,6 +89,7 @@ const Companies = () => {
       return next;
     });
   };
+  const [isInferring, setIsInferring] = useState(false);
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const [isScrapingStrategy, setIsScrapingStrategy] = useState(false);
@@ -164,7 +167,10 @@ const Companies = () => {
   }, [companies]);
   const industries = useMemo(() => {
     const counts = new Map<string, number>();
-    companies.filter(c => !c.archived_at).forEach(c => (c.tags || []).forEach(t => counts.set(t, (counts.get(t) || 0) + 1)));
+    companies.filter(c => !c.archived_at).forEach(c => {
+      const ind = (c.industry || '').trim();
+      if (ind) counts.set(ind, (counts.get(ind) || 0) + 1);
+    });
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [companies]);
   const archivedCount = useMemo(() => companies.filter(c => !!c.archived_at).length, [companies]);
@@ -181,7 +187,7 @@ const Companies = () => {
     }
     // Filters
     if (managerFilter) list = list.filter(c => (c.campaign_manager || '').split(',').map(m => m.trim()).includes(managerFilter));
-    if (industryFilter) list = list.filter(c => (c.tags || []).includes(industryFilter));
+    if (industryFilter) list = list.filter(c => (c.industry || '') === industryFilter);
     if (statusFilter === 'with_speakers') list = list.filter(c => c.speakers.length > 0);
     if (statusFilter === 'no_speakers') list = list.filter(c => c.speakers.length === 0);
     // Search
@@ -228,12 +234,52 @@ const Companies = () => {
       brand_colors: c.brand_colors || undefined, campaign_manager: c.campaign_manager || '',
       airtable_embed_url: c.airtable_embed_url || '', product_type: c.product_type || '',
       tags: c.tags || [], notes: c.notes || '', speakers: speakersMap.get(c.id) || [],
+      industry: c.industry || null,
       archived_at: c.archived_at || null,
       updated_at: c.updated_at, created_at: c.created_at,
     })));
   };
 
   useEffect(() => { loadData(); }, []);
+
+  const inferIndustries = async (companyIds?: string[], { silent = false } = {}) => {
+    const targets = companyIds && companyIds.length
+      ? companyIds
+      : companies.filter(c => !c.archived_at && !c.industry).map(c => c.id);
+    if (!targets.length) {
+      if (!silent) toast({ title: 'All clients already categorized' });
+      return;
+    }
+    setIsInferring(true);
+    try {
+      // Batch in chunks of 20 to keep prompt small
+      const chunks: string[][] = [];
+      for (let i = 0; i < targets.length; i += 20) chunks.push(targets.slice(i, i + 20));
+      let total = 0;
+      for (const chunk of chunks) {
+        const { data, error } = await supabase.functions.invoke('infer-company-industries', { body: { company_ids: chunk } });
+        if (error) throw error;
+        total += (data?.results || []).length;
+      }
+      await loadData();
+      if (!silent) toast({ title: 'Industries inferred', description: `${total} client${total === 1 ? '' : 's'} categorized.` });
+    } catch (e) {
+      if (!silent) toast({ title: 'Inference failed', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsInferring(false);
+    }
+  };
+
+  // Auto-infer in background on first load (one-shot per session)
+  const [autoInferred, setAutoInferred] = useState(false);
+  useEffect(() => {
+    if (autoInferred) return;
+    const missing = companies.filter(c => !c.archived_at && !c.industry);
+    if (missing.length === 0 || companies.length === 0) return;
+    setAutoInferred(true);
+    inferIndustries(missing.slice(0, 40).map(c => c.id), { silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length, autoInferred]);
 
   const toggleCompany = (id: string) => {
     setExpandedCompanies(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -449,8 +495,10 @@ const Companies = () => {
                 <nav className="flex flex-col gap-0.5">
                   {industries.slice(0, 12).map(([tag, count]) => {
                     const active = industryFilter === tag;
+                    const s = industryStyle(tag);
                     return (
                       <button key={tag} onClick={() => setIndustryFilter(active ? '' : tag)} className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.fg }} />
                         <span className="flex-1 truncate">{tag}</span>
                         <span className="text-[11px] text-muted-foreground/60">{count}</span>
                       </button>
@@ -471,9 +519,15 @@ const Companies = () => {
                 </h1>
                 <p className="text-sm text-muted-foreground mt-0.5">Browse and manage all your client campaigns.</p>
               </div>
-              <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-card">
-                <button onClick={() => setViewMode('list')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="List view"><List className="h-3.5 w-3.5" /></button>
-                <button onClick={() => setViewMode('grid')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="Grid view"><LayoutGrid className="h-3.5 w-3.5" /></button>
+              <div className="flex items-center gap-2">
+                <Button variant="soft" size="sm" className="h-9" onClick={() => inferIndustries()} disabled={isInferring}>
+                  {isInferring ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                  {isInferring ? 'Categorizing…' : 'Auto-categorize'}
+                </Button>
+                <div className="flex items-center gap-1 p-0.5 rounded-md border border-border/60 bg-card">
+                  <button onClick={() => setViewMode('list')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="List view"><List className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setViewMode('grid')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="Grid view"><LayoutGrid className="h-3.5 w-3.5" /></button>
+                </div>
               </div>
             </div>
 
@@ -578,10 +632,10 @@ const Companies = () => {
               )}
             </div>
 
-            {/* Directory table */}
-            <div className="rounded-lg border border-border/60 bg-card overflow-hidden">
+            {/* Directory list */}
+            <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
               {/* Header row */}
-              <div className="hidden md:grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 px-4 py-2.5 border-b border-border/50 text-[11px] font-medium uppercase tracking-wider text-muted-foreground bg-muted/20">
+              <div className="hidden md:grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
                 <div>Client</div>
                 <div>Speaker(s)</div>
                 <div>Industry</div>
@@ -594,15 +648,17 @@ const Companies = () => {
                   {navView === 'archived' ? 'No archived clients.' : 'No clients match your filters.'}
                 </div>
               ) : (
-                <div className="divide-y divide-border/40">
+                <div className="px-2 pb-2">
                   {filtered.map(company => {
                     const expanded = expandedCompanies.has(company.id);
                     const isPinned = pinned.has(company.id);
+                    const ind = company.industry;
+                    const indStyle = industryStyle(ind);
                     return (
-                      <div key={company.id}>
+                      <div key={company.id} className="mb-1 last:mb-0">
                         {/* Row */}
                         <div
-                          className="group grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 items-center px-4 py-3 cursor-pointer hover:bg-secondary/30 transition-colors"
+                          className="group grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 items-center px-3 py-3 rounded-lg cursor-pointer hover:bg-secondary/40 transition-colors"
                           onClick={() => toggleCompany(company.id)}
                         >
                           {/* Client */}
@@ -650,12 +706,17 @@ const Companies = () => {
 
                           {/* Industry */}
                           <div className="min-w-0">
-                            {company.tags && company.tags.length > 0 ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-secondary/70 text-foreground/80 border border-border/40">
-                                {company.tags[0]}
+                            {ind ? (
+                              <span
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium border"
+                                style={{ backgroundColor: indStyle.bg, color: indStyle.fg, borderColor: indStyle.ring }}
+                              >
+                                {ind}
                               </span>
                             ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] text-muted-foreground/70 italic">
+                                {isInferring ? 'Categorizing…' : 'Uncategorized'}
+                              </span>
                             )}
                           </div>
 
