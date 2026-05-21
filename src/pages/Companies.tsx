@@ -234,6 +234,7 @@ const Companies = () => {
       brand_colors: c.brand_colors || undefined, campaign_manager: c.campaign_manager || '',
       airtable_embed_url: c.airtable_embed_url || '', product_type: c.product_type || '',
       tags: c.tags || [], notes: c.notes || '', speakers: speakersMap.get(c.id) || [],
+      industry: c.industry || null,
       archived_at: c.archived_at || null,
       updated_at: c.updated_at, created_at: c.created_at,
     })));
