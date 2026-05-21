@@ -321,7 +321,7 @@ const Companies = () => {
   // ── Speaker CRUD ──
   const startNewSpeaker = (companyId: string) => {
     setEditingSpeaker({ ...emptySpeaker, id: crypto.randomUUID(), company_id: companyId, isNew: true, avoid_text: '' });
-    setExpandedCompanies(prev => new Set(prev).add(companyId));
+    setActiveCompanyId(companyId);
   };
   const startEditSpeaker = (s: Speaker) => { setEditingSpeaker({ ...s, avoid_text: (s.avoid || []).join(', ') }); };
   const cancelSpeaker = () => setEditingSpeaker(null);
