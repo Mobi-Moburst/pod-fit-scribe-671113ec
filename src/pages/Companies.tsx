@@ -23,6 +23,7 @@ import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtab
 
 import { SpeakerProfileCard } from '@/components/companies/SpeakerProfileCard';
 import { AEOAuditHistory } from '@/components/companies/AEOAuditHistory';
+import { industryStyle } from '@/lib/industryColors';
 
 // Relative timestamp helper
 function relativeTime(iso?: string | null): string {
