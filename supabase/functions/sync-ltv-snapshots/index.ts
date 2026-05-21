@@ -36,7 +36,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   last_client_checkin: ["Last Client Check-In", "Last Client Check In"],
   next_checkin_scheduled: ["Check-in Call (Upcoming)", "Check-in Call Upcoming"],
   eow_recap_sent: ["EOW Recap Sent?", "EOW Recap Sent"],
-  zz_complete: ["ZZ - Complete", "ZZ-Complete", "ZZ Complete"],
+  zz_complete: ["ZZ - Complete?", "ZZ - Complete", "ZZ-Complete", "ZZ Complete"],
 };
 
 function getField(fields: Record<string, any>, key: string): any {
