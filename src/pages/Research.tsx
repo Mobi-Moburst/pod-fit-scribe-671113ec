@@ -92,16 +92,28 @@ const Research = () => {
     if (!speakerId) {
       setShortlist([]);
       setBookedCount(0);
+      setBookedShows([]);
       setSelectedShortlistId(null);
       return;
     }
     loadShortlist();
     (async () => {
-      const { count } = await supabase
+      const { data } = await supabase
         .from('evaluations')
-        .select('id', { count: 'exact', head: true })
-        .eq('speaker_id', speakerId);
-      setBookedCount(count || 0);
+        .select('id, show_title, url, created_at')
+        .eq('speaker_id', speakerId)
+        .order('created_at', { ascending: false });
+      const rows = (data || []) as { id: string; show_title: string | null; url: string; created_at: string | null }[];
+      // Dedupe by show_title (case-insensitive), fallback to url host
+      const seen = new Set<string>();
+      const deduped = rows.filter((r) => {
+        const key = (r.show_title || r.url || '').toLowerCase().trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setBookedShows(deduped);
+      setBookedCount(deduped.length);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speakerId]);
