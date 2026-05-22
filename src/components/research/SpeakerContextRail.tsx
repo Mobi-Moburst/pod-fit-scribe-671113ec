@@ -16,7 +16,8 @@ interface Props {
   bookedShows?: BookedShow[];
 }
 
-export function SpeakerContextRail({ speaker, company, bookedCount }: Props) {
+export function SpeakerContextRail({ speaker, company, bookedCount, bookedShows = [] }: Props) {
+  const [showsOpen, setShowsOpen] = useState(false);
   const initials = speaker.name
     .split(' ')
     .map(n => n[0])
