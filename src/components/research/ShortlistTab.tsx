@@ -20,7 +20,7 @@ export type ShortlistRow = {
   host_name: string | null;
   description: string | null;
   cover_art_url: string | null;
-  niche_tag: string | null;
+  categories: string[] | null;
   niche_fit_score: number | null;
   est_listeners: number | null;
   last_episode_date: string | null;
