@@ -98,22 +98,79 @@ const Research = () => {
     }
     loadShortlist();
     (async () => {
-      const { data } = await supabase
-        .from('evaluations')
-        .select('id, show_title, url, created_at')
-        .eq('speaker_id', speakerId)
-        .order('created_at', { ascending: false });
-      const rows = (data || []) as { id: string; show_title: string | null; url: string; created_at: string | null }[];
-      // Dedupe by show_title (case-insensitive), fallback to url host
+      // Pull from speaker-specific reports AND any company report this speaker appears in.
+      const speakerCompanyId = speakers.find((s) => s.id === speakerId)?.company_id;
+      const queries: any[] = [
+        supabase
+          .from('reports')
+          .select('id, generated_at, report_data')
+          .eq('speaker_id', speakerId)
+          .order('generated_at', { ascending: false }),
+      ];
+      if (speakerCompanyId) {
+        queries.push(
+          supabase
+            .from('reports')
+            .select('id, generated_at, report_data')
+            .eq('company_id', speakerCompanyId)
+            .is('speaker_id', null)
+            .order('generated_at', { ascending: false })
+        );
+      }
+      const results = await Promise.all(queries);
+
+      type Show = { id: string; show_title: string; url: string; created_at: string | null };
       const seen = new Set<string>();
-      const deduped = rows.filter((r) => {
-        const key = (r.show_title || r.url || '').toLowerCase().trim();
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      setBookedShows(deduped);
-      setBookedCount(deduped.length);
+      const shows: Show[] = [];
+      const collect = (podcasts: any[], reportId: string, generatedAt: string | null) => {
+        for (const p of podcasts || []) {
+          const action = (p.action || '').toLowerCase();
+          if (action && !action.includes('podcast recording') && !action.includes('published')) continue;
+          const title = (p.show_title || '').trim();
+          if (!title) continue;
+          const key = title.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          shows.push({
+            id: `${reportId}:${key}`,
+            show_title: title,
+            url: p.apple_podcast_link || p.episode_link || '',
+            created_at: generatedAt,
+          });
+        }
+      };
+
+      // Speaker reports: top-level podcasts[]
+      for (const r of (results[0]?.data || []) as any[]) {
+        collect(r.report_data?.podcasts, r.id, r.generated_at);
+      }
+      // Company reports: filter speaker_breakdowns by this speaker_id
+      if (results[1]) {
+        for (const r of (results[1].data || []) as any[]) {
+          const breakdowns: any[] = r.report_data?.speaker_breakdowns || [];
+          const mine = breakdowns.find((b) => b.speaker_id === speakerId);
+          if (mine) collect(mine.podcasts, r.id, r.generated_at);
+        }
+      }
+
+      // Fallback: if no reports yet, fall back to evaluations so the speaker isn't blank.
+      if (shows.length === 0) {
+        const { data: evals } = await supabase
+          .from('evaluations')
+          .select('id, show_title, url, created_at')
+          .eq('speaker_id', speakerId)
+          .order('created_at', { ascending: false });
+        for (const e of (evals || []) as any[]) {
+          const title = (e.show_title || '').trim();
+          const key = (title || e.url || '').toLowerCase();
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          shows.push({ id: e.id, show_title: title || e.url, url: e.url, created_at: e.created_at });
+        }
+      }
+
+      setBookedShows(shows);
+      setBookedCount(shows.length);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speakerId]);
