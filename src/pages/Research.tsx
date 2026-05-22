@@ -109,7 +109,7 @@ const Research = () => {
     if (!speakerId) return;
     const { data } = await supabase
       .from('research_shortlists')
-      .select('id, show_name, show_url, host_name, description, cover_art_url, niche_tag, niche_fit_score, est_listeners, last_episode_date, status, source')
+      .select('id, show_name, show_url, host_name, description, cover_art_url, categories, niche_fit_score, est_listeners, last_episode_date, status, source')
       .eq('speaker_id', speakerId)
       .order('created_at', { ascending: false });
     setShortlist((data || []) as ShortlistRow[]);
