@@ -191,8 +191,8 @@ export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted 
                             Listeners unknown
                           </Badge>
                         )}
-                        {c.niche_tag && (
-                          <Badge variant="outline" className="text-xs font-normal">{c.niche_tag}</Badge>
+                        {c.categories && c.categories[0] && (
+                          <Badge variant="outline" className="text-xs font-normal">{c.categories[0]}</Badge>
                         )}
                         {c.last_episode_date && (
                           <span className="text-xs text-muted-foreground">
