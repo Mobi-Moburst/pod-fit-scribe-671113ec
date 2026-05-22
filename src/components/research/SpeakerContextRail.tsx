@@ -2,12 +2,18 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import type { Speaker, Company } from '@/types/clients';
-import { Users, Mic, Target, FileText } from 'lucide-react';
+import { Users, Mic, Target, FileText, ExternalLink } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+
+interface BookedShow { id: string; show_title: string | null; url: string; created_at: string | null }
 
 interface Props {
   speaker: Speaker;
   company?: Company;
   bookedCount?: number;
+  bookedShows?: BookedShow[];
 }
 
 export function SpeakerContextRail({ speaker, company, bookedCount }: Props) {
