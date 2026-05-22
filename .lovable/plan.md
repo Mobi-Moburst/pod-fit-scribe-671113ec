@@ -1,65 +1,147 @@
 ## Goal
 
-Let team members who don't use Fireflies (e.g. Ruhani's Google Meet summaries) paste meeting notes into the tool. Notes land in the same `call_notes` table that powers Strategy Insights, Synced Calls, and speaker timelines — no separate silo.
+Turn Research into a **speaker-anchored sourcing engine** that surfaces high volumes of niche, guest-accepting podcasts a campaign manager can pitch their client to — plus suggested angles they can paste into their HubSpot templates.
 
-## Placement
+**Hard constraints (per user):**
+- Zero Airtable writes. Airtable is for campaign performance data only.
+- No pitch "creation" workflow. Drafts and copy live in the dashboard, period.
+- Pitch handoff = copy-to-clipboard. CMs paste into existing HubSpot sequence templates.
+- Target shape = niche, guest-accepting podcasts that match speaker industry + talking points. Not big shows. Volume game.
 
-New standalone Settings entry:
+---
 
-- New row on `/settings` titled **"Upload meeting notes"** (icon: `FileText`, description: "Paste a Google Meet, Zoom, or any meeting summary."). Sits right under the existing Integrations / Synced Calls rows.
-- Opens a new page at `/settings/upload-notes` (`src/pages/UploadNotes.tsx`).
-- Available to all signed-in users (admin + user). Viewers excluded.
+## Phase 1 — Speaker Workspace + Niche Discovery
 
-This keeps the Integrations page focused on third-party connections and avoids cluttering Synced Calls.
+**Route**: `/research` becomes the workspace. URL `?speaker=<id>` is shareable.
 
-## Upload page UX
+### Layout
+```
+┌─ Company → Speaker selector (sticky top)
+├─ Left rail (280px): Speaker context
+│   • Headshot, name, title
+│   • Target audiences (chips)
+│   • Top talking points (collapsed)
+│   • Already-booked shows count
+│   • Strategy snippet (last quarterly note)
+├─ Main column
+│   • Tabs: [Discover] [Shortlist (N)] [Angles]
+└─ Right rail: show detail + angle suggestions (slides in when row clicked)
+```
 
-Single-column form, matching the existing Settings aesthetic:
+### Discover tab
+- "Generate 25 candidates" button (volume, not 5 perfect ones)
+- For each candidate, hydrate through Rephonic + iTunes, then apply **two gating filters**:
+  1. **Guest filter** — must have a recent track record of guest interviews. Detection signals:
+     - Episode titles containing "with [name]" / "ft." / "interview" / "guest" patterns
+     - >2 distinct apparent speakers across recent episodes (from titles/descriptions)
+     - iTunes/Rephonic category includes Interview-style tags
+     - If none of the above are true after sampling 10 recent episodes → drop
+  2. **Niche-fit filter** — listener count band. Default 500–50K (tighter than the report-side 1K–100K band; this is the "long tail" research uses).
+- Display table columns: cover · show name · host · niche tag · est. listeners · last ep date · guest-cadence badge (e.g. "12/last 15 episodes are interviews")
+- **Fit score retuned for niche**:
+  - Topic/audience overlap weighted heavily
+  - Smaller-but-relevant shows score higher than larger-but-generic ones
+  - Penalty applied above the listener-band ceiling (a 200K show is *worse* fit than a 10K show for this use case)
+- Already-booked + already-shortlisted shows filtered out
+- [Regenerate] · [Generate 25 more] · [Loosen filters] buttons
 
-1. **Company** dropdown (required) — uses the same Company → Speaker selector pattern already in the app.
-2. **Speaker** dropdown (optional) — filtered by selected company; defaults to "Company-wide note".
-3. **Meeting title** (required, e.g. "Q2 Strategy Sync").
-4. **Meeting date** (date picker, defaults to today).
-5. **Notes / summary** (large textarea, required, 50–20,000 chars). Helper text: "Paste the full Google Meet, Zoom, or manual summary. Markdown is supported."
-6. **Save note** button.
+### Shortlist tab
+- Persisted in new `research_shortlists` table (per speaker, org-scoped)
+- Per-row states: `new` / `passed` / `pitched-elsewhere` / `booked` (manual marking only — no Airtable sync triggered)
+- "Passed" + dismissal reason prevents future resurfacing and feeds back into Gemini prompts ("avoid shows like X because…")
+- Bulk re-score button (re-runs fit logic if speaker context changed)
 
-After save: toast confirmation + form resets + a "Recent uploads by you" list below shows the last 10 manual notes (title, company, speaker, date, delete button).
+### Angles tab (replaces "Drafts" — no pitch creation, just ideation)
+- For any shortlisted show, click "Suggest angles"
+- Gemini returns **3–5 distinct pitch angles** the speaker could use *for that show* — not a finished pitch, just the hooks:
+  - Each angle = 1-line headline + 1-paragraph "why this works for this show's audience"
+  - Tuned to the show's recent episode topics (pulled via Rephonic)
+  - Grounded in the speaker's talking points + strategy
+- Each angle has **[Copy hook] [Copy full angle]** buttons. That's the entire handoff. CM pastes into HubSpot template.
+- No "send" button anywhere. No Airtable. No email integration.
 
-## Data flow
+### Evaluate / Batch / History
+- Kept reachable from a "Legacy tools" disclosure at the bottom of the left rail. Not removed.
 
-Insert directly into existing `call_notes` table — no schema change needed. Fields used:
+---
 
-- `source: 'manual'` (new value alongside `'fireflies'` and `'fathom'`)
-- `meeting_title`, `meeting_date`, `summary` (the pasted body), `company_id`, `speaker_id`, `org_id`
-- `participants: []`, `action_items: []`, `transcript: null`
-- `created_at` auto
+## Phase 2 — Smarter sourcing surfaces
 
-Existing components already render any row regardless of `source`, so:
+Once phase 1 is in production and validated:
+- **"More like this"** — pick 2–3 of the speaker's best past bookings, query Rephonic for similar shows, re-apply guest + niche filters
+- **Category laddering** — derive seeds from `target_audiences` + booked categories, walk down to sub-niches Rephonic exposes (e.g. "Entrepreneurship" → "Solo Founders" → "Bootstrapped SaaS")
+- Both feed the same shortlist with a source filter chip
 
-- Strategy Insights Digest picks it up automatically.
-- Synced Calls page lists it (we'll add a small "Manual" badge to distinguish source).
-- Speaker / company timelines include it.
+---
 
-## Edge function
+## Phase 3 — Memory & feedback loop (later)
 
-New `supabase/functions/upload-manual-note/index.ts`:
+- Dismissal reasons surface back to Gemini as anti-prompts per speaker
+- "Pitched elsewhere" / "Booked" states inferred from Airtable sync passively (read-only join, not a write)
+- Per-CM "shows I keep finding" surface = highlights niches a CM is over-/under-indexing on
 
-- Validates JWT, validates body with Zod (title 1–200, summary 50–20000, valid UUIDs, date parseable).
-- Confirms `company_id` (and `speaker_id` if provided) belong to the caller's org.
-- Inserts into `call_notes` with `source='manual'` using service role.
-- Returns the inserted row.
+---
 
-A delete endpoint isn't needed — RLS already lets org members delete their own org's `call_notes`, so the page can call `supabase.from('call_notes').delete()` directly for the "Recent uploads" list.
+## Technical details
 
-## Files
+**New tables**
+```sql
+research_shortlists (
+  id uuid pk,
+  org_id uuid fk,
+  speaker_id uuid fk,
+  show_name text,
+  show_url text,
+  itunes_id text,
+  rephonic_id text,
+  cover_art_url text,
+  est_listeners int,
+  last_episode_date date,
+  guest_cadence_score numeric,   -- 0–1, how often recent eps are guest interviews
+  niche_fit_score numeric,        -- retuned scoring
+  source text,                    -- 'ai' | 'similar' | 'category'
+  status text,                    -- 'new' | 'passed' | 'pitched-elsewhere' | 'booked'
+  passed_reason text,
+  added_by uuid fk auth.users,
+  created_at, updated_at
+)
 
-- New: `src/pages/UploadNotes.tsx`
-- New: `supabase/functions/upload-manual-note/index.ts`
-- Edit: `src/pages/Settings.tsx` — add the new card linking to `/settings/upload-notes`
-- Edit: `src/App.tsx` — register the new route inside `ProtectedRoute`
-- Edit: `src/components/call-notes/CallNotesList.tsx` (and/or Synced Calls) — render a small "Manual" badge when `source === 'manual'`
+research_angles (
+  id uuid pk,
+  shortlist_id uuid fk,
+  headline text,
+  rationale text,                 -- 1-paragraph "why this works"
+  created_at
+)
+```
+Standard RLS via `has_role()` + org scoping.
 
-## Non-goals (deferred)
+**New edge functions**
+- `research-suggest-podcasts` — Gemini suggester + Rephonic/iTunes hydration + guest filter + niche-band filter. Returns up to 25 hydrated candidates per call.
+- `research-suggest-angles` — given shortlist row + speaker context + show's recent episode titles, returns 3–5 angle ideas. **No "pitch draft" wording.**
 
-- No file upload, no Google Doc URL ingestion, no AI cleanup of pasted text. Pure paste-in, save, done.
-- No editing of existing notes (delete + re-paste covers it for v1).
+**Removed from previous plan**
+- `research-send-to-airtable` — gone
+- `research_pitch_drafts` table — gone, replaced with the lighter `research_angles`
+- Subject lines, full pitch bodies — gone. Just angle hooks.
+
+**Modified files**
+- `src/pages/Research.tsx` (rewrite — workspace shell, speaker selector, tabs)
+- `src/components/research/SpeakerContextRail.tsx` (new)
+- `src/components/research/DiscoverTab.tsx` (new)
+- `src/components/research/ShortlistTab.tsx` (new)
+- `src/components/research/AnglesPanel.tsx` (new)
+
+**Reused infra**
+- `CompanySpeakerSelector`
+- `fetch-rephonic-metrics` (30-day cache)
+- `scrape-podcast-cover-art` (iTunes)
+- `suggest-target-podcasts` (wrapped with niche filters, not replaced)
+- Existing fit-scoring logic (retuned weights)
+- Airtable sync used **read-only** for already-booked detection
+
+**Estimate**: 1 migration + 2 edge functions + 4 new components + 1 page rewrite.
+
+---
+
+Ready to build phase 1 on approval.
