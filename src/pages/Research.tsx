@@ -41,6 +41,7 @@ const Research = () => {
   const [shortlist, setShortlist] = useState<ShortlistRow[]>([]);
   const [selectedShortlistId, setSelectedShortlistId] = useState<string | null>(null);
   const [bookedCount, setBookedCount] = useState(0);
+  const [bookedShows, setBookedShows] = useState<{ id: string; show_title: string | null; url: string; created_at: string | null }[]>([]);
   const [legacyOpen, setLegacyOpen] = useState(false);
   const [legacyActive, setLegacyActive] = useState<LegacyTool | null>(null);
 
@@ -91,16 +92,28 @@ const Research = () => {
     if (!speakerId) {
       setShortlist([]);
       setBookedCount(0);
+      setBookedShows([]);
       setSelectedShortlistId(null);
       return;
     }
     loadShortlist();
     (async () => {
-      const { count } = await supabase
+      const { data } = await supabase
         .from('evaluations')
-        .select('id', { count: 'exact', head: true })
-        .eq('speaker_id', speakerId);
-      setBookedCount(count || 0);
+        .select('id, show_title, url, created_at')
+        .eq('speaker_id', speakerId)
+        .order('created_at', { ascending: false });
+      const rows = (data || []) as { id: string; show_title: string | null; url: string; created_at: string | null }[];
+      // Dedupe by show_title (case-insensitive), fallback to url host
+      const seen = new Set<string>();
+      const deduped = rows.filter((r) => {
+        const key = (r.show_title || r.url || '').toLowerCase().trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setBookedShows(deduped);
+      setBookedCount(deduped.length);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speakerId]);
@@ -160,7 +173,7 @@ const Research = () => {
           <div className="grid gap-4 lg:grid-cols-[280px_1fr_360px]">
             {/* Left rail: speaker context */}
             <div className="space-y-3">
-              <SpeakerContextRail speaker={speaker} company={company} bookedCount={bookedCount} />
+              <SpeakerContextRail speaker={speaker} company={company} bookedCount={bookedCount} bookedShows={bookedShows} />
 
               {/* Legacy tools disclosure */}
               <Collapsible open={legacyOpen} onOpenChange={setLegacyOpen}>
