@@ -21,7 +21,6 @@ export interface Candidate {
   guest_cadence_label: string;
   niche_fit_score: number;
   fit_rationale: string;
-  niche_tag?: string;
 }
 
 interface Props {
