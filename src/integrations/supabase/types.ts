@@ -845,6 +845,119 @@ export type Database = {
           },
         ]
       }
+      research_angles: {
+        Row: {
+          created_at: string
+          headline: string
+          id: string
+          org_id: string
+          rationale: string
+          shortlist_id: string
+        }
+        Insert: {
+          created_at?: string
+          headline: string
+          id?: string
+          org_id: string
+          rationale: string
+          shortlist_id: string
+        }
+        Update: {
+          created_at?: string
+          headline?: string
+          id?: string
+          org_id?: string
+          rationale?: string
+          shortlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_angles_shortlist_id_fkey"
+            columns: ["shortlist_id"]
+            isOneToOne: false
+            referencedRelation: "research_shortlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_shortlists: {
+        Row: {
+          added_by: string | null
+          categories: string[] | null
+          cover_art_url: string | null
+          created_at: string
+          description: string | null
+          est_listeners: number | null
+          fit_rationale: string | null
+          guest_cadence_label: string | null
+          guest_cadence_score: number | null
+          host_name: string | null
+          id: string
+          itunes_id: string | null
+          last_episode_date: string | null
+          niche_fit_score: number | null
+          org_id: string
+          passed_reason: string | null
+          rephonic_id: string | null
+          show_name: string
+          show_url: string | null
+          source: string
+          speaker_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          added_by?: string | null
+          categories?: string[] | null
+          cover_art_url?: string | null
+          created_at?: string
+          description?: string | null
+          est_listeners?: number | null
+          fit_rationale?: string | null
+          guest_cadence_label?: string | null
+          guest_cadence_score?: number | null
+          host_name?: string | null
+          id?: string
+          itunes_id?: string | null
+          last_episode_date?: string | null
+          niche_fit_score?: number | null
+          org_id: string
+          passed_reason?: string | null
+          rephonic_id?: string | null
+          show_name: string
+          show_url?: string | null
+          source?: string
+          speaker_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string | null
+          categories?: string[] | null
+          cover_art_url?: string | null
+          created_at?: string
+          description?: string | null
+          est_listeners?: number | null
+          fit_rationale?: string | null
+          guest_cadence_label?: string | null
+          guest_cadence_score?: number | null
+          host_name?: string | null
+          id?: string
+          itunes_id?: string | null
+          last_episode_date?: string | null
+          niche_fit_score?: number | null
+          org_id?: string
+          passed_reason?: string | null
+          rephonic_id?: string | null
+          show_name?: string
+          show_url?: string | null
+          source?: string
+          speaker_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       speakers: {
         Row: {
           airtable_embed_url: string | null
