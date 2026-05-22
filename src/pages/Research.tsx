@@ -98,21 +98,32 @@ const Research = () => {
     }
     loadShortlist();
     (async () => {
-      // Saved reports hold the canonical list of podcasts a speaker has been on
-      // (via report_data.podcasts, sourced from Airtable + Batch CSVs).
-      const { data: reports } = await supabase
-        .from('reports')
-        .select('id, report_name, generated_at, report_data')
-        .eq('speaker_id', speakerId)
-        .order('generated_at', { ascending: false });
+      // Pull from speaker-specific reports AND any company report this speaker appears in.
+      const speakerCompanyId = speakers.find((s) => s.id === speakerId)?.company_id;
+      const queries: any[] = [
+        supabase
+          .from('reports')
+          .select('id, generated_at, report_data')
+          .eq('speaker_id', speakerId)
+          .order('generated_at', { ascending: false }),
+      ];
+      if (speakerCompanyId) {
+        queries.push(
+          supabase
+            .from('reports')
+            .select('id, generated_at, report_data')
+            .eq('company_id', speakerCompanyId)
+            .is('speaker_id', null)
+            .order('generated_at', { ascending: false })
+        );
+      }
+      const results = await Promise.all(queries);
 
       type Show = { id: string; show_title: string; url: string; created_at: string | null };
       const seen = new Set<string>();
       const shows: Show[] = [];
-      for (const r of (reports || []) as any[]) {
-        const podcasts: any[] = r.report_data?.podcasts || [];
-        for (const p of podcasts) {
-          // Only count actual recordings / bookings, not "intro call" rows.
+      const collect = (podcasts: any[], reportId: string, generatedAt: string | null) => {
+        for (const p of podcasts || []) {
           const action = (p.action || '').toLowerCase();
           if (action && !action.includes('podcast recording') && !action.includes('published')) continue;
           const title = (p.show_title || '').trim();
@@ -121,11 +132,24 @@ const Research = () => {
           if (seen.has(key)) continue;
           seen.add(key);
           shows.push({
-            id: `${r.id}:${key}`,
+            id: `${reportId}:${key}`,
             show_title: title,
             url: p.apple_podcast_link || p.episode_link || '',
-            created_at: r.generated_at,
+            created_at: generatedAt,
           });
+        }
+      };
+
+      // Speaker reports: top-level podcasts[]
+      for (const r of (results[0]?.data || []) as any[]) {
+        collect(r.report_data?.podcasts, r.id, r.generated_at);
+      }
+      // Company reports: filter speaker_breakdowns by this speaker_id
+      if (results[1]) {
+        for (const r of (results[1].data || []) as any[]) {
+          const breakdowns: any[] = r.report_data?.speaker_breakdowns || [];
+          const mine = breakdowns.find((b) => b.speaker_id === speakerId);
+          if (mine) collect(mine.podcasts, r.id, r.generated_at);
         }
       }
 
