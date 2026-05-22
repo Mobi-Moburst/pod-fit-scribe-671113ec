@@ -45,12 +45,39 @@ export function SpeakerContextRail({ speaker, company, bookedCount, bookedShows 
         </div>
       </div>
 
-      {typeof bookedCount === 'number' && bookedCount > 0 && (
+      {bookedShows.length > 0 ? (
+        <Collapsible open={showsOpen} onOpenChange={setShowsOpen}>
+          <CollapsibleTrigger className="w-full flex items-center justify-between gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <span className="flex items-center gap-2">
+              <Mic className="h-3.5 w-3.5" />
+              {bookedShows.length} podcasts already in the system
+            </span>
+            {showsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <ul className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+              {bookedShows.map((s) => (
+                <li key={s.id}>
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-start gap-1.5 text-xs text-foreground/90 hover:text-foreground leading-snug group"
+                  >
+                    <span className="flex-1 truncate">{s.show_title || s.url}</span>
+                    <ExternalLink className="h-3 w-3 mt-0.5 opacity-0 group-hover:opacity-60 shrink-0" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
+      ) : typeof bookedCount === 'number' && bookedCount > 0 ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Mic className="h-3.5 w-3.5" />
           <span>{bookedCount} podcasts already in the system</span>
         </div>
-      )}
+      ) : null}
 
       {speaker.target_audiences?.length ? (
         <div>
