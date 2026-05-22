@@ -19,7 +19,7 @@ const tools: Tool[] = [
     id: 'evaluate',
     label: 'Evaluate',
     description: 'Score a single podcast against a speaker profile.',
-    path: '/?embedded=1',
+    path: '/evaluate?embedded=1',
     icon: Search,
   },
   {
