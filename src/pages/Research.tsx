@@ -173,7 +173,7 @@ const Research = () => {
           <div className="grid gap-4 lg:grid-cols-[280px_1fr_360px]">
             {/* Left rail: speaker context */}
             <div className="space-y-3">
-              <SpeakerContextRail speaker={speaker} company={company} bookedCount={bookedCount} />
+              <SpeakerContextRail speaker={speaker} company={company} bookedCount={bookedCount} bookedShows={bookedShows} />
 
               {/* Legacy tools disclosure */}
               <Collapsible open={legacyOpen} onOpenChange={setLegacyOpen}>
