@@ -249,6 +249,21 @@ Deno.serve(async (req) => {
       throw new Error('No Airtable access token configured. Please add AIRTABLE_PAT secret or provide a per-connection token.');
     }
 
+    // DEBUG: log token source + fingerprint (NOT the value)
+    console.log(`Token source: ${connection.personal_access_token ? 'per-connection' : 'global AIRTABLE_PAT'}`);
+    console.log(`Token prefix: "${accessToken.slice(0, 8)}" length: ${accessToken.length} hasWhitespace: ${/\s/.test(accessToken)}`);
+
+    // DEBUG: hit whoami endpoint to see which Airtable user this token belongs to
+    try {
+      const whoamiRes = await fetch('https://api.airtable.com/v0/meta/whoami', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const whoamiBody = await whoamiRes.text();
+      console.log(`whoami status: ${whoamiRes.status} body: ${whoamiBody.slice(0, 300)}`);
+    } catch (e) {
+      console.log(`whoami error: ${e}`);
+    }
+
     // Fetch records from Airtable (auto-retries without filter on 422)
     let records = await fetchAllRecords(
       connection.base_id,
