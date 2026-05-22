@@ -56,7 +56,7 @@ const Research = () => {
         supabase.from('speakers').select('*').is('archived_at', null).order('name'),
       ]);
       setCompanies((cs || []) as Company[]);
-      setSpeakers((ss || []) as Speaker[]);
+      setSpeakers((ss || []) as unknown as Speaker[]);
     })();
   }, []);
 
