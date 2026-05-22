@@ -20,7 +20,7 @@ export type ShortlistRow = {
   host_name: string | null;
   description: string | null;
   cover_art_url: string | null;
-  niche_tag: string | null;
+  categories: string[] | null;
   niche_fit_score: number | null;
   est_listeners: number | null;
   last_episode_date: string | null;
@@ -135,7 +135,7 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
                           ~{r.est_listeners.toLocaleString()} listeners/ep
                         </Badge>
                       ) : null}
-                      {r.niche_tag && <Badge variant="outline" className="text-xs font-normal">{r.niche_tag}</Badge>}
+                      {r.categories && r.categories[0] && <Badge variant="outline" className="text-xs font-normal">{r.categories[0]}</Badge>}
                     </div>
                   </div>
                   <DropdownMenu>
