@@ -41,6 +41,7 @@ const Research = () => {
   const [shortlist, setShortlist] = useState<ShortlistRow[]>([]);
   const [selectedShortlistId, setSelectedShortlistId] = useState<string | null>(null);
   const [bookedCount, setBookedCount] = useState(0);
+  const [bookedShows, setBookedShows] = useState<{ id: string; show_title: string | null; url: string; created_at: string | null }[]>([]);
   const [legacyOpen, setLegacyOpen] = useState(false);
   const [legacyActive, setLegacyActive] = useState<LegacyTool | null>(null);
 
