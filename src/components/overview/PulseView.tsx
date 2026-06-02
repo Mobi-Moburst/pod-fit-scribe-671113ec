@@ -126,6 +126,9 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ltv, setLtv] = useState<LtvLite[]>([]);
   const [speakers, setSpeakers] = useState<SpeakerLite[]>([]);
+  const [offboarding, setOffboarding] = useState<
+    Array<{ client_name: string; campaign_manager: string | null; date_ended: string | null }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [openIndustry, setOpenIndustry] = useState<string | null>(null);
@@ -133,7 +136,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
   async function load() {
     setLoading(true);
-    const [b, l, s] = await Promise.all([
+    const [b, l, s, o] = await Promise.all([
       supabase
         .from("momentum_bookings")
         .select(
@@ -150,13 +153,18 @@ export function PulseView({ cmFilter }: PulseViewProps) {
         .from("speakers")
         .select("id, name, company_id, archived_at")
         .is("archived_at", null),
+      supabase
+        .from("ltv_offboarding")
+        .select("client_name, campaign_manager, date_ended"),
     ]);
     if (b.error) toast({ title: "Failed to load bookings", description: b.error.message, variant: "destructive" });
     setBookings((b.data ?? []) as Booking[]);
     setLtv((l.data ?? []) as LtvLite[]);
     setSpeakers((s.data ?? []) as SpeakerLite[]);
+    setOffboarding((o.data ?? []) as typeof offboarding);
     setLoading(false);
   }
+
 
   useEffect(() => {
     load();
@@ -210,13 +218,19 @@ export function PulseView({ cmFilter }: PulseViewProps) {
     inRange(r.cohort, monthStart, monthEnd)
   ).length;
 
-  // Clients leaving this month: campaign_success_status === "Offboarding" (case-insensitive)
+  // Clients leaving this month: pulled from Airtable "Offboarding" table —
+  // include if `date_ended` falls within the current month.
   const leavingThisMonth = useMemo(() => {
-    return filteredLtv
-      .filter((r) => (r.campaign_success_status ?? "").toLowerCase().trim() === "offboarding")
-      .map((r) => ({ client: r.client_name, end: r.renewal_date, cm: r.campaign_manager }))
+    return offboarding
+      .filter((r) => {
+        if (!r.date_ended) return false;
+        if (cmFilter !== "all" && r.campaign_manager !== cmFilter) return false;
+        return inRange(r.date_ended, monthStart, monthEnd);
+      })
+      .map((r) => ({ client: r.client_name, end: r.date_ended, cm: r.campaign_manager }))
       .sort((a, b) => (a.end ?? "").localeCompare(b.end ?? ""));
-  }, [filteredLtv]);
+  }, [offboarding, cmFilter, monthStart, monthEnd]);
+
 
   const activeSMEs = filteredLtv.length;
 
