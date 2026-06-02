@@ -68,6 +68,7 @@ type SpeakerLite = {
 interface PulseViewProps {
   cmFilter: string;
   monthFilter?: string; // "current" or "YYYY-MM"
+  syncSignal?: number;
 }
 
 // Treat "Podcast Recording" (and minor variants) as a booking
@@ -123,7 +124,7 @@ function pctTone(pct: number | null) {
   return "text-red-500";
 }
 
-export function PulseView({ cmFilter, monthFilter = "current" }: PulseViewProps) {
+export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }: PulseViewProps) {
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ltv, setLtv] = useState<LtvLite[]>([]);
@@ -132,7 +133,7 @@ export function PulseView({ cmFilter, monthFilter = "current" }: PulseViewProps)
     Array<{ client_name: string; campaign_manager: string | null; date_ended: string | null }>
   >([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  
   const [openIndustry, setOpenIndustry] = useState<string | null>(null);
 
   const isHistoric = monthFilter !== "current" && /^\d{4}-\d{2}$/.test(monthFilter);
@@ -241,22 +242,7 @@ export function PulseView({ cmFilter, monthFilter = "current" }: PulseViewProps)
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthFilter]);
-
-  async function sync() {
-    setSyncing(true);
-    const { data, error } = await supabase.functions.invoke("sync-momentum-bookings");
-    setSyncing(false);
-    if (error) {
-      toast({ title: "Sync failed", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({
-      title: "Momentum synced",
-      description: `${(data as any)?.upserted ?? 0} bookings · ${(data as any)?.matched_to_companies ?? 0} matched`,
-    });
-    load();
-  }
+  }, [monthFilter, syncSignal]);
 
   const filteredBookings = useMemo(() => {
     let rows = bookings.filter(isBooking);
@@ -549,12 +535,7 @@ export function PulseView({ cmFilter, monthFilter = "current" }: PulseViewProps)
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end gap-2">
-        <Button size="sm" variant="outline" onClick={sync} disabled={syncing}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
-          {syncing ? "Syncing…" : "Sync Momentum"}
-        </Button>
-      </div>
+
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

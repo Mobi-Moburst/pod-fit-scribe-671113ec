@@ -127,6 +127,7 @@ const Overview = () => {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
+  const [syncSignal, setSyncSignal] = useState(0);
   const [cmFilter, setCmFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [view, setView] = useState<"campaigns" | "pulse">("campaigns");
@@ -173,9 +174,10 @@ const Overview = () => {
 
   async function sync() {
     setSyncing(true);
-    const [{ data, error }, off] = await Promise.all([
+    const [{ data, error }, off, mom] = await Promise.all([
       supabase.functions.invoke("sync-ltv-snapshots"),
       supabase.functions.invoke("sync-ltv-offboarding"),
+      supabase.functions.invoke("sync-momentum-bookings"),
     ]);
     setSyncing(false);
     if (error) {
@@ -183,9 +185,10 @@ const Overview = () => {
       return;
     }
     toast({
-      title: "LTV synced",
-      description: `${(data as any)?.upserted ?? 0} rows · ${(data as any)?.matched_to_companies ?? 0} matched · ${(off?.data as any)?.upserted ?? 0} offboarding`,
+      title: "Data synced",
+      description: `${(data as any)?.upserted ?? 0} LTV · ${(off?.data as any)?.upserted ?? 0} offboarding · ${(mom?.data as any)?.upserted ?? 0} bookings`,
     });
+    setSyncSignal((n) => n + 1);
     load();
   }
 
@@ -323,7 +326,7 @@ const Overview = () => {
             )}
             <Button size="sm" variant="outline" onClick={sync} disabled={syncing}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncing…" : "Sync LTV"}
+              {syncing ? "Syncing…" : "Sync Data"}
             </Button>
             {view === "pulse" && (
               <Button size="sm" variant="outline" onClick={snapshotNow} disabled={snapshotting}>
@@ -391,7 +394,7 @@ const Overview = () => {
         </div>
 
         {view === "pulse" ? (
-          <PulseView cmFilter={cmFilter} monthFilter={monthFilter} />
+          <PulseView cmFilter={cmFilter} monthFilter={monthFilter} syncSignal={syncSignal} />
         ) : (
           <>
 
