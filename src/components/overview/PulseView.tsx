@@ -452,7 +452,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
         <KpiTile label="Bookings this month" value={bookingsThisMonth} icon={Mic} />
         <KpiTile
           label="Monthly vs deliverable"
-          value={`${bookingsThisMonth} / ${totalMonthlyGoal || "—"}${monthlyVsGoalPct !== null ? ` · ${monthlyVsGoalPct}%` : ""}`}
+          value={`${totalMonthlyCompleted} / ${totalMonthlyGoal || "—"}${monthlyVsGoalPct !== null ? ` · ${monthlyVsGoalPct}%` : ""}`}
           icon={Target}
           tone={
             monthlyVsGoalPct === null
