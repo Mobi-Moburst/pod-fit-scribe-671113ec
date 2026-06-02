@@ -210,8 +210,10 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
   const activeSMEs = filteredLtv.length;
 
-  // Backlogged: behind by >= one monthly goal worth of bookings
+  // Backlogged: remaining >= 2x monthly goal. At risk: mid-month or later AND >= 1.5x but < 2x.
   const backlogged = useMemo(() => {
+    const dayOfMonth = new Date().getDate();
+    const pastMidMonth = dayOfMonth >= 15;
     return filteredLtv
       .filter((r) => r.offboarding !== true && r.zz_complete !== true)
       .map((r) => {
@@ -219,6 +221,11 @@ export function PulseView({ cmFilter }: PulseViewProps) {
         const actual = Number(r.actual_bookings_to_date ?? 0);
         const goal = Number(r.goal_this_month ?? 0);
         const remaining = planned - actual;
+        let status: "backlog" | "at-risk" | null = null;
+        if (goal > 0) {
+          if (remaining >= 2 * goal) status = "backlog";
+          else if (pastMidMonth && remaining >= 1.5 * goal) status = "at-risk";
+        }
         return {
           client: r.client_name,
           cm: r.campaign_manager,
@@ -226,11 +233,18 @@ export function PulseView({ cmFilter }: PulseViewProps) {
           total: planned,
           remaining,
           goal,
+          status,
         };
       })
-      .filter((r) => r.goal > 0 && r.remaining >= r.goal)
-      .sort((a, b) => b.remaining - a.remaining);
+      .filter((r) => r.status !== null)
+      .sort((a, b) => {
+        if (a.status !== b.status) return a.status === "backlog" ? -1 : 1;
+        return b.remaining - a.remaining;
+      });
   }, [filteredLtv]);
+
+  const backlogCount = backlogged.filter((r) => r.status === "backlog").length;
+  const atRiskCount = backlogged.filter((r) => r.status === "at-risk").length;
 
   // CM leaderboard
   const cmAgg = useMemo(() => {
@@ -426,7 +440,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
             Backlogged clients
           </h2>
           <span className="text-xs text-muted-foreground">
-            Behind by ≥ 1 month of goal · {backlogged.length}
+            Behind by ≥ 2× monthly goal · {backlogCount} backlog · {atRiskCount} at risk
           </span>
         </div>
         {loading ? (
@@ -441,6 +455,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Client</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>CM</TableHead>
                   <TableHead className="text-right">Current</TableHead>
                   <TableHead className="text-right">Total due</TableHead>
@@ -452,10 +467,21 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                 {backlogged.map((r) => (
                   <TableRow key={r.client}>
                     <TableCell className="font-medium">{r.client}</TableCell>
+                    <TableCell>
+                      {r.status === "backlog" ? (
+                        <span className="inline-flex items-center rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-500">
+                          Backlog
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500">
+                          At risk
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{r.cm ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.current}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.total}</TableCell>
-                    <TableCell className="text-right tabular-nums text-red-500">
+                    <TableCell className={`text-right tabular-nums ${r.status === "backlog" ? "text-red-500" : "text-amber-500"}`}>
                       {r.remaining}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
