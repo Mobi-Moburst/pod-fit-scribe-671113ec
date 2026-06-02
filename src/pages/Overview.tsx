@@ -314,8 +314,9 @@ const Overview = () => {
           <div>
             <h1 className="text-lg font-semibold mb-1">Overview</h1>
             <p className="text-sm text-muted-foreground">
-              Pulse-check on active Kitcaster campaigns, sourced from the LTV
-              tracker.
+              {view === "pulse"
+                ? "Kitcaster Pulse — agency-wide health metrics across bookings, delivery cadence, and offboarding momentum."
+                : "Campaigns — per-client pulse-check on active Kitcaster campaigns, sourced from the LTV tracker."}
             </p>
           </div>
           <div className="flex items-center gap-2">
