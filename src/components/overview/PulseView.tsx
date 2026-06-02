@@ -51,6 +51,8 @@ type LtvLite = {
   current_month_cumulative_pct_fulfilled: number | null;
   actual_bookings_to_date: number | null;
   total_planned_bookings_by_eom: number | null;
+  cohort: string | null;
+  campaign_success_status: string | null;
   synced_at: string;
 };
 
@@ -141,7 +143,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       supabase
         .from("ltv_snapshots")
         .select(
-          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, synced_at"
+          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, cohort, campaign_success_status, synced_at"
         ),
       supabase
         .from("speakers")
@@ -193,29 +195,24 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   // KPI strip
   const bookingsThisMonth = filteredBookings.filter((b) => inRange(b.date_secured, monthStart)).length;
   const bookingsYTD = filteredBookings.filter((b) => inRange(b.date_secured, yearStart)).length;
-  const totalMonthlyGoal = filteredLtv.reduce((s, r) => s + (r.goal_this_month ?? 0), 0);
-  const monthlyVsGoalPct = totalMonthlyGoal > 0 ? Math.round((bookingsThisMonth / totalMonthlyGoal) * 100) : null;
 
-  // New clients this month: client_name whose earliest date_secured is in this month
-  const firstSecured = new Map<string, Date>();
-  for (const b of filteredBookings) {
-    if (!b.client_name || !b.date_secured) continue;
-    const d = new Date(b.date_secured);
-    if (isNaN(d.getTime())) continue;
-    const cur = firstSecured.get(b.client_name);
-    if (!cur || d < cur) firstSecured.set(b.client_name, d);
-  }
-  const newClientsThisMonth = Array.from(firstSecured.values()).filter((d) => d >= monthStart).length;
+  // Monthly vs deliverable: sum of deliverables completed this month vs sum of monthly goals (Kitcaster Monthly Delivery base)
+  const totalMonthlyCompleted = filteredLtv.reduce(
+    (s, r) => s + (Number(r.deliverables_completed_this_month) || 0),
+    0
+  );
+  const totalMonthlyGoal = filteredLtv.reduce((s, r) => s + (Number(r.goal_this_month) || 0), 0);
+  const monthlyVsGoalPct = totalMonthlyGoal > 0 ? Math.round((totalMonthlyCompleted / totalMonthlyGoal) * 100) : null;
 
-  // Clients leaving this month: name + end date list
+  // New clients this month: cohort date falls within the current month
+  const newClientsThisMonth = filteredLtv.filter((r) =>
+    inRange(r.cohort, monthStart, monthEnd)
+  ).length;
+
+  // Clients leaving this month: campaign_success_status === "Offboarding" (case-insensitive)
   const leavingThisMonth = useMemo(() => {
     return filteredLtv
-      .filter((r) => {
-        if (r.offboarding === true) return true;
-        if (!r.renewal_date) return false;
-        const d = new Date(r.renewal_date);
-        return d >= monthStart && d <= monthEnd && r.renewed !== true;
-      })
+      .filter((r) => (r.campaign_success_status ?? "").toLowerCase().trim() === "offboarding")
       .map((r) => ({ client: r.client_name, end: r.renewal_date, cm: r.campaign_manager }))
       .sort((a, b) => (a.end ?? "").localeCompare(b.end ?? ""));
   }, [filteredLtv]);
@@ -455,7 +452,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
         <KpiTile label="Bookings this month" value={bookingsThisMonth} icon={Mic} />
         <KpiTile
           label="Monthly vs deliverable"
-          value={`${bookingsThisMonth} / ${totalMonthlyGoal || "—"}${monthlyVsGoalPct !== null ? ` · ${monthlyVsGoalPct}%` : ""}`}
+          value={`${totalMonthlyCompleted} / ${totalMonthlyGoal || "—"}${monthlyVsGoalPct !== null ? ` · ${monthlyVsGoalPct}%` : ""}`}
           icon={Target}
           tone={
             monthlyVsGoalPct === null
