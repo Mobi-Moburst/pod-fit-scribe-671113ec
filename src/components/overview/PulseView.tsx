@@ -67,6 +67,7 @@ type SpeakerLite = {
 
 interface PulseViewProps {
   cmFilter: string;
+  monthFilter?: string; // "current" or "YYYY-MM"
 }
 
 // Treat "Podcast Recording" (and minor variants) as a booking
