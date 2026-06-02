@@ -298,16 +298,37 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       .slice(0, 8);
   }, [filteredBookings]);
 
-  const lastByIndustry = useMemo(() => {
-    const map = new Map<string, Booking[]>();
-    for (const b of filteredBookings) {
-      const k = b.industry ?? "Unknown";
-      if (!map.has(k)) map.set(k, []);
-      const arr = map.get(k)!;
-      if (arr.length < 5) arr.push(b);
+  // Unique podcasts per industry (YTD), most-booked first
+  const podcastsByIndustry = useMemo(() => {
+    const map = new Map<string, Map<string, { name: string; url: string | null; count: number; lastDate: string | null }>>();
+    for (const b of filteredBookings.filter((b) => inRange(b.date_secured, yearStart))) {
+      const industry = b.industry ?? "Unknown";
+      const key = normPodcast(b.podcast_name);
+      if (!key) continue;
+      if (!map.has(industry)) map.set(industry, new Map());
+      const inner = map.get(industry)!;
+      const existing = inner.get(key);
+      if (existing) {
+        existing.count++;
+        if (b.date_secured && (!existing.lastDate || b.date_secured > existing.lastDate)) {
+          existing.lastDate = b.date_secured;
+        }
+      } else {
+        inner.set(key, {
+          name: b.podcast_name!,
+          url: b.podcast_url,
+          count: 1,
+          lastDate: b.date_secured,
+        });
+      }
     }
-    return map;
+    const out = new Map<string, Array<{ name: string; url: string | null; count: number; lastDate: string | null }>>();
+    for (const [k, v] of map.entries()) {
+      out.set(k, Array.from(v.values()).sort((a, b) => b.count - a.count || (b.lastDate ?? "").localeCompare(a.lastDate ?? "")));
+    }
+    return out;
   }, [filteredBookings]);
+
 
   const last10 = filteredBookings.slice(0, 10);
 
