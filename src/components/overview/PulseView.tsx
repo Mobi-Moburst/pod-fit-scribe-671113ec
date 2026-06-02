@@ -51,6 +51,7 @@ type LtvLite = {
   current_month_cumulative_pct_fulfilled: number | null;
   actual_bookings_to_date: number | null;
   total_planned_bookings_by_eom: number | null;
+  total_bookings_per_month: number | null;
   cohort: string | null;
   campaign_success_status: string | null;
   synced_at: string;
@@ -143,7 +144,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       supabase
         .from("ltv_snapshots")
         .select(
-          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, cohort, campaign_success_status, synced_at"
+          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, total_bookings_per_month, cohort, campaign_success_status, synced_at"
         ),
       supabase
         .from("speakers")
@@ -490,10 +491,10 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                   <TableHead>Client</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>CM</TableHead>
-                  <TableHead className="text-right">Current</TableHead>
-                  <TableHead className="text-right">Total due</TableHead>
-                  <TableHead className="text-right">Remaining</TableHead>
-                  <TableHead className="text-right">Monthly goal</TableHead>
+                  <TableHead className="text-right">Contracted / mo</TableHead>
+                  <TableHead className="text-right">Completed</TableHead>
+                  <TableHead className="text-right">Goal this mo.</TableHead>
+                  <TableHead className="text-right">Gap</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -512,13 +513,13 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{r.cm ?? "—"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.current}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.total}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.contracted}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.completed}</TableCell>
                     <TableCell className={`text-right tabular-nums ${r.status === "backlog" ? "text-red-500" : "text-amber-500"}`}>
-                      {r.remaining}
+                      {r.goal}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
-                      {r.goal}
+                      {r.gap}
                     </TableCell>
                   </TableRow>
                 ))}
