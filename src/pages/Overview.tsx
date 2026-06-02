@@ -499,19 +499,18 @@ const Overview = () => {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                         Loading…
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                         No campaigns match these filters.
                       </TableCell>
                     </TableRow>
                   ) : (
                     filtered.map((r) => {
-                      const dRenew = daysUntil(r.renewal_date);
                       const clickable = !!r.company_id;
                       return (
                         <TableRow
@@ -541,17 +540,10 @@ const Overview = () => {
                               ? `${Math.round(r.cumulative_pct_fulfilled)}%`
                               : "—"}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right pr-4">
                             <span className="inline-flex items-center justify-end gap-1">
                               {trendIcon(r.trend_vs_last_month)}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-right pr-4 text-xs text-muted-foreground">
-                            {r.renewal_date
-                              ? dRenew !== null && dRenew >= 0 && dRenew <= 60
-                                ? `in ${dRenew}d`
-                                : new Date(r.renewal_date).toLocaleDateString()
-                              : "—"}
                           </TableCell>
                         </TableRow>
                       );
