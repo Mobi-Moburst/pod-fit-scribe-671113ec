@@ -148,7 +148,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       supabase
         .from("ltv_snapshots")
         .select(
-          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, total_bookings_per_month, cohort, campaign_success_status, synced_at"
+          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, total_bookings_per_month, cohort, campaign_success_status, status, synced_at"
         ),
       supabase
         .from("speakers")
