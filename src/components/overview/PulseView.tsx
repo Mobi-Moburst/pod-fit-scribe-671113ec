@@ -749,7 +749,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                       ) : (
                         b.podcast_name
                       )}
-                      {b.podcast_url && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
+                      
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {b.client_name} · {b.campaign_manager ?? "—"} · {fmtDate(b.date_secured)}
