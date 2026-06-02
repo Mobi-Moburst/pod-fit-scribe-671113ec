@@ -458,23 +458,18 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
 
 
-  // Per-client bookings (existing table)
+  // Per-client bookings — sourced from active LTV roster (not Momentum)
   const perClient = useMemo(() => {
-    const map = new Map<
-      string,
-      { client: string; thisMonth: number; ytd: number; last: string | null; cm: string | null }
-    >();
-    for (const b of filteredBookings) {
-      const k = b.client_name ?? "Unassigned";
-      if (!map.has(k))
-        map.set(k, { client: k, thisMonth: 0, ytd: 0, last: null, cm: b.campaign_manager });
-      const row = map.get(k)!;
-      if (inRange(b.date_secured, monthStart)) row.thisMonth++;
-      if (inRange(b.date_secured, yearStart)) row.ytd++;
-      if (b.date_secured && (!row.last || b.date_secured > row.last)) row.last = b.date_secured;
-    }
-    return Array.from(map.values()).sort((a, b) => b.ytd - a.ytd);
-  }, [filteredBookings]);
+    return filteredLtv
+      .filter((r) => r.offboarding !== true)
+      .map((r) => ({
+        client: r.client_name ?? "Unassigned",
+        thisMonth: Number(r.deliverables_completed_this_month) || 0,
+        ytd: Number(r.actual_bookings_to_date) || 0,
+        cm: r.campaign_manager ?? null,
+      }))
+      .sort((a, b) => b.ytd - a.ytd);
+  }, [filteredLtv]);
 
   return (
     <div className="space-y-4">
