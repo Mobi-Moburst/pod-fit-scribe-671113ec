@@ -126,13 +126,17 @@ const Overview = () => {
   const [rows, setRows] = useState<LtvRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [snapshotting, setSnapshotting] = useState(false);
   const [cmFilter, setCmFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [view, setView] = useState<"campaigns" | "pulse">("campaigns");
+  const [monthFilter, setMonthFilter] = useState<string>("current");
+  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
 
   useEffect(() => {
     document.title = "Overview — Kitcaster Campaign Command Center";
     load();
+    loadMonths();
   }, []);
 
   const goToCompany = (companyId: string | null) => {
@@ -157,6 +161,16 @@ const Overview = () => {
     setLoading(false);
   }
 
+  async function loadMonths() {
+    const { data } = await supabase
+      .from("ltv_monthly_snapshots")
+      .select("year_month")
+      .order("year_month", { ascending: false })
+      .limit(2000);
+    const uniq = Array.from(new Set((data ?? []).map((r: any) => r.year_month as string)));
+    setAvailableMonths(uniq);
+  }
+
   async function sync() {
     setSyncing(true);
     const [{ data, error }, off] = await Promise.all([
@@ -173,6 +187,21 @@ const Overview = () => {
       description: `${(data as any)?.upserted ?? 0} rows · ${(data as any)?.matched_to_companies ?? 0} matched · ${(off?.data as any)?.upserted ?? 0} offboarding`,
     });
     load();
+  }
+
+  async function snapshotNow() {
+    setSnapshotting(true);
+    const { data, error } = await supabase.functions.invoke("snapshot-ltv-monthly");
+    setSnapshotting(false);
+    if (error) {
+      toast({ title: "Snapshot failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({
+      title: "Monthly snapshot saved",
+      description: `${(data as any)?.year_month}: ${(data as any)?.ltv_count ?? 0} LTV + ${(data as any)?.offboarding_count ?? 0} offboarding rows frozen.`,
+    });
+    loadMonths();
   }
 
 
@@ -296,6 +325,12 @@ const Overview = () => {
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Syncing…" : "Sync LTV"}
             </Button>
+            {view === "pulse" && (
+              <Button size="sm" variant="outline" onClick={snapshotNow} disabled={snapshotting}>
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${snapshotting ? "animate-spin" : ""}`} />
+                {snapshotting ? "Saving…" : "Snapshot this month"}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -320,6 +355,25 @@ const Overview = () => {
               ))}
             </SelectContent>
           </Select>
+          {view === "pulse" && (
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-48 h-8 text-sm">
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Current month (live)</SelectItem>
+                {availableMonths.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {new Date(`${m}-01T00:00:00Z`).toLocaleString(undefined, {
+                      month: "long",
+                      year: "numeric",
+                      timeZone: "UTC",
+                    })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {view === "campaigns" && (
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-56 h-8 text-sm">
@@ -337,7 +391,7 @@ const Overview = () => {
         </div>
 
         {view === "pulse" ? (
-          <PulseView cmFilter={cmFilter} />
+          <PulseView cmFilter={cmFilter} monthFilter={monthFilter} />
         ) : (
           <>
 

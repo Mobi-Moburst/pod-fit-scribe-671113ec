@@ -608,6 +608,90 @@ export type Database = {
         }
         Relationships: []
       }
+      ltv_monthly_snapshots: {
+        Row: {
+          actual_bookings_to_date: number | null
+          airtable_record_id: string
+          campaign_manager: string | null
+          campaign_success_status: string | null
+          client_name: string
+          cohort: string | null
+          created_at: string
+          current_month_cumulative_pct_fulfilled: number | null
+          date_ended: string | null
+          deliverables_completed_this_month: number | null
+          goal_this_month: number | null
+          id: string
+          offboarding: boolean | null
+          org_id: string
+          raw_fields: Json
+          renewal_date: string | null
+          renewed: boolean | null
+          snapshotted_at: string
+          source: string
+          status: string | null
+          total_bookings_per_month: number | null
+          total_planned_bookings_by_eom: number | null
+          updated_at: string
+          year_month: string
+          zz_complete: boolean | null
+        }
+        Insert: {
+          actual_bookings_to_date?: number | null
+          airtable_record_id: string
+          campaign_manager?: string | null
+          campaign_success_status?: string | null
+          client_name: string
+          cohort?: string | null
+          created_at?: string
+          current_month_cumulative_pct_fulfilled?: number | null
+          date_ended?: string | null
+          deliverables_completed_this_month?: number | null
+          goal_this_month?: number | null
+          id?: string
+          offboarding?: boolean | null
+          org_id: string
+          raw_fields?: Json
+          renewal_date?: string | null
+          renewed?: boolean | null
+          snapshotted_at?: string
+          source: string
+          status?: string | null
+          total_bookings_per_month?: number | null
+          total_planned_bookings_by_eom?: number | null
+          updated_at?: string
+          year_month: string
+          zz_complete?: boolean | null
+        }
+        Update: {
+          actual_bookings_to_date?: number | null
+          airtable_record_id?: string
+          campaign_manager?: string | null
+          campaign_success_status?: string | null
+          client_name?: string
+          cohort?: string | null
+          created_at?: string
+          current_month_cumulative_pct_fulfilled?: number | null
+          date_ended?: string | null
+          deliverables_completed_this_month?: number | null
+          goal_this_month?: number | null
+          id?: string
+          offboarding?: boolean | null
+          org_id?: string
+          raw_fields?: Json
+          renewal_date?: string | null
+          renewed?: boolean | null
+          snapshotted_at?: string
+          source?: string
+          status?: string | null
+          total_bookings_per_month?: number | null
+          total_planned_bookings_by_eom?: number | null
+          updated_at?: string
+          year_month?: string
+          zz_complete?: boolean | null
+        }
+        Relationships: []
+      }
       ltv_offboarding: {
         Row: {
           airtable_record_id: string
