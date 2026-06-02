@@ -535,12 +535,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end gap-2">
-        <Button size="sm" variant="outline" onClick={sync} disabled={syncing}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
-          {syncing ? "Syncing…" : "Sync Momentum"}
-        </Button>
-      </div>
+
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
