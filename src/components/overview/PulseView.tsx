@@ -360,7 +360,16 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   }, [filteredBookings]);
 
 
-  const last10 = filteredBookings.slice(0, 10);
+  const last10 = useMemo(
+    () =>
+      filteredBookings
+        .filter((b) => b.podcast_name && b.date_secured)
+        .slice()
+        .sort((a, b) => (b.date_secured ?? "").localeCompare(a.date_secured ?? ""))
+        .slice(0, 10),
+    [filteredBookings]
+  );
+
 
   const topPodcasts = useMemo(() => {
     const map = new Map<string, { name: string; count: number; url: string | null }>();
