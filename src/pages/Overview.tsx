@@ -387,7 +387,7 @@ const Overview = () => {
                 <SelectItem value="on_track">On track</SelectItem>
                 <SelectItem value="needs_attention">Needs attention</SelectItem>
                 <SelectItem value="at_risk">At risk</SelectItem>
-                <SelectItem value="renewing_soon">Renewing in 60d</SelectItem>
+                
               </SelectContent>
             </Select>
           )}
@@ -401,7 +401,7 @@ const Overview = () => {
 
 
         {/* KPI strip */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiTile label="Active Campaigns" value={kpis.active} icon={Activity} />
           <KpiTile
             label="On Track"
@@ -420,11 +420,6 @@ const Overview = () => {
             value={kpis.atRisk}
             icon={AlertTriangle}
             tone="red"
-          />
-          <KpiTile
-            label="Renewing ≤60d"
-            value={kpis.renewingSoon}
-            icon={CalendarClock}
           />
         </div>
 
@@ -498,26 +493,24 @@ const Overview = () => {
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">This mo.</TableHead>
                     <TableHead className="text-right">Overall</TableHead>
-                    <TableHead className="text-right">Trend</TableHead>
-                    <TableHead className="text-right pr-4">Renewal</TableHead>
+                    <TableHead className="text-right pr-4">Trend</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                         Loading…
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                         No campaigns match these filters.
                       </TableCell>
                     </TableRow>
                   ) : (
                     filtered.map((r) => {
-                      const dRenew = daysUntil(r.renewal_date);
                       const clickable = !!r.company_id;
                       return (
                         <TableRow
@@ -547,17 +540,10 @@ const Overview = () => {
                               ? `${Math.round(r.cumulative_pct_fulfilled)}%`
                               : "—"}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right pr-4">
                             <span className="inline-flex items-center justify-end gap-1">
                               {trendIcon(r.trend_vs_last_month)}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-right pr-4 text-xs text-muted-foreground">
-                            {r.renewal_date
-                              ? dRenew !== null && dRenew >= 0 && dRenew <= 60
-                                ? `in ${dRenew}d`
-                                : new Date(r.renewal_date).toLocaleDateString()
-                              : "—"}
                           </TableCell>
                         </TableRow>
                       );
