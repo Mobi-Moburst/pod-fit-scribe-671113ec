@@ -14,11 +14,15 @@ function toText(v: any): string | null {
   if (Array.isArray(v)) {
     const first = v[0];
     if (typeof first === "object" && first !== null) {
-      return (first.name ?? first.Name ?? String(first)).toString();
+      return (first.value ?? first.name ?? first.Name ?? String(first)).toString();
     }
     return v.map(String).join(", ");
   }
-  if (typeof v === "object") return (v.name ?? v.Name ?? JSON.stringify(v)).toString();
+  if (typeof v === "object") {
+    // Airtable AI fields: { state, value, isStale }
+    if ("value" in v && v.value != null) return String(v.value);
+    return (v.name ?? v.Name ?? JSON.stringify(v)).toString();
+  }
   return String(v);
 }
 
