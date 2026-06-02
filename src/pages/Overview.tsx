@@ -159,7 +159,10 @@ const Overview = () => {
 
   async function sync() {
     setSyncing(true);
-    const { data, error } = await supabase.functions.invoke("sync-ltv-snapshots");
+    const [{ data, error }, off] = await Promise.all([
+      supabase.functions.invoke("sync-ltv-snapshots"),
+      supabase.functions.invoke("sync-ltv-offboarding"),
+    ]);
     setSyncing(false);
     if (error) {
       toast({ title: "Sync failed", description: error.message, variant: "destructive" });
@@ -167,10 +170,11 @@ const Overview = () => {
     }
     toast({
       title: "LTV synced",
-      description: `${(data as any)?.upserted ?? 0} rows · ${(data as any)?.matched_to_companies ?? 0} matched to companies`,
+      description: `${(data as any)?.upserted ?? 0} rows · ${(data as any)?.matched_to_companies ?? 0} matched · ${(off?.data as any)?.upserted ?? 0} offboarding`,
     });
     load();
   }
+
 
   const managers = useMemo(() => {
     const set = new Set<string>();
