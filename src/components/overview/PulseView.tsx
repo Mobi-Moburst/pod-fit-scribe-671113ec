@@ -51,6 +51,7 @@ type LtvLite = {
   current_month_cumulative_pct_fulfilled: number | null;
   actual_bookings_to_date: number | null;
   total_planned_bookings_by_eom: number | null;
+  total_bookings_per_month: number | null;
   cohort: string | null;
   campaign_success_status: string | null;
   synced_at: string;
@@ -143,7 +144,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       supabase
         .from("ltv_snapshots")
         .select(
-          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, cohort, campaign_success_status, synced_at"
+          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, total_bookings_per_month, cohort, campaign_success_status, synced_at"
         ),
       supabase
         .from("speakers")
@@ -220,43 +221,37 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   const activeSMEs = filteredLtv.length;
 
   // Backlog logic (per management):
-  //   "Deliverables Goal this Month_KG >= 2 × Total Bookings Per Month"
-  // i.e. goal_this_month already inflates with missed months, so when it
-  // reaches 2× what's actually been booked this month, the client is behind
-  // by an entire month of contracted deliverables.
-  //   - Backlog (red):  day >= 15 AND goal >= 2 × completed_this_month
-  //   - At risk (amber): day 8–14 AND same ratio (early warning)
+  //   Goal this Month_KG >= 2 × Total Bookings Per Month (contracted cadence)
+  // Goal inflates with missed months, so when it reaches 2× the contracted
+  // monthly cadence the client is at least a full month behind.
+  //   - Backlog (red):  goal >= 2 × contracted monthly bookings
+  //   - At risk (amber): goal >= 1.5 × contracted (but < 2×)
   const backlogged = useMemo(() => {
-    const dayOfMonth = new Date().getDate();
     return filteredLtv
       .filter((r) => r.offboarding !== true && r.zz_complete !== true)
       .map((r) => {
         const goal = Number(r.goal_this_month ?? 0);
         const completed = Number(r.deliverables_completed_this_month ?? 0);
-        const planned = Number(r.total_planned_bookings_by_eom ?? 0);
-        const actual = Number(r.actual_bookings_to_date ?? 0);
-        const ratioHit = goal > 0 && goal >= 2 * completed;
+        const contracted = Number(r.total_bookings_per_month ?? 0);
         let status: "backlog" | "at-risk" | null = null;
-        if (ratioHit) {
-          if (dayOfMonth >= 15) status = "backlog";
-          else if (dayOfMonth >= 8) status = "at-risk";
+        if (contracted > 0 && goal > 0) {
+          if (goal >= 2 * contracted) status = "backlog";
+          else if (goal >= 1.5 * contracted) status = "at-risk";
         }
         return {
           client: r.client_name,
           cm: r.campaign_manager,
-          current: actual,
-          total: planned,
-          remaining: planned - actual,
-          goal,
+          contracted,
           completed,
+          goal,
+          gap: goal - completed,
           status,
         };
       })
       .filter((r) => r.status !== null)
       .sort((a, b) => {
         if (a.status !== b.status) return a.status === "backlog" ? -1 : 1;
-        // Bigger gap (goal − completed) first
-        return (b.goal - b.completed) - (a.goal - a.completed);
+        return b.gap - a.gap;
       });
   }, [filteredLtv]);
 
@@ -478,7 +473,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
             Backlogged clients
           </h2>
           <span className="text-xs text-muted-foreground">
-            Goal ≥ 2× bookings this month · {backlogCount} backlog · {atRiskCount} at risk
+            Goal ≥ 2× contracted monthly bookings · {backlogCount} backlog · {atRiskCount} at risk
           </span>
 
         </div>
@@ -496,10 +491,10 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                   <TableHead>Client</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>CM</TableHead>
-                  <TableHead className="text-right">Current</TableHead>
-                  <TableHead className="text-right">Total due</TableHead>
-                  <TableHead className="text-right">Remaining</TableHead>
-                  <TableHead className="text-right">Monthly goal</TableHead>
+                  <TableHead className="text-right">Contracted / mo</TableHead>
+                  <TableHead className="text-right">Completed</TableHead>
+                  <TableHead className="text-right">Goal this mo.</TableHead>
+                  <TableHead className="text-right">Gap</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -518,13 +513,13 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{r.cm ?? "—"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.current}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.total}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.contracted}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.completed}</TableCell>
                     <TableCell className={`text-right tabular-nums ${r.status === "backlog" ? "text-red-500" : "text-amber-500"}`}>
-                      {r.remaining}
+                      {r.goal}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
-                      {r.goal}
+                      {r.gap}
                     </TableCell>
                   </TableRow>
                 ))}
