@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -124,6 +125,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   const [speakers, setSpeakers] = useState<SpeakerLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [openIndustry, setOpenIndustry] = useState<string | null>(null);
   
 
   async function load() {
@@ -298,16 +300,37 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       .slice(0, 8);
   }, [filteredBookings]);
 
-  const lastByIndustry = useMemo(() => {
-    const map = new Map<string, Booking[]>();
-    for (const b of filteredBookings) {
-      const k = b.industry ?? "Unknown";
-      if (!map.has(k)) map.set(k, []);
-      const arr = map.get(k)!;
-      if (arr.length < 5) arr.push(b);
+  // Unique podcasts per industry (YTD), most-booked first
+  const podcastsByIndustry = useMemo(() => {
+    const map = new Map<string, Map<string, { name: string; url: string | null; count: number; lastDate: string | null }>>();
+    for (const b of filteredBookings.filter((b) => inRange(b.date_secured, yearStart))) {
+      const industry = b.industry ?? "Unknown";
+      const key = normPodcast(b.podcast_name);
+      if (!key) continue;
+      if (!map.has(industry)) map.set(industry, new Map());
+      const inner = map.get(industry)!;
+      const existing = inner.get(key);
+      if (existing) {
+        existing.count++;
+        if (b.date_secured && (!existing.lastDate || b.date_secured > existing.lastDate)) {
+          existing.lastDate = b.date_secured;
+        }
+      } else {
+        inner.set(key, {
+          name: b.podcast_name!,
+          url: b.podcast_url,
+          count: 1,
+          lastDate: b.date_secured,
+        });
+      }
     }
-    return map;
+    const out = new Map<string, Array<{ name: string; url: string | null; count: number; lastDate: string | null }>>();
+    for (const [k, v] of map.entries()) {
+      out.set(k, Array.from(v.values()).sort((a, b) => b.count - a.count || (b.lastDate ?? "").localeCompare(a.lastDate ?? "")));
+    }
+    return out;
   }, [filteredBookings]);
+
 
   const last10 = filteredBookings.slice(0, 10);
 
@@ -564,9 +587,14 @@ export function PulseView({ cmFilter }: PulseViewProps) {
             <div className="space-y-3">
               {industryAgg.map((r) => {
                 const max = industryAgg[0].count || 1;
-                const last5 = lastByIndustry.get(r.industry) ?? [];
+                const podcasts = podcastsByIndustry.get(r.industry) ?? [];
                 return (
-                  <div key={r.industry} className="space-y-1">
+                  <button
+                    key={r.industry}
+                    type="button"
+                    onClick={() => setOpenIndustry(r.industry)}
+                    className="w-full text-left space-y-1 rounded-md p-1 -m-1 hover:bg-muted/40 transition-colors"
+                  >
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{r.industry}</span>
                       <span className="text-muted-foreground tabular-nums">{r.count}</span>
@@ -577,26 +605,57 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                         style={{ width: `${(r.count / max) * 100}%` }}
                       />
                     </div>
-                    {last5.length > 0 && (
-                      <div className="text-xs text-muted-foreground pl-1 pt-0.5">
-                        Last 5:{" "}
-                        {last5.map((b, i) => (
-                          <span key={b.id}>
-                            {i > 0 && " · "}
-                            <span title={`${b.client_name} · ${fmtDate(b.date_secured)}`}>
-                              {b.podcast_name}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                    <div className="text-xs text-muted-foreground pl-1 pt-0.5">
+                      {podcasts.length} unique {podcasts.length === 1 ? "podcast" : "podcasts"}
+                    </div>
+                  </button>
                 );
               })}
             </div>
           )}
         </Card>
       </div>
+
+      <Dialog open={openIndustry !== null} onOpenChange={(o) => !o && setOpenIndustry(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{openIndustry} — podcasts (YTD)</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto -mx-6 px-6">
+            {(() => {
+              const list = openIndustry ? podcastsByIndustry.get(openIndustry) ?? [] : [];
+              if (list.length === 0) {
+                return <p className="text-sm text-muted-foreground py-6 text-center">No podcasts.</p>;
+              }
+              return (
+                <ul className="divide-y divide-border">
+                  {list.map((p, i) => (
+                    <li key={`${p.name}-${i}`} className="py-2 flex items-center justify-between gap-3 text-sm">
+                      {p.url ? (
+                        <a
+                          href={p.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium hover:text-primary hover:underline truncate flex items-center gap-1"
+                        >
+                          <span className="truncate">{p.name}</span>
+                          <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+                        </a>
+                      ) : (
+                        <span className="font-medium truncate">{p.name}</span>
+                      )}
+                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                        {p.count}×
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Bookings per company — this month */}
       <Card className="card-surface p-4">
