@@ -752,31 +752,6 @@ export function PulseView({ cmFilter }: PulseViewProps) {
         )}
       </Card>
 
-      {/* Bookings per speaker — this month */}
-      <Card className="card-surface p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold">Bookings per speaker — this month</h2>
-          <span className="text-xs text-muted-foreground">{speakerMonthGrid.length} entries</span>
-        </div>
-        {speakerMonthGrid.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No bookings yet this month.</p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {speakerMonthGrid.map((r) => (
-              <div
-                key={r.key}
-                className="border border-border rounded-md p-2.5 bg-card/50"
-              >
-                <div className="text-sm font-medium truncate" title={r.label}>
-                  {r.label}
-                </div>
-                <div className="text-xs text-muted-foreground truncate">{r.subtitle || "—"}</div>
-                <div className="mt-1.5 text-lg font-semibold tabular-nums">{r.count}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Last 10 bookings */}
