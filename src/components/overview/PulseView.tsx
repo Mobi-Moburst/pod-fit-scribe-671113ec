@@ -259,25 +259,61 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   const atRiskCount = backlogged.filter((r) => r.status === "at-risk").length;
 
   // CM leaderboard
+  //   - Trim/normalize names so spelling variants ("Troy" vs "Troy Higgins ")
+  //     collapse to the canonical name on the LTV roster.
+  //   - Any CM not on the active LTV roster (past employees) and any
+  //     unassigned bookings are rolled into a single "Archive" row.
   const cmAgg = useMemo(() => {
+    const ARCHIVE = "Archive (past / unassigned)";
+    const cleanName = (s: string | null) => (s ?? "").replace(/\s+/g, " ").trim();
+
+    // Canonical roster from LTV (current CMs)
+    const rosterByNorm = new Map<string, string>();
+    for (const r of filteredLtv) {
+      const name = cleanName(r.campaign_manager);
+      if (!name) continue;
+      rosterByNorm.set(normName(name), name);
+    }
+
+    // Resolve a booking's CM to a roster name, a first-name match, or Archive
+    const resolveCm = (raw: string | null): string => {
+      const name = cleanName(raw);
+      if (!name) return ARCHIVE;
+      const exact = rosterByNorm.get(normName(name));
+      if (exact) return exact;
+      // First-name fallback: "Troy" → "Troy Higgins" if unique on roster
+      const first = name.split(/\s+/)[0];
+      const matches = Array.from(rosterByNorm.values()).filter(
+        (n) => n.split(/\s+/)[0].toLowerCase() === first.toLowerCase()
+      );
+      if (matches.length === 1) return matches[0];
+      return ARCHIVE;
+    };
+
     const map = new Map<
       string,
       { cm: string; thisMonth: number; ytd: number; goal: number }
     >();
     for (const b of filteredBookings) {
-      const cm = b.campaign_manager ?? "Unassigned";
+      const cm = resolveCm(b.campaign_manager);
       if (!map.has(cm)) map.set(cm, { cm, thisMonth: 0, ytd: 0, goal: 0 });
       const row = map.get(cm)!;
       if (inRange(b.date_secured, monthStart)) row.thisMonth++;
       if (inRange(b.date_secured, yearStart)) row.ytd++;
     }
     for (const r of filteredLtv) {
-      const cm = r.campaign_manager ?? "Unassigned";
+      const cm = cleanName(r.campaign_manager) || ARCHIVE;
       if (!map.has(cm)) map.set(cm, { cm, thisMonth: 0, ytd: 0, goal: 0 });
       map.get(cm)!.goal += r.goal_this_month ?? 0;
     }
-    return Array.from(map.values()).sort((a, b) => b.thisMonth - a.thisMonth);
+    return Array.from(map.values()).sort((a, b) => {
+      // Archive row always last
+      if (a.cm === ARCHIVE) return 1;
+      if (b.cm === ARCHIVE) return -1;
+      return b.thisMonth - a.thisMonth;
+    });
   }, [filteredBookings, filteredLtv]);
+
 
   // Industry breakdown (YTD)
   const industryAgg = useMemo(() => {
