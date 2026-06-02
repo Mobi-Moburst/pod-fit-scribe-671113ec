@@ -493,8 +493,7 @@ const Overview = () => {
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">This mo.</TableHead>
                     <TableHead className="text-right">Overall</TableHead>
-                    <TableHead className="text-right">Trend</TableHead>
-                    <TableHead className="text-right pr-4">Renewal</TableHead>
+                    <TableHead className="text-right pr-4">Trend</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
