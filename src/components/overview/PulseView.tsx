@@ -124,6 +124,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   const [speakers, setSpeakers] = useState<SpeakerLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [openIndustry, setOpenIndustry] = useState<string | null>(null);
   
 
   async function load() {
