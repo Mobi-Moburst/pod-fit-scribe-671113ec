@@ -133,7 +133,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
     Array<{ client_name: string; campaign_manager: string | null; date_ended: string | null }>
   >([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  
   const [openIndustry, setOpenIndustry] = useState<string | null>(null);
 
   const isHistoric = monthFilter !== "current" && /^\d{4}-\d{2}$/.test(monthFilter);
