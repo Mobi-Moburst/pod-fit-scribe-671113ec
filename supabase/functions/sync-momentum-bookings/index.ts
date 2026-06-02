@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
           const f = rec.fields ?? {};
           const clientName = toText(f["Client"]) ?? "";
           const m = matchClient(clientName);
+          const podcastIndustry = toText(f["Podcast Industry"]);
           allRows.push({
             org_id: TEAM_ORG_ID,
             airtable_record_id: rec.id,
