@@ -326,7 +326,7 @@ const Overview = () => {
             )}
             <Button size="sm" variant="outline" onClick={sync} disabled={syncing}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncing…" : "Sync LTV"}
+              {syncing ? "Syncing…" : "Sync Data"}
             </Button>
             {view === "pulse" && (
               <Button size="sm" variant="outline" onClick={snapshotNow} disabled={snapshotting}>
