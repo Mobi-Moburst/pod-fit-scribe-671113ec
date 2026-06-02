@@ -173,9 +173,10 @@ const Overview = () => {
 
   async function sync() {
     setSyncing(true);
-    const [{ data, error }, off] = await Promise.all([
+    const [{ data, error }, off, mom] = await Promise.all([
       supabase.functions.invoke("sync-ltv-snapshots"),
       supabase.functions.invoke("sync-ltv-offboarding"),
+      supabase.functions.invoke("sync-momentum-bookings"),
     ]);
     setSyncing(false);
     if (error) {
@@ -183,9 +184,10 @@ const Overview = () => {
       return;
     }
     toast({
-      title: "LTV synced",
-      description: `${(data as any)?.upserted ?? 0} rows · ${(data as any)?.matched_to_companies ?? 0} matched · ${(off?.data as any)?.upserted ?? 0} offboarding`,
+      title: "Data synced",
+      description: `${(data as any)?.upserted ?? 0} LTV · ${(off?.data as any)?.upserted ?? 0} offboarding · ${(mom?.data as any)?.upserted ?? 0} bookings`,
     });
+    setSyncSignal((n) => n + 1);
     load();
   }
 
