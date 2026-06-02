@@ -128,6 +128,7 @@ const Overview = () => {
   const [syncing, setSyncing] = useState(false);
   const [cmFilter, setCmFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [view, setView] = useState<"campaigns" | "pulse">("campaigns");
 
   useEffect(() => {
     document.title = "Overview — Kitcaster Campaign Command Center";
