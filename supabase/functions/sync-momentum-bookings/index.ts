@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
             date_secured: toDate(f["Date Secured"]),
             start_date_time: toTs(f["Start Date and Time"]),
             company_id: m.company_id,
-            industry: m.industry,
+            industry: podcastIndustry ?? m.industry,
             raw_fields: f,
             synced_at: new Date().toISOString(),
           });
