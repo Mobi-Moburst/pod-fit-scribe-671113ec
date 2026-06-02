@@ -394,7 +394,7 @@ const Overview = () => {
         </div>
 
         {view === "pulse" ? (
-          <PulseView cmFilter={cmFilter} monthFilter={monthFilter} />
+          <PulseView cmFilter={cmFilter} monthFilter={monthFilter} syncSignal={syncSignal} />
         ) : (
           <>
 
