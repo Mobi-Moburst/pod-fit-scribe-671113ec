@@ -462,6 +462,10 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   const perClient = useMemo(() => {
     return filteredLtv
       .filter((r) => r.offboarding !== true)
+      .filter((r) => {
+        const n = (r.client_name ?? "").trim().toLowerCase();
+        return n && !n.startsWith("insert new client");
+      })
       .map((r) => ({
         client: r.client_name ?? "Unassigned",
         thisMonth: Number(r.deliverables_completed_this_month) || 0,
