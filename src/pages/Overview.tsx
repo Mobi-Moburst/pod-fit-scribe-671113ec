@@ -325,6 +325,12 @@ const Overview = () => {
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Syncing…" : "Sync LTV"}
             </Button>
+            {view === "pulse" && (
+              <Button size="sm" variant="outline" onClick={snapshotNow} disabled={snapshotting}>
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${snapshotting ? "animate-spin" : ""}`} />
+                {snapshotting ? "Saving…" : "Snapshot this month"}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -349,6 +355,25 @@ const Overview = () => {
               ))}
             </SelectContent>
           </Select>
+          {view === "pulse" && (
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-48 h-8 text-sm">
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Current month (live)</SelectItem>
+                {availableMonths.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {new Date(`${m}-01T00:00:00Z`).toLocaleString(undefined, {
+                      month: "long",
+                      year: "numeric",
+                      timeZone: "UTC",
+                    })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {view === "campaigns" && (
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-56 h-8 text-sm">
@@ -366,7 +391,7 @@ const Overview = () => {
         </div>
 
         {view === "pulse" ? (
-          <PulseView cmFilter={cmFilter} />
+          <PulseView cmFilter={cmFilter} monthFilter={monthFilter} />
         ) : (
           <>
 
