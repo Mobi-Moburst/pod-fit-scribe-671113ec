@@ -126,13 +126,17 @@ const Overview = () => {
   const [rows, setRows] = useState<LtvRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [snapshotting, setSnapshotting] = useState(false);
   const [cmFilter, setCmFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [view, setView] = useState<"campaigns" | "pulse">("campaigns");
+  const [monthFilter, setMonthFilter] = useState<string>("current");
+  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
 
   useEffect(() => {
     document.title = "Overview — Kitcaster Campaign Command Center";
     load();
+    loadMonths();
   }, []);
 
   const goToCompany = (companyId: string | null) => {
@@ -157,6 +161,16 @@ const Overview = () => {
     setLoading(false);
   }
 
+  async function loadMonths() {
+    const { data } = await supabase
+      .from("ltv_monthly_snapshots")
+      .select("year_month")
+      .order("year_month", { ascending: false })
+      .limit(2000);
+    const uniq = Array.from(new Set((data ?? []).map((r: any) => r.year_month as string)));
+    setAvailableMonths(uniq);
+  }
+
   async function sync() {
     setSyncing(true);
     const [{ data, error }, off] = await Promise.all([
@@ -173,6 +187,21 @@ const Overview = () => {
       description: `${(data as any)?.upserted ?? 0} rows · ${(data as any)?.matched_to_companies ?? 0} matched · ${(off?.data as any)?.upserted ?? 0} offboarding`,
     });
     load();
+  }
+
+  async function snapshotNow() {
+    setSnapshotting(true);
+    const { data, error } = await supabase.functions.invoke("snapshot-ltv-monthly");
+    setSnapshotting(false);
+    if (error) {
+      toast({ title: "Snapshot failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({
+      title: "Monthly snapshot saved",
+      description: `${(data as any)?.year_month}: ${(data as any)?.ltv_count ?? 0} LTV + ${(data as any)?.offboarding_count ?? 0} offboarding rows frozen.`,
+    });
+    loadMonths();
   }
 
 
