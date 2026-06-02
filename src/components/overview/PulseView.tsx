@@ -448,8 +448,9 @@ export function PulseView({ cmFilter }: PulseViewProps) {
             Backlogged clients
           </h2>
           <span className="text-xs text-muted-foreground">
-            Behind by ≥ 2× monthly goal · {backlogCount} backlog · {atRiskCount} at risk
+            Goal ≥ 2× bookings this month · {backlogCount} backlog · {atRiskCount} at risk
           </span>
+
         </div>
         {loading ? (
           <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
