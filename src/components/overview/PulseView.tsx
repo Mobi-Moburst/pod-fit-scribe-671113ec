@@ -840,7 +840,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
 
         {/* Top podcasts all-time */}
         <Card className="card-surface p-4">
-          <h2 className="text-sm font-semibold mb-3">Most-booked podcasts (all time)</h2>
+          <h2 className="text-sm font-semibold mb-3">Most-booked podcasts (YTD)</h2>
           {topPodcasts.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No data.</p>
           ) : (
