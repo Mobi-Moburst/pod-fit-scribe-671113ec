@@ -195,29 +195,24 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   // KPI strip
   const bookingsThisMonth = filteredBookings.filter((b) => inRange(b.date_secured, monthStart)).length;
   const bookingsYTD = filteredBookings.filter((b) => inRange(b.date_secured, yearStart)).length;
-  const totalMonthlyGoal = filteredLtv.reduce((s, r) => s + (r.goal_this_month ?? 0), 0);
-  const monthlyVsGoalPct = totalMonthlyGoal > 0 ? Math.round((bookingsThisMonth / totalMonthlyGoal) * 100) : null;
 
-  // New clients this month: client_name whose earliest date_secured is in this month
-  const firstSecured = new Map<string, Date>();
-  for (const b of filteredBookings) {
-    if (!b.client_name || !b.date_secured) continue;
-    const d = new Date(b.date_secured);
-    if (isNaN(d.getTime())) continue;
-    const cur = firstSecured.get(b.client_name);
-    if (!cur || d < cur) firstSecured.set(b.client_name, d);
-  }
-  const newClientsThisMonth = Array.from(firstSecured.values()).filter((d) => d >= monthStart).length;
+  // Monthly vs deliverable: sum of deliverables completed this month vs sum of monthly goals (Kitcaster Monthly Delivery base)
+  const totalMonthlyCompleted = filteredLtv.reduce(
+    (s, r) => s + (Number(r.deliverables_completed_this_month) || 0),
+    0
+  );
+  const totalMonthlyGoal = filteredLtv.reduce((s, r) => s + (Number(r.goal_this_month) || 0), 0);
+  const monthlyVsGoalPct = totalMonthlyGoal > 0 ? Math.round((totalMonthlyCompleted / totalMonthlyGoal) * 100) : null;
 
-  // Clients leaving this month: name + end date list
+  // New clients this month: cohort date falls within the current month
+  const newClientsThisMonth = filteredLtv.filter((r) =>
+    inRange(r.cohort, monthStart, monthEnd)
+  ).length;
+
+  // Clients leaving this month: campaign_success_status === "Offboarding" (case-insensitive)
   const leavingThisMonth = useMemo(() => {
     return filteredLtv
-      .filter((r) => {
-        if (r.offboarding === true) return true;
-        if (!r.renewal_date) return false;
-        const d = new Date(r.renewal_date);
-        return d >= monthStart && d <= monthEnd && r.renewed !== true;
-      })
+      .filter((r) => (r.campaign_success_status ?? "").toLowerCase().trim() === "offboarding")
       .map((r) => ({ client: r.client_name, end: r.renewal_date, cm: r.campaign_manager }))
       .sort((a, b) => (a.end ?? "").localeCompare(b.end ?? ""));
   }, [filteredLtv]);
