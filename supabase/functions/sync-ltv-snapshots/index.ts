@@ -48,7 +48,16 @@ function getField(fields: Record<string, any>, key: string): any {
   return null;
 }
 
+function unwrap(v: any): any {
+  // Airtable AI fields return { state, value, isStale } — unwrap to value.
+  if (v && typeof v === "object" && !Array.isArray(v) && "value" in v) {
+    return (v as any).value;
+  }
+  return v;
+}
+
 function toText(v: any): string | null {
+  v = unwrap(v);
   if (v == null) return null;
   if (Array.isArray(v)) {
     const first = v[0];
@@ -64,6 +73,7 @@ function toText(v: any): string | null {
 }
 
 function toNum(v: any): number | null {
+  v = unwrap(v);
   if (v == null || v === "") return null;
   const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[%,$,]/g, ""));
   return isNaN(n) ? null : n;
