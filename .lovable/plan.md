@@ -1,84 +1,57 @@
+Tweaks to the Kitcaster Pulse view to address management's follow-up. All frontend changes inside `src/components/overview/PulseView.tsx` — no schema changes, no new sync.
 
-## What we're building
+## What changes
 
-Add a **Campaigns ↔ Kitcaster Pulse** toggle at the top of `/overview`. "Campaigns" stays as-is (current LTV client view). "Pulse" is a new agency-wide rollup powered by a new `momentum_bookings` table synced from the **Momentum Report** Airtable base (`appxw22m8TBPlq05F`, tables `2025` + `2026`).
+### 1. New "Backlogged clients" table (top of Pulse)
+Source: `ltv_snapshots` (already loaded).
 
-## Coverage map of management's list
+Logic: a client is **backlogged** when
+`(total_planned_bookings_by_eom − actual_bookings_to_date) ≥ goal_this_month`
+(i.e. behind by at least one month's goal), excluding `zz_complete` and offboarding rows.
 
-Already in Overview (Campaigns view):
-- Client health, partial CM-vs-goal, partial offboarding-soon, partial bookings-per-client
+Columns: Client · CM · Current Bookings (`actual_bookings_to_date`) · Total Podcasts Due (`total_planned_bookings_by_eom`) · Remaining to Book (difference) · monthly Goal. Sorted by largest remaining first. Empty state: "No backlogged clients — everyone on pace."
 
-Easy adds from existing `ltv_snapshots` (no new sync):
-- CM bookings vs monthly goal (sum `deliverables_completed_this_month` / `goal_this_month` by CM)
-- Total monthly bookings (Kitcaster-wide)
-- Total bookings per SME
-- Clients leaving this month (`offboarding` + `renewal_date` this month)
-- New clients this month (clients first seen in `synced_at` this month — caveat in tech notes)
+### 2. New "Total monthly bookings vs deliverables" KPI tile
+Replace the `Avg fulfillment` tile (or sit next to it) with `X / Y (Z%)` where:
+- X = bookings this month (Momentum, already computed)
+- Y = sum of `goal_this_month` across filtered LTV rows
+- Color the % using the same green/amber/red thresholds as the CM leaderboard.
 
-Need the new Momentum sync (no other source has booking-level dates):
-- Last 10 bookings (Kitcaster-wide)
-- Last 5 bookings per industry
-- Most-booked industry YTD
-- Most-booked podcasts all-time
-- True calendar-YTD bookings
+### 3. Clients leaving this month → list with name + end date
+Today it's just a count tile. Convert the tile to a small card listing each client + `renewal_date` (formatted), with the count as the header. If empty: "None this month."
 
-## Data layer
+Filter logic stays the same: `offboarding = true` OR (`renewal_date` within current month AND `renewed != true`).
 
-New table `momentum_bookings`:
-- `airtable_record_id` (unique), `year_table` (`2025`/`2026`)
-- `campaign_manager`, `client_name`, `podcast_name`, `podcast_url`, `host_name`
-- `activity_type` (e.g. "Podcast Recording", "Intro Call")
-- `date_secured` (date), `start_date_time` (timestamptz)
-- `company_id` (nullable, resolved via fuzzy match against `companies.name` and `ltv_snapshots.client_name`)
-- `industry` (denormalized snapshot from matched `companies.industry`)
-- `raw_fields` jsonb, `synced_at`, `org_id`
-- Indexes on `date_secured`, `campaign_manager`, `industry`, `company_id`
-- Standard org-scoped RLS + grants
+### 4. New "Bookings per company this month" grid
+Card grid (responsive: 2 cols mobile → 4 cols desktop). Each tile shows: company/client name, `this-month count / goal_this_month`, mini progress bar, CM. Sorted by count desc, then alphabetical. Click-through reserved for later.
 
-New edge function `sync-momentum-bookings`:
-- Lists tables in base `appxw22m8TBPlq05F`, iterates `2025` and `2026` (and any future year table matching `^\d{4}$`)
-- Paginates all records, upserts on `airtable_record_id`
-- Resolves `company_id` by matching `Client` against `companies.name` (exact, then normalized lower/trimmed). Caches industry from the matched row.
-- Returns `{ upserted, matched_to_companies, by_year }`
+### 5. New "Bookings per speaker this month" grid
+Same visual treatment as #4, but rows are speakers. Resolution rules:
+- Load `speakers` (id, name, company_id) once.
+- For each `momentum_bookings` row this month, resolve to a speaker via `company_id`:
+  - If the company has exactly 1 active speaker → attribute booking to that speaker.
+  - If multiple → group under "{Company} — multiple speakers" (one tile, no per-speaker split).
+  - If no `company_id` match → bucket as "Unassigned".
+- Tile shows: speaker name (or company + "multiple"), this-month count, company name subtitle.
 
-Add a `Sync Momentum` button next to the existing `Sync LTV` button (admin-only). Optional: have `sync-ltv-snapshots` trigger the momentum sync as well, so a single click refreshes both.
+### 6. Keep / minor cleanup
+- CM leaderboard (% to goal) already exists — leave as is.
+- New clients this month tile — leave as is.
+- Client health: leave the Campaigns toggle as the home for it; not duplicating in Pulse.
 
-## UI
+## Layout order after the change
+1. Sync button (top-right, unchanged)
+2. KPI strip (6 tiles → swap Avg fulfillment for "Monthly vs deliverable")
+3. **Backlogged clients** table (new, full width)
+4. CM Leaderboard │ Top industries (unchanged)
+5. **Bookings per company — this month** grid (new, full width)
+6. **Bookings per speaker — this month** grid (new, full width)
+7. Last 10 bookings │ Most-booked podcasts (unchanged)
+8. **Clients leaving this month** list (replaces old count tile) │ keep bookings-per-client table next to it
 
-`src/pages/Overview.tsx` gets a top toggle (`Campaigns` | `Pulse`). The whole current page stays under `Campaigns`. New `src/components/overview/PulseView.tsx` renders:
+## Out of scope
+- No DB migration. No edge function changes. No changes to the Campaigns view.
+- Speaker grid is best-effort using existing `speakers` table; rows where Momentum can't match a company stay in "Unassigned" until the Momentum sync's fuzzy match improves.
 
-1. **Top KPI strip** (6 tiles):
-   - Bookings this month · Bookings YTD · New clients this month · Offboarding this month · Active SMEs · Avg fulfillment %
-2. **CM leaderboard** card — table of CM, bookings this month, monthly goal (from `ltv_snapshots`), % to goal, YTD bookings. Sorted by % to goal desc.
-3. **Industry breakdown** card — top industries by YTD booking count, with sparkline of last 6 months; click an industry → drawer showing last 5 bookings in that industry.
-4. **Last 10 bookings** feed — client, podcast, CM, date_secured, podcast link.
-5. **Top podcasts all-time** card — podcast_name + count, top 10, normalized by lowercased name.
-6. **Per-SME bookings** table — speaker/client, bookings this month, bookings YTD, last booking date.
-
-All cards filter by the same `Campaign Manager` selector that already exists on the page (kept at the top so it applies to both views).
-
-Files touched:
-- `src/pages/Overview.tsx` — wrap existing layout, add view toggle
-- `src/components/overview/PulseView.tsx` (new)
-- `src/components/overview/pulse/CMLeaderboard.tsx` (new)
-- `src/components/overview/pulse/IndustryBreakdown.tsx` (new)
-- `src/components/overview/pulse/RecentBookings.tsx` (new)
-- `src/components/overview/pulse/TopPodcasts.tsx` (new)
-- `src/components/overview/pulse/PerSMETable.tsx` (new)
-- `supabase/functions/sync-momentum-bookings/index.ts` (new)
-- migration: create `momentum_bookings` + RLS + grants
-
-## Open caveats / things to nail down before shipping
-
-- **Industry source of truth.** `companies.industry` is set for some companies but not all, and Momentum's `Client` field is free text. Unmatched bookings will show under "Unknown" until the company is linked. The sync logs unmatched names so we can manually map.
-- **"New clients this month"** — neither `ltv_snapshots` nor `companies` has a reliable "campaign start" date. Best proxy is the earliest `date_secured` per `Client` in `momentum_bookings`. Acceptable?
-- **What counts as a "booking"?** I'll default to `Type of Activity = "Podcast Recording"` for all counters (matches existing KPI memory). Want me to surface a filter for Intro Call / other activity types?
-- **Sync cadence.** Manual button for now. We can wire it to the same cron as LTV (or just trigger both with one button) once you confirm.
-
-## Tech notes
-
-- Migration order: CREATE TABLE → GRANT (`authenticated`, `service_role`) → ENABLE RLS → org-scoped policies (matches existing tables).
-- Edge function uses existing `AIRTABLE_PAT` secret — no new connector needed.
-- Fuzzy match uses normalized lowercase + strip punctuation; fall back to `ltv_snapshots.client_name` lookup if `companies` doesn't match (the LTV table has more client-name variants).
-- Pulse view queries are all `from('momentum_bookings').select(...)` with grouped client-side aggregation; if volume grows past ~5k rows we'll add a `compute-momentum-kpis` cache function mirroring `compute-company-kpis`.
-
+## Files touched
+- `src/components/overview/PulseView.tsx` — add Backlogged table, swap KPI tile, add per-company grid, add per-speaker grid (loads `speakers`), convert offboarding tile to list.
