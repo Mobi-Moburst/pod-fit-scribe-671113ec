@@ -616,6 +616,47 @@ export function PulseView({ cmFilter }: PulseViewProps) {
         </Card>
       </div>
 
+      <Dialog open={openIndustry !== null} onOpenChange={(o) => !o && setOpenIndustry(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{openIndustry} — podcasts (YTD)</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto -mx-6 px-6">
+            {(() => {
+              const list = openIndustry ? podcastsByIndustry.get(openIndustry) ?? [] : [];
+              if (list.length === 0) {
+                return <p className="text-sm text-muted-foreground py-6 text-center">No podcasts.</p>;
+              }
+              return (
+                <ul className="divide-y divide-border">
+                  {list.map((p, i) => (
+                    <li key={`${p.name}-${i}`} className="py-2 flex items-center justify-between gap-3 text-sm">
+                      {p.url ? (
+                        <a
+                          href={p.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium hover:text-primary hover:underline truncate flex items-center gap-1"
+                        >
+                          <span className="truncate">{p.name}</span>
+                          <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+                        </a>
+                      ) : (
+                        <span className="font-medium truncate">{p.name}</span>
+                      )}
+                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                        {p.count}×
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
       {/* Bookings per company — this month */}
       <Card className="card-surface p-4">
         <div className="flex items-center justify-between mb-3">
