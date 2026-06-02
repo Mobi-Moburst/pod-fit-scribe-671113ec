@@ -445,14 +445,14 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
 
   const topPodcasts = useMemo(() => {
     const map = new Map<string, { name: string; count: number; url: string | null }>();
-    for (const b of filteredBookings) {
+    for (const b of filteredBookings.filter((b) => inRange(b.date_secured, yearStart))) {
       const key = normPodcast(b.podcast_name);
       if (!key) continue;
       if (!map.has(key)) map.set(key, { name: b.podcast_name!, count: 0, url: b.podcast_url });
       map.get(key)!.count++;
     }
     return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 10);
-  }, [filteredBookings]);
+  }, [filteredBookings, yearStart]);
 
   // Bookings per company THIS MONTH (grid)
   const companyMonthGrid = useMemo(() => {
@@ -840,7 +840,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
 
         {/* Top podcasts all-time */}
         <Card className="card-surface p-4">
-          <h2 className="text-sm font-semibold mb-3">Most-booked podcasts (all time)</h2>
+          <h2 className="text-sm font-semibold mb-3">Most-booked podcasts (YTD)</h2>
           {topPodcasts.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No data.</p>
           ) : (
