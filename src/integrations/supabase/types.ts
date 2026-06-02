@@ -608,6 +608,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ltv_offboarding: {
+        Row: {
+          airtable_record_id: string
+          campaign_manager: string | null
+          client_name: string
+          company_id: string | null
+          created_at: string
+          date_ended: string | null
+          id: string
+          org_id: string
+          raw_fields: Json
+          speaker_id: string | null
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          airtable_record_id: string
+          campaign_manager?: string | null
+          client_name: string
+          company_id?: string | null
+          created_at?: string
+          date_ended?: string | null
+          id?: string
+          org_id: string
+          raw_fields?: Json
+          speaker_id?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          airtable_record_id?: string
+          campaign_manager?: string | null
+          client_name?: string
+          company_id?: string | null
+          created_at?: string
+          date_ended?: string | null
+          id?: string
+          org_id?: string
+          raw_fields?: Json
+          speaker_id?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ltv_snapshots: {
         Row: {
           actual_bookings_to_date: number | null
