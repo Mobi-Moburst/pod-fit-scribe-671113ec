@@ -473,7 +473,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
             Backlogged clients
           </h2>
           <span className="text-xs text-muted-foreground">
-            Goal ≥ 2× bookings this month · {backlogCount} backlog · {atRiskCount} at risk
+            Goal ≥ 2× contracted monthly bookings · {backlogCount} backlog · {atRiskCount} at risk
           </span>
 
         </div>
