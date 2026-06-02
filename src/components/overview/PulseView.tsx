@@ -540,8 +540,14 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
 
 
       {/* KPI strip */}
+      <TooltipProvider delayDuration={150}>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiTile label="Bookings this month" value={bookingsThisMonth} icon={Mic} />
+        <KpiTile
+          label="Bookings this month"
+          value={bookingsThisMonth}
+          icon={Mic}
+          tooltip="Source: Momentum Bookings (Airtable). Counts every booking with a date_secured in the current calendar month across all active clients."
+        />
         <KpiTile
           label="Monthly vs deliverable"
           value={`${totalMonthlyCompleted} / ${totalMonthlyGoal || "—"}${monthlyVsGoalPct !== null ? ` · ${monthlyVsGoalPct}%` : ""}`}
@@ -555,12 +561,15 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
               ? "amber"
               : "red"
           }
+          tooltip="Source: LTV tracker (Airtable). Sum of each active client's 'deliverables completed this month' divided by sum of monthly goals. Won't always match Bookings this month — that pulls from Momentum, while this reads per-client counters that LTV maintains separately."
         />
-        <KpiTile label="Bookings YTD" value={bookingsYTD} icon={CalendarDays} />
+        <KpiTile label="Bookings YTD" value={bookingsYTD} icon={CalendarDays} tooltip="Source: Momentum Bookings. Total bookings with date_secured in the current calendar year." />
         <KpiTile label="New clients this mo." value={newClientsThisMonth} icon={UserPlus} tone="green" />
         <KpiTile label="Leaving this mo." value={leavingThisMonth.length} icon={UserMinus} tone="amber" />
         <KpiTile label="Active SMEs" value={activeSMEs} icon={Users} />
       </div>
+      </TooltipProvider>
+
 
       {/* Backlogged clients */}
       <Card className="card-surface p-4">
