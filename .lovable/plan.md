@@ -1,147 +1,84 @@
-## Goal
 
-Turn Research into a **speaker-anchored sourcing engine** that surfaces high volumes of niche, guest-accepting podcasts a campaign manager can pitch their client to — plus suggested angles they can paste into their HubSpot templates.
+## What we're building
 
-**Hard constraints (per user):**
-- Zero Airtable writes. Airtable is for campaign performance data only.
-- No pitch "creation" workflow. Drafts and copy live in the dashboard, period.
-- Pitch handoff = copy-to-clipboard. CMs paste into existing HubSpot sequence templates.
-- Target shape = niche, guest-accepting podcasts that match speaker industry + talking points. Not big shows. Volume game.
+Add a **Campaigns ↔ Kitcaster Pulse** toggle at the top of `/overview`. "Campaigns" stays as-is (current LTV client view). "Pulse" is a new agency-wide rollup powered by a new `momentum_bookings` table synced from the **Momentum Report** Airtable base (`appxw22m8TBPlq05F`, tables `2025` + `2026`).
 
----
+## Coverage map of management's list
 
-## Phase 1 — Speaker Workspace + Niche Discovery
+Already in Overview (Campaigns view):
+- Client health, partial CM-vs-goal, partial offboarding-soon, partial bookings-per-client
 
-**Route**: `/research` becomes the workspace. URL `?speaker=<id>` is shareable.
+Easy adds from existing `ltv_snapshots` (no new sync):
+- CM bookings vs monthly goal (sum `deliverables_completed_this_month` / `goal_this_month` by CM)
+- Total monthly bookings (Kitcaster-wide)
+- Total bookings per SME
+- Clients leaving this month (`offboarding` + `renewal_date` this month)
+- New clients this month (clients first seen in `synced_at` this month — caveat in tech notes)
 
-### Layout
-```
-┌─ Company → Speaker selector (sticky top)
-├─ Left rail (280px): Speaker context
-│   • Headshot, name, title
-│   • Target audiences (chips)
-│   • Top talking points (collapsed)
-│   • Already-booked shows count
-│   • Strategy snippet (last quarterly note)
-├─ Main column
-│   • Tabs: [Discover] [Shortlist (N)] [Angles]
-└─ Right rail: show detail + angle suggestions (slides in when row clicked)
-```
+Need the new Momentum sync (no other source has booking-level dates):
+- Last 10 bookings (Kitcaster-wide)
+- Last 5 bookings per industry
+- Most-booked industry YTD
+- Most-booked podcasts all-time
+- True calendar-YTD bookings
 
-### Discover tab
-- "Generate 25 candidates" button (volume, not 5 perfect ones)
-- For each candidate, hydrate through Rephonic + iTunes, then apply **two gating filters**:
-  1. **Guest filter** — must have a recent track record of guest interviews. Detection signals:
-     - Episode titles containing "with [name]" / "ft." / "interview" / "guest" patterns
-     - >2 distinct apparent speakers across recent episodes (from titles/descriptions)
-     - iTunes/Rephonic category includes Interview-style tags
-     - If none of the above are true after sampling 10 recent episodes → drop
-  2. **Niche-fit filter** — listener count band. Default 500–50K (tighter than the report-side 1K–100K band; this is the "long tail" research uses).
-- Display table columns: cover · show name · host · niche tag · est. listeners · last ep date · guest-cadence badge (e.g. "12/last 15 episodes are interviews")
-- **Fit score retuned for niche**:
-  - Topic/audience overlap weighted heavily
-  - Smaller-but-relevant shows score higher than larger-but-generic ones
-  - Penalty applied above the listener-band ceiling (a 200K show is *worse* fit than a 10K show for this use case)
-- Already-booked + already-shortlisted shows filtered out
-- [Regenerate] · [Generate 25 more] · [Loosen filters] buttons
+## Data layer
 
-### Shortlist tab
-- Persisted in new `research_shortlists` table (per speaker, org-scoped)
-- Per-row states: `new` / `passed` / `pitched-elsewhere` / `booked` (manual marking only — no Airtable sync triggered)
-- "Passed" + dismissal reason prevents future resurfacing and feeds back into Gemini prompts ("avoid shows like X because…")
-- Bulk re-score button (re-runs fit logic if speaker context changed)
+New table `momentum_bookings`:
+- `airtable_record_id` (unique), `year_table` (`2025`/`2026`)
+- `campaign_manager`, `client_name`, `podcast_name`, `podcast_url`, `host_name`
+- `activity_type` (e.g. "Podcast Recording", "Intro Call")
+- `date_secured` (date), `start_date_time` (timestamptz)
+- `company_id` (nullable, resolved via fuzzy match against `companies.name` and `ltv_snapshots.client_name`)
+- `industry` (denormalized snapshot from matched `companies.industry`)
+- `raw_fields` jsonb, `synced_at`, `org_id`
+- Indexes on `date_secured`, `campaign_manager`, `industry`, `company_id`
+- Standard org-scoped RLS + grants
 
-### Angles tab (replaces "Drafts" — no pitch creation, just ideation)
-- For any shortlisted show, click "Suggest angles"
-- Gemini returns **3–5 distinct pitch angles** the speaker could use *for that show* — not a finished pitch, just the hooks:
-  - Each angle = 1-line headline + 1-paragraph "why this works for this show's audience"
-  - Tuned to the show's recent episode topics (pulled via Rephonic)
-  - Grounded in the speaker's talking points + strategy
-- Each angle has **[Copy hook] [Copy full angle]** buttons. That's the entire handoff. CM pastes into HubSpot template.
-- No "send" button anywhere. No Airtable. No email integration.
+New edge function `sync-momentum-bookings`:
+- Lists tables in base `appxw22m8TBPlq05F`, iterates `2025` and `2026` (and any future year table matching `^\d{4}$`)
+- Paginates all records, upserts on `airtable_record_id`
+- Resolves `company_id` by matching `Client` against `companies.name` (exact, then normalized lower/trimmed). Caches industry from the matched row.
+- Returns `{ upserted, matched_to_companies, by_year }`
 
-### Evaluate / Batch / History
-- Kept reachable from a "Legacy tools" disclosure at the bottom of the left rail. Not removed.
+Add a `Sync Momentum` button next to the existing `Sync LTV` button (admin-only). Optional: have `sync-ltv-snapshots` trigger the momentum sync as well, so a single click refreshes both.
 
----
+## UI
 
-## Phase 2 — Smarter sourcing surfaces
+`src/pages/Overview.tsx` gets a top toggle (`Campaigns` | `Pulse`). The whole current page stays under `Campaigns`. New `src/components/overview/PulseView.tsx` renders:
 
-Once phase 1 is in production and validated:
-- **"More like this"** — pick 2–3 of the speaker's best past bookings, query Rephonic for similar shows, re-apply guest + niche filters
-- **Category laddering** — derive seeds from `target_audiences` + booked categories, walk down to sub-niches Rephonic exposes (e.g. "Entrepreneurship" → "Solo Founders" → "Bootstrapped SaaS")
-- Both feed the same shortlist with a source filter chip
+1. **Top KPI strip** (6 tiles):
+   - Bookings this month · Bookings YTD · New clients this month · Offboarding this month · Active SMEs · Avg fulfillment %
+2. **CM leaderboard** card — table of CM, bookings this month, monthly goal (from `ltv_snapshots`), % to goal, YTD bookings. Sorted by % to goal desc.
+3. **Industry breakdown** card — top industries by YTD booking count, with sparkline of last 6 months; click an industry → drawer showing last 5 bookings in that industry.
+4. **Last 10 bookings** feed — client, podcast, CM, date_secured, podcast link.
+5. **Top podcasts all-time** card — podcast_name + count, top 10, normalized by lowercased name.
+6. **Per-SME bookings** table — speaker/client, bookings this month, bookings YTD, last booking date.
 
----
+All cards filter by the same `Campaign Manager` selector that already exists on the page (kept at the top so it applies to both views).
 
-## Phase 3 — Memory & feedback loop (later)
+Files touched:
+- `src/pages/Overview.tsx` — wrap existing layout, add view toggle
+- `src/components/overview/PulseView.tsx` (new)
+- `src/components/overview/pulse/CMLeaderboard.tsx` (new)
+- `src/components/overview/pulse/IndustryBreakdown.tsx` (new)
+- `src/components/overview/pulse/RecentBookings.tsx` (new)
+- `src/components/overview/pulse/TopPodcasts.tsx` (new)
+- `src/components/overview/pulse/PerSMETable.tsx` (new)
+- `supabase/functions/sync-momentum-bookings/index.ts` (new)
+- migration: create `momentum_bookings` + RLS + grants
 
-- Dismissal reasons surface back to Gemini as anti-prompts per speaker
-- "Pitched elsewhere" / "Booked" states inferred from Airtable sync passively (read-only join, not a write)
-- Per-CM "shows I keep finding" surface = highlights niches a CM is over-/under-indexing on
+## Open caveats / things to nail down before shipping
 
----
+- **Industry source of truth.** `companies.industry` is set for some companies but not all, and Momentum's `Client` field is free text. Unmatched bookings will show under "Unknown" until the company is linked. The sync logs unmatched names so we can manually map.
+- **"New clients this month"** — neither `ltv_snapshots` nor `companies` has a reliable "campaign start" date. Best proxy is the earliest `date_secured` per `Client` in `momentum_bookings`. Acceptable?
+- **What counts as a "booking"?** I'll default to `Type of Activity = "Podcast Recording"` for all counters (matches existing KPI memory). Want me to surface a filter for Intro Call / other activity types?
+- **Sync cadence.** Manual button for now. We can wire it to the same cron as LTV (or just trigger both with one button) once you confirm.
 
-## Technical details
+## Tech notes
 
-**New tables**
-```sql
-research_shortlists (
-  id uuid pk,
-  org_id uuid fk,
-  speaker_id uuid fk,
-  show_name text,
-  show_url text,
-  itunes_id text,
-  rephonic_id text,
-  cover_art_url text,
-  est_listeners int,
-  last_episode_date date,
-  guest_cadence_score numeric,   -- 0–1, how often recent eps are guest interviews
-  niche_fit_score numeric,        -- retuned scoring
-  source text,                    -- 'ai' | 'similar' | 'category'
-  status text,                    -- 'new' | 'passed' | 'pitched-elsewhere' | 'booked'
-  passed_reason text,
-  added_by uuid fk auth.users,
-  created_at, updated_at
-)
+- Migration order: CREATE TABLE → GRANT (`authenticated`, `service_role`) → ENABLE RLS → org-scoped policies (matches existing tables).
+- Edge function uses existing `AIRTABLE_PAT` secret — no new connector needed.
+- Fuzzy match uses normalized lowercase + strip punctuation; fall back to `ltv_snapshots.client_name` lookup if `companies` doesn't match (the LTV table has more client-name variants).
+- Pulse view queries are all `from('momentum_bookings').select(...)` with grouped client-side aggregation; if volume grows past ~5k rows we'll add a `compute-momentum-kpis` cache function mirroring `compute-company-kpis`.
 
-research_angles (
-  id uuid pk,
-  shortlist_id uuid fk,
-  headline text,
-  rationale text,                 -- 1-paragraph "why this works"
-  created_at
-)
-```
-Standard RLS via `has_role()` + org scoping.
-
-**New edge functions**
-- `research-suggest-podcasts` — Gemini suggester + Rephonic/iTunes hydration + guest filter + niche-band filter. Returns up to 25 hydrated candidates per call.
-- `research-suggest-angles` — given shortlist row + speaker context + show's recent episode titles, returns 3–5 angle ideas. **No "pitch draft" wording.**
-
-**Removed from previous plan**
-- `research-send-to-airtable` — gone
-- `research_pitch_drafts` table — gone, replaced with the lighter `research_angles`
-- Subject lines, full pitch bodies — gone. Just angle hooks.
-
-**Modified files**
-- `src/pages/Research.tsx` (rewrite — workspace shell, speaker selector, tabs)
-- `src/components/research/SpeakerContextRail.tsx` (new)
-- `src/components/research/DiscoverTab.tsx` (new)
-- `src/components/research/ShortlistTab.tsx` (new)
-- `src/components/research/AnglesPanel.tsx` (new)
-
-**Reused infra**
-- `CompanySpeakerSelector`
-- `fetch-rephonic-metrics` (30-day cache)
-- `scrape-podcast-cover-art` (iTunes)
-- `suggest-target-podcasts` (wrapped with niche filters, not replaced)
-- Existing fit-scoring logic (retuned weights)
-- Airtable sync used **read-only** for already-booked detection
-
-**Estimate**: 1 migration + 2 edge functions + 4 new components + 1 page rewrite.
-
----
-
-Ready to build phase 1 on approval.

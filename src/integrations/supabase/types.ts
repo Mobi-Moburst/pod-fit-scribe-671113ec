@@ -724,6 +724,69 @@ export type Database = {
           },
         ]
       }
+      momentum_bookings: {
+        Row: {
+          activity_type: string | null
+          airtable_record_id: string
+          campaign_manager: string | null
+          client_name: string | null
+          company_id: string | null
+          created_at: string
+          date_secured: string | null
+          host_name: string | null
+          id: string
+          industry: string | null
+          org_id: string
+          podcast_name: string | null
+          podcast_url: string | null
+          raw_fields: Json
+          start_date_time: string | null
+          synced_at: string
+          updated_at: string
+          year_table: string
+        }
+        Insert: {
+          activity_type?: string | null
+          airtable_record_id: string
+          campaign_manager?: string | null
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          date_secured?: string | null
+          host_name?: string | null
+          id?: string
+          industry?: string | null
+          org_id: string
+          podcast_name?: string | null
+          podcast_url?: string | null
+          raw_fields?: Json
+          start_date_time?: string | null
+          synced_at?: string
+          updated_at?: string
+          year_table: string
+        }
+        Update: {
+          activity_type?: string | null
+          airtable_record_id?: string
+          campaign_manager?: string | null
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          date_secured?: string | null
+          host_name?: string | null
+          id?: string
+          industry?: string | null
+          org_id?: string
+          podcast_name?: string | null
+          podcast_url?: string | null
+          raw_fields?: Json
+          start_date_time?: string | null
+          synced_at?: string
+          updated_at?: string
+          year_table?: string
+        }
+        Relationships: []
+      }
       podcast_metadata_cache: {
         Row: {
           apple_podcast_url: string
