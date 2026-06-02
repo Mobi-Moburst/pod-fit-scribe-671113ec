@@ -585,9 +585,14 @@ export function PulseView({ cmFilter }: PulseViewProps) {
             <div className="space-y-3">
               {industryAgg.map((r) => {
                 const max = industryAgg[0].count || 1;
-                const last5 = lastByIndustry.get(r.industry) ?? [];
+                const podcasts = podcastsByIndustry.get(r.industry) ?? [];
                 return (
-                  <div key={r.industry} className="space-y-1">
+                  <button
+                    key={r.industry}
+                    type="button"
+                    onClick={() => setOpenIndustry(r.industry)}
+                    className="w-full text-left space-y-1 rounded-md p-1 -m-1 hover:bg-muted/40 transition-colors"
+                  >
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{r.industry}</span>
                       <span className="text-muted-foreground tabular-nums">{r.count}</span>
@@ -598,20 +603,10 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                         style={{ width: `${(r.count / max) * 100}%` }}
                       />
                     </div>
-                    {last5.length > 0 && (
-                      <div className="text-xs text-muted-foreground pl-1 pt-0.5">
-                        Last 5:{" "}
-                        {last5.map((b, i) => (
-                          <span key={b.id}>
-                            {i > 0 && " · "}
-                            <span title={`${b.client_name} · ${fmtDate(b.date_secured)}`}>
-                              {b.podcast_name}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                    <div className="text-xs text-muted-foreground pl-1 pt-0.5">
+                      {podcasts.length} unique {podcasts.length === 1 ? "podcast" : "podcasts"}
+                    </div>
+                  </button>
                 );
               })}
             </div>
