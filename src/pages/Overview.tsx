@@ -401,7 +401,7 @@ const Overview = () => {
 
 
         {/* KPI strip */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiTile label="Active Campaigns" value={kpis.active} icon={Activity} />
           <KpiTile
             label="On Track"
@@ -420,11 +420,6 @@ const Overview = () => {
             value={kpis.atRisk}
             icon={AlertTriangle}
             tone="red"
-          />
-          <KpiTile
-            label="Renewing ≤60d"
-            value={kpis.renewingSoon}
-            icon={CalendarClock}
           />
         </div>
 
