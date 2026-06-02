@@ -54,6 +54,7 @@ type LtvLite = {
   total_bookings_per_month: number | null;
   cohort: string | null;
   campaign_success_status: string | null;
+  status: string | null;
   synced_at: string;
 };
 
