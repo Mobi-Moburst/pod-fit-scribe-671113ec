@@ -18,7 +18,8 @@ import {
   UserPlus,
   UserMinus,
   Users,
-  TrendingUp,
+  AlertTriangle,
+  Target,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -47,7 +48,16 @@ type LtvLite = {
   renewal_date: string | null;
   renewed: boolean | null;
   current_month_cumulative_pct_fulfilled: number | null;
+  actual_bookings_to_date: number | null;
+  total_planned_bookings_by_eom: number | null;
   synced_at: string;
+};
+
+type SpeakerLite = {
+  id: string;
+  name: string;
+  company_id: string;
+  archived_at: string | null;
 };
 
 interface PulseViewProps {
@@ -87,16 +97,28 @@ function normPodcast(name: string | null) {
   return (name ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+function normName(s: string | null) {
+  return (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function pctTone(pct: number | null) {
+  if (pct === null) return "text-muted-foreground";
+  if (pct >= 100) return "text-emerald-500";
+  if (pct >= 70) return "text-amber-500";
+  return "text-red-500";
+}
+
 export function PulseView({ cmFilter }: PulseViewProps) {
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ltv, setLtv] = useState<LtvLite[]>([]);
+  const [speakers, setSpeakers] = useState<SpeakerLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
   async function load() {
     setLoading(true);
-    const [b, l] = await Promise.all([
+    const [b, l, s] = await Promise.all([
       supabase
         .from("momentum_bookings")
         .select(
@@ -107,12 +129,17 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       supabase
         .from("ltv_snapshots")
         .select(
-          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, synced_at"
+          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, synced_at"
         ),
+      supabase
+        .from("speakers")
+        .select("id, name, company_id, archived_at")
+        .is("archived_at", null),
     ]);
     if (b.error) toast({ title: "Failed to load bookings", description: b.error.message, variant: "destructive" });
     setBookings((b.data ?? []) as Booking[]);
     setLtv((l.data ?? []) as LtvLite[]);
+    setSpeakers((s.data ?? []) as SpeakerLite[]);
     setLoading(false);
   }
 
@@ -154,6 +181,8 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   // KPI strip
   const bookingsThisMonth = filteredBookings.filter((b) => inRange(b.date_secured, monthStart)).length;
   const bookingsYTD = filteredBookings.filter((b) => inRange(b.date_secured, yearStart)).length;
+  const totalMonthlyGoal = filteredLtv.reduce((s, r) => s + (r.goal_this_month ?? 0), 0);
+  const monthlyVsGoalPct = totalMonthlyGoal > 0 ? Math.round((bookingsThisMonth / totalMonthlyGoal) * 100) : null;
 
   // New clients this month: client_name whose earliest date_secured is in this month
   const firstSecured = new Map<string, Date>();
@@ -166,23 +195,42 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   }
   const newClientsThisMonth = Array.from(firstSecured.values()).filter((d) => d >= monthStart).length;
 
-  const offboardingThisMonth = filteredLtv.filter((r) => {
-    if (r.offboarding === true) return true;
-    if (!r.renewal_date) return false;
-    const d = new Date(r.renewal_date);
-    return d >= monthStart && d <= monthEnd && r.renewed !== true;
-  }).length;
+  // Clients leaving this month: name + end date list
+  const leavingThisMonth = useMemo(() => {
+    return filteredLtv
+      .filter((r) => {
+        if (r.offboarding === true) return true;
+        if (!r.renewal_date) return false;
+        const d = new Date(r.renewal_date);
+        return d >= monthStart && d <= monthEnd && r.renewed !== true;
+      })
+      .map((r) => ({ client: r.client_name, end: r.renewal_date, cm: r.campaign_manager }))
+      .sort((a, b) => (a.end ?? "").localeCompare(b.end ?? ""));
+  }, [filteredLtv]);
 
   const activeSMEs = filteredLtv.length;
-  const avgFulfillment =
-    activeSMEs === 0
-      ? 0
-      : Math.round(
-          filteredLtv.reduce(
-            (s, r) => s + (r.current_month_cumulative_pct_fulfilled ?? 0),
-            0
-          ) / activeSMEs
-        );
+
+  // Backlogged: behind by >= one monthly goal worth of bookings
+  const backlogged = useMemo(() => {
+    return filteredLtv
+      .filter((r) => r.offboarding !== true && r.zz_complete !== true)
+      .map((r) => {
+        const planned = Number(r.total_planned_bookings_by_eom ?? 0);
+        const actual = Number(r.actual_bookings_to_date ?? 0);
+        const goal = Number(r.goal_this_month ?? 0);
+        const remaining = planned - actual;
+        return {
+          client: r.client_name,
+          cm: r.campaign_manager,
+          current: actual,
+          total: planned,
+          remaining,
+          goal,
+        };
+      })
+      .filter((r) => r.goal > 0 && r.remaining >= r.goal)
+      .sort((a, b) => b.remaining - a.remaining);
+  }, [filteredLtv]);
 
   // CM leaderboard
   const cmAgg = useMemo(() => {
@@ -190,7 +238,6 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       string,
       { cm: string; thisMonth: number; ytd: number; goal: number }
     >();
-    // bookings
     for (const b of filteredBookings) {
       const cm = b.campaign_manager ?? "Unassigned";
       if (!map.has(cm)) map.set(cm, { cm, thisMonth: 0, ytd: 0, goal: 0 });
@@ -198,7 +245,6 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       if (inRange(b.date_secured, monthStart)) row.thisMonth++;
       if (inRange(b.date_secured, yearStart)) row.ytd++;
     }
-    // goals
     for (const r of filteredLtv) {
       const cm = r.campaign_manager ?? "Unassigned";
       if (!map.has(cm)) map.set(cm, { cm, thisMonth: 0, ytd: 0, goal: 0 });
@@ -220,7 +266,6 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       .slice(0, 8);
   }, [filteredBookings]);
 
-  // Last 5 per top industry
   const lastByIndustry = useMemo(() => {
     const map = new Map<string, Booking[]>();
     for (const b of filteredBookings) {
@@ -232,10 +277,8 @@ export function PulseView({ cmFilter }: PulseViewProps) {
     return map;
   }, [filteredBookings]);
 
-  // Last 10 bookings overall
   const last10 = filteredBookings.slice(0, 10);
 
-  // Top podcasts all-time
   const topPodcasts = useMemo(() => {
     const map = new Map<string, { name: string; count: number; url: string | null }>();
     for (const b of filteredBookings) {
@@ -247,7 +290,85 @@ export function PulseView({ cmFilter }: PulseViewProps) {
     return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 10);
   }, [filteredBookings]);
 
-  // Per-client bookings
+  // Bookings per company THIS MONTH (grid)
+  const companyMonthGrid = useMemo(() => {
+    const ltvByName = new Map<string, LtvLite>();
+    for (const r of filteredLtv) ltvByName.set(normName(r.client_name), r);
+    const map = new Map<
+      string,
+      { client: string; count: number; goal: number; cm: string | null }
+    >();
+    for (const b of filteredBookings.filter((b) => inRange(b.date_secured, monthStart))) {
+      const k = b.client_name ?? "Unassigned";
+      if (!map.has(k)) {
+        const ltvRow = ltvByName.get(normName(k));
+        map.set(k, {
+          client: k,
+          count: 0,
+          goal: ltvRow?.goal_this_month ?? 0,
+          cm: b.campaign_manager ?? ltvRow?.campaign_manager ?? null,
+        });
+      }
+      map.get(k)!.count++;
+    }
+    // Include LTV clients with goals but zero bookings this month so the gap is visible
+    for (const r of filteredLtv) {
+      if (r.offboarding === true || r.zz_complete === true) continue;
+      if (!r.goal_this_month || r.goal_this_month <= 0) continue;
+      if (!map.has(r.client_name)) {
+        map.set(r.client_name, {
+          client: r.client_name,
+          count: 0,
+          goal: r.goal_this_month,
+          cm: r.campaign_manager,
+        });
+      }
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => b.count - a.count || a.client.localeCompare(b.client)
+    );
+  }, [filteredBookings, filteredLtv]);
+
+  // Bookings per speaker THIS MONTH (grid) — resolved via speakers table
+  const speakerMonthGrid = useMemo(() => {
+    const speakersByCompany = new Map<string, SpeakerLite[]>();
+    for (const sp of speakers) {
+      if (!speakersByCompany.has(sp.company_id)) speakersByCompany.set(sp.company_id, []);
+      speakersByCompany.get(sp.company_id)!.push(sp);
+    }
+    const map = new Map<
+      string,
+      { key: string; label: string; subtitle: string; count: number }
+    >();
+    for (const b of filteredBookings.filter((b) => inRange(b.date_secured, monthStart))) {
+      let label = "Unassigned";
+      let subtitle = "";
+      let key = "unassigned";
+      if (b.company_id && speakersByCompany.has(b.company_id)) {
+        const list = speakersByCompany.get(b.company_id)!;
+        if (list.length === 1) {
+          label = list[0].name;
+          subtitle = b.client_name ?? "";
+          key = `sp:${list[0].id}`;
+        } else {
+          label = `${b.client_name ?? "Company"} — multiple speakers`;
+          subtitle = `${list.length} speakers`;
+          key = `multi:${b.company_id}`;
+        }
+      } else {
+        label = b.client_name ?? "Unassigned";
+        subtitle = "No matched company";
+        key = `un:${label}`;
+      }
+      if (!map.has(key)) map.set(key, { key, label, subtitle, count: 0 });
+      map.get(key)!.count++;
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => b.count - a.count || a.label.localeCompare(b.label)
+    );
+  }, [filteredBookings, speakers]);
+
+  // Per-client bookings (existing table)
   const perClient = useMemo(() => {
     const map = new Map<
       string,
@@ -277,12 +398,76 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiTile label="Bookings this month" value={bookingsThisMonth} icon={Mic} />
+        <KpiTile
+          label="Monthly vs deliverable"
+          value={`${bookingsThisMonth} / ${totalMonthlyGoal || "—"}${monthlyVsGoalPct !== null ? ` · ${monthlyVsGoalPct}%` : ""}`}
+          icon={Target}
+          tone={
+            monthlyVsGoalPct === null
+              ? undefined
+              : monthlyVsGoalPct >= 100
+              ? "green"
+              : monthlyVsGoalPct >= 70
+              ? "amber"
+              : "red"
+          }
+        />
         <KpiTile label="Bookings YTD" value={bookingsYTD} icon={CalendarDays} />
         <KpiTile label="New clients this mo." value={newClientsThisMonth} icon={UserPlus} tone="green" />
-        <KpiTile label="Offboarding this mo." value={offboardingThisMonth} icon={UserMinus} tone="amber" />
+        <KpiTile label="Leaving this mo." value={leavingThisMonth.length} icon={UserMinus} tone="amber" />
         <KpiTile label="Active SMEs" value={activeSMEs} icon={Users} />
-        <KpiTile label="Avg fulfillment" value={`${avgFulfillment}%`} icon={TrendingUp} />
       </div>
+
+      {/* Backlogged clients */}
+      <Card className="card-surface p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+            Backlogged clients
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            Behind by ≥ 1 month of goal · {backlogged.length}
+          </span>
+        </div>
+        {loading ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+        ) : backlogged.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            No backlogged clients — everyone on pace.
+          </p>
+        ) : (
+          <div className="max-h-[360px] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead>CM</TableHead>
+                  <TableHead className="text-right">Current</TableHead>
+                  <TableHead className="text-right">Total due</TableHead>
+                  <TableHead className="text-right">Remaining</TableHead>
+                  <TableHead className="text-right">Monthly goal</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {backlogged.map((r) => (
+                  <TableRow key={r.client}>
+                    <TableCell className="font-medium">{r.client}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{r.cm ?? "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.current}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.total}</TableCell>
+                    <TableCell className="text-right tabular-nums text-red-500">
+                      {r.remaining}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {r.goal}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* CM leaderboard */}
@@ -314,21 +499,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                         {r.goal || "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {pct === null ? (
-                          "—"
-                        ) : (
-                          <span
-                            className={
-                              pct >= 100
-                                ? "text-emerald-500"
-                                : pct >= 70
-                                ? "text-amber-500"
-                                : "text-red-500"
-                            }
-                          >
-                            {pct}%
-                          </span>
-                        )}
+                        {pct === null ? "—" : <span className={pctTone(pct)}>{pct}%</span>}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{r.ytd}</TableCell>
                     </TableRow>
@@ -381,6 +552,77 @@ export function PulseView({ cmFilter }: PulseViewProps) {
           )}
         </Card>
       </div>
+
+      {/* Bookings per company — this month */}
+      <Card className="card-surface p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold">Bookings per company — this month</h2>
+          <span className="text-xs text-muted-foreground">{companyMonthGrid.length} clients</span>
+        </div>
+        {companyMonthGrid.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">No bookings yet this month.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {companyMonthGrid.map((r) => {
+              const pct = r.goal > 0 ? Math.round((r.count / r.goal) * 100) : null;
+              return (
+                <div
+                  key={r.client}
+                  className="border border-border rounded-md p-2.5 bg-card/50"
+                >
+                  <div className="text-sm font-medium truncate" title={r.client}>
+                    {r.client}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">{r.cm ?? "—"}</div>
+                  <div className="mt-1.5 flex items-baseline justify-between">
+                    <span className="text-lg font-semibold tabular-nums">
+                      {r.count}
+                      <span className="text-xs text-muted-foreground font-normal">
+                        {" "}/ {r.goal || "—"}
+                      </span>
+                    </span>
+                    {pct !== null && (
+                      <span className={`text-xs tabular-nums ${pctTone(pct)}`}>{pct}%</span>
+                    )}
+                  </div>
+                  <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary"
+                      style={{ width: `${Math.min(100, pct ?? (r.count > 0 ? 100 : 0))}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* Bookings per speaker — this month */}
+      <Card className="card-surface p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold">Bookings per speaker — this month</h2>
+          <span className="text-xs text-muted-foreground">{speakerMonthGrid.length} entries</span>
+        </div>
+        {speakerMonthGrid.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">No bookings yet this month.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {speakerMonthGrid.map((r) => (
+              <div
+                key={r.key}
+                className="border border-border rounded-md p-2.5 bg-card/50"
+              >
+                <div className="text-sm font-medium truncate" title={r.label}>
+                  {r.label}
+                </div>
+                <div className="text-xs text-muted-foreground truncate">{r.subtitle || "—"}</div>
+                <div className="mt-1.5 text-lg font-semibold tabular-nums">{r.count}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Last 10 bookings */}
@@ -448,39 +690,72 @@ export function PulseView({ cmFilter }: PulseViewProps) {
         </Card>
       </div>
 
-      {/* Per-client bookings */}
-      <Card className="card-surface p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold">Bookings per client</h2>
-          <span className="text-xs text-muted-foreground">{perClient.length} clients</span>
-        </div>
-        <div className="max-h-[440px] overflow-y-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>CM</TableHead>
-                <TableHead className="text-right">This mo.</TableHead>
-                <TableHead className="text-right">YTD</TableHead>
-                <TableHead className="text-right">Last booking</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {perClient.map((r) => (
-                <TableRow key={r.client}>
-                  <TableCell className="font-medium">{r.client}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{r.cm ?? "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{r.thisMonth}</TableCell>
-                  <TableCell className="text-right tabular-nums">{r.ytd}</TableCell>
-                  <TableCell className="text-right text-xs text-muted-foreground">
-                    {fmtDate(r.last)}
-                  </TableCell>
-                </TableRow>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Clients leaving this month */}
+        <Card className="card-surface p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5">
+              <UserMinus className="h-3.5 w-3.5 text-amber-500" />
+              Clients leaving this month
+            </h2>
+            <span className="text-xs text-muted-foreground">{leavingThisMonth.length}</span>
+          </div>
+          {leavingThisMonth.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">None this month.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {leavingThisMonth.map((r) => (
+                <li
+                  key={r.client}
+                  className="flex items-center justify-between text-sm border-b border-border/50 last:border-0 pb-1.5 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{r.client}</div>
+                    <div className="text-xs text-muted-foreground">{r.cm ?? "—"}</div>
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {fmtDate(r.end)}
+                  </span>
+                </li>
               ))}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+            </ul>
+          )}
+        </Card>
+
+        {/* Per-client bookings */}
+        <Card className="card-surface p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">Bookings per client (YTD)</h2>
+            <span className="text-xs text-muted-foreground">{perClient.length} clients</span>
+          </div>
+          <div className="max-h-[440px] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead>CM</TableHead>
+                  <TableHead className="text-right">This mo.</TableHead>
+                  <TableHead className="text-right">YTD</TableHead>
+                  <TableHead className="text-right">Last booking</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {perClient.map((r) => (
+                  <TableRow key={r.client}>
+                    <TableCell className="font-medium">{r.client}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{r.cm ?? "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.thisMonth}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.ytd}</TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {fmtDate(r.last)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
