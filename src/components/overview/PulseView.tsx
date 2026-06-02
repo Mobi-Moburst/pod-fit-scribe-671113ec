@@ -440,7 +440,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
             Backlogged clients
           </h2>
           <span className="text-xs text-muted-foreground">
-            Behind by ≥ 1 month of goal · {backlogged.length}
+            Behind by ≥ 2× monthly goal · {backlogCount} backlog · {atRiskCount} at risk
           </span>
         </div>
         {loading ? (
@@ -455,6 +455,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Client</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>CM</TableHead>
                   <TableHead className="text-right">Current</TableHead>
                   <TableHead className="text-right">Total due</TableHead>
@@ -466,10 +467,21 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                 {backlogged.map((r) => (
                   <TableRow key={r.client}>
                     <TableCell className="font-medium">{r.client}</TableCell>
+                    <TableCell>
+                      {r.status === "backlog" ? (
+                        <span className="inline-flex items-center rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-500">
+                          Backlog
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500">
+                          At risk
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{r.cm ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.current}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.total}</TableCell>
-                    <TableCell className="text-right tabular-nums text-red-500">
+                    <TableCell className={`text-right tabular-nums ${r.status === "backlog" ? "text-red-500" : "text-amber-500"}`}>
                       {r.remaining}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
