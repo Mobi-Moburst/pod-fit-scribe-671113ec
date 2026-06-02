@@ -590,7 +590,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                   return (
                     <TableRow key={r.cm}>
                       <TableCell className="font-medium">{r.cm}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.thisMonth}</TableCell>
+                      <TableCell className="text-right tabular-nums">{r.thisMonth === 0 ? "—" : r.thisMonth}</TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">
                         {r.goal || "—"}
                       </TableCell>
