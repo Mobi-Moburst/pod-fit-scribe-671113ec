@@ -288,7 +288,8 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
   }, [offboarding, cmFilter, monthStart, monthEnd]);
 
 
-  const activeSMEs = filteredLtv.length;
+  const ACTIVE_STATUSES = new Set(["On track", "Behind", "Billing Paused"]);
+  const activeSMEs = filteredLtv.filter((r) => ACTIVE_STATUSES.has(r.status ?? "")).length;
 
   // Backlog logic (per management):
   //   Goal this Month_KG >= 2 × Total Bookings Per Month (contracted cadence)
