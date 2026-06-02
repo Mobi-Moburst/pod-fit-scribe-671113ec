@@ -127,6 +127,7 @@ const Overview = () => {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
+  const [syncSignal, setSyncSignal] = useState(0);
   const [cmFilter, setCmFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [view, setView] = useState<"campaigns" | "pulse">("campaigns");
