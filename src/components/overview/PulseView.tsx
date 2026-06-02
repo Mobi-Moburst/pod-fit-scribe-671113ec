@@ -51,6 +51,8 @@ type LtvLite = {
   current_month_cumulative_pct_fulfilled: number | null;
   actual_bookings_to_date: number | null;
   total_planned_bookings_by_eom: number | null;
+  cohort: string | null;
+  campaign_success_status: string | null;
   synced_at: string;
 };
 
