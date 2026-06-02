@@ -11,8 +11,8 @@ const LTV_BASE_ID = "appKSO0Fu50JdheHt";
 const OFFBOARDING_TABLE_ID = "tbluZpcw7xXjCb1mp";
 
 const FIELD_ALIASES: Record<string, string[]> = {
-  client_name: ["Client", "Client Name", "Name"],
-  campaign_manager: ["Campaign Manager"],
+  client_name: ["Client - Company", "Client", "Client Name", "Name"],
+  campaign_manager: ["CM", "Campaign Manager"],
   date_ended: ["Date ended", "Date Ended"],
 };
 
