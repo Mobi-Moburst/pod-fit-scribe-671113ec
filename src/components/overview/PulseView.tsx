@@ -928,11 +928,13 @@ function KpiTile({
   value,
   icon: Icon,
   tone,
+  tooltip,
 }: {
   label: string;
   value: number | string;
   icon: any;
   tone?: "green" | "amber" | "red";
+  tooltip?: string;
 }) {
   const toneClass =
     tone === "green"
@@ -942,13 +944,22 @@ function KpiTile({
       : tone === "red"
       ? "text-red-500"
       : "text-foreground";
-  return (
-    <Card className="card-surface p-4">
+  const card = (
+    <Card className={`card-surface p-4 ${tooltip ? "cursor-help" : ""}`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-muted-foreground">{label}</span>
         <Icon className={`h-3.5 w-3.5 ${toneClass}`} />
       </div>
       <div className={`text-2xl font-semibold ${toneClass}`}>{value}</div>
     </Card>
+  );
+  if (!tooltip) return card;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{card}</TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
   );
 }
