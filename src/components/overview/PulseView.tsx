@@ -452,7 +452,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
       map.get(key)!.count++;
     }
     return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 10);
-  }, [filteredBookings]);
+  }, [filteredBookings, yearStart]);
 
   // Bookings per company THIS MONTH (grid)
   const companyMonthGrid = useMemo(() => {
