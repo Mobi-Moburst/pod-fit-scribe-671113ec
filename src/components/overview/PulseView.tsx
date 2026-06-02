@@ -375,16 +375,31 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
   // Bookings per company THIS MONTH (grid)
   const companyMonthGrid = useMemo(() => {
+    // Build a lookup that matches LTV rows by full name AND by each
+    // " - " separated part, so bookings keyed only by speaker (e.g.
+    // "Jim Spignardo") still resolve to "Jim Spignardo - ProArch".
     const ltvByName = new Map<string, LtvLite>();
-    for (const r of filteredLtv) ltvByName.set(normName(r.client_name), r);
+    for (const r of filteredLtv) {
+      const full = normName(r.client_name);
+      if (!ltvByName.has(full)) ltvByName.set(full, r);
+      for (const part of r.client_name.split(/\s*-\s*/)) {
+        const key = normName(part);
+        if (key && !ltvByName.has(key)) ltvByName.set(key, r);
+      }
+    }
+    const resolveLtv = (name: string) =>
+      ltvByName.get(normName(name)) ??
+      ltvByName.get(normName(name.split(/\s*-\s*/)[0])) ??
+      null;
+
     const map = new Map<
       string,
       { client: string; count: number; goal: number; cm: string | null }
     >();
     for (const b of filteredBookings.filter((b) => inRange(b.date_secured, monthStart))) {
-      const k = b.client_name ?? "Unassigned";
+      const ltvRow = b.client_name ? resolveLtv(b.client_name) : null;
+      const k = ltvRow?.client_name ?? b.client_name ?? "Unassigned";
       if (!map.has(k)) {
-        const ltvRow = ltvByName.get(normName(k));
         map.set(k, {
           client: k,
           count: 0,
@@ -411,6 +426,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       (a, b) => b.count - a.count || a.client.localeCompare(b.client)
     );
   }, [filteredBookings, filteredLtv]);
+
 
   // Bookings per speaker THIS MONTH (grid) — resolved via speakers table
   const speakerMonthGrid = useMemo(() => {
