@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -33,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PulseView } from "@/components/overview/PulseView";
 
 type LtvRow = {
   id: string;
@@ -126,6 +128,7 @@ const Overview = () => {
   const [syncing, setSyncing] = useState(false);
   const [cmFilter, setCmFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [view, setView] = useState<"campaigns" | "pulse">("campaigns");
 
   useEffect(() => {
     document.title = "Overview — Kitcaster Campaign Command Center";
@@ -292,8 +295,14 @@ const Overview = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2">
+        {/* View toggle + filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Tabs value={view} onValueChange={(v) => setView(v as "campaigns" | "pulse")}>
+            <TabsList className="h-8">
+              <TabsTrigger value="campaigns" className="text-xs px-3">Campaigns</TabsTrigger>
+              <TabsTrigger value="pulse" className="text-xs px-3">Kitcaster Pulse</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Select value={cmFilter} onValueChange={setCmFilter}>
             <SelectTrigger className="w-56 h-8 text-sm">
               <SelectValue placeholder="Campaign Manager" />
@@ -307,19 +316,28 @@ const Overview = () => {
               ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-56 h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">All active</SelectItem>
-              <SelectItem value="on_track">On track</SelectItem>
-              <SelectItem value="needs_attention">Needs attention</SelectItem>
-              <SelectItem value="at_risk">At risk</SelectItem>
-              <SelectItem value="renewing_soon">Renewing in 60d</SelectItem>
-            </SelectContent>
-          </Select>
+          {view === "campaigns" && (
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-56 h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">All active</SelectItem>
+                <SelectItem value="on_track">On track</SelectItem>
+                <SelectItem value="needs_attention">Needs attention</SelectItem>
+                <SelectItem value="at_risk">At risk</SelectItem>
+                <SelectItem value="renewing_soon">Renewing in 60d</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
+
+        {view === "pulse" ? (
+          <PulseView cmFilter={cmFilter} />
+        ) : (
+          <>
+
+
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -490,6 +508,8 @@ const Overview = () => {
             </div>
           </Card>
         </div>
+          </>
+        )}
       </main>
     </div>
   );
