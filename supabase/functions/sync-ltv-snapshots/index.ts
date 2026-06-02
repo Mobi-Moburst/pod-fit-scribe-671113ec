@@ -29,7 +29,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   total_planned_bookings_by_eom: ["Total Planned Bookings by EOM_KG", "Total Planned Bookings by EOM"],
   cumulative_pct_fulfilled: ["Cumulative % Fulfilled"],
   deliverables_completed_this_month: ["Deliverables Completed this Month"],
-  goal_this_month: ["Goal this Month_KG", "Goal this Month"],
+  goal_this_month: ["Deliverables Goal this Month_KG", "Goal this Month_KG", "Goal this Month"],
   current_month_cumulative_pct_fulfilled: ["Current Month Cumulative % Fulfilled"],
   adjusted_goal: ["Adjusted Goal"],
   trend_vs_last_month: ["Trend vs Last Month"],
