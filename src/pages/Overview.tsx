@@ -387,7 +387,7 @@ const Overview = () => {
                 <SelectItem value="on_track">On track</SelectItem>
                 <SelectItem value="needs_attention">Needs attention</SelectItem>
                 <SelectItem value="at_risk">At risk</SelectItem>
-                <SelectItem value="renewing_soon">Renewing in 60d</SelectItem>
+                
               </SelectContent>
             </Select>
           )}
