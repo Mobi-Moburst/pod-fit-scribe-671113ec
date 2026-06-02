@@ -242,22 +242,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthFilter]);
-
-  async function sync() {
-    setSyncing(true);
-    const { data, error } = await supabase.functions.invoke("sync-momentum-bookings");
-    setSyncing(false);
-    if (error) {
-      toast({ title: "Sync failed", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({
-      title: "Momentum synced",
-      description: `${(data as any)?.upserted ?? 0} bookings · ${(data as any)?.matched_to_companies ?? 0} matched`,
-    });
-    load();
-  }
+  }, [monthFilter, syncSignal]);
 
   const filteredBookings = useMemo(() => {
     let rows = bookings.filter(isBooking);
