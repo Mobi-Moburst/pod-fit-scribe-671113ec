@@ -124,6 +124,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   const [speakers, setSpeakers] = useState<SpeakerLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [inferring, setInferring] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -419,7 +420,30 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={inferring}
+          onClick={async () => {
+            setInferring(true);
+            const { data, error } = await supabase.functions.invoke("infer-booking-industries");
+            setInferring(false);
+            if (error) {
+              toast({ title: "Industry inference failed", description: error.message, variant: "destructive" });
+              return;
+            }
+            const d = data as any;
+            toast({
+              title: "Industries inferred",
+              description: `${d?.bookings_updated ?? 0} bookings updated across ${d?.clients_total ?? 0} clients`,
+            });
+            load();
+          }}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${inferring ? "animate-spin" : ""}`} />
+          {inferring ? "Inferring…" : "Infer industries"}
+        </Button>
         <Button size="sm" variant="outline" onClick={sync} disabled={syncing}>
           <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
           {syncing ? "Syncing…" : "Sync Momentum"}
