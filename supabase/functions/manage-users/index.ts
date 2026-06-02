@@ -85,32 +85,50 @@ Deno.serve(async (req) => {
         // Generate a random temporary password
         const tempPassword = crypto.randomUUID().slice(0, 16) + "Aa1!";
 
+        let userId: string | undefined;
+        let wasExisting = false;
+
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
           email,
           password: tempPassword,
           email_confirm: true,
         });
-        if (createError) throw createError;
 
-        // Assign role
-        const { error: roleError } = await adminClient.from("user_roles").insert({
-          user_id: newUser.user!.id,
-          role,
-        });
+        if (createError) {
+          const msg = (createError.message ?? "").toLowerCase();
+          const alreadyExists = msg.includes("already been registered") || msg.includes("already registered") || msg.includes("already exists");
+          if (!alreadyExists) throw createError;
+
+          // User exists in auth but probably has no role assigned — find them and attach a role
+          wasExisting = true;
+          const { data: list, error: listErr } = await adminClient.auth.admin.listUsers();
+          if (listErr) throw listErr;
+          const existing = list.users.find((u: any) => (u.email ?? "").toLowerCase() === email.toLowerCase());
+          if (!existing) throw new Error("User reported as existing but not found in auth.users");
+          userId = existing.id;
+        } else {
+          userId = newUser.user!.id;
+        }
+
+        // Upsert role (idempotent)
+        const { error: roleError } = await adminClient.from("user_roles").upsert(
+          { user_id: userId!, role },
+          { onConflict: "user_id,role" }
+        );
         if (roleError) throw roleError;
 
         // Send password reset so user can set their own password
-        // We use the admin client's generateLink to create a reset link
-        const { error: resetError } = await adminClient.auth.admin.generateLink({
+        await adminClient.auth.admin.generateLink({
           type: "recovery",
           email,
         });
-        // Non-critical if this fails — admin can manually trigger reset
 
-        return new Response(JSON.stringify({ 
-          success: true, 
-          user: { id: newUser.user!.id, email },
-          message: "User created. They'll need to use 'Forgot Password' on login to set their password."
+        return new Response(JSON.stringify({
+          success: true,
+          user: { id: userId, email },
+          message: wasExisting
+            ? "User already existed — role assigned and recovery link sent."
+            : "User created. They'll need to use 'Forgot Password' on login to set their password."
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
