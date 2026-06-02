@@ -460,8 +460,10 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
   // Per-client bookings — sourced from active LTV roster (not Momentum)
   const perClient = useMemo(() => {
+    const ACTIVE = new Set(["On track", "Behind", "Billing Paused"]);
     return filteredLtv
-      .filter((r) => r.offboarding !== true)
+      .filter((r) => r.zz_complete !== true && r.offboarding !== true)
+      .filter((r) => ACTIVE.has(r.status ?? ""))
       .filter((r) => {
         const n = (r.client_name ?? "").trim().toLowerCase();
         return n && !n.startsWith("insert new client");
