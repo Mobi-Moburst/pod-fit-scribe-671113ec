@@ -845,7 +845,6 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                   <TableHead>CM</TableHead>
                   <TableHead className="text-right">This mo.</TableHead>
                   <TableHead className="text-right">YTD</TableHead>
-                  <TableHead className="text-right">Last booking</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -855,9 +854,6 @@ export function PulseView({ cmFilter }: PulseViewProps) {
                     <TableCell className="text-xs text-muted-foreground">{r.cm ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.thisMonth}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.ytd}</TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      {fmtDate(r.last)}
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
