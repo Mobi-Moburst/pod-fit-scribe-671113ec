@@ -124,7 +124,7 @@ function pctTone(pct: number | null) {
   return "text-red-500";
 }
 
-export function PulseView({ cmFilter, monthFilter = "current" }: PulseViewProps) {
+export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }: PulseViewProps) {
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ltv, setLtv] = useState<LtvLite[]>([]);
