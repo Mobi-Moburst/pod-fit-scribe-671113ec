@@ -394,7 +394,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
     const map = new Map<
       string,
-      { client: string; count: number; goal: number; cm: string | null }
+      { client: string; count: number; goal: number; cm: string | null; hasLtv: boolean }
     >();
     for (const b of filteredBookings.filter((b) => inRange(b.date_secured, monthStart))) {
       const ltvRow = b.client_name ? resolveLtv(b.client_name) : null;
@@ -402,12 +402,16 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       if (!map.has(k)) {
         map.set(k, {
           client: k,
-          count: 0,
+          // Prefer the LTV "deliverables completed this month" (source of
+          // truth in Airtable) over our raw booking count.
+          count: ltvRow ? Number(ltvRow.deliverables_completed_this_month) || 0 : 0,
           goal: ltvRow?.goal_this_month ?? 0,
           cm: b.campaign_manager ?? ltvRow?.campaign_manager ?? null,
+          hasLtv: !!ltvRow,
         });
       }
-      map.get(k)!.count++;
+      // Only fall back to raw booking counts when no LTV row exists.
+      if (!map.get(k)!.hasLtv) map.get(k)!.count++;
     }
     // Include LTV clients with goals but zero bookings this month so the gap is visible
     for (const r of filteredLtv) {
@@ -416,9 +420,10 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       if (!map.has(r.client_name)) {
         map.set(r.client_name, {
           client: r.client_name,
-          count: 0,
+          count: Number(r.deliverables_completed_this_month) || 0,
           goal: r.goal_this_month,
           cm: r.campaign_manager,
+          hasLtv: true,
         });
       }
     }
@@ -426,6 +431,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
       (a, b) => b.count - a.count || a.client.localeCompare(b.client)
     );
   }, [filteredBookings, filteredLtv]);
+
 
 
   // Bookings per speaker THIS MONTH (grid) — resolved via speakers table
