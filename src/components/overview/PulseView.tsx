@@ -79,9 +79,18 @@ function startOfMonth(d = new Date()) {
 function startOfYear(d = new Date()) {
   return new Date(d.getFullYear(), 0, 1);
 }
+function parseLocalDate(date: string): Date {
+  // YYYY-MM-DD strings parse as UTC midnight by default, which shifts them a
+  // day in negative-offset timezones. Parse as local-midnight instead.
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (ymd) {
+    return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+  }
+  return new Date(date);
+}
 function inRange(date: string | null, from: Date, to?: Date) {
   if (!date) return false;
-  const d = new Date(date);
+  const d = parseLocalDate(date);
   if (isNaN(d.getTime())) return false;
   if (d < from) return false;
   if (to && d > to) return false;
