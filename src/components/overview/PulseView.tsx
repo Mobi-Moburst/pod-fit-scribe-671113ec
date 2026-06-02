@@ -210,8 +210,10 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
   const activeSMEs = filteredLtv.length;
 
-  // Backlogged: behind by >= one monthly goal worth of bookings
+  // Backlogged: remaining >= 2x monthly goal. At risk: mid-month or later AND >= 1.5x but < 2x.
   const backlogged = useMemo(() => {
+    const dayOfMonth = new Date().getDate();
+    const pastMidMonth = dayOfMonth >= 15;
     return filteredLtv
       .filter((r) => r.offboarding !== true && r.zz_complete !== true)
       .map((r) => {
@@ -219,6 +221,11 @@ export function PulseView({ cmFilter }: PulseViewProps) {
         const actual = Number(r.actual_bookings_to_date ?? 0);
         const goal = Number(r.goal_this_month ?? 0);
         const remaining = planned - actual;
+        let status: "backlog" | "at-risk" | null = null;
+        if (goal > 0) {
+          if (remaining >= 2 * goal) status = "backlog";
+          else if (pastMidMonth && remaining >= 1.5 * goal) status = "at-risk";
+        }
         return {
           client: r.client_name,
           cm: r.campaign_manager,
@@ -226,11 +233,18 @@ export function PulseView({ cmFilter }: PulseViewProps) {
           total: planned,
           remaining,
           goal,
+          status,
         };
       })
-      .filter((r) => r.goal > 0 && r.remaining >= r.goal)
-      .sort((a, b) => b.remaining - a.remaining);
+      .filter((r) => r.status !== null)
+      .sort((a, b) => {
+        if (a.status !== b.status) return a.status === "backlog" ? -1 : 1;
+        return b.remaining - a.remaining;
+      });
   }, [filteredLtv]);
+
+  const backlogCount = backlogged.filter((r) => r.status === "backlog").length;
+  const atRiskCount = backlogged.filter((r) => r.status === "at-risk").length;
 
   // CM leaderboard
   const cmAgg = useMemo(() => {
