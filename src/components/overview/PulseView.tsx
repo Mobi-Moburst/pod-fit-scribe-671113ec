@@ -434,44 +434,6 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
 
 
-  // Bookings per speaker THIS MONTH (grid) — resolved via speakers table
-  const speakerMonthGrid = useMemo(() => {
-    const speakersByCompany = new Map<string, SpeakerLite[]>();
-    for (const sp of speakers) {
-      if (!speakersByCompany.has(sp.company_id)) speakersByCompany.set(sp.company_id, []);
-      speakersByCompany.get(sp.company_id)!.push(sp);
-    }
-    const map = new Map<
-      string,
-      { key: string; label: string; subtitle: string; count: number }
-    >();
-    for (const b of filteredBookings.filter((b) => inRange(b.date_secured, monthStart))) {
-      let label = "Unassigned";
-      let subtitle = "";
-      let key = "unassigned";
-      if (b.company_id && speakersByCompany.has(b.company_id)) {
-        const list = speakersByCompany.get(b.company_id)!;
-        if (list.length === 1) {
-          label = list[0].name;
-          subtitle = b.client_name ?? "";
-          key = `sp:${list[0].id}`;
-        } else {
-          label = `${b.client_name ?? "Company"} — multiple speakers`;
-          subtitle = `${list.length} speakers`;
-          key = `multi:${b.company_id}`;
-        }
-      } else {
-        label = b.client_name ?? "Unassigned";
-        subtitle = "No matched company";
-        key = `un:${label}`;
-      }
-      if (!map.has(key)) map.set(key, { key, label, subtitle, count: 0 });
-      map.get(key)!.count++;
-    }
-    return Array.from(map.values()).sort(
-      (a, b) => b.count - a.count || a.label.localeCompare(b.label)
-    );
-  }, [filteredBookings, speakers]);
 
   // Per-client bookings (existing table)
   const perClient = useMemo(() => {
