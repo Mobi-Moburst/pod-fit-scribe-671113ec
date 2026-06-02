@@ -126,6 +126,9 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ltv, setLtv] = useState<LtvLite[]>([]);
   const [speakers, setSpeakers] = useState<SpeakerLite[]>([]);
+  const [offboarding, setOffboarding] = useState<
+    Array<{ client_name: string; campaign_manager: string | null; date_ended: string | null }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [openIndustry, setOpenIndustry] = useState<string | null>(null);
@@ -133,7 +136,7 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
   async function load() {
     setLoading(true);
-    const [b, l, s] = await Promise.all([
+    const [b, l, s, o] = await Promise.all([
       supabase
         .from("momentum_bookings")
         .select(
@@ -150,13 +153,18 @@ export function PulseView({ cmFilter }: PulseViewProps) {
         .from("speakers")
         .select("id, name, company_id, archived_at")
         .is("archived_at", null),
+      supabase
+        .from("ltv_offboarding")
+        .select("client_name, campaign_manager, date_ended"),
     ]);
     if (b.error) toast({ title: "Failed to load bookings", description: b.error.message, variant: "destructive" });
     setBookings((b.data ?? []) as Booking[]);
     setLtv((l.data ?? []) as LtvLite[]);
     setSpeakers((s.data ?? []) as SpeakerLite[]);
+    setOffboarding((o.data ?? []) as typeof offboarding);
     setLoading(false);
   }
+
 
   useEffect(() => {
     load();
