@@ -210,36 +210,44 @@ export function PulseView({ cmFilter }: PulseViewProps) {
 
   const activeSMEs = filteredLtv.length;
 
-  // Backlogged: remaining >= 2x monthly goal. At risk: mid-month or later AND >= 1.5x but < 2x.
+  // Backlog logic (per management):
+  //   "Deliverables Goal this Month_KG >= 2 × Total Bookings Per Month"
+  // i.e. goal_this_month already inflates with missed months, so when it
+  // reaches 2× what's actually been booked this month, the client is behind
+  // by an entire month of contracted deliverables.
+  //   - Backlog (red):  day >= 15 AND goal >= 2 × completed_this_month
+  //   - At risk (amber): day 8–14 AND same ratio (early warning)
   const backlogged = useMemo(() => {
     const dayOfMonth = new Date().getDate();
-    const pastMidMonth = dayOfMonth >= 15;
     return filteredLtv
       .filter((r) => r.offboarding !== true && r.zz_complete !== true)
       .map((r) => {
+        const goal = Number(r.goal_this_month ?? 0);
+        const completed = Number(r.deliverables_completed_this_month ?? 0);
         const planned = Number(r.total_planned_bookings_by_eom ?? 0);
         const actual = Number(r.actual_bookings_to_date ?? 0);
-        const goal = Number(r.goal_this_month ?? 0);
-        const remaining = planned - actual;
+        const ratioHit = goal > 0 && goal >= 2 * completed;
         let status: "backlog" | "at-risk" | null = null;
-        if (goal > 0) {
-          if (remaining >= 2 * goal) status = "backlog";
-          else if (pastMidMonth && remaining >= 1.5 * goal) status = "at-risk";
+        if (ratioHit) {
+          if (dayOfMonth >= 15) status = "backlog";
+          else if (dayOfMonth >= 8) status = "at-risk";
         }
         return {
           client: r.client_name,
           cm: r.campaign_manager,
           current: actual,
           total: planned,
-          remaining,
+          remaining: planned - actual,
           goal,
+          completed,
           status,
         };
       })
       .filter((r) => r.status !== null)
       .sort((a, b) => {
         if (a.status !== b.status) return a.status === "backlog" ? -1 : 1;
-        return b.remaining - a.remaining;
+        // Bigger gap (goal − completed) first
+        return (b.goal - b.completed) - (a.goal - a.completed);
       });
   }, [filteredLtv]);
 
