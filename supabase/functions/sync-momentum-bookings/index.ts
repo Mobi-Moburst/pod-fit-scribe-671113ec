@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
           const f = rec.fields ?? {};
           const clientName = toText(f["Client"]) ?? "";
           const m = matchClient(clientName);
+          const podcastIndustry = toText(f["Podcast Industry"]);
           allRows.push({
             org_id: TEAM_ORG_ID,
             airtable_record_id: rec.id,
@@ -155,7 +156,7 @@ Deno.serve(async (req) => {
             date_secured: toDate(f["Date Secured"]),
             start_date_time: toTs(f["Start Date and Time"]),
             company_id: m.company_id,
-            industry: m.industry,
+            industry: podcastIndustry ?? m.industry,
             raw_fields: f,
             synced_at: new Date().toISOString(),
           });
