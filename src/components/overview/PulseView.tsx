@@ -123,7 +123,7 @@ function pctTone(pct: number | null) {
   return "text-red-500";
 }
 
-export function PulseView({ cmFilter }: PulseViewProps) {
+export function PulseView({ cmFilter, monthFilter = "current" }: PulseViewProps) {
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ltv, setLtv] = useState<LtvLite[]>([]);
@@ -134,43 +134,114 @@ export function PulseView({ cmFilter }: PulseViewProps) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [openIndustry, setOpenIndustry] = useState<string | null>(null);
-  
+
+  const isHistoric = monthFilter !== "current" && /^\d{4}-\d{2}$/.test(monthFilter);
+
+  // Compute the month window we're reporting on
+  const { monthStart, monthEnd, yearStart } = useMemo(() => {
+    if (isHistoric) {
+      const [y, m] = monthFilter.split("-").map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0, 23, 59, 59);
+      const yStart = new Date(y, 0, 1);
+      return { monthStart: start, monthEnd: end, yearStart: yStart };
+    }
+    const start = startOfMonth();
+    return {
+      monthStart: start,
+      monthEnd: new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59),
+      yearStart: startOfYear(),
+    };
+  }, [monthFilter, isHistoric]);
 
   async function load() {
     setLoading(true);
-    const [b, l, s, o] = await Promise.all([
-      supabase
-        .from("momentum_bookings")
-        .select(
-          "id, campaign_manager, client_name, podcast_name, podcast_url, host_name, activity_type, date_secured, industry, company_id"
-        )
-        .order("date_secured", { ascending: false })
-        .limit(5000),
-      supabase
-        .from("ltv_snapshots")
-        .select(
-          "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, total_bookings_per_month, cohort, campaign_success_status, status, synced_at"
-        ),
-      supabase
-        .from("speakers")
-        .select("id, name, company_id, archived_at")
-        .is("archived_at", null),
-      supabase
-        .from("ltv_offboarding")
-        .select("client_name, campaign_manager, date_ended"),
-    ]);
-    if (b.error) toast({ title: "Failed to load bookings", description: b.error.message, variant: "destructive" });
-    setBookings((b.data ?? []) as Booking[]);
-    setLtv((l.data ?? []) as LtvLite[]);
-    setSpeakers((s.data ?? []) as SpeakerLite[]);
-    setOffboarding((o.data ?? []) as typeof offboarding);
+
+    const bookingsQ = supabase
+      .from("momentum_bookings")
+      .select(
+        "id, campaign_manager, client_name, podcast_name, podcast_url, host_name, activity_type, date_secured, industry, company_id"
+      )
+      .order("date_secured", { ascending: false })
+      .limit(5000);
+    const speakersQ = supabase
+      .from("speakers")
+      .select("id, name, company_id, archived_at")
+      .is("archived_at", null);
+
+    if (isHistoric) {
+      const [b, h, s] = await Promise.all([
+        bookingsQ,
+        supabase
+          .from("ltv_monthly_snapshots")
+          .select(
+            "source, client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, total_bookings_per_month, cohort, campaign_success_status, status, date_ended, snapshotted_at"
+          )
+          .eq("year_month", monthFilter),
+        speakersQ,
+      ]);
+      if (b.error) toast({ title: "Failed to load bookings", description: b.error.message, variant: "destructive" });
+      setBookings((b.data ?? []) as Booking[]);
+      const hist = (h.data ?? []) as any[];
+      setLtv(
+        hist
+          .filter((r) => r.source === "ltv")
+          .map((r) => ({
+            client_name: r.client_name,
+            campaign_manager: r.campaign_manager,
+            goal_this_month: r.goal_this_month,
+            deliverables_completed_this_month: r.deliverables_completed_this_month,
+            offboarding: r.offboarding,
+            zz_complete: r.zz_complete,
+            renewal_date: r.renewal_date,
+            renewed: r.renewed,
+            current_month_cumulative_pct_fulfilled: r.current_month_cumulative_pct_fulfilled,
+            actual_bookings_to_date: r.actual_bookings_to_date,
+            total_planned_bookings_by_eom: r.total_planned_bookings_by_eom,
+            total_bookings_per_month: r.total_bookings_per_month,
+            cohort: r.cohort,
+            campaign_success_status: r.campaign_success_status,
+            status: r.status,
+            synced_at: r.snapshotted_at,
+          })) as LtvLite[]
+      );
+      setOffboarding(
+        hist
+          .filter((r) => r.source === "offboarding")
+          .map((r) => ({
+            client_name: r.client_name,
+            campaign_manager: r.campaign_manager,
+            date_ended: r.date_ended,
+          }))
+      );
+      setSpeakers((s.data ?? []) as SpeakerLite[]);
+    } else {
+      const [b, l, s, o] = await Promise.all([
+        bookingsQ,
+        supabase
+          .from("ltv_snapshots")
+          .select(
+            "client_name, campaign_manager, goal_this_month, deliverables_completed_this_month, offboarding, zz_complete, renewal_date, renewed, current_month_cumulative_pct_fulfilled, actual_bookings_to_date, total_planned_bookings_by_eom, total_bookings_per_month, cohort, campaign_success_status, status, synced_at"
+          ),
+        speakersQ,
+        supabase
+          .from("ltv_offboarding")
+          .select("client_name, campaign_manager, date_ended"),
+      ]);
+      if (b.error) toast({ title: "Failed to load bookings", description: b.error.message, variant: "destructive" });
+      setBookings((b.data ?? []) as Booking[]);
+      setLtv((l.data ?? []) as LtvLite[]);
+      setSpeakers((s.data ?? []) as SpeakerLite[]);
+      setOffboarding((o.data ?? []) as typeof offboarding);
+    }
     setLoading(false);
   }
 
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthFilter]);
 
   async function sync() {
     setSyncing(true);
@@ -199,9 +270,6 @@ export function PulseView({ cmFilter }: PulseViewProps) {
     return rows;
   }, [ltv, cmFilter]);
 
-  const monthStart = startOfMonth();
-  const yearStart = startOfYear();
-  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59);
 
   // KPI strip
   const bookingsThisMonth = filteredBookings.filter((b) => inRange(b.date_secured, monthStart)).length;
