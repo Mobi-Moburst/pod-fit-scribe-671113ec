@@ -1,31 +1,47 @@
-## Remaining work to wire up the ticket cache
+## One-time HubSpot ticket backfill
 
-The table `hubspot_tickets_cache` and the `hubspot-sync-tickets` edge function already exist. Now finish the wiring.
+Goal: pull historical tickets that the original `createdate >= year start` sync missed — specifically scheduled / previously scheduled podcasts for the 29 active clients — into `hubspot_tickets_cache`.
 
-### 1. Rewrite `hubspot-tickets` to read from cache
-- Replace the live HubSpot search with a Supabase query against `hubspot_tickets_cache` for the caller's `org_id`.
-- Keep the existing response shape so the frontend doesn't change.
-- Support the same query params (pipeline filter, search, pagination) but resolve them as SQL filters.
-- If the cache is empty for the org, trigger an inline `full` sync once, then return results.
+### Filter criteria (confirmed)
+- **Stages:** `1366108009`, `1366108010` (you listed `1366108010` twice — I'll treat it as 2 unique stage IDs; if there's a 3rd stage, paste the ID before I run it and I'll add it).
+- **Clients:** `kc_client` property must match the name of an active (non-archived) speaker in our DB.
+- **Date window:** `createdate >= now() - 24 months` (no upper bound).
+- **Pipeline:** the one configured in `hubspot_settings.pipeline_id`.
 
-### 2. Update `hubspot-create-ticket` dedupe lookup
-- Before calling HubSpot search to check for duplicates, query `hubspot_tickets_cache` first by `kc_shortlist_id` (and `show_url` as fallback).
-- Only fall through to live HubSpot search if no cache hit.
-- After successful create, insert the new ticket into the cache so it's immediately visible.
+### Technical plan
 
-### 3. Settings UI: "Sync tickets now" button
-- In `HubspotSettingsCard`, add a section showing:
-  - Last sync time (max `synced_at` from cache for the org)
-  - Row count
-  - "Sync now" button that invokes `hubspot-sync-tickets` with `{ mode: 'incremental' }`
-  - Optional "Full resync" link that runs `{ mode: 'full' }`
-- Show toast on success/failure; refresh stats after sync completes.
+1. **Extend `hubspot-sync-tickets`** with a new `mode: 'backfill'` branch that accepts:
+   - `stage_ids: string[]` (defaults to the two scheduled stages above)
+   - `months_back: number` (defaults to 24)
+   - `client_names?: string[]` (optional; if omitted, server loads active speaker names from `speakers` where `archived_at is null`)
 
-### 4. Schedule the cron (10-minute incremental sync)
-- Enable `pg_cron` and `pg_net` extensions if not already on.
-- Insert (via the DB insert tool, not a migration) a `cron.schedule` that POSTs to `hubspot-sync-tickets` with `{ mode: 'incremental' }` every 10 minutes using the project URL + anon key.
+   Search loop reuses the existing pagination + 10k-cap handling, but the HubSpot `filterGroups` become:
+   ```
+   hs_pipeline EQ <pipeline_id>
+   createdate GTE <now - 24mo>
+   hs_lastmodifieddate GTE <cursor>
+   hs_pipeline_stage IN [stage_ids]        // one filterGroup per stage (HubSpot uses OR across groups)
+   kc_client IN [client_names]             // chunked into multiple filterGroups if >N names
+   ```
+   Because HubSpot's search API treats `filterGroups` as OR and `filters` within a group as AND, we'll build a cartesian product: one group per `(stage, client-chunk)` pair. Client names get chunked at ~25 per `IN` clause to stay under HubSpot's per-filter value cap.
+
+   Upserts into `hubspot_tickets_cache` reuse the existing `shapeRow` + chunked upsert path. No stale-delete (backfill is additive only).
+
+2. **Settings UI — new "Backfill historical tickets" action** in `HubspotSettingsCard`:
+   - Secondary button under the existing Sync now / Full resync row.
+   - Confirmation dialog showing: stage IDs, lookback window, and the count of active speakers that will be matched.
+   - On click → invoke `hubspot-sync-tickets` with `{ mode: 'backfill' }`.
+   - Toast on completion with `{ synced, pages, duration_ms }`; refresh the cache stats.
+
+3. **Safety**
+   - Backfill is idempotent (upsert by `org_id,hubspot_ticket_id`) so it's safe to re-run.
+   - No deletes. Existing cache rows stay intact.
+   - Logs each filter group so we can verify coverage.
+
+### What I need from you before I build
+- Confirm the stage IDs — your message had `1366108010` listed twice. Is the intended set just **two** stages (`1366108009` + `1366108010`), or is there a third I should add?
 
 ### Out of scope
-- Backfilling pre-2026 tickets.
-- Two-way sync (changes made in the app pushing back to HubSpot beyond existing create flow).
-- Modifying associations logic.
+- Backfilling pre-24-month tickets.
+- Changing the 10-min incremental cron.
+- Touching the create-ticket / dedupe flow.

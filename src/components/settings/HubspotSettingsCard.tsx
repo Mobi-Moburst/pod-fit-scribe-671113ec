@@ -39,7 +39,7 @@ export function HubspotSettingsCard() {
   const [genericDomains, setGenericDomains] = useState('apple.com\npodcasts.apple.com\nspotify.com\nyoutube.com\nsubstack.com');
   const [savedPipelineLabel, setSavedPipelineLabel] = useState<string | null>(null);
   const [syncStats, setSyncStats] = useState<{ count: number; lastSync: string | null } | null>(null);
-  const [syncing, setSyncing] = useState<false | 'incremental' | 'full'>(false);
+  const [syncing, setSyncing] = useState<false | 'incremental' | 'full' | 'backfill'>(false);
 
   async function loadSyncStats() {
     const { count } = await supabase
@@ -54,7 +54,17 @@ export function HubspotSettingsCard() {
     setSyncStats({ count: count || 0, lastSync: latest?.synced_at || null });
   }
 
-  async function runSync(mode: 'incremental' | 'full') {
+  async function runSync(mode: 'incremental' | 'full' | 'backfill') {
+    if (mode === 'backfill') {
+      const ok = window.confirm(
+        'One-time backfill:\n\n' +
+          '• Stages: 1366108009, 1366108010 (Scheduled)\n' +
+          '• Lookback: last 24 months\n' +
+          '• Clients: all active (non-archived) speakers\n\n' +
+          'This is additive (no deletes) and safe to re-run. Continue?'
+      );
+      if (!ok) return;
+    }
     setSyncing(mode);
     try {
       const { data, error } = await supabase.functions.invoke('hubspot-sync-tickets', { body: { mode } });
@@ -62,7 +72,7 @@ export function HubspotSettingsCard() {
       if ((data as any)?.error) throw new Error((data as any).error);
       toast({
         title: `Sync complete (${mode})`,
-        description: `${(data as any)?.synced ?? 0} upserted, ${(data as any)?.deleted ?? 0} deleted`,
+        description: `${(data as any)?.synced ?? 0} upserted, ${(data as any)?.deleted ?? 0} deleted, ${(data as any)?.pages ?? 0} pages`,
       });
       await loadSyncStats();
     } catch (err: any) {
@@ -276,6 +286,10 @@ export function HubspotSettingsCard() {
                 <Button size="sm" variant="ghost" onClick={() => runSync('full')} disabled={!!syncing}>
                   {syncing === 'full' && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
                   Full resync
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => runSync('backfill')} disabled={!!syncing}>
+                  {syncing === 'backfill' && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                  Backfill historical (24mo)
                 </Button>
               </div>
             </div>
