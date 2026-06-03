@@ -34,6 +34,7 @@ export type ResolveResult = {
   duplicate_ticket_id: string | null;
   suggested: {
     domain: string | null;
+    website: string | null;
     email: string | null;
   };
 };
