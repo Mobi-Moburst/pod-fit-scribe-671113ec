@@ -642,6 +642,13 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
         )}
       </Card>
 
+      <BacklogTriagePanel
+        row={selectedBacklog}
+        open={!!selectedBacklog}
+        onOpenChange={(open) => !open && setSelectedBacklog(null)}
+      />
+
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* CM leaderboard */}
         <Card className="card-surface p-4">
