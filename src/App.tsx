@@ -82,6 +82,7 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/settings/integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
               <Route path="/settings/integrations/hubspot" element={<ProtectedRoute><IntegrationHubspot /></ProtectedRoute>} />
+              <Route path="/settings/integrations/fireflies" element={<ProtectedRoute><IntegrationFireflies /></ProtectedRoute>} />
               <Route path="/settings/synced-calls" element={<ProtectedRoute><SyncedCalls /></ProtectedRoute>} />
               <Route path="/settings/upload-notes" element={<ProtectedRoute><UploadNotes /></ProtectedRoute>} />
 
