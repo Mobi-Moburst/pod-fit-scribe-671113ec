@@ -58,7 +58,7 @@ export function HubspotSettingsCard() {
     if (mode === 'backfill') {
       const ok = window.confirm(
         'One-time backfill:\n\n' +
-          '• Stages: 1366108009, 1366108010 (Scheduled)\n' +
+          '• Stages: 1366108009, 1366108010, 1366108011 (Scheduled / Declined)\n' +
           '• Lookback: last 24 months\n' +
           '• Clients: all active (non-archived) speakers\n\n' +
           'This is additive (no deletes) and safe to re-run. Continue?'
