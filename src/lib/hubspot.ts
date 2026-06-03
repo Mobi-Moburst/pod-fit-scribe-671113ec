@@ -44,6 +44,7 @@ export type ResolvePreview = {
   company?: ResolvedEntity;
   contact?: ResolvedEntity;
   duplicate_ticket_id?: string | null;
+  suggested?: { domain: string | null; email: string | null };
 };
 
 export type Overrides = {
@@ -110,6 +111,7 @@ export async function resolveHubspotAssociations(
     company: data.company,
     contact: data.contact,
     duplicate_ticket_id: data.duplicate_ticket_id,
+    suggested: data.suggested,
   };
 }
 
