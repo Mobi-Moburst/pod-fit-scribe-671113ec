@@ -202,11 +202,12 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
   }
 
   // -------- Enrich from Rephonic (host email + Rephonic show URL) --------
-  // Run for both preview and create when we don't already have a HubSpot match.
+  // We need this for the contact's email even when the company already exists in HubSpot,
+  // so always run it unless the caller already supplied an email override.
   let rephonic: { description: string | null; listen_url: string | null; email: string | null; web_url: string | null; rephonic_url: string | null } = {
     description: null, listen_url: null, email: null, web_url: null, rephonic_url: null,
   };
-  if (!companyExisting) {
+  if (!overrides.host_email?.trim()) {
     rephonic = await fetchRephonicShowData(input.supabase, showUrl, showName);
   }
 
