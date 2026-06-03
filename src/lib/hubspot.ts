@@ -111,6 +111,7 @@ export async function resolveHubspotAssociations(
     company: data.company,
     contact: data.contact,
     duplicate_ticket_id: data.duplicate_ticket_id,
+    suggested: data.suggested,
   };
 }
 
