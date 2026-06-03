@@ -17,6 +17,8 @@ export type ResolveInput = {
   LOVABLE_API_KEY: string;
   HUBSPOT_API_KEY: string;
   dryRun: boolean;
+  callerEmail?: string | null;
+  supabase?: any; // SupabaseClient — used to invoke fetch-rephonic-metrics for show notes
 };
 
 export type ResolvedEntity = {
