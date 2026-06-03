@@ -283,8 +283,9 @@ const Research = () => {
                 <TabsList>
                   <TabsTrigger value="discover">Discover</TabsTrigger>
                   <TabsTrigger value="shortlist">
-                    Shortlist {shortlist.length > 0 && `(${shortlist.length})`}
+                    Shortlist {visibleShortlist.length > 0 && `(${visibleShortlist.length})`}
                   </TabsTrigger>
+                  <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
                 </TabsList>
                 <TabsContent value="discover" className="mt-4">
                   <DiscoverTab
@@ -294,15 +295,29 @@ const Research = () => {
                     onShortlisted={loadShortlist}
                   />
                 </TabsContent>
-                <TabsContent value="shortlist" className="mt-4">
+                <TabsContent value="shortlist" className="mt-4 space-y-2">
+                  {hiddenCount > 0 && (
+                    <div className="text-xs text-muted-foreground italic px-1">
+                      {hiddenCount} shortlisted show{hiddenCount === 1 ? '' : 's'} moved to Pipeline (already a HubSpot ticket).
+                    </div>
+                  )}
                   <ShortlistTab
-                    rows={shortlist}
+                    rows={visibleShortlist}
                     selectedId={selectedShortlistId}
                     onSelect={(id) => setSelectedShortlistId(id)}
                     onChanged={loadShortlist}
                   />
                 </TabsContent>
+                <TabsContent value="pipeline" className="mt-4">
+                  <PipelineTab
+                    speakerName={speaker.name}
+                    onTicketsLoaded={(subjects) =>
+                      setHubspotTicketNames(new Set(subjects.map((s) => normalizeShowName(s))))
+                    }
+                  />
+                </TabsContent>
               </Tabs>
+
             </div>
 
             {/* Right rail: angles */}
