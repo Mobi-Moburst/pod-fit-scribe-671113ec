@@ -65,14 +65,31 @@ export function BacklogTriagePanel({ row, open, onOpenChange }: Props) {
       setSpeakers([]);
       setCompanyId(null);
 
-      // 1. Resolve company by name (case-insensitive)
-      const { data: companies } = await supabase
-        .from("companies")
-        .select("id, name")
-        .is("archived_at", null);
-      const match = (companies || []).find(
-        (c) => c.name.trim().toLowerCase() === row.client.trim().toLowerCase()
-      );
+      // 1. Resolve company by name, with fallbacks for "Speaker - Company" style LTV labels
+      const raw = row.client.trim();
+      const norm = (s: string) => s.trim().toLowerCase();
+      const candidates = new Set<string>([norm(raw)]);
+      // Split on common separators (" - ", " / ", " | ", " – ", " — ")
+      raw.split(/\s+[-/|–—]\s+/).forEach((part) => {
+        if (part.trim()) candidates.add(norm(part));
+      });
+
+      const [{ data: companies }, { data: allSpeakers }] = await Promise.all([
+        supabase.from("companies").select("id, name").is("archived_at", null),
+        supabase
+          .from("speakers")
+          .select("id, name, company_id")
+          .is("archived_at", null),
+      ]);
+
+      // Try company name match first
+      let match = (companies || []).find((c) => candidates.has(norm(c.name)));
+      // Fallback: match a speaker by name, then resolve to their company
+      if (!match) {
+        const spk = (allSpeakers || []).find((s) => candidates.has(norm(s.name)));
+        if (spk) match = (companies || []).find((c) => c.id === spk.company_id) || null;
+      }
+
       if (cancelled) return;
       if (!match) {
         setCompanyMissing(true);
@@ -81,7 +98,23 @@ export function BacklogTriagePanel({ row, open, onOpenChange }: Props) {
       }
       setCompanyId(match.id);
 
-      // 2. Fetch speakers, last booking, and shortlists in parallel
+      // 2. Fetch last booking and shortlists in parallel (speakers already loaded)
+      const spk = (allSpeakers || []).filter((s) => s.company_id === match!.id);
+      const qStart = quarterStart().toISOString().slice(0, 10);
+      const [{ data: lastBooking }, { data: bookingsThisQ }] = await Promise.all([
+        supabase
+          .from("momentum_bookings")
+          .select("date_secured")
+          .eq("company_id", match.id)
+          .not("date_secured", "is", null)
+          .order("date_secured", { ascending: false })
+          .limit(1),
+        supabase
+          .from("momentum_bookings")
+          .select("date_secured")
+          .eq("company_id", match.id)
+          .gte("date_secured", qStart),
+      ]);
       const qStart = quarterStart().toISOString().slice(0, 10);
       const [{ data: spk }, { data: lastBooking }, { data: shortlists }, { data: bookingsThisQ }] =
         await Promise.all([
