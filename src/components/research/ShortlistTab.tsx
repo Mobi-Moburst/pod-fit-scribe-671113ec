@@ -155,7 +155,7 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
                       size="sm"
                       className="h-7 text-xs"
                       disabled={busyId === r.id}
-                      onClick={(e) => { e.stopPropagation(); sendToHubspot(r.id); }}
+                      onClick={(e) => { e.stopPropagation(); openHubspot(r); }}
                       title="Create a HubSpot ticket in Working 1"
                     >
                       {busyId === r.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -171,7 +171,7 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
                         <DropdownMenuItem onClick={() => onSelect(r.id)}>
                           <Lightbulb className="h-3.5 w-3.5 mr-2" /> Suggest angles
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => sendToHubspot(r.id)}>
+                        <DropdownMenuItem onClick={() => openHubspot(r)}>
                           <Send className="h-3.5 w-3.5 mr-2" /> Send to HubSpot
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStatus(r.id, 'pitched-elsewhere')}>
