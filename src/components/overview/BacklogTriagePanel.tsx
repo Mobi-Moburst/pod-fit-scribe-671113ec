@@ -65,14 +65,31 @@ export function BacklogTriagePanel({ row, open, onOpenChange }: Props) {
       setSpeakers([]);
       setCompanyId(null);
 
-      // 1. Resolve company by name (case-insensitive)
-      const { data: companies } = await supabase
-        .from("companies")
-        .select("id, name")
-        .is("archived_at", null);
-      const match = (companies || []).find(
-        (c) => c.name.trim().toLowerCase() === row.client.trim().toLowerCase()
-      );
+      // 1. Resolve company by name, with fallbacks for "Speaker - Company" style LTV labels
+      const raw = row.client.trim();
+      const norm = (s: string) => s.trim().toLowerCase();
+      const candidates = new Set<string>([norm(raw)]);
+      // Split on common separators (" - ", " / ", " | ", " – ", " — ")
+      raw.split(/\s+[-/|–—]\s+/).forEach((part) => {
+        if (part.trim()) candidates.add(norm(part));
+      });
+
+      const [{ data: companies }, { data: allSpeakers }] = await Promise.all([
+        supabase.from("companies").select("id, name").is("archived_at", null),
+        supabase
+          .from("speakers")
+          .select("id, name, company_id, headshot_url")
+          .is("archived_at", null),
+      ]);
+
+      // Try company name match first
+      let match = (companies || []).find((c) => candidates.has(norm(c.name))) || null;
+      // Fallback: match a speaker by name, then resolve to their company
+      if (!match) {
+        const spk = (allSpeakers || []).find((s) => candidates.has(norm(s.name)));
+        if (spk) match = (companies || []).find((c) => c.id === spk.company_id) || null;
+      }
+
       if (cancelled) return;
       if (!match) {
         setCompanyMissing(true);
@@ -81,42 +98,27 @@ export function BacklogTriagePanel({ row, open, onOpenChange }: Props) {
       }
       setCompanyId(match.id);
 
-      // 2. Fetch speakers, last booking, and shortlists in parallel
+      // 2. Speakers for this company + last booking + bookings this quarter
+      const companySpeakers = (allSpeakers || []).filter((s) => s.company_id === match!.id);
       const qStart = quarterStart().toISOString().slice(0, 10);
-      const [{ data: spk }, { data: lastBooking }, { data: shortlists }, { data: bookingsThisQ }] =
-        await Promise.all([
-          supabase
-            .from("speakers")
-            .select("id, name, headshot_url")
-            .eq("company_id", match.id)
-            .is("archived_at", null)
-            .order("name"),
-          supabase
-            .from("momentum_bookings")
-            .select("date_secured")
-            .eq("company_id", match.id)
-            .not("date_secured", "is", null)
-            .order("date_secured", { ascending: false })
-            .limit(1),
-          supabase
-            .from("research_shortlists")
-            .select("speaker_id, status")
-            .in(
-              "speaker_id",
-              // placeholder; refined after we know speaker ids
-              ["00000000-0000-0000-0000-000000000000"]
-            ),
-          supabase
-            .from("momentum_bookings")
-            .select("client_name, date_secured")
-            .eq("company_id", match.id)
-            .gte("date_secured", qStart),
-        ]);
+      const [{ data: lastBooking }, { data: bookingsThisQ }] = await Promise.all([
+        supabase
+          .from("momentum_bookings")
+          .select("date_secured")
+          .eq("company_id", match.id)
+          .not("date_secured", "is", null)
+          .order("date_secured", { ascending: false })
+          .limit(1),
+        supabase
+          .from("momentum_bookings")
+          .select("date_secured")
+          .eq("company_id", match.id)
+          .gte("date_secured", qStart),
+      ]);
       if (cancelled) return;
 
-      const speakerIds = (spk || []).map((s) => s.id);
+      const speakerIds = companySpeakers.map((s) => s.id);
 
-      // refetch shortlists now that we have ids
       let shortlistRows: { speaker_id: string; status: string }[] = [];
       if (speakerIds.length > 0) {
         const { data: sl } = await supabase
@@ -129,17 +131,14 @@ export function BacklogTriagePanel({ row, open, onOpenChange }: Props) {
       const shortlistByspeaker = new Map<string, number>();
       for (const s of shortlistRows) {
         if (!s.speaker_id) continue;
-        // count "active" pipeline: anything not rejected/passed/booked
         const status = (s.status || "").toLowerCase();
         if (["rejected", "passed", "booked", "removed"].includes(status)) continue;
         shortlistByspeaker.set(s.speaker_id, (shortlistByspeaker.get(s.speaker_id) || 0) + 1);
       }
 
-      // booked this quarter — momentum_bookings doesn't have speaker_id, so attribute to all speakers in the company.
-      // We display a single company-level number per speaker (same value), which is OK as a directional signal.
       const bookedQ = (bookingsThisQ || []).length;
 
-      const speakerRows: SpeakerRow[] = (spk || []).map((s) => ({
+      const speakerRows: SpeakerRow[] = companySpeakers.map((s) => ({
         id: s.id,
         name: s.name,
         headshot_url: s.headshot_url,
