@@ -296,7 +296,7 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     // Explicitly blank — isolate podcast contacts from the sales pipeline.
     hs_lead_status: '',
     lifecyclestage: '',
-    ...(ownerId ? { hubspot_owner_id: ownerId, hs_created_by_user_id: ownerId } : {}),
+    ...(ownerId ? { hubspot_owner_id: ownerId } : {}),
   };
 
   if (!contactId && !dryRun && (hostName.first || hostName.last || hostEmail)) {
