@@ -15,7 +15,7 @@ export type HubspotTicket = {
   show_url: string | null;
   kc_client: string | null;
 };
-export type HubspotStageGroup = HubspotStage & { tickets: HubspotTicket[] };
+export type HubspotStageGroup = { stage_id: string; label: string; order: number; tickets: HubspotTicket[] };
 
 export type HubspotSettings = {
   org_id: string;
