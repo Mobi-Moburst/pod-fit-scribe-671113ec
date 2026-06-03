@@ -113,20 +113,24 @@ serve(async (req) => {
       }
     }
 
-    const filterProp = mode === 'incremental' ? 'hs_lastmodifieddate' : 'createdate';
-    const filterOp = mode === 'incremental' ? 'GT' : 'GTE';
-
+    // Always sort + advance by hs_lastmodifieddate. HubSpot's search API caps
+    // `after` pagination at 10,000 results, so when we hit the cap we reset
+    // `after` and bump the filter cutoff to the last seen timestamp.
     const all: any[] = [];
+    const seenIds = new Set<string>();
+    let cursorTs = sinceTs;
     let after: string | undefined;
     let pages = 0;
-    while (pages < 200) {
+    let pageInWindow = 0;
+
+    while (pages < 500) {
       const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/tickets/search`, {
         method: 'POST', headers,
         body: JSON.stringify({
           filterGroups: [{
             filters: [
               { propertyName: 'hs_pipeline', operator: 'EQ', value: pipelineId },
-              { propertyName: filterProp, operator: filterOp, value: String(sinceTs) },
+              { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: String(cursorTs) },
             ],
           }],
           properties,
@@ -137,14 +141,33 @@ serve(async (req) => {
       });
       if (!resp.ok) {
         const t = await resp.text();
-        throw new Error(`HubSpot search ${resp.status}: ${t.slice(0, 400)}`);
+        throw new Error(`HubSpot search ${resp.status} (page ${pages}, after=${after}, cursorTs=${cursorTs}): ${t.slice(0, 400)}`);
       }
       const json = await resp.json();
-      all.push(...(json.results || []));
-      after = json.paging?.next?.after;
+      const results: any[] = json.results || [];
+      for (const r of results) {
+        if (!seenIds.has(r.id)) {
+          seenIds.add(r.id);
+          all.push(r);
+        }
+      }
       pages++;
+      pageInWindow++;
+      after = json.paging?.next?.after;
+
+      // Approaching HubSpot's 10k after-cap: reset and advance the date window
+      if (after && pageInWindow >= 95 && results.length > 0) {
+        const lastTs = Number(results[results.length - 1].properties?.hs_lastmodifieddate);
+        if (Number.isFinite(lastTs) && lastTs > cursorTs) {
+          cursorTs = lastTs;
+          after = undefined;
+          pageInWindow = 0;
+          continue;
+        }
+      }
       if (!after) break;
     }
+
 
     // Resolve owners (one fetch per unique id)
     const ownerIds = Array.from(new Set(all.map((t) => t.properties?.hubspot_owner_id).filter(Boolean)));
