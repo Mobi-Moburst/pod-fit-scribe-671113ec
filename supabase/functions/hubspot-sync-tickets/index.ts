@@ -55,7 +55,7 @@ serve(async (req) => {
       body.mode === 'full' ? 'full' : body.mode === 'backfill' ? 'backfill' : 'incremental';
 
     // Backfill params (used only when mode === 'backfill')
-    const DEFAULT_BACKFILL_STAGES = ['1366108009', '1366108010'];
+    const DEFAULT_BACKFILL_STAGES = ['1366108009', '1366108010', '1366108011'];
     const backfillStageIds: string[] = Array.isArray(body.stage_ids) && body.stage_ids.length
       ? body.stage_ids.map((s: any) => String(s))
       : DEFAULT_BACKFILL_STAGES;
