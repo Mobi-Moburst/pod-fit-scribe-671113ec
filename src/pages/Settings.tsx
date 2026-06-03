@@ -251,6 +251,9 @@ export default function Settings() {
           <>
             <Separator />
 
+            <HubspotSettingsCard />
+
+
             {/* Invite User */}
             <Card>
               <CardHeader>
