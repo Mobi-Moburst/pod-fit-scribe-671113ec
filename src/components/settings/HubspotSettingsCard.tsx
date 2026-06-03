@@ -287,6 +287,10 @@ export function HubspotSettingsCard() {
                   {syncing === 'full' && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
                   Full resync
                 </Button>
+                <Button size="sm" variant="ghost" onClick={() => runSync('backfill')} disabled={!!syncing}>
+                  {syncing === 'backfill' && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                  Backfill historical (24mo)
+                </Button>
               </div>
             </div>
           </>
