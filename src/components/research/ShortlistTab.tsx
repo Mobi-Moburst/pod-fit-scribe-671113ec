@@ -196,6 +196,13 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
           </Card>
         );
       })}
+      <SendToHubspotDialog
+        row={hubspotRow}
+        open={!!hubspotRow}
+        onOpenChange={(o) => !o && setHubspotRow(null)}
+        onCompleted={onChanged}
+      />
     </div>
   );
 }
+
