@@ -154,10 +154,15 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
 
   const showUrl = row.show_url || null;
   const showName = overrides.company_name || row.show_name;
-  const rawDomain = overrides.company_domain || parseDomain(showUrl);
-  const domain = rawDomain && !generic.includes(rawDomain) ? rawDomain : null;
 
-  // -------- Company resolve --------
+  // Domain from the shortlist row's show_url, but skip generic aggregator domains
+  // (podcasts.apple.com, spotify.com, etc.) — those are not the show's real home.
+  const rawDomainFromShowUrl = parseDomain(showUrl);
+  const showUrlDomain = rawDomainFromShowUrl && !generic.includes(rawDomainFromShowUrl)
+    ? rawDomainFromShowUrl
+    : null;
+
+  // -------- Company resolve (search HubSpot first) --------
   let companyId: string | null = null;
   let companyProps: Record<string, any> = {};
   let companyExisting = false;
@@ -170,9 +175,14 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     }, headers);
     if (hit[0]) { companyId = hit[0].id; companyProps = hit[0].properties; companyExisting = true; }
   }
-  if (!companyId && domain) {
+  // Try the user-supplied or show-url-derived domain (skipping generics).
+  const overrideDomain = overrides.company_domain && !generic.includes(overrides.company_domain.toLowerCase())
+    ? overrides.company_domain.toLowerCase()
+    : null;
+  const earlyDomain = overrideDomain || showUrlDomain;
+  if (!companyId && earlyDomain) {
     const hit = await searchObject('companies', {
-      filterGroups: [{ filters: [{ propertyName: 'domain', operator: 'EQ', value: domain }] }],
+      filterGroups: [{ filters: [{ propertyName: 'domain', operator: 'EQ', value: earlyDomain }] }],
       properties: ['name', 'domain', 'website', 'kc_show_url'],
       limit: 1,
     }, headers);
@@ -187,9 +197,29 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     if (hit[0]) { companyId = hit[0].id; companyProps = hit[0].properties; companyExisting = true; }
   }
 
+  // -------- Enrich from Rephonic (host email + real show domain) --------
+  // Run for both preview and create when we don't already have a HubSpot match — that's
+  // when we need real domain/email suggestions to populate the dialog and the create payload.
+  let rephonic: { description: string | null; listen_url: string | null; email: string | null; web_url: string | null } = {
+    description: null, listen_url: null, email: null, web_url: null,
+  };
+  if (!companyExisting) {
+    rephonic = await fetchRephonicShowData(input.supabase, showUrl, showName);
+  }
+
+  const rephonicDomain = (() => {
+    const d = parseDomain(rephonic.web_url);
+    if (!d) return null;
+    if (generic.includes(d)) return null;
+    return d;
+  })();
+
+  // Final domain priority: explicit override > show_url (non-generic) > Rephonic web_url > none.
+  const finalDomain = overrideDomain || showUrlDomain || rephonicDomain || null;
+
   const companyWillCreate: Record<string, any> = {
     name: showName,
-    ...(domain ? { domain, website: showUrl || `https://${domain}` } : {}),
+    ...(finalDomain ? { domain: finalDomain, website: showUrl || `https://${finalDomain}` } : {}),
     ...(showUrl ? { kc_show_url: showUrl } : {}),
     kc_created_by_app: 'command_center',
     kc_is_podcast: 'Yes',
@@ -200,8 +230,6 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
   if (ownerId) companyWillCreate.hubspot_owner_id = ownerId;
 
   if (!companyId && !dryRun) {
-    // Pull show description + first listen link from Rephonic only when we're about to create.
-    const rephonic = await fetchRephonicShowData(input.supabase, showUrl, showName);
     if (rephonic.description) companyWillCreate.kc_show_notes = rephonic.description;
     if (rephonic.listen_url) companyWillCreate.kc_apple_podcast_link = rephonic.listen_url;
 
@@ -217,7 +245,8 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
   const hostName = (overrides.host_first || overrides.host_last)
     ? { first: overrides.host_first || '', last: overrides.host_last || '' }
     : splitHostName(row.host_name);
-  const hostEmail = overrides.host_email?.trim() || null;
+  // Email priority: explicit override > Rephonic-provided show contact email.
+  const hostEmail = overrides.host_email?.trim() || rephonic.email || null;
 
   let contactId: string | null = null;
   let contactProps: Record<string, any> = {};
@@ -252,8 +281,6 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     kc_created_for_speaker_id: speaker.id,
     kc_created_by_app: 'command_center',
     // Explicitly blank — isolate podcast contacts from the sales pipeline.
-    // hs_lead_status stays blank ("--") and lifecyclestage stays unset
-    // ("Select a stage") so these never enter sales reporting.
     hs_lead_status: '',
     lifecyclestage: '',
     ...(ownerId ? { hubspot_owner_id: ownerId } : {}),
@@ -298,6 +325,10 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     company: { id: companyId, existing: companyExisting, properties: companyProps, will_create: companyExisting ? undefined : companyWillCreate },
     contact: { id: contactId, existing: contactExisting, properties: contactProps, will_create: (contactExisting || !contactId) ? undefined : contactWillCreate },
     duplicate_ticket_id,
+    suggested: {
+      domain: finalDomain,
+      email: rephonic.email || null,
+    },
   };
 }
 
