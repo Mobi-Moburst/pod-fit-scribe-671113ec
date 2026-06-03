@@ -163,30 +163,47 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
                       {r.categories && r.categories[0] && <Badge variant="outline" className="text-xs font-normal">{r.categories[0]}</Badge>}
                     </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" disabled={busyId === r.id} className="h-7 w-7 p-0">
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onClick={() => onSelect(r.id)}>
-                        <Lightbulb className="h-3.5 w-3.5 mr-2" /> Suggest angles
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setStatus(r.id, 'pitched-elsewhere')}>
-                        <Mic className="h-3.5 w-3.5 mr-2" /> Mark as pitched
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setStatus(r.id, 'booked')}>
-                        <Bookmark className="h-3.5 w-3.5 mr-2" /> Mark as booked
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setStatus(r.id, 'passed')}>
-                        <X className="h-3.5 w-3.5 mr-2" /> Pass
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => remove(r.id)} className="text-destructive">
-                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Remove
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={busyId === r.id}
+                      onClick={(e) => { e.stopPropagation(); sendToHubspot(r.id); }}
+                      title="Create a HubSpot ticket in Working 1"
+                    >
+                      {busyId === r.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                      Send to HubSpot
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" disabled={busyId === r.id} className="h-7 w-7 p-0">
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem onClick={() => onSelect(r.id)}>
+                          <Lightbulb className="h-3.5 w-3.5 mr-2" /> Suggest angles
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => sendToHubspot(r.id)}>
+                          <Send className="h-3.5 w-3.5 mr-2" /> Send to HubSpot
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus(r.id, 'pitched-elsewhere')}>
+                          <Mic className="h-3.5 w-3.5 mr-2" /> Mark as pitched
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus(r.id, 'booked')}>
+                          <Bookmark className="h-3.5 w-3.5 mr-2" /> Mark as booked
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus(r.id, 'passed')}>
+                          <X className="h-3.5 w-3.5 mr-2" /> Pass
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => remove(r.id)} className="text-destructive">
+                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Remove
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
                 </div>
               </div>
             </div>
