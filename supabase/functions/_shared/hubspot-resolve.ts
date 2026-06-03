@@ -240,7 +240,6 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
   const ownerId = await resolveOwnerIdByEmail(input.callerEmail, headers);
   if (ownerId) {
     companyWillCreate.hubspot_owner_id = ownerId;
-    companyWillCreate.hs_created_by_user_id = ownerId;
   }
 
   if (!companyId && !dryRun) {
