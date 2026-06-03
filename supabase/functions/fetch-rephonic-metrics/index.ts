@@ -88,6 +88,8 @@ function normalizeMetrics(podcast: any): {
   categories: string;
   description: string;
   listen_url: string;
+  email: string;
+  web_url: string;
 } {
   const name = podcast.name || podcast.short_name || '';
   const listeners = podcast.downloads_per_episode || 0;
@@ -113,6 +115,9 @@ function normalizeMetrics(podcast: any): {
     podcast.apple_url || podcast.spotify_url ||
     '';
 
+  const email = typeof podcast.email === 'string' ? podcast.email.trim() : '';
+  const webUrl = typeof podcast.web_url === 'string' ? podcast.web_url.trim() : '';
+
   return {
     podcast_name: name,
     listeners_per_episode: listeners,
@@ -121,6 +126,8 @@ function normalizeMetrics(podcast: any): {
     categories,
     description: podcast.description || podcast.summary || '',
     listen_url: typeof listenUrl === 'string' ? listenUrl : '',
+    email,
+    web_url: webUrl,
   };
 }
 
