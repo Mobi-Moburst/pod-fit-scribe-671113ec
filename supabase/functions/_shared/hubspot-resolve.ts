@@ -200,29 +200,32 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     if (hit[0]) { companyId = hit[0].id; companyProps = hit[0].properties; companyExisting = true; }
   }
 
-  // -------- Enrich from Rephonic (host email + real show domain) --------
-  // Run for both preview and create when we don't already have a HubSpot match — that's
-  // when we need real domain/email suggestions to populate the dialog and the create payload.
-  let rephonic: { description: string | null; listen_url: string | null; email: string | null; web_url: string | null } = {
-    description: null, listen_url: null, email: null, web_url: null,
+  // -------- Enrich from Rephonic (host email + Rephonic show URL) --------
+  // Run for both preview and create when we don't already have a HubSpot match.
+  let rephonic: { description: string | null; listen_url: string | null; email: string | null; web_url: string | null; rephonic_url: string | null } = {
+    description: null, listen_url: null, email: null, web_url: null, rephonic_url: null,
   };
   if (!companyExisting) {
     rephonic = await fetchRephonicShowData(input.supabase, showUrl, showName);
   }
 
-  const rephonicDomain = (() => {
-    const d = parseDomain(rephonic.web_url);
-    if (!d) return null;
-    if (generic.includes(d)) return null;
-    return d;
-  })();
+  // Final domain (for HubSpot dedup-by-domain) — only set when we have a real,
+  // non-generic show domain. We intentionally skip Rephonic's web_url here because
+  // it's often a feed host (feeds.acast.com, etc.) that would pollute company dedup.
+  const finalDomain = overrideDomain || showUrlDomain || null;
 
-  // Final domain priority: explicit override > show_url (non-generic) > Rephonic web_url > none.
-  const finalDomain = overrideDomain || showUrlDomain || rephonicDomain || null;
+  // Website link shown on the company record. Prefer the Rephonic show page —
+  // it's a stable canonical reference that links right back to the source data.
+  // If the user typed a full URL in the dialog, honor that instead.
+  const overrideLooksLikeUrl = !!overrides.company_domain && /^https?:\/\//i.test(overrides.company_domain);
+  const finalWebsite = overrideLooksLikeUrl
+    ? overrides.company_domain!.trim()
+    : (rephonic.rephonic_url || (finalDomain ? `https://${finalDomain}` : showUrl || null));
 
   const companyWillCreate: Record<string, any> = {
     name: showName,
-    ...(finalDomain ? { domain: finalDomain, website: showUrl || `https://${finalDomain}` } : {}),
+    ...(finalDomain ? { domain: finalDomain } : {}),
+    ...(finalWebsite ? { website: finalWebsite } : {}),
     ...(showUrl ? { kc_show_url: showUrl } : {}),
     kc_created_by_app: 'command_center',
     kc_is_podcast: 'Yes',
