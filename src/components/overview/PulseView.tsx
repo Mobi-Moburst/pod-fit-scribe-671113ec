@@ -608,7 +608,11 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
               </TableHeader>
               <TableBody>
                 {backlogged.map((r) => (
-                  <TableRow key={r.client}>
+                  <TableRow
+                    key={r.client}
+                    className="cursor-pointer hover:bg-muted/40"
+                    onClick={() => setSelectedBacklog(r as BacklogRow)}
+                  >
                     <TableCell className="font-medium">{r.client}</TableCell>
                     <TableCell>
                       {r.status === "backlog" ? (
