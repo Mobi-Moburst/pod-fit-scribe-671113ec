@@ -130,7 +130,8 @@ const Research = () => {
       const shows: Show[] = [];
       const collect = (podcasts: any[], reportId: string, generatedAt: string | null) => {
         for (const p of podcasts || []) {
-          const action = (p.action || '').toLowerCase();
+          const rawAction = Array.isArray(p.action) ? p.action.join(' ') : p.action;
+          const action = String(rawAction || '').toLowerCase();
           if (action && !action.includes('podcast recording') && !action.includes('published')) continue;
           const title = (p.show_title || '').trim();
           if (!title) continue;
