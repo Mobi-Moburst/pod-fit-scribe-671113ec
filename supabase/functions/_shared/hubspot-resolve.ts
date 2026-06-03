@@ -180,7 +180,15 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     kc_is_podcast: 'Yes',
   };
 
+  // Resolve HubSpot owner once (by app user email). Used for both company + contact.
+  const ownerId = await resolveOwnerIdByEmail(input.callerEmail, headers);
+  if (ownerId) companyWillCreate.hubspot_owner_id = ownerId;
+
   if (!companyId && !dryRun) {
+    // Pull show description from Rephonic only when we're about to create.
+    const showNotes = await fetchRephonicShowNotes(input.supabase, showUrl, showName);
+    if (showNotes) companyWillCreate.kc_show_notes = showNotes;
+
     const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/companies`, {
       method: 'POST', headers, body: JSON.stringify({ properties: companyWillCreate }),
     });
