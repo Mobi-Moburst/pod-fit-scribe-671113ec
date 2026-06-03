@@ -71,7 +71,13 @@ serve(async (req) => {
     }
 
     const stages = (settings.stages as Array<{ id: string; label: string; order: number }>) || [];
-    const firstStage = stages.slice().sort((a, b) => a.order - b.order)[0];
+    // Land all Command Center-created tickets in the dedicated "Command Center Gen" stage
+    // (HubSpot internal id 1373067027) so QA can isolate them from real working tickets.
+    const COMMAND_CENTER_STAGE_ID = '1373067027';
+    const targetStage =
+      stages.find((s) => s.id === COMMAND_CENTER_STAGE_ID) ||
+      { id: COMMAND_CENTER_STAGE_ID, label: 'Command Center Gen', order: -1 };
+    const firstStage = targetStage;
     if (!firstStage) throw new Error('No stages found in configured pipeline');
 
     const kcProp = (settings.kc_client_property as string) || 'kc_client';
