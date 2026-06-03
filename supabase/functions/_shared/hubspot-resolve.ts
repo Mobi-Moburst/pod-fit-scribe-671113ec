@@ -240,6 +240,7 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     // ("Select a stage") so these never enter sales reporting.
     hs_lead_status: '',
     lifecyclestage: '',
+    ...(ownerId ? { hubspot_owner_id: ownerId } : {}),
   };
 
   if (!contactId && !dryRun && (hostName.first || hostName.last || hostEmail)) {
