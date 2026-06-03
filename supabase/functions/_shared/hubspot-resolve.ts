@@ -32,6 +32,7 @@ export type ResolveResult = {
   company: ResolvedEntity;
   contact: ResolvedEntity;
   duplicate_ticket_id: string | null;
+  owner_id: string | null;
   suggested: {
     domain: string | null;
     website: string | null;
