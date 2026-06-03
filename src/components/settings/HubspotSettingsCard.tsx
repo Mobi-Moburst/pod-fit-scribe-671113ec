@@ -3,12 +3,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Loader2, Plug, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchHubspotPipelines, type HubspotPipeline } from '@/lib/hubspot';
+
+const KC_PROPERTIES: Array<{ object: string; name: string; label: string }> = [
+  { object: 'Ticket',  name: 'kc_shortlist_id',           label: 'KC Command Center Shortlist ID' },
+  { object: 'Ticket',  name: 'kc_source',                 label: 'KC Command Center Source' },
+  { object: 'Contact', name: 'kc_created_for_speaker_id', label: 'KC Command Center Speaker ID' },
+  { object: 'Contact', name: 'kc_created_by_app',         label: 'KC Command Center Created By' },
+  { object: 'Company', name: 'kc_created_by_app',         label: 'KC Command Center Created By' },
+  { object: 'Company', name: 'kc_show_url',               label: 'KC Command Center Show URL' },
+];
 
 export function HubspotSettingsCard() {
   const { toast } = useToast();
@@ -20,6 +31,8 @@ export function HubspotSettingsCard() {
   const [chosenPipelineId, setChosenPipelineId] = useState<string>('');
   const [kcProp, setKcProp] = useState('kc_client');
   const [showUrlProp, setShowUrlProp] = useState('');
+  const [autoCreate, setAutoCreate] = useState(true);
+  const [genericDomains, setGenericDomains] = useState('apple.com\npodcasts.apple.com\nspotify.com\nyoutube.com\nsubstack.com');
   const [savedPipelineLabel, setSavedPipelineLabel] = useState<string | null>(null);
 
   async function loadCurrent() {
@@ -31,6 +44,9 @@ export function HubspotSettingsCard() {
       setKcProp(data.kc_client_property || 'kc_client');
       setShowUrlProp(data.show_url_property || '');
       setSavedPipelineLabel(data.pipeline_label);
+      setAutoCreate((data as any).auto_create_associations !== false);
+      const domains = (data as any).generic_domains as string[] | null;
+      if (domains?.length) setGenericDomains(domains.join('\n'));
     }
     setLoading(false);
   }
@@ -43,7 +59,6 @@ export function HubspotSettingsCard() {
       const res = await fetchHubspotPipelines();
       setPipelines(res.pipelines);
       setPortalId(res.portal_id);
-      // Try to auto-select "Agent Master Pipeline" by label
       if (!chosenPipelineId && res.pipelines.length) {
         const agent = res.pipelines.find((p) => /agent\s*master/i.test(p.label));
         if (agent) setChosenPipelineId(agent.id);
@@ -71,6 +86,7 @@ export function HubspotSettingsCard() {
       return;
     }
     const TEAM_ORG_ID = '11111111-1111-1111-1111-111111111111';
+    const domains = genericDomains.split(/[\s,]+/).map((d) => d.trim().toLowerCase()).filter(Boolean);
     const row = {
       org_id: TEAM_ORG_ID,
       portal_id: portalId,
@@ -79,15 +95,17 @@ export function HubspotSettingsCard() {
       stages: pipeline.stages,
       kc_client_property: kcProp.trim() || 'kc_client',
       show_url_property: showUrlProp.trim() || null,
+      auto_create_associations: autoCreate,
+      generic_domains: domains,
     };
-    const { error } = await supabase.from('hubspot_settings').upsert(row, { onConflict: 'org_id' });
+    const { error } = await supabase.from('hubspot_settings').upsert(row as any, { onConflict: 'org_id' });
     setSaving(false);
     if (error) {
       toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
       return;
     }
     setSavedPipelineLabel(pipeline.label);
-    toast({ title: 'HubSpot pipeline saved', description: `${pipeline.label} (${pipeline.stages.length} stages)` });
+    toast({ title: 'HubSpot config saved', description: `${pipeline.label} (${pipeline.stages.length} stages)` });
   }
 
   return (
@@ -107,7 +125,7 @@ export function HubspotSettingsCard() {
           Tickets are matched to a speaker using the <code className="text-xs">kc_client</code> property.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5">
         {loading ? (
           <div className="flex items-center text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading current config…</div>
         ) : (
@@ -144,6 +162,46 @@ export function HubspotSettingsCard() {
                 <Label className="text-xs">Show URL property (optional)</Label>
                 <Input value={showUrlProp} onChange={(e) => setShowUrlProp(e.target.value)} placeholder="podcast_url" />
                 <p className="text-xs text-muted-foreground">If set, we write the show URL here when creating tickets.</p>
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3 space-y-3 max-w-2xl">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm">Auto-create missing Contacts &amp; Companies</Label>
+                  <p className="text-xs text-muted-foreground">
+                    When sending a shortlist row, create the host Contact and show Company in HubSpot if they don't already exist.
+                  </p>
+                </div>
+                <Switch checked={autoCreate} onCheckedChange={setAutoCreate} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Generic domains to ignore for company dedupe</Label>
+                <Textarea
+                  rows={4}
+                  value={genericDomains}
+                  onChange={(e) => setGenericDomains(e.target.value)}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">One per line. Hosting platforms shouldn't be used to dedupe shows.</p>
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3 max-w-2xl space-y-2">
+              <Label className="text-sm">Required HubSpot properties</Label>
+              <p className="text-xs text-muted-foreground">
+                Create these custom properties in HubSpot (group: Kitcaster Command Center). Internal names must match exactly.
+              </p>
+              <div className="space-y-1 mt-2">
+                {KC_PROPERTIES.map((p) => (
+                  <div key={`${p.object}-${p.name}`} className="flex items-center justify-between text-xs">
+                    <div>
+                      <Badge variant="outline" className="font-normal mr-2 text-[10px]">{p.object}</Badge>
+                      <span className="text-muted-foreground">{p.label}</span>
+                    </div>
+                    <code className="text-[11px]">{p.name}</code>
+                  </div>
+                ))}
               </div>
             </div>
 
