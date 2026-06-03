@@ -44,7 +44,7 @@ export type ResolvePreview = {
   company?: ResolvedEntity;
   contact?: ResolvedEntity;
   duplicate_ticket_id?: string | null;
-  suggested?: { domain: string | null; email: string | null };
+  suggested?: { domain: string | null; website: string | null; email: string | null };
 };
 
 export type Overrides = {

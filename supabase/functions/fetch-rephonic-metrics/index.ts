@@ -90,6 +90,7 @@ function normalizeMetrics(podcast: any): {
   listen_url: string;
   email: string;
   web_url: string;
+  rephonic_url: string;
 } {
   const name = podcast.name || podcast.short_name || '';
   const listeners = podcast.downloads_per_episode || 0;
@@ -117,6 +118,8 @@ function normalizeMetrics(podcast: any): {
 
   const email = typeof podcast.email === 'string' ? podcast.email.trim() : '';
   const webUrl = typeof podcast.web_url === 'string' ? podcast.web_url.trim() : '';
+  const slug = typeof podcast.id === 'string' ? podcast.id.trim() : '';
+  const rephonicUrl = slug ? `https://rephonic.com/podcasts/${slug}` : '';
 
   return {
     podcast_name: name,
@@ -128,6 +131,7 @@ function normalizeMetrics(podcast: any): {
     listen_url: typeof listenUrl === 'string' ? listenUrl : '',
     email,
     web_url: webUrl,
+    rephonic_url: rephonicUrl,
   };
 }
 
