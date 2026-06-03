@@ -212,20 +212,53 @@ Return ${num} suggestions. Volume matters — generate a long list of valid nich
 
       try {
         const q = encodeURIComponent(sug.podcast_name);
-        const iTunesResp = await fetch(`https://itunes.apple.com/search?term=${q}&entity=podcast&limit=3`);
+        const iTunesResp = await fetch(`https://itunes.apple.com/search?term=${q}&entity=podcast&limit=5`);
         if (iTunesResp.ok) {
           const data = await iTunesResp.json();
-          const match = (data.results || []).find((r: any) =>
-            r.collectionName?.toLowerCase().includes(sug.podcast_name.toLowerCase().split(' ').slice(0, 3).join(' '))
-          ) || data.results?.[0];
-          if (match) {
-            candidate.apple_podcast_url = match.collectionViewUrl;
-            candidate.cover_art_url = match.artworkUrl600 || match.artworkUrl100;
-            candidate.itunes_id = String(match.collectionId);
-            candidate.categories = match.genres?.filter((g: string) => g !== 'Podcasts') || [];
-            if (match.releaseDate) candidate.last_episode_date = match.releaseDate.split('T')[0];
+          const results: any[] = data.results || [];
+
+          // Strict matching: require meaningful token overlap between the AI-suggested
+          // name and the iTunes collectionName. Prevents hallucinated names from being
+          // silently mapped to an unrelated real show (which would pollute the CRM).
+          const STOPWORDS = new Set(['the','a','an','of','and','for','with','on','in','to','show','podcast','pod','episode']);
+          const tokenize = (s: string): string[] =>
+            String(s || '')
+              .toLowerCase()
+              .replace(/[^a-z0-9\s]/g, ' ')
+              .split(/\s+/)
+              .filter(t => t.length > 2 && !STOPWORDS.has(t));
+
+          const sugTokens = new Set(tokenize(sug.podcast_name));
+          let bestMatch: any = null;
+          let bestOverlap = 0;
+          for (const r of results) {
+            const candTokens = new Set(tokenize(r.collectionName));
+            let overlap = 0;
+            for (const t of sugTokens) if (candTokens.has(t)) overlap++;
+            const minSize = Math.min(sugTokens.size, candTokens.size) || 1;
+            const ratio = overlap / minSize;
+            // Require at least 70% of the smaller token set to overlap AND at least 2 shared tokens
+            // (or 1 shared token when AI name is a single significant word).
+            const needed = sugTokens.size <= 1 ? 1 : 2;
+            if (overlap >= needed && ratio >= 0.7 && overlap > bestOverlap) {
+              bestOverlap = overlap;
+              bestMatch = r;
+            }
+          }
+
+          if (bestMatch) {
+            // Use iTunes as the source of truth for show name + host to prevent
+            // hallucinated AI names/hosts from reaching the CRM.
+            candidate.show_name = bestMatch.collectionName || candidate.show_name;
+            if (bestMatch.artistName) candidate.host_name = bestMatch.artistName;
+            candidate.apple_podcast_url = bestMatch.collectionViewUrl;
+            candidate.cover_art_url = bestMatch.artworkUrl600 || bestMatch.artworkUrl100;
+            candidate.itunes_id = String(bestMatch.collectionId);
+            candidate.categories = bestMatch.genres?.filter((g: string) => g !== 'Podcasts') || [];
+            if (bestMatch.releaseDate) candidate.last_episode_date = bestMatch.releaseDate.split('T')[0];
           } else {
-            candidate.dropped_reason = 'Not found on iTunes';
+            candidate.dropped_reason = `No strict iTunes match for "${sug.podcast_name}"`;
+            console.log(`[hydrate] DROPPED hallucinated name: "${sug.podcast_name}" — top iTunes result was "${results[0]?.collectionName || 'none'}"`);
           }
         }
       } catch (err) {
