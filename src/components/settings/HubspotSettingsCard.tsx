@@ -248,6 +248,37 @@ export function HubspotSettingsCard() {
                 Save HubSpot config
               </Button>
             </div>
+
+            <div className="rounded-md border p-3 max-w-2xl space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm">Ticket cache</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Local copy of current-year HubSpot tickets. Auto-syncs every 10 min.
+                  </p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <div><span className="font-medium text-foreground">{syncStats?.count ?? '—'}</span> tickets cached</div>
+                  <div>
+                    Last sync: {syncStats?.lastSync
+                      ? formatDistanceToNow(new Date(syncStats.lastSync), { addSuffix: true })
+                      : 'never'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => runSync('incremental')} disabled={!!syncing}>
+                  {syncing === 'incremental'
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                  Sync now
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => runSync('full')} disabled={!!syncing}>
+                  {syncing === 'full' && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                  Full resync
+                </Button>
+              </div>
+            </div>
           </>
         )}
       </CardContent>
