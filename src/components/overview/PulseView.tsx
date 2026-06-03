@@ -26,6 +26,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ExternalLink } from "lucide-react";
+import { BacklogTriagePanel, type BacklogRow } from "./BacklogTriagePanel";
 
 type Booking = {
   id: string;
