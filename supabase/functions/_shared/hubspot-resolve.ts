@@ -334,6 +334,7 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     duplicate_ticket_id,
     suggested: {
       domain: finalDomain,
+      website: finalWebsite,
       email: rephonic.email || null,
     },
   };
