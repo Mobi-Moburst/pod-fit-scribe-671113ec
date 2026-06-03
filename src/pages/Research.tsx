@@ -100,6 +100,7 @@ const Research = () => {
       setHubspotTicketNames(new Set());
       return;
     }
+    setHubspotTicketNames(new Set());
     loadShortlist();
     (async () => {
       // Pull from speaker-specific reports AND any company report this speaker appears in.
