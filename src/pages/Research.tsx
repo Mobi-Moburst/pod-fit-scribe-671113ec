@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { CompanySpeakerSelector } from '@/components/CompanySpeakerSelector';
 import { SpeakerContextRail } from '@/components/research/SpeakerContextRail';
-import { DiscoverTab } from '@/components/research/DiscoverTab';
+import { DiscoverTab, type Candidate } from '@/components/research/DiscoverTab';
 import { ShortlistTab, type ShortlistRow } from '@/components/research/ShortlistTab';
 import { AnglesPanel } from '@/components/research/AnglesPanel';
 import { PipelineTab } from '@/components/research/PipelineTab';
