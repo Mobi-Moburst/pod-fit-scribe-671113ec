@@ -1,66 +1,96 @@
-## Goal
 
-Make the Backlogged clients table on Overview actionable. Clicking a row opens a **triage side-panel** that summarizes why the client is behind and offers a one-click jump into Research scoped to the right speaker(s) — without replacing the table or auto-navigating.
+# HubSpot → Research integration
 
-## UX flow
+Goal: turn the Research workspace into the campaign manager's real-time view of HubSpot's "Agent Master Pipeline" for the selected speaker, with the ability to push shortlisted shows in as new tickets.
+
+## How it works at a glance
 
 ```text
-Overview › Backlogged clients table
-    │  (click row — anywhere except external links)
-    ▼
-Triage Side-Panel (Sheet, right side)
-    ├─ Header: company name + status pill (Backlog / At risk)
-    ├─ Why-it's-behind block
-    │     • Contracted / mo · Completed · Goal this mo · Gap
-    │     • Last booking date (from momentum_bookings)
-    │     • Days since last booking
-    ├─ Speakers in this company
-    │     for each speaker:
-    │       • Avatar + name
-    │       • Shortlist count (research_shortlists where status active)
-    │       • Booked-this-quarter count
-    │       • [Research →]  [View profile →]
-    └─ Footer actions
-          • [Open Research for company] (if 1 speaker → direct deep-link;
-             if >1 → focuses the speaker list above)
-          • [Close]
+[Research / speaker X selected]
+          │
+          ▼
+ ┌─────────────────────────────┐         ┌──────────────────────┐
+ │  Edge fn: hubspot-tickets   │ ──────► │  HubSpot CRM v3 API  │
+ │  (via connector gateway)    │ ◄────── │  (tickets + pipelines)│
+ └─────────────────────────────┘         └──────────────────────┘
+          │
+          ▼
+ ┌─────────────────────────────┐
+ │ Research tabs               │
+ │  • Discover  (hides shows   │
+ │     already a ticket)       │
+ │  • Shortlist (+ "Send to    │
+ │     HubSpot" button)        │
+ │  • Pipeline  ◄── new tab    │
+ │     kanban of stages        │
+ └─────────────────────────────┘
 ```
 
-Clicking **Research →** deep-links to `/research?speaker=<id>` (the route already accepts that param — confirmed in `Research.tsx`).
+Match rule (confirmed): HubSpot ticket property **`kc_client`** equals **`speaker.name`** exactly (e.g. `Matt Dalio`).
+Default new tickets land in **Agent Master Pipeline → Working 1**.
 
-## What the panel reads
+## Phase 1 — Connect HubSpot
 
-All client-side queries, no new edge functions:
+1. Use the **HubSpot** connector (gateway-enabled). Trigger the connection picker so an admin links their HubSpot account at the workspace level. After that, `HUBSPOT_API_KEY` is available to edge functions.
+2. Add a tiny **discovery edge function** `hubspot-pipelines` (GET) that calls `/crm/v3/pipelines/tickets` and returns the pipelines + stages. We use this once in Settings to confirm we're pointed at "Agent Master Pipeline" and to capture its `pipelineId` + ordered stage IDs/labels.
+3. Store the chosen `pipelineId` + cached stage list in a new tiny table `hubspot_settings` (single row per org) so we don't re-fetch on every load and stages stay in the right kanban order.
 
-- `companies` + `speakers` — already loaded for the Overview lookup.
-- `momentum_bookings` — same source the table already uses; reused to compute "last booking date" per company and "booked this quarter" per speaker.
-- `research_shortlists` — count rows per `speaker_id` (status not `rejected`/`booked`) for the "pipeline" line.
+## Phase 2 — Read pipeline per speaker
 
-These queries fire only when the panel opens, keyed by company name → company id.
+New edge function `hubspot-tickets` (GET):
+- Input: `speaker_name` (required), optional `pipeline_id` (defaults to stored one).
+- Calls **`POST /crm/v3/objects/tickets/search`** with filters: `kc_client EQ <speaker_name>` AND `hs_pipeline EQ <pipelineId>`, plus the properties we need (`subject`, `hs_pipeline`, `hs_pipeline_stage`, `hubspot_owner_id`, `createdate`, `hs_lastmodifieddate`, `hs_ticket_priority`, `closedate`, plus any podcast-link/show-URL custom property if it exists — we'll confirm during phase 1 by reading one ticket).
+- Returns tickets grouped by `stage_id` with labels resolved from the cached pipeline.
 
-## Files to change
+UI: new **Pipeline** tab in `src/pages/Research.tsx` between Shortlist and the right rail. It renders a compact horizontal kanban (reusing card styling from the current Shortlist rows) with stage columns in HubSpot order: Working 1 → Working 2 → Working 3 → Entered Automation → Emailed Manually → Alternative Outreach → Re-Pitched → Negotiating → Scheduled → Previously Scheduled → Declined → No Response. Each card shows subject, owner avatar/initials, create/last-activity date, priority, and a small "Open in HubSpot ↗" link to `https://app.hubspot.com/contacts/<portalId>/ticket/<id>` (portal ID stored in `hubspot_settings`).
 
-- **New:** `src/components/overview/BacklogTriagePanel.tsx`
-  - Shadcn `Sheet` (right side, ~`sm:max-w-md`).
-  - Props: `companyName`, `row` (the existing backlog row data), `open`, `onOpenChange`.
-  - Internally resolves `company_id` from the loaded companies list, fetches speakers + shortlist counts + last booking.
-- **Edit:** `src/components/overview/PulseView.tsx`
-  - Add `selectedBacklogRow` state.
-  - Make `<TableRow>` clickable (`cursor-pointer hover:bg-muted/40`) and set the selected row on click.
-  - Render `<BacklogTriagePanel>` once at the bottom of the card.
+Light caching: tab refresh button + a 60-second SWR cache on the client. No DB mirroring in v1 — keep HubSpot as the source of truth.
 
-Table itself stays visually unchanged — no new columns, no colored dots (per your call).
+## Phase 3 — Dedupe Discover & Shortlist
 
-## Out of scope (intentionally deferred)
+When a speaker is selected:
+- Fetch the same ticket list once and build a normalized **set of show names** (lowercased, trim/strip "the ", trailing "podcast" etc. — same approach we already use in `loadShortlist`).
+- In **Discover**: filter out any AI suggestion whose normalized name is in that set.
+- In **Shortlist**: hide rows whose normalized show name is in that set (they've graduated to HubSpot — they belong in the Pipeline tab). Keep a small toast/note "N items moved to Pipeline" so nothing feels lost.
 
-- Reverse direction (Research showing a "needs attention" workqueue).
-- Pipeline-health column / red flag indicators on the table.
-- Bulk "open all backlogged in Research".
+## Phase 4 — Send shortlisted show to HubSpot
 
-We can revisit these once the triage panel is in use and we know whether it's enough on its own.
+New edge function `hubspot-create-ticket` (POST):
+- Body: `{ shortlist_id }`.
+- Server loads the shortlist row + speaker, then calls **`POST /crm/v3/objects/tickets`** with:
+  - `subject` = `show_name`
+  - `kc_client` = `speaker.name`
+  - `hs_pipeline` = stored Agent Master Pipeline id
+  - `hs_pipeline_stage` = first stage id ("Working 1")
+  - Plus the show URL into whatever custom property we identify in phase 1 (otherwise drop it in `content` as a body note).
+- On success: returns the new ticket id, we mark `research_shortlists.status = 'sent_to_hubspot'` and refresh both Pipeline + Shortlist.
 
-## Technical notes
+UI: add a "**Send to HubSpot**" button on each Shortlist row (next to the existing actions). Disabled state with tooltip if HubSpot isn't connected yet.
 
-- Companies are matched to backlog rows by **name** today (the backlog builder works off `ltv_snapshots.client`). The panel will do the same lookup against the already-loaded `companies` list. If no match (legacy client name drift), the panel falls back to a "Couldn't link this client to a company record — open Companies to reconcile" empty state with a link to `/companies`.
-- For the "Research →" button on a speaker, link is `/research?speaker=${speaker.id}` — no Research changes needed.
-- Panel uses the existing dark-first design tokens, hover-reveal pattern, `text-sm` body type, matching the rest of Overview.
+## Out of scope for v1 (we can layer in later)
+
+- Moving tickets between stages from inside the command center (full two-way drag/drop).
+- Per-CM HubSpot accounts (we use one workspace connection — fine because the property filter already scopes to the right client).
+- Writing notes/engagements back to HubSpot.
+- Auto-creating a HubSpot ticket on shortlist add.
+
+## Technical details
+
+**New edge functions** (`verify_jwt = false`, validate session in code, never expose `HUBSPOT_API_KEY` client-side):
+- `supabase/functions/hubspot-pipelines/index.ts` — GET pipelines.
+- `supabase/functions/hubspot-tickets/index.ts` — GET tickets for a speaker.
+- `supabase/functions/hubspot-create-ticket/index.ts` — POST new ticket from a shortlist row.
+
+All three hit the gateway base `https://connector-gateway.lovable.dev/hubspot/crm/v3/...` with headers `Authorization: Bearer ${LOVABLE_API_KEY}` + `X-Connection-Api-Key: ${HUBSPOT_API_KEY}`. Zod-validate inputs, return CORS-enabled JSON, and bubble HubSpot error bodies back through.
+
+**New table** `hubspot_settings` (one row per org): `org_id uuid PK`, `portal_id text`, `pipeline_id text`, `stages jsonb` (`[{id,label,order}]`), `kc_client_property text default 'kc_client'`, `show_url_property text null`, timestamps. RLS scoped by `get_team_org_id()`, with the standard four-step CREATE/GRANT/RLS/POLICY block.
+
+**New frontend pieces**:
+- `src/lib/hubspot.ts` — typed client wrappers (`getPipeline`, `getSpeakerTickets`, `createTicketFromShortlist`) using `supabase.functions.invoke`.
+- `src/components/research/PipelineTab.tsx` — kanban for the selected speaker, plus refresh + empty/error states + "Connect HubSpot" CTA when no settings row exists.
+- Update `src/pages/Research.tsx` — add the Pipeline tab, pass the ticket-name set into Discover/Shortlist, and pipe it through `loadShortlist` for filtering.
+- Update `src/components/research/ShortlistTab.tsx` — add `Send to HubSpot` action per row.
+- Settings: add a small "HubSpot" section to `src/pages/Settings.tsx` that runs the one-time pipeline picker (calls `hubspot-pipelines`, writes `hubspot_settings`).
+
+**Failure modes**: if HubSpot isn't connected, the Pipeline tab and "Send to HubSpot" button render a connect CTA — Discover/Shortlist behave exactly as today (no filtering applied).
+
