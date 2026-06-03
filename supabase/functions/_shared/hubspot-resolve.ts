@@ -77,6 +77,61 @@ async function searchObject(
   return j.results || [];
 }
 
+async function resolveOwnerIdByEmail(
+  email: string | null | undefined,
+  headers: Record<string, string>,
+): Promise<string | null> {
+  if (!email) return null;
+  try {
+    const resp = await fetch(
+      `${GATEWAY_URL}/crm/v3/owners?email=${encodeURIComponent(email)}&limit=1`,
+      { method: 'GET', headers },
+    );
+    if (!resp.ok) {
+      console.warn(`[hubspot-resolve] owner lookup ${resp.status} for ${email}`);
+      return null;
+    }
+    const j = await resp.json();
+    return j?.results?.[0]?.id || null;
+  } catch (err) {
+    console.warn('[hubspot-resolve] owner lookup error:', err);
+    return null;
+  }
+}
+
+async function fetchRephonicShowNotes(
+  supabase: any,
+  showUrl: string | null,
+  showName: string | null,
+): Promise<string | null> {
+  if (!supabase) return null;
+  if (!showUrl && !showName) return null;
+  try {
+    const body: any = {};
+    if (showUrl && /apple\.com|podcasts\.apple\.com/i.test(showUrl)) {
+      body.apple_podcast_urls = [showUrl];
+    } else if (showName) {
+      body.podcast_names = [showName];
+    } else {
+      return null;
+    }
+    const { data, error } = await supabase.functions.invoke('fetch-rephonic-metrics', { body });
+    if (error) {
+      console.warn('[hubspot-resolve] rephonic invoke error:', error.message);
+      return null;
+    }
+    const key = body.apple_podcast_urls?.[0] || body.podcast_names?.[0];
+    const desc = data?.results?.[key]?.description;
+    if (typeof desc === 'string' && desc.trim()) {
+      return desc.trim().slice(0, 65000);
+    }
+    return null;
+  } catch (err) {
+    console.warn('[hubspot-resolve] rephonic fetch error:', err);
+    return null;
+  }
+}
+
 export async function resolveAssociations(input: ResolveInput): Promise<ResolveResult> {
   const { row, speaker, settings, overrides, dryRun } = input;
   const headers = hubspotHeaders(input.LOVABLE_API_KEY, input.HUBSPOT_API_KEY);
