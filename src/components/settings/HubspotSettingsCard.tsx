@@ -21,6 +21,7 @@ const KC_PROPERTIES: Array<{ object: string; name: string; label: string }> = [
   { object: 'Company', name: 'kc_show_url',               label: 'KC Command Center Show URL' },
   { object: 'Company', name: 'kc_is_podcast',             label: 'Is Podcast? (dropdown: Yes / No)' },
   { object: 'Company', name: 'kc_show_notes',             label: 'KC Command Center Show Notes (multi-line text)' },
+  { object: 'Company', name: 'kc_apple_podcast_link',     label: 'KC Apple Podcast Link (single-line text URL)' },
 ];
 
 export function HubspotSettingsCard() {
