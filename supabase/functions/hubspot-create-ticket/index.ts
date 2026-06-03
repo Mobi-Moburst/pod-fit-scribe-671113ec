@@ -126,7 +126,6 @@ serve(async (req) => {
     };
     if (resolved.owner_id) {
       properties.hubspot_owner_id = resolved.owner_id;
-      properties.hs_created_by_user_id = resolved.owner_id;
     }
     if (showUrlProp && row.show_url) properties[showUrlProp] = row.show_url;
     const noteParts: string[] = [];
