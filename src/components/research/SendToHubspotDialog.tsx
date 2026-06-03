@@ -28,11 +28,17 @@ function splitName(n: string | null): { first: string; last: string } {
   return p.length === 1 ? { first: p[0], last: '' } : { first: p[0], last: p.slice(1).join(' ') };
 }
 
+const GENERIC_DOMAINS = new Set([
+  'apple.com', 'podcasts.apple.com', 'spotify.com', 'open.spotify.com',
+  'youtube.com', 'youtu.be', 'substack.com',
+]);
+
 function parseDomainSafe(url: string | null): string {
   if (!url) return '';
   try {
     const u = new URL(url.startsWith('http') ? url : `https://${url}`);
-    return u.hostname.replace(/^www\./, '').toLowerCase();
+    const host = u.hostname.replace(/^www\./, '').toLowerCase();
+    return GENERIC_DOMAINS.has(host) ? '' : host;
   } catch { return ''; }
 }
 
@@ -59,7 +65,17 @@ export function SendToHubspotDialog({ row, open, onOpenChange, onCompleted }: Pr
       const p = await resolveHubspotAssociations(row.id, {});
       setLoading(false);
       setPreview(p);
-      if (!p.ok) toast({ title: 'Preview failed', description: p.error, variant: 'destructive' });
+      if (!p.ok) {
+        toast({ title: 'Preview failed', description: p.error, variant: 'destructive' });
+        return;
+      }
+      // Backfill domain + email from Rephonic-driven suggestions when our initial
+      // guesses are empty (e.g. the show_url was an Apple aggregator link).
+      setOverrides((o) => ({
+        ...o,
+        company_domain: o.company_domain || p.suggested?.domain || '',
+        host_email: o.host_email || p.suggested?.email || '',
+      }));
     })();
   }, [open, row?.id]);
 
