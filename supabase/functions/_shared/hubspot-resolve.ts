@@ -120,6 +120,7 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     ...(domain ? { domain, website: showUrl || `https://${domain}` } : {}),
     ...(showUrl ? { kc_show_url: showUrl } : {}),
     kc_created_by_app: 'command_center',
+    kc_is_podcast: 'Yes',
   };
 
   if (!companyId && !dryRun) {
