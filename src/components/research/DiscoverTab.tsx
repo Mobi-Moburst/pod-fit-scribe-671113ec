@@ -28,12 +28,13 @@ interface Props {
   orgId: string;
   shortlistedNames: Set<string>;
   onShortlisted: () => void;
+  candidates: Candidate[];
+  setCandidates: React.Dispatch<React.SetStateAction<Candidate[]>>;
 }
 
-export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted }: Props) {
+export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted, candidates, setCandidates }: Props) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [adding, setAdding] = useState<string | null>(null);
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
 
