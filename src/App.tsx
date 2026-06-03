@@ -26,6 +26,8 @@ import Research from "./pages/Research";
 import Overview from "./pages/Overview";
 import Studio from "./pages/Studio";
 import Integrations from "./pages/Integrations";
+import IntegrationHubspot from "./pages/IntegrationHubspot";
+import IntegrationFireflies from "./pages/IntegrationFireflies";
 import SyncedCalls from "./pages/SyncedCalls";
 import UploadNotes from "./pages/UploadNotes";
 
