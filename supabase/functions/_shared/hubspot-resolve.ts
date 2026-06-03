@@ -99,13 +99,14 @@ async function resolveOwnerIdByEmail(
   }
 }
 
-async function fetchRephonicShowNotes(
+async function fetchRephonicShowData(
   supabase: any,
   showUrl: string | null,
   showName: string | null,
-): Promise<string | null> {
-  if (!supabase) return null;
-  if (!showUrl && !showName) return null;
+): Promise<{ description: string | null; listen_url: string | null }> {
+  const empty = { description: null, listen_url: null };
+  if (!supabase) return empty;
+  if (!showUrl && !showName) return empty;
   try {
     const body: any = {};
     if (showUrl && /apple\.com|podcasts\.apple\.com/i.test(showUrl)) {
@@ -113,24 +114,28 @@ async function fetchRephonicShowNotes(
     } else if (showName) {
       body.podcast_names = [showName];
     } else {
-      return null;
+      return empty;
     }
     const { data, error } = await supabase.functions.invoke('fetch-rephonic-metrics', { body });
     if (error) {
       console.warn('[hubspot-resolve] rephonic invoke error:', error.message);
-      return null;
+      return empty;
     }
     const key = body.apple_podcast_urls?.[0] || body.podcast_names?.[0];
-    const desc = data?.results?.[key]?.description;
-    if (typeof desc === 'string' && desc.trim()) {
-      return desc.trim().slice(0, 65000);
-    }
-    return null;
+    const result = data?.results?.[key] || {};
+    const desc = typeof result.description === 'string' && result.description.trim()
+      ? result.description.trim().slice(0, 65000)
+      : null;
+    const link = typeof result.listen_url === 'string' && result.listen_url.trim()
+      ? result.listen_url.trim()
+      : null;
+    return { description: desc, listen_url: link };
   } catch (err) {
     console.warn('[hubspot-resolve] rephonic fetch error:', err);
-    return null;
+    return empty;
   }
 }
+
 
 export async function resolveAssociations(input: ResolveInput): Promise<ResolveResult> {
   const { row, speaker, settings, overrides, dryRun } = input;
@@ -185,9 +190,10 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
   if (ownerId) companyWillCreate.hubspot_owner_id = ownerId;
 
   if (!companyId && !dryRun) {
-    // Pull show description from Rephonic only when we're about to create.
-    const showNotes = await fetchRephonicShowNotes(input.supabase, showUrl, showName);
-    if (showNotes) companyWillCreate.kc_show_notes = showNotes;
+    // Pull show description + first listen link from Rephonic only when we're about to create.
+    const rephonic = await fetchRephonicShowData(input.supabase, showUrl, showName);
+    if (rephonic.description) companyWillCreate.kc_show_notes = rephonic.description;
+    if (rephonic.listen_url) companyWillCreate.kc_apple_podcast_link = rephonic.listen_url;
 
     const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/companies`, {
       method: 'POST', headers, body: JSON.stringify({ properties: companyWillCreate }),
