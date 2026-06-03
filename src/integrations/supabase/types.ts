@@ -650,6 +650,75 @@ export type Database = {
         }
         Relationships: []
       }
+      hubspot_tickets_cache: {
+        Row: {
+          close_date: string | null
+          created_at: string
+          createdate: string | null
+          hubspot_owner_id: string | null
+          hubspot_ticket_id: string
+          id: string
+          kc_client: string | null
+          kc_shortlist_id: string | null
+          last_modified: string | null
+          org_id: string
+          owner_email: string | null
+          owner_name: string | null
+          pipeline_id: string | null
+          priority: string | null
+          raw_properties: Json
+          show_url: string | null
+          stage_id: string | null
+          subject: string | null
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          close_date?: string | null
+          created_at?: string
+          createdate?: string | null
+          hubspot_owner_id?: string | null
+          hubspot_ticket_id: string
+          id?: string
+          kc_client?: string | null
+          kc_shortlist_id?: string | null
+          last_modified?: string | null
+          org_id: string
+          owner_email?: string | null
+          owner_name?: string | null
+          pipeline_id?: string | null
+          priority?: string | null
+          raw_properties?: Json
+          show_url?: string | null
+          stage_id?: string | null
+          subject?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          close_date?: string | null
+          created_at?: string
+          createdate?: string | null
+          hubspot_owner_id?: string | null
+          hubspot_ticket_id?: string
+          id?: string
+          kc_client?: string | null
+          kc_shortlist_id?: string | null
+          last_modified?: string | null
+          org_id?: string
+          owner_email?: string | null
+          owner_name?: string | null
+          pipeline_id?: string | null
+          priority?: string | null
+          raw_properties?: Json
+          show_url?: string | null
+          stage_id?: string | null
+          subject?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ltv_monthly_snapshots: {
         Row: {
           actual_bookings_to_date: number | null
