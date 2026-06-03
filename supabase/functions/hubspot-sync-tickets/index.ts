@@ -51,7 +51,18 @@ serve(async (req) => {
     if (!HUBSPOT_API_KEY) throw new Error('HUBSPOT_API_KEY not configured');
 
     const body = await req.json().catch(() => ({}));
-    const mode: 'full' | 'incremental' = body.mode === 'full' ? 'full' : 'incremental';
+    const mode: 'full' | 'incremental' | 'backfill' =
+      body.mode === 'full' ? 'full' : body.mode === 'backfill' ? 'backfill' : 'incremental';
+
+    // Backfill params (used only when mode === 'backfill')
+    const DEFAULT_BACKFILL_STAGES = ['1366108009', '1366108010'];
+    const backfillStageIds: string[] = Array.isArray(body.stage_ids) && body.stage_ids.length
+      ? body.stage_ids.map((s: any) => String(s))
+      : DEFAULT_BACKFILL_STAGES;
+    const monthsBack: number = Number.isFinite(body.months_back) ? Number(body.months_back) : 24;
+    const backfillClientNamesInput: string[] | null = Array.isArray(body.client_names)
+      ? body.client_names.map((s: any) => String(s)).filter(Boolean)
+      : null;
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
