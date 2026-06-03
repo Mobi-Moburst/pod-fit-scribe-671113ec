@@ -87,6 +87,7 @@ function normalizeMetrics(podcast: any): {
   social_reach: number;
   categories: string;
   description: string;
+  listen_url: string;
 } {
   const name = podcast.name || podcast.short_name || '';
   const listeners = podcast.downloads_per_episode || 0;
@@ -103,6 +104,15 @@ function normalizeMetrics(podcast: any): {
     categories = podcast.genres.filter(Boolean).join(', ');
   }
 
+  // Pick first available listen link — Apple or Spotify, whichever Rephonic surfaces first.
+  const urls = podcast.urls || podcast.listen_links || podcast.links || {};
+  const listenUrl =
+    urls.apple || urls.apple_podcasts || urls.itunes ||
+    urls.spotify ||
+    urls.website || urls.rss ||
+    podcast.apple_url || podcast.spotify_url ||
+    '';
+
   return {
     podcast_name: name,
     listeners_per_episode: listeners,
@@ -110,8 +120,10 @@ function normalizeMetrics(podcast: any): {
     social_reach: combinedSocialReach,
     categories,
     description: podcast.description || podcast.summary || '',
+    listen_url: typeof listenUrl === 'string' ? listenUrl : '',
   };
 }
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
