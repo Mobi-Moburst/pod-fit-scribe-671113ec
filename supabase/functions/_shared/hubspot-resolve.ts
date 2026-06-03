@@ -32,6 +32,10 @@ export type ResolveResult = {
   company: ResolvedEntity;
   contact: ResolvedEntity;
   duplicate_ticket_id: string | null;
+  suggested: {
+    domain: string | null;
+    email: string | null;
+  };
 };
 
 const GENERIC_FALLBACK = ['apple.com', 'podcasts.apple.com', 'spotify.com', 'youtube.com', 'substack.com'];
