@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plug, CheckCircle2 } from 'lucide-react';
+import { Loader2, Plug, CheckCircle2, RefreshCw } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +38,39 @@ export function HubspotSettingsCard() {
   const [autoCreate, setAutoCreate] = useState(true);
   const [genericDomains, setGenericDomains] = useState('apple.com\npodcasts.apple.com\nspotify.com\nyoutube.com\nsubstack.com');
   const [savedPipelineLabel, setSavedPipelineLabel] = useState<string | null>(null);
+  const [syncStats, setSyncStats] = useState<{ count: number; lastSync: string | null } | null>(null);
+  const [syncing, setSyncing] = useState<false | 'incremental' | 'full'>(false);
+
+  async function loadSyncStats() {
+    const { count } = await supabase
+      .from('hubspot_tickets_cache')
+      .select('hubspot_ticket_id', { count: 'exact', head: true });
+    const { data: latest } = await supabase
+      .from('hubspot_tickets_cache')
+      .select('synced_at')
+      .order('synced_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setSyncStats({ count: count || 0, lastSync: latest?.synced_at || null });
+  }
+
+  async function runSync(mode: 'incremental' | 'full') {
+    setSyncing(mode);
+    try {
+      const { data, error } = await supabase.functions.invoke('hubspot-sync-tickets', { body: { mode } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast({
+        title: `Sync complete (${mode})`,
+        description: `${(data as any)?.synced ?? 0} upserted, ${(data as any)?.deleted ?? 0} deleted`,
+      });
+      await loadSyncStats();
+    } catch (err: any) {
+      toast({ title: 'Sync failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function loadCurrent() {
     setLoading(true);
@@ -54,7 +88,7 @@ export function HubspotSettingsCard() {
     setLoading(false);
   }
 
-  useEffect(() => { loadCurrent(); }, []);
+  useEffect(() => { loadCurrent(); loadSyncStats(); }, []);
 
   async function discover() {
     setDiscovering(true);
