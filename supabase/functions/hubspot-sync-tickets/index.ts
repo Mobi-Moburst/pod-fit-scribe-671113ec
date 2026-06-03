@@ -65,13 +65,37 @@ serve(async (req) => {
     const pipelineId = settings.pipeline_id as string;
     const showUrlProp = (settings.show_url_property as string | null) || null;
 
-    const properties = [
+    const headers = {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'X-Connection-Api-Key': HUBSPOT_API_KEY,
+      'Content-Type': 'application/json',
+    };
+
+    // Discover which ticket properties actually exist in this portal so a
+    // missing custom property (kc_client, kc_shortlist_id, show_url, etc.)
+    // doesn't 400 the entire search.
+    const wantProps = [
       'subject', 'hs_pipeline', 'hs_pipeline_stage',
       'hubspot_owner_id', 'hs_ticket_priority',
       'createdate', 'hs_lastmodifieddate', 'closedate',
       'kc_client', 'kc_shortlist_id',
     ];
-    if (showUrlProp) properties.push(showUrlProp);
+    if (showUrlProp) wantProps.push(showUrlProp);
+
+    let availableProps = new Set<string>(wantProps);
+    try {
+      const pr = await fetch(`${GATEWAY_URL}/crm/v3/properties/tickets`, { headers });
+      if (pr.ok) {
+        const pj = await pr.json();
+        const names = new Set<string>((pj.results || []).map((p: any) => p.name));
+        availableProps = new Set(wantProps.filter((p) => names.has(p)));
+        const missing = wantProps.filter((p) => !names.has(p));
+        if (missing.length) console.log('[hubspot-sync-tickets] missing ticket props:', missing);
+      }
+    } catch (e) {
+      console.warn('[hubspot-sync-tickets] property discovery failed, using full list', e);
+    }
+    const properties = Array.from(availableProps);
 
     // Build filter
     const yearStart = new Date(new Date().getUTCFullYear(), 0, 1).getTime();
@@ -88,12 +112,6 @@ serve(async (req) => {
         sinceTs = new Date(maxRow.last_modified as string).getTime();
       }
     }
-
-    const headers = {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'X-Connection-Api-Key': HUBSPOT_API_KEY,
-      'Content-Type': 'application/json',
-    };
 
     const filterProp = mode === 'incremental' ? 'hs_lastmodifieddate' : 'createdate';
     const filterOp = mode === 'incremental' ? 'GT' : 'GTE';
