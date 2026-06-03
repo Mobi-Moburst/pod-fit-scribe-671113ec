@@ -20,6 +20,7 @@ const KC_PROPERTIES: Array<{ object: string; name: string; label: string }> = [
   { object: 'Company', name: 'kc_created_by_app',         label: 'KC Command Center Created By' },
   { object: 'Company', name: 'kc_show_url',               label: 'KC Command Center Show URL' },
   { object: 'Company', name: 'kc_is_podcast',             label: 'Is Podcast? (dropdown: Yes / No)' },
+  { object: 'Company', name: 'kc_show_notes',             label: 'KC Command Center Show Notes (multi-line text)' },
 ];
 
 export function HubspotSettingsCard() {
