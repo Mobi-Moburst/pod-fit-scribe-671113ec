@@ -107,8 +107,8 @@ async function fetchRephonicShowData(
   supabase: any,
   showUrl: string | null,
   showName: string | null,
-): Promise<{ description: string | null; listen_url: string | null; email: string | null; web_url: string | null }> {
-  const empty = { description: null, listen_url: null, email: null, web_url: null };
+): Promise<{ description: string | null; listen_url: string | null; email: string | null; web_url: string | null; rephonic_url: string | null }> {
+  const empty = { description: null, listen_url: null, email: null, web_url: null, rephonic_url: null };
   if (!supabase) return empty;
   if (!showUrl && !showName) return empty;
   try {
@@ -139,7 +139,10 @@ async function fetchRephonicShowData(
     const web_url = typeof result.web_url === 'string' && result.web_url.trim()
       ? result.web_url.trim()
       : null;
-    return { description: desc, listen_url: link, email, web_url };
+    const rephonic_url = typeof result.rephonic_url === 'string' && result.rephonic_url.trim()
+      ? result.rephonic_url.trim()
+      : null;
+    return { description: desc, listen_url: link, email, web_url, rephonic_url };
   } catch (err) {
     console.warn('[hubspot-resolve] rephonic fetch error:', err);
     return empty;
