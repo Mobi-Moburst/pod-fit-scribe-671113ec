@@ -331,6 +331,8 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
   const backlogCount = backlogged.filter((r) => r.status === "backlog").length;
   const atRiskCount = backlogged.filter((r) => r.status === "at-risk").length;
 
+  const [selectedBacklog, setSelectedBacklog] = useState<BacklogRow | null>(null);
+
   // CM leaderboard
   //   - Trim/normalize names so spelling variants ("Troy" vs "Troy Higgins ")
   //     collapse to the canonical name on the LTV roster.
