@@ -71,6 +71,8 @@ serve(async (req) => {
     const preview = await resolveAssociations({
       row, speaker, settings, overrides,
       LOVABLE_API_KEY, HUBSPOT_API_KEY, dryRun: true,
+      callerEmail: (claims.claims as any)?.email || null,
+      supabase,
     });
 
     return new Response(

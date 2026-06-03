@@ -83,6 +83,8 @@ serve(async (req) => {
       row, speaker, settings, overrides,
       LOVABLE_API_KEY, HUBSPOT_API_KEY,
       dryRun: !autoCreate,
+      callerEmail: (claims.claims as any)?.email || null,
+      supabase,
     });
 
     // Short-circuit on duplicate ticket
