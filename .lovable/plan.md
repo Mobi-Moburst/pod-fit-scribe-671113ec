@@ -1,96 +1,111 @@
+# Send to HubSpot — full association flow
 
-# HubSpot → Research integration
+Extend the existing "Send to HubSpot" button so it creates (or reuses) a **Company** (the show) and **Contact** (the host) and associates both to the new ticket. Dedupe is driven by the KC backref properties you just created in HubSpot.
 
-Goal: turn the Research workspace into the campaign manager's real-time view of HubSpot's "Agent Master Pipeline" for the selected speaker, with the ability to push shortlisted shows in as new tickets.
+## HubSpot properties (already created by you)
 
-## How it works at a glance
+| Object  | Internal name                  | Label                              |
+|---------|--------------------------------|------------------------------------|
+| Ticket  | `kc_shortlist_id`              | KC Command Center Shortlist ID     |
+| Ticket  | `kc_source`                    | KC Command Center Source           |
+| Contact | `kc_created_for_speaker_id`    | KC Command Center Speaker ID       |
+| Contact | `kc_created_by_app`            | KC Command Center Created By       |
+| Company | `kc_created_by_app`            | KC Command Center Created By       |
+| Company | `kc_show_url`                  | KC Command Center Show URL         |
+
+Constant values written by the app: `kc_source = "command_center"`, `kc_created_by_app = "command_center"`.
+
+## Resolve & create flow (single edge function)
+
+When the user confirms "Send to HubSpot" for a shortlist row:
 
 ```text
-[Research / speaker X selected]
-          │
-          ▼
- ┌─────────────────────────────┐         ┌──────────────────────┐
- │  Edge fn: hubspot-tickets   │ ──────► │  HubSpot CRM v3 API  │
- │  (via connector gateway)    │ ◄────── │  (tickets + pipelines)│
- └─────────────────────────────┘         └──────────────────────┘
-          │
-          ▼
- ┌─────────────────────────────┐
- │ Research tabs               │
- │  • Discover  (hides shows   │
- │     already a ticket)       │
- │  • Shortlist (+ "Send to    │
- │     HubSpot" button)        │
- │  • Pipeline  ◄── new tab    │
- │     kanban of stages        │
- └─────────────────────────────┘
+1. Resolve Company
+   a. Search /companies by kc_show_url = row.show_url   → reuse if hit
+   b. Else search by domain (parsed from show_url, skip generic hosts)
+   c. Else search by exact name
+   d. Else CREATE with: name, domain, website, kc_show_url, kc_created_by_app
+2. Resolve Contact
+   a. If host_email present → search /contacts by email
+   b. Else search by kc_created_for_speaker_id = speaker.id AND firstname+lastname
+   c. Else CREATE with: firstname, lastname, email?, kc_created_for_speaker_id, kc_created_by_app
+      (no hs_lead_status written → stays blank / "--")
+3. Dedupe Ticket
+   - Search tickets where hs_pipeline = configured AND kc_shortlist_id = row.id
+   - If found, skip create and reuse
+4. Create Ticket (if not deduped)
+   - subject, hs_pipeline, hs_pipeline_stage (stage 1), kc_client = speaker.name,
+     kc_shortlist_id = row.id, kc_source = "command_center",
+     content = description block, optional show_url_property
+5. Associate via /crm/v4/objects/{type}/{id}/associations/default/...
+   - ticket ↔ company, ticket ↔ contact, contact ↔ company
+6. Stamp our DB: research_shortlists.hubspot_ticket_id / _contact_id / _company_id / _synced_at, status = 'sent-to-hubspot'
 ```
 
-Match rule (confirmed): HubSpot ticket property **`kc_client`** equals **`speaker.name`** exactly (e.g. `Matt Dalio`).
-Default new tickets land in **Agent Master Pipeline → Working 1**.
+Generic domains skipped for dedupe (configurable in Settings, preseeded): `apple.com, podcasts.apple.com, spotify.com, youtube.com, substack.com`.
 
-## Phase 1 — Connect HubSpot
+## Confirm-before-send dialog
 
-1. Use the **HubSpot** connector (gateway-enabled). Trigger the connection picker so an admin links their HubSpot account at the workspace level. After that, `HUBSPOT_API_KEY` is available to edge functions.
-2. Add a tiny **discovery edge function** `hubspot-pipelines` (GET) that calls `/crm/v3/pipelines/tickets` and returns the pipelines + stages. We use this once in Settings to confirm we're pointed at "Agent Master Pipeline" and to capture its `pipelineId` + ordered stage IDs/labels.
-3. Store the chosen `pipelineId` + cached stage list in a new tiny table `hubspot_settings` (single row per org) so we don't re-fetch on every load and stages stay in the right kanban order.
+New `SendToHubspotDialog.tsx` opened from ShortlistTab. Two-step:
 
-## Phase 2 — Read pipeline per speaker
+1. **Preview** — calls a new `hubspot-resolve-associations` edge function that runs steps 1–3 in dry-run mode and returns: matched-or-new Company, matched-or-new Contact, and whether a duplicate ticket already exists.
+2. **Edit & confirm** — user can override host first/last name, host email, and company domain before submitting. Clicking "Create in HubSpot" calls `hubspot-create-ticket` with those overrides.
 
-New edge function `hubspot-tickets` (GET):
-- Input: `speaker_name` (required), optional `pipeline_id` (defaults to stored one).
-- Calls **`POST /crm/v3/objects/tickets/search`** with filters: `kc_client EQ <speaker_name>` AND `hs_pipeline EQ <pipelineId>`, plus the properties we need (`subject`, `hs_pipeline`, `hs_pipeline_stage`, `hubspot_owner_id`, `createdate`, `hs_lastmodifieddate`, `hs_ticket_priority`, `closedate`, plus any podcast-link/show-URL custom property if it exists — we'll confirm during phase 1 by reading one ticket).
-- Returns tickets grouped by `stage_id` with labels resolved from the cached pipeline.
+If a duplicate ticket is detected, the dialog shows "Already in HubSpot — open ticket" instead of a create button.
 
-UI: new **Pipeline** tab in `src/pages/Research.tsx` between Shortlist and the right rail. It renders a compact horizontal kanban (reusing card styling from the current Shortlist rows) with stage columns in HubSpot order: Working 1 → Working 2 → Working 3 → Entered Automation → Emailed Manually → Alternative Outreach → Re-Pitched → Negotiating → Scheduled → Previously Scheduled → Declined → No Response. Each card shows subject, owner avatar/initials, create/last-activity date, priority, and a small "Open in HubSpot ↗" link to `https://app.hubspot.com/contacts/<portalId>/ticket/<id>` (portal ID stored in `hubspot_settings`).
+## Edge function changes
 
-Light caching: tab refresh button + a 60-second SWR cache on the client. No DB mirroring in v1 — keep HubSpot as the source of truth.
+- **New** `hubspot-resolve-associations` — read-only resolve, returns preview JSON.
+- **Updated** `hubspot-create-ticket` — accepts optional `overrides: { host_first, host_last, host_email, company_domain }`, runs resolve → create → associate, returns `{ ticket_id, contact_id, company_id, created: { company, contact, ticket } }`.
+- **Updated** `hubspot-tickets` — request with `associations=contacts,companies` so existing ticket cards can show primary host + show.
 
-## Phase 3 — Dedupe Discover & Shortlist
+All three use the gateway pattern already in `hubspot-create-ticket` (LOVABLE_API_KEY + HUBSPOT_API_KEY headers).
 
-When a speaker is selected:
-- Fetch the same ticket list once and build a normalized **set of show names** (lowercased, trim/strip "the ", trailing "podcast" etc. — same approach we already use in `loadShortlist`).
-- In **Discover**: filter out any AI suggestion whose normalized name is in that set.
-- In **Shortlist**: hide rows whose normalized show name is in that set (they've graduated to HubSpot — they belong in the Pipeline tab). Keep a small toast/note "N items moved to Pipeline" so nothing feels lost.
+## Required scopes (you confirmed updated)
 
-## Phase 4 — Send shortlisted show to HubSpot
+`tickets`, `crm.objects.contacts.read/write`, `crm.objects.companies.read/write`, `crm.schemas.contacts.read`, `crm.schemas.companies.read`, `crm.schemas.tickets.read`.
 
-New edge function `hubspot-create-ticket` (POST):
-- Body: `{ shortlist_id }`.
-- Server loads the shortlist row + speaker, then calls **`POST /crm/v3/objects/tickets`** with:
-  - `subject` = `show_name`
-  - `kc_client` = `speaker.name`
-  - `hs_pipeline` = stored Agent Master Pipeline id
-  - `hs_pipeline_stage` = first stage id ("Working 1")
-  - Plus the show URL into whatever custom property we identify in phase 1 (otherwise drop it in `content` as a body note).
-- On success: returns the new ticket id, we mark `research_shortlists.status = 'sent_to_hubspot'` and refresh both Pipeline + Shortlist.
+## DB migration
 
-UI: add a "**Send to HubSpot**" button on each Shortlist row (next to the existing actions). Disabled state with tooltip if HubSpot isn't connected yet.
+Add to `research_shortlists`:
 
-## Out of scope for v1 (we can layer in later)
+```sql
+ALTER TABLE public.research_shortlists
+  ADD COLUMN hubspot_ticket_id text,
+  ADD COLUMN hubspot_contact_id text,
+  ADD COLUMN hubspot_company_id text,
+  ADD COLUMN hubspot_synced_at timestamptz;
+```
 
-- Moving tickets between stages from inside the command center (full two-way drag/drop).
-- Per-CM HubSpot accounts (we use one workspace connection — fine because the property filter already scopes to the right client).
-- Writing notes/engagements back to HubSpot.
-- Auto-creating a HubSpot ticket on shortlist add.
+Add to `hubspot_settings`:
 
-## Technical details
+```sql
+ALTER TABLE public.hubspot_settings
+  ADD COLUMN auto_create_associations boolean NOT NULL DEFAULT true,
+  ADD COLUMN generic_domains text[] NOT NULL DEFAULT
+    '{apple.com,podcasts.apple.com,spotify.com,youtube.com,substack.com}';
+```
 
-**New edge functions** (`verify_jwt = false`, validate session in code, never expose `HUBSPOT_API_KEY` client-side):
-- `supabase/functions/hubspot-pipelines/index.ts` — GET pipelines.
-- `supabase/functions/hubspot-tickets/index.ts` — GET tickets for a speaker.
-- `supabase/functions/hubspot-create-ticket/index.ts` — POST new ticket from a shortlist row.
+No new tables, no new GRANTs needed.
 
-All three hit the gateway base `https://connector-gateway.lovable.dev/hubspot/crm/v3/...` with headers `Authorization: Bearer ${LOVABLE_API_KEY}` + `X-Connection-Api-Key: ${HUBSPOT_API_KEY}`. Zod-validate inputs, return CORS-enabled JSON, and bubble HubSpot error bodies back through.
+## Settings UI (`HubspotSettingsCard.tsx`)
 
-**New table** `hubspot_settings` (one row per org): `org_id uuid PK`, `portal_id text`, `pipeline_id text`, `stages jsonb` (`[{id,label,order}]`), `kc_client_property text default 'kc_client'`, `show_url_property text null`, timestamps. RLS scoped by `get_team_org_id()`, with the standard four-step CREATE/GRANT/RLS/POLICY block.
+Add a **"Kitcaster properties"** checklist section showing the 6 properties above with their internal names, plus a small "Verify in HubSpot" button that pings `/properties/{objectType}/{name}` to confirm each exists. If any are missing, show a clear warning with the missing internal name.
 
-**New frontend pieces**:
-- `src/lib/hubspot.ts` — typed client wrappers (`getPipeline`, `getSpeakerTickets`, `createTicketFromShortlist`) using `supabase.functions.invoke`.
-- `src/components/research/PipelineTab.tsx` — kanban for the selected speaker, plus refresh + empty/error states + "Connect HubSpot" CTA when no settings row exists.
-- Update `src/pages/Research.tsx` — add the Pipeline tab, pass the ticket-name set into Discover/Shortlist, and pipe it through `loadShortlist` for filtering.
-- Update `src/components/research/ShortlistTab.tsx` — add `Send to HubSpot` action per row.
-- Settings: add a small "HubSpot" section to `src/pages/Settings.tsx` that runs the one-time pipeline picker (calls `hubspot-pipelines`, writes `hubspot_settings`).
+Also add:
+- Toggle: "Auto-create missing Contacts & Companies" (default on)
+- Textarea: "Generic domains to ignore for company dedupe"
 
-**Failure modes**: if HubSpot isn't connected, the Pipeline tab and "Send to HubSpot" button render a connect CTA — Discover/Shortlist behave exactly as today (no filtering applied).
+## Frontend wiring
 
+- `ShortlistTab.tsx` — replace direct `sendToHubspot()` with opening `SendToHubspotDialog`. Existing dropdown "Send to HubSpot" item opens the same dialog.
+- Toast on success links to the created ticket; on dedupe, links to the existing ticket.
+
+## Out of scope
+
+- Updating existing HubSpot entities when our data changes
+- Multi-host shows (attach first host only; surface the others in the dialog as read-only)
+- Writing engagements/notes beyond the ticket `content` field
+- Syncing edits back from HubSpot
+
+Ready to build on approval.
