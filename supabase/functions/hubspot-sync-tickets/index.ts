@@ -130,6 +130,9 @@ serve(async (req) => {
           filterGroups: [{
             filters: [
               { propertyName: 'hs_pipeline', operator: 'EQ', value: pipelineId },
+              // Only tickets CREATED this year (current-year scope)
+              { propertyName: 'createdate', operator: 'GTE', value: String(yearStart) },
+              // Walk forward by last-modified for stable pagination + incremental sync
               { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: String(cursorTs) },
             ],
           }],
