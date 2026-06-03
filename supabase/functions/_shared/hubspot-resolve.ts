@@ -190,9 +190,10 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
   if (ownerId) companyWillCreate.hubspot_owner_id = ownerId;
 
   if (!companyId && !dryRun) {
-    // Pull show description from Rephonic only when we're about to create.
-    const showNotes = await fetchRephonicShowNotes(input.supabase, showUrl, showName);
-    if (showNotes) companyWillCreate.kc_show_notes = showNotes;
+    // Pull show description + first listen link from Rephonic only when we're about to create.
+    const rephonic = await fetchRephonicShowData(input.supabase, showUrl, showName);
+    if (rephonic.description) companyWillCreate.kc_show_notes = rephonic.description;
+    if (rephonic.listen_url) companyWillCreate.kc_apple_podcast_link = rephonic.listen_url;
 
     const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/companies`, {
       method: 'POST', headers, body: JSON.stringify({ properties: companyWillCreate }),
