@@ -184,12 +184,12 @@ export function SendToHubspotDialog({ row, open, onOpenChange, onCompleted }: Pr
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Domain</Label>
+                  <Label className="text-xs">Website</Label>
                   <Input
                     className="h-8"
                     value={overrides.company_domain || ''}
                     onChange={(e) => setOverrides((o) => ({ ...o, company_domain: e.target.value }))}
-                    placeholder="example.com"
+                    placeholder="https://rephonic.com/podcasts/..."
                     disabled={preview.company?.existing}
                   />
                 </div>
