@@ -32,6 +32,7 @@ export type ResolveResult = {
   company: ResolvedEntity;
   contact: ResolvedEntity;
   duplicate_ticket_id: string | null;
+  owner_id: string | null;
   suggested: {
     domain: string | null;
     website: string | null;
@@ -338,6 +339,7 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     company: { id: companyId, existing: companyExisting, properties: companyProps, will_create: companyExisting ? undefined : companyWillCreate },
     contact: { id: contactId, existing: contactExisting, properties: contactProps, will_create: (contactExisting || !contactId) ? undefined : contactWillCreate },
     duplicate_ticket_id,
+    owner_id: ownerId || null,
     suggested: {
       domain: finalDomain,
       website: finalWebsite,

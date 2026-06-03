@@ -118,6 +118,10 @@ serve(async (req) => {
       kc_shortlist_id: row.id,
       kc_source: 'command_center',
     };
+    if (resolved.owner_id) {
+      properties.hubspot_owner_id = resolved.owner_id;
+      properties.hs_created_by_user_id = resolved.owner_id;
+    }
     if (showUrlProp && row.show_url) properties[showUrlProp] = row.show_url;
     const noteParts: string[] = [];
     if (row.show_url) noteParts.push(`Show URL: ${row.show_url}`);
