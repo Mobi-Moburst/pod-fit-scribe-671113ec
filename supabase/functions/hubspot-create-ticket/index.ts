@@ -165,6 +165,28 @@ serve(async (req) => {
       hubspot_synced_at: new Date().toISOString(),
     }).eq('id', shortlist_id);
 
+    // Insert into local cache so it's immediately visible without waiting for sync
+    try {
+      const TEAM_ORG_ID = '11111111-1111-1111-1111-111111111111';
+      const nowIso = new Date().toISOString();
+      await supabase.from('hubspot_tickets_cache').upsert({
+        org_id: TEAM_ORG_ID,
+        hubspot_ticket_id: ticketId,
+        pipeline_id: settings.pipeline_id,
+        stage_id: firstStage.id,
+        subject: row.show_name,
+        kc_client: speaker.name,
+        kc_shortlist_id: row.id,
+        show_url: showUrlProp && row.show_url ? row.show_url : null,
+        createdate: nowIso,
+        last_modified: nowIso,
+        raw_properties: properties,
+        synced_at: nowIso,
+      }, { onConflict: 'org_id,hubspot_ticket_id' });
+    } catch (e) {
+      console.warn('[hubspot-create-ticket] cache insert failed', e);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
