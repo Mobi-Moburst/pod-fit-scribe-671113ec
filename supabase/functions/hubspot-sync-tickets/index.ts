@@ -124,63 +124,119 @@ serve(async (req) => {
       }
     }
 
-    // Always sort + advance by hs_lastmodifieddate. HubSpot's search API caps
-    // `after` pagination at 10,000 results, so when we hit the cap we reset
-    // `after` and bump the filter cutoff to the last seen timestamp.
+    // Reusable paginated search with 10k after-cap handling.
+    // `extraFilters` is appended to every page's filters[] (AND).
+    async function runSearch(opts: {
+      createdateGte: number;
+      lastModifiedGte: number;
+      extraFilters?: Array<{ propertyName: string; operator: string; value?: string; values?: string[] }>;
+      label: string;
+    }) {
+      const collected: any[] = [];
+      let cursorTs = opts.lastModifiedGte;
+      let after: string | undefined;
+      let pages = 0;
+      let pageInWindow = 0;
+      while (pages < 500) {
+        const filters: any[] = [
+          { propertyName: 'hs_pipeline', operator: 'EQ', value: pipelineId },
+          { propertyName: 'createdate', operator: 'GTE', value: String(opts.createdateGte) },
+          { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: String(cursorTs) },
+          ...(opts.extraFilters || []),
+        ];
+        const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/tickets/search`, {
+          method: 'POST', headers,
+          body: JSON.stringify({
+            filterGroups: [{ filters }],
+            properties,
+            sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'ASCENDING' }],
+            limit: 100,
+            after,
+          }),
+        });
+        if (!resp.ok) {
+          const t = await resp.text();
+          throw new Error(`HubSpot search ${resp.status} (${opts.label} page ${pages}, after=${after}, cursorTs=${cursorTs}): ${t.slice(0, 400)}`);
+        }
+        const json = await resp.json();
+        const results: any[] = json.results || [];
+        collected.push(...results);
+        pages++;
+        pageInWindow++;
+        after = json.paging?.next?.after;
+        if (after && pageInWindow >= 95 && results.length > 0) {
+          const lastTs = Number(results[results.length - 1].properties?.hs_lastmodifieddate);
+          if (Number.isFinite(lastTs) && lastTs > cursorTs) {
+            cursorTs = lastTs;
+            after = undefined;
+            pageInWindow = 0;
+            continue;
+          }
+        }
+        if (!after) break;
+      }
+      return { results: collected, pages };
+    }
+
     const all: any[] = [];
     const seenIds = new Set<string>();
-    let cursorTs = sinceTs;
-    let after: string | undefined;
     let pages = 0;
-    let pageInWindow = 0;
 
-    while (pages < 500) {
-      const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/tickets/search`, {
-        method: 'POST', headers,
-        body: JSON.stringify({
-          filterGroups: [{
-            filters: [
-              { propertyName: 'hs_pipeline', operator: 'EQ', value: pipelineId },
-              // Only tickets CREATED this year (current-year scope)
-              { propertyName: 'createdate', operator: 'GTE', value: String(yearStart) },
-              // Walk forward by last-modified for stable pagination + incremental sync
-              { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: String(cursorTs) },
-            ],
-          }],
-          properties,
-          sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'ASCENDING' }],
-          limit: 100,
-          after,
-        }),
-      });
-      if (!resp.ok) {
-        const t = await resp.text();
-        throw new Error(`HubSpot search ${resp.status} (page ${pages}, after=${after}, cursorTs=${cursorTs}): ${t.slice(0, 400)}`);
+    if (mode === 'backfill') {
+      // Resolve client names: explicit list or active speakers from DB
+      let clientNames = backfillClientNamesInput;
+      if (!clientNames) {
+        const { data: speakers } = await supabase
+          .from('speakers')
+          .select('name')
+          .is('archived_at', null);
+        clientNames = Array.from(new Set((speakers || []).map((s: any) => String(s.name)).filter(Boolean)));
       }
-      const json = await resp.json();
-      const results: any[] = json.results || [];
+      const createdateGte = Date.now() - monthsBack * 30 * 24 * 60 * 60 * 1000;
+      // Chunk clients to keep IN-clause manageable
+      const CHUNK = 25;
+      const clientChunks: string[][] = [];
+      for (let i = 0; i < clientNames.length; i += CHUNK) {
+        clientChunks.push(clientNames.slice(i, i + CHUNK));
+      }
+      console.log(`[hubspot-sync-tickets] backfill: ${backfillStageIds.length} stages × ${clientChunks.length} client-chunks (${clientNames.length} speakers), monthsBack=${monthsBack}`);
+
+      for (const stageId of backfillStageIds) {
+        for (const chunk of clientChunks) {
+          const label = `stage=${stageId} clients=${chunk.length}`;
+          const { results, pages: p } = await runSearch({
+            createdateGte,
+            lastModifiedGte: 0,
+            extraFilters: [
+              { propertyName: 'hs_pipeline_stage', operator: 'EQ', value: stageId },
+              { propertyName: 'kc_client', operator: 'IN', values: chunk },
+            ],
+            label,
+          });
+          pages += p;
+          for (const r of results) {
+            if (!seenIds.has(r.id)) {
+              seenIds.add(r.id);
+              all.push(r);
+            }
+          }
+        }
+      }
+    } else {
+      const { results, pages: p } = await runSearch({
+        createdateGte: yearStart,
+        lastModifiedGte: sinceTs,
+        label: mode,
+      });
+      pages = p;
       for (const r of results) {
         if (!seenIds.has(r.id)) {
           seenIds.add(r.id);
           all.push(r);
         }
       }
-      pages++;
-      pageInWindow++;
-      after = json.paging?.next?.after;
-
-      // Approaching HubSpot's 10k after-cap: reset and advance the date window
-      if (after && pageInWindow >= 95 && results.length > 0) {
-        const lastTs = Number(results[results.length - 1].properties?.hs_lastmodifieddate);
-        if (Number.isFinite(lastTs) && lastTs > cursorTs) {
-          cursorTs = lastTs;
-          after = undefined;
-          pageInWindow = 0;
-          continue;
-        }
-      }
-      if (!after) break;
     }
+
 
 
     // Resolve owners (one fetch per unique id)
