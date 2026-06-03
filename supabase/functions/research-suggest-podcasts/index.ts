@@ -39,13 +39,13 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
     const REPHONIC_API_KEY = Deno.env.get('REPHONIC_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const authHeader = req.headers.get('Authorization');
 
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+    if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not configured');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -123,49 +123,56 @@ ${[...excludeNames].slice(0, 60).join(', ') || 'None'}
 
 For each podcast, return: podcast_name (exact, real, real-spelling), host_name, description (1–2 sentences on what it covers), why_it_fits (1 sentence on speaker-fit), target_audience, niche_tag (short label e.g. "Bootstrapped SaaS"), is_interview_format (must be true), est_listeners_range (micro=<2K, small=2K–15K, mid=15K–50K).
 
-Return ${num} suggestions. Volume matters — generate a long list of valid niche options.`;
+Return ${num} suggestions. Volume matters — generate a long list of valid niche options.
 
-    console.log('[research-suggest-podcasts] Calling Gemini, prompt length:', prompt.length);
+IMPORTANT: Use the web_search tool to find REAL, currently-active podcasts. Do NOT rely on training data — search for "best [niche] podcasts 2025", "[topic] interview podcast", Apple Podcasts directories, Podchaser, Listen Notes, etc. Verify each show exists and currently publishes interview episodes before including it. Then call the return_suggestions tool with your final list.`;
 
-    const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: 'You are a niche-podcast sourcing researcher who only surfaces real, currently-active small podcasts that book outside guests.' },
-          { role: 'user', content: prompt },
-        ],
-        tools: [{
-          type: 'function',
-          function: {
-            name: 'return_suggestions',
-            parameters: {
+    console.log('[research-suggest-podcasts] Calling Claude w/ web_search, prompt length:', prompt.length);
+
+    const returnSuggestionsTool = {
+      name: 'return_suggestions',
+      description: 'Return the final curated list of niche podcast suggestions after web research.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          suggestions: {
+            type: 'array',
+            items: {
               type: 'object',
               properties: {
-                suggestions: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      podcast_name: { type: 'string' },
-                      host_name: { type: 'string' },
-                      description: { type: 'string' },
-                      why_it_fits: { type: 'string' },
-                      target_audience: { type: 'string' },
-                      niche_tag: { type: 'string' },
-                      is_interview_format: { type: 'boolean' },
-                      est_listeners_range: { type: 'string', enum: ['micro', 'small', 'mid'] },
-                    },
-                    required: ['podcast_name', 'description', 'why_it_fits', 'is_interview_format', 'est_listeners_range'],
-                  },
-                },
+                podcast_name: { type: 'string' },
+                host_name: { type: 'string' },
+                description: { type: 'string' },
+                why_it_fits: { type: 'string' },
+                target_audience: { type: 'string' },
+                niche_tag: { type: 'string' },
+                is_interview_format: { type: 'boolean' },
+                est_listeners_range: { type: 'string', enum: ['micro', 'small', 'mid'] },
               },
-              required: ['suggestions'],
+              required: ['podcast_name', 'description', 'why_it_fits', 'is_interview_format', 'est_listeners_range'],
             },
           },
-        }],
-        tool_choice: { type: 'function', function: { name: 'return_suggestions' } },
+        },
+        required: ['suggestions'],
+      },
+    };
+
+    const aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 8000,
+        system: 'You are a niche-podcast sourcing researcher. You MUST use the web_search tool to find real, currently-active small podcasts before suggesting any. Never invent podcast names from memory.',
+        messages: [{ role: 'user', content: prompt }],
+        tools: [
+          { type: 'web_search_20250305', name: 'web_search', max_uses: 8 },
+          returnSuggestionsTool,
+        ],
       }),
     });
 
@@ -178,14 +185,17 @@ Return ${num} suggestions. Volume matters — generate a long list of valid nich
       if (aiResp.status === 402) {
         return new Response(JSON.stringify({ error: 'AI credits exhausted' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      throw new Error(`AI error: ${aiResp.status}`);
+      throw new Error(`AI error: ${aiResp.status} ${t.slice(0, 300)}`);
     }
 
     const aiData = await aiResp.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) throw new Error('Invalid AI response');
-    const parsed = JSON.parse(toolCall.function.arguments);
-    let raw: RawSuggestion[] = parsed.suggestions || [];
+    const blocks: any[] = aiData.content || [];
+    const toolUse = blocks.find((b) => b.type === 'tool_use' && b.name === 'return_suggestions');
+    if (!toolUse?.input) {
+      console.error('[research-suggest-podcasts] No return_suggestions tool_use. stop_reason:', aiData.stop_reason, 'blocks:', JSON.stringify(blocks).slice(0, 500));
+      throw new Error('Claude did not return suggestions');
+    }
+    let raw: RawSuggestion[] = (toolUse.input as any).suggestions || [];
 
     // Drop non-interview shows and already-known shows
     raw = raw.filter(r =>
