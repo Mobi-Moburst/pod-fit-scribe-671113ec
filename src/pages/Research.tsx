@@ -16,10 +16,12 @@ import { SpeakerContextRail } from '@/components/research/SpeakerContextRail';
 import { DiscoverTab } from '@/components/research/DiscoverTab';
 import { ShortlistTab, type ShortlistRow } from '@/components/research/ShortlistTab';
 import { AnglesPanel } from '@/components/research/AnglesPanel';
+import { PipelineTab } from '@/components/research/PipelineTab';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 import type { Company, Speaker } from '@/types/clients';
 import { Search, Layers, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { normalizeShowName } from '@/lib/hubspot';
 
 const legacyTools = [
   { id: 'evaluate', label: 'Evaluate', description: 'Score a single podcast.', path: '/evaluate?embedded=1', icon: Search },
