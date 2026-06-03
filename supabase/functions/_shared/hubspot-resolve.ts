@@ -169,7 +169,11 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     ...(hostEmail ? { email: hostEmail } : {}),
     kc_created_for_speaker_id: speaker.id,
     kc_created_by_app: 'command_center',
-    // intentionally NOT writing hs_lead_status — must stay blank
+    // Explicitly blank — isolate podcast contacts from the sales pipeline.
+    // hs_lead_status stays blank ("--") and lifecyclestage stays unset
+    // ("Select a stage") so these never enter sales reporting.
+    hs_lead_status: '',
+    lifecyclestage: '',
   };
 
   if (!contactId && !dryRun && (hostName.first || hostName.last || hostEmail)) {
