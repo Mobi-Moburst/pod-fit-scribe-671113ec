@@ -39,7 +39,8 @@ const Research = () => {
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [speakerId, setSpeakerId] = useState<string | null>(searchParams.get('speaker'));
-  const [tab, setTab] = useState<'discover' | 'shortlist'>('discover');
+  const [tab, setTab] = useState<'discover' | 'shortlist' | 'pipeline'>('discover');
+  const [hubspotTicketNames, setHubspotTicketNames] = useState<Set<string>>(new Set());
   const [shortlist, setShortlist] = useState<ShortlistRow[]>([]);
   const [selectedShortlistId, setSelectedShortlistId] = useState<string | null>(null);
   const [bookedCount, setBookedCount] = useState(0);
