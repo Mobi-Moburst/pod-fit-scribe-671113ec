@@ -188,10 +188,23 @@ const Research = () => {
     setShortlist((data || []) as ShortlistRow[]);
   }
 
-  const shortlistedNames = useMemo(
-    () => new Set(shortlist.map((s) => s.show_name.toLowerCase())),
-    [shortlist]
+  const shortlistedNames = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of shortlist) {
+      s.add(r.show_name.toLowerCase());
+      s.add(normalizeShowName(r.show_name));
+    }
+    for (const n of hubspotTicketNames) s.add(n);
+    return s;
+  }, [shortlist, hubspotTicketNames]);
+
+  // Hide shortlist rows that already exist as a HubSpot ticket — they live in Pipeline now.
+  const visibleShortlist = useMemo(
+    () => shortlist.filter((r) => !hubspotTicketNames.has(normalizeShowName(r.show_name))),
+    [shortlist, hubspotTicketNames]
   );
+  const hiddenCount = shortlist.length - visibleShortlist.length;
+
   const selectedRow = useMemo(
     () => shortlist.find((r) => r.id === selectedShortlistId) || null,
     [selectedShortlistId, shortlist]
