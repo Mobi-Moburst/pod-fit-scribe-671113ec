@@ -97,6 +97,7 @@ const Research = () => {
       setBookedCount(0);
       setBookedShows([]);
       setSelectedShortlistId(null);
+      setHubspotTicketNames(new Set());
       return;
     }
     loadShortlist();
