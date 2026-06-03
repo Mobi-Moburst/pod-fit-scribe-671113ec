@@ -39,7 +39,7 @@ export function HubspotSettingsCard() {
   const [genericDomains, setGenericDomains] = useState('apple.com\npodcasts.apple.com\nspotify.com\nyoutube.com\nsubstack.com');
   const [savedPipelineLabel, setSavedPipelineLabel] = useState<string | null>(null);
   const [syncStats, setSyncStats] = useState<{ count: number; lastSync: string | null } | null>(null);
-  const [syncing, setSyncing] = useState<false | 'incremental' | 'full'>(false);
+  const [syncing, setSyncing] = useState<false | 'incremental' | 'full' | 'backfill'>(false);
 
   async function loadSyncStats() {
     const { count } = await supabase
