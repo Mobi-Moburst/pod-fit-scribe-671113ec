@@ -296,6 +296,14 @@ const Research = () => {
                     orgId={TEAM_ORG_ID}
                     shortlistedNames={shortlistedNames}
                     onShortlisted={loadShortlist}
+                    candidates={discoverCandidatesBySpeaker[speaker.id] || []}
+                    setCandidates={(updater) =>
+                      setDiscoverCandidatesBySpeaker((prev) => {
+                        const current = prev[speaker.id] || [];
+                        const next = typeof updater === 'function' ? (updater as (p: Candidate[]) => Candidate[])(current) : updater;
+                        return { ...prev, [speaker.id]: next };
+                      })
+                    }
                   />
                 </TabsContent>
                 <TabsContent value="shortlist" className="mt-4 space-y-2">
