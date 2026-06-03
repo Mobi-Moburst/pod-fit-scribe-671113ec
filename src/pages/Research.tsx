@@ -16,10 +16,12 @@ import { SpeakerContextRail } from '@/components/research/SpeakerContextRail';
 import { DiscoverTab } from '@/components/research/DiscoverTab';
 import { ShortlistTab, type ShortlistRow } from '@/components/research/ShortlistTab';
 import { AnglesPanel } from '@/components/research/AnglesPanel';
+import { PipelineTab } from '@/components/research/PipelineTab';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
 import type { Company, Speaker } from '@/types/clients';
 import { Search, Layers, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { normalizeShowName } from '@/lib/hubspot';
 
 const legacyTools = [
   { id: 'evaluate', label: 'Evaluate', description: 'Score a single podcast.', path: '/evaluate?embedded=1', icon: Search },
@@ -37,7 +39,8 @@ const Research = () => {
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [speakerId, setSpeakerId] = useState<string | null>(searchParams.get('speaker'));
-  const [tab, setTab] = useState<'discover' | 'shortlist'>('discover');
+  const [tab, setTab] = useState<'discover' | 'shortlist' | 'pipeline'>('discover');
+  const [hubspotTicketNames, setHubspotTicketNames] = useState<Set<string>>(new Set());
   const [shortlist, setShortlist] = useState<ShortlistRow[]>([]);
   const [selectedShortlistId, setSelectedShortlistId] = useState<string | null>(null);
   const [bookedCount, setBookedCount] = useState(0);
@@ -94,8 +97,10 @@ const Research = () => {
       setBookedCount(0);
       setBookedShows([]);
       setSelectedShortlistId(null);
+      setHubspotTicketNames(new Set());
       return;
     }
+    setHubspotTicketNames(new Set());
     loadShortlist();
     (async () => {
       // Pull from speaker-specific reports AND any company report this speaker appears in.
@@ -185,10 +190,23 @@ const Research = () => {
     setShortlist((data || []) as ShortlistRow[]);
   }
 
-  const shortlistedNames = useMemo(
-    () => new Set(shortlist.map((s) => s.show_name.toLowerCase())),
-    [shortlist]
+  const shortlistedNames = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of shortlist) {
+      s.add(r.show_name.toLowerCase());
+      s.add(normalizeShowName(r.show_name));
+    }
+    for (const n of hubspotTicketNames) s.add(n);
+    return s;
+  }, [shortlist, hubspotTicketNames]);
+
+  // Hide shortlist rows that already exist as a HubSpot ticket — they live in Pipeline now.
+  const visibleShortlist = useMemo(
+    () => shortlist.filter((r) => !hubspotTicketNames.has(normalizeShowName(r.show_name))),
+    [shortlist, hubspotTicketNames]
   );
+  const hiddenCount = shortlist.length - visibleShortlist.length;
+
   const selectedRow = useMemo(
     () => shortlist.find((r) => r.id === selectedShortlistId) || null,
     [selectedShortlistId, shortlist]
@@ -267,8 +285,9 @@ const Research = () => {
                 <TabsList>
                   <TabsTrigger value="discover">Discover</TabsTrigger>
                   <TabsTrigger value="shortlist">
-                    Shortlist {shortlist.length > 0 && `(${shortlist.length})`}
+                    Shortlist {visibleShortlist.length > 0 && `(${visibleShortlist.length})`}
                   </TabsTrigger>
+                  <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
                 </TabsList>
                 <TabsContent value="discover" className="mt-4">
                   <DiscoverTab
@@ -278,15 +297,29 @@ const Research = () => {
                     onShortlisted={loadShortlist}
                   />
                 </TabsContent>
-                <TabsContent value="shortlist" className="mt-4">
+                <TabsContent value="shortlist" className="mt-4 space-y-2">
+                  {hiddenCount > 0 && (
+                    <div className="text-xs text-muted-foreground italic px-1">
+                      {hiddenCount} shortlisted show{hiddenCount === 1 ? '' : 's'} moved to Pipeline (already a HubSpot ticket).
+                    </div>
+                  )}
                   <ShortlistTab
-                    rows={shortlist}
+                    rows={visibleShortlist}
                     selectedId={selectedShortlistId}
                     onSelect={(id) => setSelectedShortlistId(id)}
                     onChanged={loadShortlist}
                   />
                 </TabsContent>
+                <TabsContent value="pipeline" className="mt-4">
+                  <PipelineTab
+                    speakerName={speaker.name}
+                    onTicketsLoaded={(subjects) =>
+                      setHubspotTicketNames(new Set(subjects.map((s) => normalizeShowName(s))))
+                    }
+                  />
+                </TabsContent>
               </Tabs>
+
             </div>
 
             {/* Right rail: angles */}

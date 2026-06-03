@@ -608,6 +608,42 @@ export type Database = {
         }
         Relationships: []
       }
+      hubspot_settings: {
+        Row: {
+          created_at: string
+          kc_client_property: string
+          org_id: string
+          pipeline_id: string | null
+          pipeline_label: string | null
+          portal_id: string | null
+          show_url_property: string | null
+          stages: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          kc_client_property?: string
+          org_id: string
+          pipeline_id?: string | null
+          pipeline_label?: string | null
+          portal_id?: string | null
+          show_url_property?: string | null
+          stages?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          kc_client_property?: string
+          org_id?: string
+          pipeline_id?: string | null
+          pipeline_label?: string | null
+          portal_id?: string | null
+          show_url_property?: string | null
+          stages?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ltv_monthly_snapshots: {
         Row: {
           actual_bookings_to_date: number | null
