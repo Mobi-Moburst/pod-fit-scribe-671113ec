@@ -73,6 +73,29 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
     }
   }
 
+  async function sendToHubspot(id: string) {
+    setBusyId(id);
+    const res = await createTicketFromShortlist(id);
+    setBusyId(null);
+    if (!res.ok) {
+      const desc = res.code === 'not_connected' || res.code === 'not_configured'
+        ? 'Connect HubSpot and pick a pipeline in Settings first.'
+        : res.error;
+      toast({ title: 'Could not send to HubSpot', description: desc, variant: 'destructive' });
+      return;
+    }
+    toast({
+      title: 'Ticket created in HubSpot',
+      description: res.portal_id && res.ticket_id
+        ? `Opened in Working 1. View ticket ↗`
+        : 'Opened in Working 1.',
+    });
+    if (res.portal_id && res.ticket_id) {
+      window.open(hubspotTicketUrl(res.portal_id, res.ticket_id), '_blank', 'noopener');
+    }
+    onChanged();
+  }
+
   if (rows.length === 0) {
     return (
       <Card className="card-surface p-8 text-center">
