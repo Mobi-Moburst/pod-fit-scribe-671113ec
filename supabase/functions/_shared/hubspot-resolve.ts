@@ -233,8 +233,13 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
   };
 
   // Resolve HubSpot owner once (by app user email). Used for both company + contact.
+  // We also mirror it onto hs_created_by_user_id so the "Created by" user matches the owner
+  // (otherwise HubSpot attributes creation to the private-app integration user).
   const ownerId = await resolveOwnerIdByEmail(input.callerEmail, headers);
-  if (ownerId) companyWillCreate.hubspot_owner_id = ownerId;
+  if (ownerId) {
+    companyWillCreate.hubspot_owner_id = ownerId;
+    companyWillCreate.hs_created_by_user_id = ownerId;
+  }
 
   if (!companyId && !dryRun) {
     if (rephonic.description) companyWillCreate.kc_show_notes = rephonic.description;
