@@ -56,7 +56,9 @@ export function SendToHubspotDialog({ row, open, onOpenChange, onCompleted }: Pr
       host_first: guess.first,
       host_last: guess.last,
       host_email: '',
-      company_domain: parseDomainSafe(row.show_url),
+      // Leave blank initially — preview will backfill with the Rephonic show URL
+      // (preferred) so we don't seed the company with an aggregator domain.
+      company_domain: '',
       company_name: row.show_name,
     });
     setPreview(null);
@@ -69,11 +71,13 @@ export function SendToHubspotDialog({ row, open, onOpenChange, onCompleted }: Pr
         toast({ title: 'Preview failed', description: p.error, variant: 'destructive' });
         return;
       }
-      // Backfill domain + email from Rephonic-driven suggestions when our initial
-      // guesses are empty (e.g. the show_url was an Apple aggregator link).
+      // Backfill website + email from Rephonic-driven suggestions when our initial
+      // guesses are empty. We prefer the Rephonic show URL over a raw domain so the
+      // CRM gets a stable, canonical reference instead of a generic feed host.
       setOverrides((o) => ({
         ...o,
-        company_domain: o.company_domain || p.suggested?.domain || '',
+        company_domain:
+          o.company_domain || p.suggested?.website || p.suggested?.domain || '',
         host_email: o.host_email || p.suggested?.email || '',
       }));
     })();
