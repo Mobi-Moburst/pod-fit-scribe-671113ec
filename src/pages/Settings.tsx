@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserPlus, Trash2, Shield, ShieldCheck, Lock, Mail, Plug, ChevronRight, Phone, FileText } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
+import { HubspotSettingsCard } from "@/components/settings/HubspotSettingsCard";
 
 interface ManagedUser {
   id: string;
