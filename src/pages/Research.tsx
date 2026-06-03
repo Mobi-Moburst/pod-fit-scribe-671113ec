@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { CompanySpeakerSelector } from '@/components/CompanySpeakerSelector';
 import { SpeakerContextRail } from '@/components/research/SpeakerContextRail';
-import { DiscoverTab } from '@/components/research/DiscoverTab';
+import { DiscoverTab, type Candidate } from '@/components/research/DiscoverTab';
 import { ShortlistTab, type ShortlistRow } from '@/components/research/ShortlistTab';
 import { AnglesPanel } from '@/components/research/AnglesPanel';
 import { PipelineTab } from '@/components/research/PipelineTab';
@@ -47,6 +47,7 @@ const Research = () => {
   const [bookedShows, setBookedShows] = useState<{ id: string; show_title: string | null; url: string; created_at: string | null }[]>([]);
   const [legacyOpen, setLegacyOpen] = useState(false);
   const [legacyActive, setLegacyActive] = useState<LegacyTool | null>(null);
+  const [discoverCandidatesBySpeaker, setDiscoverCandidatesBySpeaker] = useState<Record<string, Candidate[]>>({});
 
   useEffect(() => {
     document.title = 'Research — Kitcaster Campaign Command Center';
@@ -129,7 +130,8 @@ const Research = () => {
       const shows: Show[] = [];
       const collect = (podcasts: any[], reportId: string, generatedAt: string | null) => {
         for (const p of podcasts || []) {
-          const action = (p.action || '').toLowerCase();
+          const rawAction = Array.isArray(p.action) ? p.action.join(' ') : p.action;
+          const action = String(rawAction || '').toLowerCase();
           if (action && !action.includes('podcast recording') && !action.includes('published')) continue;
           const title = (p.show_title || '').trim();
           if (!title) continue;
@@ -295,6 +297,14 @@ const Research = () => {
                     orgId={TEAM_ORG_ID}
                     shortlistedNames={shortlistedNames}
                     onShortlisted={loadShortlist}
+                    candidates={discoverCandidatesBySpeaker[speaker.id] || []}
+                    setCandidates={(updater) =>
+                      setDiscoverCandidatesBySpeaker((prev) => {
+                        const current = prev[speaker.id] || [];
+                        const next = typeof updater === 'function' ? (updater as (p: Candidate[]) => Candidate[])(current) : updater;
+                        return { ...prev, [speaker.id]: next };
+                      })
+                    }
                   />
                 </TabsContent>
                 <TabsContent value="shortlist" className="mt-4 space-y-2">
