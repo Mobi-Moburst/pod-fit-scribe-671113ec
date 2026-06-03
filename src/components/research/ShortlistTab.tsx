@@ -12,10 +12,11 @@ import { ExternalLink, MoreHorizontal, Trash2, Lightbulb, Bookmark, Mic, X, Send
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { createTicketFromShortlist, hubspotTicketUrl } from '@/lib/hubspot';
+import { SendToHubspotDialog } from './SendToHubspotDialog';
 
 export type ShortlistRow = {
   id: string;
+
   show_name: string;
   show_url: string | null;
   host_name: string | null;
@@ -47,6 +48,8 @@ const STATUS_LABELS: Record<string, { label: string; tone: string }> = {
 export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
   const { toast } = useToast();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [hubspotRow, setHubspotRow] = useState<ShortlistRow | null>(null);
+
 
   async function setStatus(id: string, status: string) {
     setBusyId(id);
@@ -73,28 +76,11 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
     }
   }
 
-  async function sendToHubspot(id: string) {
-    setBusyId(id);
-    const res = await createTicketFromShortlist(id);
-    setBusyId(null);
-    if (!res.ok) {
-      const desc = res.code === 'not_connected' || res.code === 'not_configured'
-        ? 'Connect HubSpot and pick a pipeline in Settings first.'
-        : res.error;
-      toast({ title: 'Could not send to HubSpot', description: desc, variant: 'destructive' });
-      return;
-    }
-    toast({
-      title: 'Ticket created in HubSpot',
-      description: res.portal_id && res.ticket_id
-        ? `Opened in Working 1. View ticket ↗`
-        : 'Opened in Working 1.',
-    });
-    if (res.portal_id && res.ticket_id) {
-      window.open(hubspotTicketUrl(res.portal_id, res.ticket_id), '_blank', 'noopener');
-    }
-    onChanged();
+  function openHubspot(row: ShortlistRow) {
+    setHubspotRow(row);
   }
+
+
 
   if (rows.length === 0) {
     return (
@@ -169,7 +155,7 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
                       size="sm"
                       className="h-7 text-xs"
                       disabled={busyId === r.id}
-                      onClick={(e) => { e.stopPropagation(); sendToHubspot(r.id); }}
+                      onClick={(e) => { e.stopPropagation(); openHubspot(r); }}
                       title="Create a HubSpot ticket in Working 1"
                     >
                       {busyId === r.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -185,7 +171,7 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
                         <DropdownMenuItem onClick={() => onSelect(r.id)}>
                           <Lightbulb className="h-3.5 w-3.5 mr-2" /> Suggest angles
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => sendToHubspot(r.id)}>
+                        <DropdownMenuItem onClick={() => openHubspot(r)}>
                           <Send className="h-3.5 w-3.5 mr-2" /> Send to HubSpot
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setStatus(r.id, 'pitched-elsewhere')}>
@@ -210,6 +196,13 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
           </Card>
         );
       })}
+      <SendToHubspotDialog
+        row={hubspotRow}
+        open={!!hubspotRow}
+        onOpenChange={(o) => !o && setHubspotRow(null)}
+        onCompleted={onChanged}
+      />
     </div>
   );
 }
+

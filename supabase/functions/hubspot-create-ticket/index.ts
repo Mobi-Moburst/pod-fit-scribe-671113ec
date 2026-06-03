@@ -1,8 +1,8 @@
-// Create a HubSpot ticket from a shortlisted podcast row.
-// Lands the ticket in the first stage of the configured Agent Master Pipeline,
-// stamps kc_client with the speaker's name, and marks the shortlist row.
+// Create a HubSpot ticket from a shortlisted podcast row, with auto-created
+// Company (the show) and Contact (the host), and associate them all.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { resolveAssociations, associate, type Overrides } from "../_shared/hubspot-resolve.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -46,6 +46,7 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const shortlist_id: string | undefined = body.shortlist_id;
+    const overrides: Overrides = body.overrides || {};
     if (!shortlist_id) {
       return new Response(JSON.stringify({ error: 'shortlist_id required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -62,7 +63,6 @@ serve(async (req) => {
 
     const { data: settings } = await supabase
       .from('hubspot_settings').select('*').maybeSingle();
-
     if (!settings || !settings.pipeline_id) {
       return new Response(
         JSON.stringify({ error: 'HubSpot pipeline not configured', code: 'not_configured' }),
@@ -76,12 +76,45 @@ serve(async (req) => {
 
     const kcProp = (settings.kc_client_property as string) || 'kc_client';
     const showUrlProp = settings.show_url_property as string | null;
+    const autoCreate = settings.auto_create_associations !== false;
 
+    // Resolve + create company/contact (skip create if user disabled auto-create)
+    const resolved = await resolveAssociations({
+      row, speaker, settings, overrides,
+      LOVABLE_API_KEY, HUBSPOT_API_KEY,
+      dryRun: !autoCreate,
+    });
+
+    // Short-circuit on duplicate ticket
+    if (resolved.duplicate_ticket_id) {
+      await supabase.from('research_shortlists').update({
+        status: 'sent-to-hubspot',
+        hubspot_ticket_id: resolved.duplicate_ticket_id,
+        hubspot_contact_id: resolved.contact.id,
+        hubspot_company_id: resolved.company.id,
+        hubspot_synced_at: new Date().toISOString(),
+      }).eq('id', shortlist_id);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          deduped: true,
+          ticket_id: resolved.duplicate_ticket_id,
+          contact_id: resolved.contact.id,
+          company_id: resolved.company.id,
+          portal_id: settings.portal_id || null,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Build + create the ticket
     const properties: Record<string, string> = {
       subject: row.show_name,
       hs_pipeline: settings.pipeline_id,
       hs_pipeline_stage: firstStage.id,
       [kcProp]: speaker.name,
+      kc_shortlist_id: row.id,
+      kc_source: 'command_center',
     };
     if (showUrlProp && row.show_url) properties[showUrlProp] = row.show_url;
     const noteParts: string[] = [];
@@ -98,9 +131,7 @@ serve(async (req) => {
     };
 
     const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/tickets`, {
-      method: 'POST',
-      headers: hubspotHeaders,
-      body: JSON.stringify({ properties }),
+      method: 'POST', headers: hubspotHeaders, body: JSON.stringify({ properties }),
     });
     if (!resp.ok) {
       const t = await resp.text();
@@ -111,18 +142,38 @@ serve(async (req) => {
       );
     }
     const created = await resp.json();
+    const ticketId: string = created.id;
 
-    // Mark the shortlist row so it stops showing in the shortlist view
-    await supabase
-      .from('research_shortlists')
-      .update({ status: 'sent-to-hubspot' })
-      .eq('id', shortlist_id);
+    // Associate
+    if (resolved.company.id) {
+      await associate('tickets', ticketId, 'companies', resolved.company.id, LOVABLE_API_KEY, HUBSPOT_API_KEY);
+    }
+    if (resolved.contact.id) {
+      await associate('tickets', ticketId, 'contacts', resolved.contact.id, LOVABLE_API_KEY, HUBSPOT_API_KEY);
+      if (resolved.company.id) {
+        await associate('contacts', resolved.contact.id, 'companies', resolved.company.id, LOVABLE_API_KEY, HUBSPOT_API_KEY);
+      }
+    }
+
+    await supabase.from('research_shortlists').update({
+      status: 'sent-to-hubspot',
+      hubspot_ticket_id: ticketId,
+      hubspot_contact_id: resolved.contact.id,
+      hubspot_company_id: resolved.company.id,
+      hubspot_synced_at: new Date().toISOString(),
+    }).eq('id', shortlist_id);
 
     return new Response(
       JSON.stringify({
         success: true,
-        ticket_id: created.id,
+        ticket_id: ticketId,
+        contact_id: resolved.contact.id,
+        company_id: resolved.company.id,
         portal_id: settings.portal_id || null,
+        created: {
+          company: !resolved.company.existing,
+          contact: !resolved.contact.existing,
+        },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

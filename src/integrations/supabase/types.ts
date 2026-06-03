@@ -610,7 +610,9 @@ export type Database = {
       }
       hubspot_settings: {
         Row: {
+          auto_create_associations: boolean
           created_at: string
+          generic_domains: string[]
           kc_client_property: string
           org_id: string
           pipeline_id: string | null
@@ -621,7 +623,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_create_associations?: boolean
           created_at?: string
+          generic_domains?: string[]
           kc_client_property?: string
           org_id: string
           pipeline_id?: string | null
@@ -632,7 +636,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_create_associations?: boolean
           created_at?: string
+          generic_domains?: string[]
           kc_client_property?: string
           org_id?: string
           pipeline_id?: string | null
@@ -1120,6 +1126,10 @@ export type Database = {
           guest_cadence_label: string | null
           guest_cadence_score: number | null
           host_name: string | null
+          hubspot_company_id: string | null
+          hubspot_contact_id: string | null
+          hubspot_synced_at: string | null
+          hubspot_ticket_id: string | null
           id: string
           itunes_id: string | null
           last_episode_date: string | null
@@ -1145,6 +1155,10 @@ export type Database = {
           guest_cadence_label?: string | null
           guest_cadence_score?: number | null
           host_name?: string | null
+          hubspot_company_id?: string | null
+          hubspot_contact_id?: string | null
+          hubspot_synced_at?: string | null
+          hubspot_ticket_id?: string | null
           id?: string
           itunes_id?: string | null
           last_episode_date?: string | null
@@ -1170,6 +1184,10 @@ export type Database = {
           guest_cadence_label?: string | null
           guest_cadence_score?: number | null
           host_name?: string | null
+          hubspot_company_id?: string | null
+          hubspot_contact_id?: string | null
+          hubspot_synced_at?: string | null
+          hubspot_ticket_id?: string | null
           id?: string
           itunes_id?: string | null
           last_episode_date?: string | null
