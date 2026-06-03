@@ -39,6 +39,7 @@ interface Props {
 const STATUS_LABELS: Record<string, { label: string; tone: string }> = {
   new: { label: 'New', tone: 'bg-blue-500/10 text-blue-500 border-blue-500/30' },
   'pitched-elsewhere': { label: 'Pitched', tone: 'bg-amber-500/10 text-amber-500 border-amber-500/30' },
+  'sent-to-hubspot': { label: 'In HubSpot', tone: 'bg-orange-500/10 text-orange-500 border-orange-500/30' },
   booked: { label: 'Booked', tone: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' },
   passed: { label: 'Passed', tone: 'bg-muted text-muted-foreground border-border' },
 };
