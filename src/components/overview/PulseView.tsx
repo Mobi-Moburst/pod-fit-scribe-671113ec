@@ -26,6 +26,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ExternalLink } from "lucide-react";
+import { BacklogTriagePanel, type BacklogRow } from "./BacklogTriagePanel";
 
 type Booking = {
   id: string;
@@ -330,6 +331,8 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
   const backlogCount = backlogged.filter((r) => r.status === "backlog").length;
   const atRiskCount = backlogged.filter((r) => r.status === "at-risk").length;
 
+  const [selectedBacklog, setSelectedBacklog] = useState<BacklogRow | null>(null);
+
   // CM leaderboard
   //   - Trim/normalize names so spelling variants ("Troy" vs "Troy Higgins ")
   //     collapse to the canonical name on the LTV roster.
@@ -605,7 +608,11 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
               </TableHeader>
               <TableBody>
                 {backlogged.map((r) => (
-                  <TableRow key={r.client}>
+                  <TableRow
+                    key={r.client}
+                    className="cursor-pointer hover:bg-muted/40"
+                    onClick={() => setSelectedBacklog(r as BacklogRow)}
+                  >
                     <TableCell className="font-medium">{r.client}</TableCell>
                     <TableCell>
                       {r.status === "backlog" ? (
@@ -634,6 +641,13 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
           </div>
         )}
       </Card>
+
+      <BacklogTriagePanel
+        row={selectedBacklog}
+        open={!!selectedBacklog}
+        onOpenChange={(open) => !open && setSelectedBacklog(null)}
+      />
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* CM leaderboard */}
