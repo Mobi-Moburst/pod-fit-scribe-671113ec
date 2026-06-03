@@ -258,18 +258,31 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     contactId = created.id; contactProps = created.properties; contactExisting = false;
   }
 
-  // -------- Duplicate ticket check --------
-  const dupHit = await searchObject('tickets', {
-    filterGroups: [{
-      filters: [
-        { propertyName: 'kc_shortlist_id', operator: 'EQ', value: row.id },
-        { propertyName: 'hs_pipeline', operator: 'EQ', value: settings.pipeline_id },
-      ],
-    }],
-    properties: ['subject'],
-    limit: 1,
-  }, headers);
-  const duplicate_ticket_id = dupHit[0]?.id || null;
+  // -------- Duplicate ticket check (cache first, fall back to live search) --------
+  let duplicate_ticket_id: string | null = null;
+  if (input.supabase) {
+    const { data: cacheHit } = await input.supabase
+      .from('hubspot_tickets_cache')
+      .select('hubspot_ticket_id')
+      .eq('kc_shortlist_id', row.id)
+      .eq('pipeline_id', settings.pipeline_id)
+      .limit(1)
+      .maybeSingle();
+    if (cacheHit?.hubspot_ticket_id) duplicate_ticket_id = cacheHit.hubspot_ticket_id;
+  }
+  if (!duplicate_ticket_id) {
+    const dupHit = await searchObject('tickets', {
+      filterGroups: [{
+        filters: [
+          { propertyName: 'kc_shortlist_id', operator: 'EQ', value: row.id },
+          { propertyName: 'hs_pipeline', operator: 'EQ', value: settings.pipeline_id },
+        ],
+      }],
+      properties: ['subject'],
+      limit: 1,
+    }, headers);
+    duplicate_ticket_id = dupHit[0]?.id || null;
+  }
 
   return {
     company: { id: companyId, existing: companyExisting, properties: companyProps, will_create: companyExisting ? undefined : companyWillCreate },
