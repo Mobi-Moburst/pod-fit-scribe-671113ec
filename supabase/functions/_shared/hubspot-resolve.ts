@@ -229,7 +229,7 @@ export async function resolveAssociations(input: ResolveInput): Promise<ResolveR
     ...(finalWebsite ? { website: finalWebsite } : {}),
     ...(showUrl ? { kc_show_url: showUrl } : {}),
     kc_created_by_app: 'command_center',
-    kc_is_podcast: 'Yes',
+    kc_is_podcast: 'true',
   };
 
   // Resolve HubSpot owner once (by app user email). Used for both company + contact.
