@@ -237,7 +237,7 @@ export default function ReportPresentation() {
         socialValue: (reportData.kpis?.total_social_reach || 0) > 0,
       };
 
-      setVisibleSections(reportData.visibleSections || dataAwareDefaults);
+      setVisibleSections({ ...dataAwareDefaults, ...(reportData.visibleSections || {}), averageScore: false });
       setIsLoading(false);
     };
 

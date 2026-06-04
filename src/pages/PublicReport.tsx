@@ -288,7 +288,7 @@ export default function PublicReport() {
       
       // Merge saved sections with data-aware defaults so new keys are picked up
       const savedSections = reportData.visibleSections || {};
-      setVisibleSections({ ...dataAwareDefaults, ...savedSections });
+      setVisibleSections({ ...dataAwareDefaults, ...savedSections, averageScore: false });
       setIsLoading(false);
     };
 
