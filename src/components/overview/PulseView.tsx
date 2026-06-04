@@ -124,6 +124,8 @@ function normName(s: string | null) {
 const CM_NICKNAME_ALIASES: Record<string, string> = {
   abbeywolf: "abigailwolf",
   abbey: "abigail",
+  janhviupadhyay: "janhaviupadhyay",
+  janhvi: "janhavi",
 };
 
 function canonicalCmKey(s: string | null) {
