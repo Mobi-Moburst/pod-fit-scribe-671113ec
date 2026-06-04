@@ -3152,6 +3152,19 @@ export default function Reports() {
                             ? parseFloat(highestReachShow.monthly_listens) || 0
                             : (highestReachShow.monthly_listens || 0))
                         : 0;
+                      // Cover art isn't stored on podcast entries — look it up from top_categories.podcasts
+                      const highestReachCoverArt = (() => {
+                        if (!highestReachShow?.show_title) return undefined;
+                        const target = String(highestReachShow.show_title).toLowerCase().trim();
+                        for (const cat of ((k as any).top_categories || [])) {
+                          for (const pod of (cat.podcasts || [])) {
+                            if (pod.cover_art_url && String(pod.show_title || '').toLowerCase().trim() === target) {
+                              return pod.cover_art_url as string;
+                            }
+                          }
+                        }
+                        return undefined;
+                      })();
 
                       // Net Impressions (lifetime): computed from ALL Airtable bookings
                       // for this company/speaker (see compute-lifetime-impressions edge fn).
