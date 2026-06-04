@@ -102,18 +102,19 @@ serve(async (req) => {
 
     let availableProps = new Set<string>(wantProps);
     try {
-      const pr = await fetch(`${GATEWAY_URL}/crm/v3/properties/tickets`, { headers });
+      const pr = await loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/properties/tickets`, { headers }, { phase: 'property_discovery' });
       if (pr.ok) {
         const pj = await pr.json();
         const names = new Set<string>((pj.results || []).map((p: any) => p.name));
         availableProps = new Set(wantProps.filter((p) => names.has(p)));
         const missing = wantProps.filter((p) => !names.has(p));
-        if (missing.length) console.log('[hubspot-sync-tickets] missing ticket props:', missing);
+        if (missing.length) logger.warn('property_discovery_missing', { missing });
       }
     } catch (e) {
-      console.warn('[hubspot-sync-tickets] property discovery failed, using full list', e);
+      logger.warn('property_discovery_failed', { message: e instanceof Error ? e.message : String(e) });
     }
     const properties = Array.from(availableProps);
+
 
     // Build filter
     const yearStart = new Date(new Date().getUTCFullYear(), 0, 1).getTime();
