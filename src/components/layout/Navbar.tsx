@@ -4,12 +4,13 @@ import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { LogOut, Settings } from "lucide-react";
 
-const tabs = [
+const baseTabs = [
   { to: "/overview", label: "Overview" },
   { to: "/companies", label: "Companies" },
-  { to: "/research", label: "Research" },
+  { to: "/research", label: "Research", adminOnly: true },
   { to: "/reports", label: "Reports" },
   { to: "/studio", label: "Studio" },
 ];
@@ -19,6 +20,8 @@ const researchRoutes = ["/", "/batch", "/history", "/research"];
 export const Navbar = () => {
   const { pathname } = useLocation();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useUserRole();
+  const tabs = baseTabs.filter((t) => !t.adminOnly || isAdmin);
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
