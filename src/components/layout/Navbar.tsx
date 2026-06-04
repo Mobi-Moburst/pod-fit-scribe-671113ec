@@ -4,12 +4,13 @@ import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { LogOut, Settings } from "lucide-react";
 
-const tabs = [
+const baseTabs = [
   { to: "/overview", label: "Overview" },
   { to: "/companies", label: "Companies" },
-  { to: "/research", label: "Research" },
+  { to: "/research", label: "Research", adminOnly: true },
   { to: "/reports", label: "Reports" },
   { to: "/studio", label: "Studio" },
 ];
