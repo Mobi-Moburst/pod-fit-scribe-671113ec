@@ -3300,7 +3300,7 @@ export default function Reports() {
                     {visibleSections.emv && (
                       <KPICard
                         title="Earned Media Value"
-                        value={`$${reportData.kpis.total_emv?.toLocaleString() || '0'}`}
+                        value={`$${Math.ceil(reportData.kpis.total_emv || 0).toLocaleString()}`}
                         subtitle={reportData.kpis.total_published === 0 ? "Requires published episodes" : "Total campaign EMV • Click to view analysis"}
                         icon={DollarSign}
                         tooltip="Based on audience size × industry CPM rate × guest speaking time. Reflects the equivalent cost to reach this audience through paid podcast advertising."
