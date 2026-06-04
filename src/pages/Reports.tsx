@@ -52,7 +52,18 @@ import { RunAEOAuditButton } from "@/components/reports/RunAEOAuditButton";
 import { AirtableDataPreview } from "@/components/reports/AirtableDataPreview";
 import { ReportPasswordDialog } from "@/components/reports/ReportPasswordDialog";
 
+// Compact number formatter: 833467 -> "833.4K", 1234567 -> "1.2M"
+function formatCompactNumber(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return Math.round(n).toString();
+}
+
 export default function Reports() {
+
   const auditPollIntervalMs = 4000;
   const auditAbsoluteTimeoutMs = 20 * 60 * 1000;
   const auditStallTimeoutMs = 2 * 60 * 1000;
