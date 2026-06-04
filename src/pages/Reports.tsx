@@ -3224,7 +3224,9 @@ export default function Reports() {
                               title="Total Monthly Listeners Per Episode"
                               value={formatCompactNumber(listenersPerEpisode)}
                               editableValue={listenersPerEpisode}
+                              editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ total_listeners_per_episode: next } as any)}
+
                               subtitle="Combined per-episode reach"
                               icon={Users}
                               tooltip="Sum of average listeners-per-episode across all booked shows in this report period."
