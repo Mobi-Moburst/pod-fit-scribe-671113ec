@@ -33,6 +33,8 @@ export const KPICard = ({
   value,
   subtitle,
   icon: Icon,
+  imageUrl,
+  imageAlt,
   tooltip,
   onClick,
   onHide,
