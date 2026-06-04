@@ -152,7 +152,7 @@ serve(async (req) => {
           { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: String(cursorTs) },
           ...(opts.extraFilters || []),
         ];
-        const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/tickets/search`, {
+        const resp = await loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/objects/tickets/search`, {
           method: 'POST', headers,
           body: JSON.stringify({
             filterGroups: [{ filters }],
@@ -161,7 +161,7 @@ serve(async (req) => {
             limit: 100,
             after,
           }),
-        });
+        }, { phase: 'ticket_search', label: opts.label, page: pages });
         if (!resp.ok) {
           const t = await resp.text();
           throw new Error(`HubSpot search ${resp.status} (${opts.label} page ${pages}, after=${after}, cursorTs=${cursorTs}): ${t.slice(0, 400)}`);
