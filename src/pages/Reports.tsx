@@ -3277,7 +3277,7 @@ export default function Reports() {
                       const emv = reportData.kpis.total_emv || 0;
                       const totalSocialReach = reportData.kpis.total_social_reach;
                       const socialValue = (totalSocialReach / 1000) * 60 * 1.5 * 1.2;
-                      const totalCampaignValue = emv + socialValue;
+                      const totalCampaignValue = Math.ceil(emv) + socialValue;
                       const formatted = `$${Math.round(totalCampaignValue).toLocaleString()}`;
                       return (
                         <KPICard
@@ -3300,7 +3300,7 @@ export default function Reports() {
                     {visibleSections.emv && (
                       <KPICard
                         title="Earned Media Value"
-                        value={`$${reportData.kpis.total_emv?.toLocaleString() || '0'}`}
+                        value={`$${Math.ceil(reportData.kpis.total_emv || 0).toLocaleString()}`}
                         subtitle={reportData.kpis.total_published === 0 ? "Requires published episodes" : "Total campaign EMV • Click to view analysis"}
                         icon={DollarSign}
                         tooltip="Based on audience size × industry CPM rate × guest speaking time. Reflects the equivalent cost to reach this audience through paid podcast advertising."
