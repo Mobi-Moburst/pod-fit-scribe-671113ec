@@ -106,6 +106,7 @@ serve(async (req) => {
       tickets: tickets.filter((t) => t.stage_id === s.id),
     }));
 
+    logger.info('request_completed', { speaker_name, total: tickets.length, stages: grouped.length, duration_ms: Date.now() - started });
     return new Response(JSON.stringify({
       success: true,
       portal_id: settings.portal_id || null,
@@ -117,7 +118,7 @@ serve(async (req) => {
       source: 'cache',
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
-    console.error('[hubspot-tickets] Error:', err);
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
