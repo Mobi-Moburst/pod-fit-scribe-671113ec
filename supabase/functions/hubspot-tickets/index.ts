@@ -14,6 +14,10 @@ const TEAM_ORG_ID = '11111111-1111-1111-1111-111111111111';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const started = Date.now();
+  const requestId = newRequestId();
+  const logger = createLogger({ fn: 'hubspot-tickets', requestId, orgId: TEAM_ORG_ID });
+  logger.info('request_received', { method: req.method });
 
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
