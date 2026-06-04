@@ -302,7 +302,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
     return offboarding
       .filter((r) => {
         if (!r.date_ended) return false;
-        if (cmFilter !== "all" && r.campaign_manager !== cmFilter) return false;
+        if (cmFilter !== "all" && canonicalCmKey(r.campaign_manager) !== canonicalCmKey(cmFilter)) return false;
         return inRange(r.date_ended, monthStart, monthEnd);
       })
       .map((r) => ({ client: r.client_name, end: r.date_ended, cm: r.campaign_manager }))
