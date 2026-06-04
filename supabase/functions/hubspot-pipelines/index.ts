@@ -71,6 +71,7 @@ serve(async (req) => {
         .map((s: any) => ({ id: s.id, label: s.label, order: s.displayOrder ?? 0 })),
     }));
 
+    logger.info('request_completed', { pipelines: pipelines.length, portal_id: accountJson.portalId || null, duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({
         success: true,
@@ -80,7 +81,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('[hubspot-pipelines] Error:', err);
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
