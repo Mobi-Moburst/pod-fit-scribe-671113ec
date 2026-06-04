@@ -3210,7 +3210,9 @@ export default function Reports() {
                               title="Projected Annual Listenership"
                               value={formatCompactNumber(projectedAnnual)}
                               editableValue={projectedAnnual}
+                              editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ projected_annual_listenership: next } as any)}
+
                               subtitle="Total monthly listeners × 12"
                               icon={Users}
                               tooltip="Estimated annual listenership extrapolated from the combined monthly listenership of all booked shows."
