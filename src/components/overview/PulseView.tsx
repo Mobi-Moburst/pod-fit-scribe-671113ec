@@ -360,23 +360,26 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
     for (const r of filteredLtv) {
       const name = cleanName(r.campaign_manager);
       if (!name) continue;
-      rosterByNorm.set(normName(name), name);
+      rosterByNorm.set(canonicalCmKey(name), name);
     }
 
     // Resolve a booking's CM to a roster name, a first-name match, or Archive
     const resolveCm = (raw: string | null): string => {
       const name = cleanName(raw);
       if (!name) return ARCHIVE;
-      const exact = rosterByNorm.get(normName(name));
+      const exact = rosterByNorm.get(canonicalCmKey(name));
       if (exact) return exact;
       // First-name fallback: "Troy" → "Troy Higgins" if unique on roster
       const first = name.split(/\s+/)[0];
-      const matches = Array.from(rosterByNorm.values()).filter(
-        (n) => n.split(/\s+/)[0].toLowerCase() === first.toLowerCase()
-      );
+      const firstKey = CM_NICKNAME_ALIASES[normName(first)] ?? normName(first);
+      const matches = Array.from(rosterByNorm.values()).filter((n) => {
+        const rosterFirst = normName(n.split(/\s+/)[0]);
+        return rosterFirst === firstKey;
+      });
       if (matches.length === 1) return matches[0];
       return ARCHIVE;
     };
+
 
     const map = new Map<
       string,
