@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
+import { AdminRoute } from "./components/layout/AdminRoute";
 import Index from "./pages/Evaluate";
 import Batch from "./pages/Batch";
 import Companies from "./pages/Companies";
