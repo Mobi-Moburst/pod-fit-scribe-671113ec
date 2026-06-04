@@ -3104,7 +3104,7 @@ export default function Reports() {
                     {visibleSections.socialReach && (
                       <KPICard
                         title={reportData.kpis.total_published === 0 ? "Projected Social Reach" : "Social Reach"}
-                        value={reportData.kpis.total_social_reach.toLocaleString()}
+                        value={formatCompactNumber(reportData.kpis.total_social_reach)}
                         subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows" : "Combined social following"}
                         icon={Users}
                         tooltip={`The combined number of followers across all of the social media accounts that we found for ${reportData.kpis.total_booked > 1 ? 'these podcasts' : 'this podcast'}`}
