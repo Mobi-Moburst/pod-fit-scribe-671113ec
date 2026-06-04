@@ -74,7 +74,7 @@ const App = () => (
               <Route path="/" element={<ProtectedRoute><Navigate to="/overview" replace /></ProtectedRoute>} />
               <Route path="/evaluate" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/overview" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
-              <Route path="/research" element={<AdminRoute><Research /></AdminRoute>} />
+              <Route path="/research" element={<ResearchRoute><Research /></ResearchRoute>} />
               <Route path="/studio" element={<ProtectedRoute><Studio /></ProtectedRoute>} />
               <Route path="/batch" element={<ProtectedRoute><Batch /></ProtectedRoute>} />
               <Route path="/companies" element={<ProtectedRoute><Companies /></ProtectedRoute>} />
