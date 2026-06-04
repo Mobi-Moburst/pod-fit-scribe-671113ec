@@ -33,7 +33,7 @@ interface ReachAnalysisDialogProps {
 }
 
 // Calculate months in reporting period
-const calculatePeriodMonths = (dateRange?: { start: string; end: string }, quarter?: string): number => {
+export const calculatePeriodMonths = (dateRange?: { start: string; end: string }, quarter?: string): number => {
   // If it's a quarter-based report, always return 3
   if (quarter && /^Q\d\s*\d{4}$/.test(quarter)) {
     return 3;
