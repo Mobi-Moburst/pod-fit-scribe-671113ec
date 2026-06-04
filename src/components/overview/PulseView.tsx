@@ -261,15 +261,22 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
 
   const filteredBookings = useMemo(() => {
     let rows = bookings.filter(isBooking);
-    if (cmFilter !== "all") rows = rows.filter((b) => b.campaign_manager === cmFilter);
+    if (cmFilter !== "all") {
+      const target = canonicalCmKey(cmFilter);
+      rows = rows.filter((b) => canonicalCmKey(b.campaign_manager) === target);
+    }
     return rows;
   }, [bookings, cmFilter]);
 
   const filteredLtv = useMemo(() => {
     let rows = ltv.filter((r) => r.zz_complete !== true);
-    if (cmFilter !== "all") rows = rows.filter((r) => r.campaign_manager === cmFilter);
+    if (cmFilter !== "all") {
+      const target = canonicalCmKey(cmFilter);
+      rows = rows.filter((r) => canonicalCmKey(r.campaign_manager) === target);
+    }
     return rows;
   }, [ltv, cmFilter]);
+
 
 
   // KPI strip
