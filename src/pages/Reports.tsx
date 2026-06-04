@@ -212,7 +212,8 @@ export default function Reports() {
   };
   
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || visibleSections.totalRecorded ||
-    visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
+    visibleSections.socialReach || visibleSections.cumulativeImpressions || visibleSections.netImpressionsYtd ||
+    visibleSections.projectedAnnualListenership || visibleSections.avgShowReach || visibleSections.totalReach || visibleSections.averageScore;
   const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || visibleSections.geoScore || visibleSections.contentGap || visibleSections.socialValue;
   
   const { toast } = useToast();
