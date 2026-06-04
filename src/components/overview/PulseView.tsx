@@ -119,6 +119,19 @@ function normName(s: string | null) {
   return (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+// Map nickname/alternate CM names to their canonical form so bookings logged
+// under a nickname roll up to the same person on the LTV roster.
+const CM_NICKNAME_ALIASES: Record<string, string> = {
+  abbeywolf: "abigailwolf",
+  abbey: "abigail",
+};
+
+function canonicalCmKey(s: string | null) {
+  const n = normName(s);
+  return CM_NICKNAME_ALIASES[n] ?? n;
+}
+
+
 function pctTone(pct: number | null) {
   if (pct === null) return "text-muted-foreground";
   if (pct >= 100) return "text-emerald-500";
@@ -248,15 +261,22 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
 
   const filteredBookings = useMemo(() => {
     let rows = bookings.filter(isBooking);
-    if (cmFilter !== "all") rows = rows.filter((b) => b.campaign_manager === cmFilter);
+    if (cmFilter !== "all") {
+      const target = canonicalCmKey(cmFilter);
+      rows = rows.filter((b) => canonicalCmKey(b.campaign_manager) === target);
+    }
     return rows;
   }, [bookings, cmFilter]);
 
   const filteredLtv = useMemo(() => {
     let rows = ltv.filter((r) => r.zz_complete !== true);
-    if (cmFilter !== "all") rows = rows.filter((r) => r.campaign_manager === cmFilter);
+    if (cmFilter !== "all") {
+      const target = canonicalCmKey(cmFilter);
+      rows = rows.filter((r) => canonicalCmKey(r.campaign_manager) === target);
+    }
     return rows;
   }, [ltv, cmFilter]);
+
 
 
   // KPI strip
@@ -282,7 +302,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
     return offboarding
       .filter((r) => {
         if (!r.date_ended) return false;
-        if (cmFilter !== "all" && r.campaign_manager !== cmFilter) return false;
+        if (cmFilter !== "all" && canonicalCmKey(r.campaign_manager) !== canonicalCmKey(cmFilter)) return false;
         return inRange(r.date_ended, monthStart, monthEnd);
       })
       .map((r) => ({ client: r.client_name, end: r.date_ended, cm: r.campaign_manager }))
@@ -347,23 +367,26 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
     for (const r of filteredLtv) {
       const name = cleanName(r.campaign_manager);
       if (!name) continue;
-      rosterByNorm.set(normName(name), name);
+      rosterByNorm.set(canonicalCmKey(name), name);
     }
 
     // Resolve a booking's CM to a roster name, a first-name match, or Archive
     const resolveCm = (raw: string | null): string => {
       const name = cleanName(raw);
       if (!name) return ARCHIVE;
-      const exact = rosterByNorm.get(normName(name));
+      const exact = rosterByNorm.get(canonicalCmKey(name));
       if (exact) return exact;
       // First-name fallback: "Troy" → "Troy Higgins" if unique on roster
       const first = name.split(/\s+/)[0];
-      const matches = Array.from(rosterByNorm.values()).filter(
-        (n) => n.split(/\s+/)[0].toLowerCase() === first.toLowerCase()
-      );
+      const firstKey = CM_NICKNAME_ALIASES[normName(first)] ?? normName(first);
+      const matches = Array.from(rosterByNorm.values()).filter((n) => {
+        const rosterFirst = normName(n.split(/\s+/)[0]);
+        return rosterFirst === firstKey;
+      });
       if (matches.length === 1) return matches[0];
       return ARCHIVE;
     };
+
 
     const map = new Map<
       string,
