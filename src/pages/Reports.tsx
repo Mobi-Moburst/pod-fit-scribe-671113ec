@@ -24,7 +24,7 @@ import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { NextQuarterStrategy } from "@/components/reports/NextQuarterStrategy";
 import { TargetPodcastsSection } from "@/components/reports/TargetPodcastsSection";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
-import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
+import { ReachAnalysisDialog, calculatePeriodMonths } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { getGEOFraming, getGEOCardSubtitle } from "@/lib/geoFraming";
