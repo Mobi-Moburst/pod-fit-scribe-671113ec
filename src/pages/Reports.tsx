@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1313,6 +1313,45 @@ export default function Reports() {
       });
     }
   };
+
+  // Auto-compute lifetime Net Impressions from ALL Airtable bookings for this company/speaker.
+  // Stored in kpis.net_impressions_ytd_auto so manual edits to net_impressions_ytd take precedence.
+  const lifetimeImpressionsComputedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!reportData || !reportData.kpis) return;
+    if (!selectedCompanyId) return;
+    const reportKey = `${currentReportId || 'draft'}::${selectedCompanyId}::${selectedSpeakerId || 'multi'}`;
+    if (lifetimeImpressionsComputedFor.current === reportKey) return;
+    lifetimeImpressionsComputedFor.current = reportKey;
+
+    const isMulti = !selectedSpeakerId;
+    const speakerObj = !isMulti ? speakers.find((s) => s.id === selectedSpeakerId) : null;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('compute-lifetime-impressions', {
+          body: {
+            company_id: selectedCompanyId,
+            speaker_id: isMulti ? null : selectedSpeakerId,
+            speaker_name: speakerObj?.name,
+          },
+        });
+        if (error) throw error;
+        if (!data?.success) return;
+        const auto = Number(data.net_impressions_lifetime) || 0;
+        setReportData((prev) => {
+          if (!prev) return prev;
+          const k: any = prev.kpis || {};
+          if (k.net_impressions_ytd_auto === auto) return prev;
+          return { ...prev, kpis: { ...k, net_impressions_ytd_auto: auto } } as any;
+        });
+      } catch (e) {
+        console.warn('compute-lifetime-impressions failed:', e);
+      }
+    })();
+  }, [reportData, selectedCompanyId, selectedSpeakerId, speakers, currentReportId]);
+
+
 
   // Inline edit for an individual podcast's monthly_listens. Recomputes total_reach.
   const updatePodcastMonthlyListens = async (
@@ -3079,26 +3118,16 @@ export default function Reports() {
                             : (highestReachShow.monthly_listens || 0))
                         : 0;
 
-                      // Net Impressions YTD: prefer stored value; otherwise best-effort
-                      // computed from this report's podcasts with a publish date in current year:
-                      // sum(monthly_listens × months_live_since_max(Jan 1, published_date) through today)
-                      let netImpressionsYtd = typeof k.net_impressions_ytd === 'number' ? k.net_impressions_ytd : 0;
-                      if (!netImpressionsYtd) {
-                        const now = new Date();
-                        const yearStart = new Date(now.getFullYear(), 0, 1);
-                        let ytd = 0;
-                        for (const p of (reportData.podcasts || [])) {
-                          const pubRaw = (p as any)?.date_published;
-                          if (!pubRaw) continue;
-                          const pub = new Date(pubRaw);
-                          if (isNaN(pub.getTime()) || pub > now) continue;
-                          const start = pub > yearStart ? pub : yearStart;
-                          const monthsLive = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + (now.getDate() >= start.getDate() ? 1 : 0));
-                          const ml = typeof p.monthly_listens === 'string' ? parseFloat(p.monthly_listens) || 0 : (p.monthly_listens || 0);
-                          ytd += ml * monthsLive;
-                        }
-                        netImpressionsYtd = Math.round(ytd);
-                      }
+                      // Net Impressions (lifetime): computed from ALL Airtable bookings
+                      // for this company/speaker (see compute-lifetime-impressions edge fn).
+                      // Manual edit (k.net_impressions_ytd) always wins; otherwise use auto.
+                      const netImpressionsYtd =
+                        typeof k.net_impressions_ytd === 'number' && k.net_impressions_ytd > 0
+                          ? k.net_impressions_ytd
+                          : (typeof k.net_impressions_ytd_auto === 'number' ? k.net_impressions_ytd_auto : 0);
+                      const netImpressionsIsAuto =
+                        !(typeof k.net_impressions_ytd === 'number' && k.net_impressions_ytd > 0)
+                        && typeof k.net_impressions_ytd_auto === 'number';
 
                       return (
                         <>
@@ -3120,9 +3149,9 @@ export default function Reports() {
                               value={netImpressionsYtd > 0 ? netImpressionsYtd.toLocaleString() : '—'}
                               editableValue={netImpressionsYtd}
                               onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
-                              subtitle={netImpressionsYtd > 0 ? "Sum of monthly listeners × months live YTD" : "No published episodes YTD yet"}
+                              subtitle={netImpressionsYtd > 0 ? (netImpressionsIsAuto ? "Lifetime · all bookings × months since booked" : "Manually set · click pencil to update") : "Loading lifetime bookings…"}
                               icon={TrendingUp}
-                              tooltip="Year-to-date impressions: for each published episode in this report, monthly listeners × months live since max(Jan 1, publish date) through today. Click the pencil to override."
+                              tooltip="Lifetime Net Impressions: for every booking ever in this company's Airtable, monthly listeners × months since the booking date through today. Pulls live from Airtable bookings (not limited to published episodes). Pencil-edit overrides the auto value."
                               onHide={() => toggleSection('netImpressionsYtd')}
                             />
                           )}
