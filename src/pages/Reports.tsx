@@ -2944,7 +2944,8 @@ export default function Reports() {
                   { key: 'cumulativeImpressions', label: 'Cumulative Impressions', visible: visibleSections.cumulativeImpressions },
                   { key: 'netImpressionsYtd', label: 'Net Impressions YTD', visible: visibleSections.netImpressionsYtd },
                   { key: 'projectedAnnualListenership', label: 'Projected Annual Listenership', visible: visibleSections.projectedAnnualListenership },
-                  { key: 'avgShowReach', label: 'Avg Show Reach', visible: visibleSections.avgShowReach },
+                  { key: 'listenersPerEpisode', label: 'Listeners Per Episode', visible: visibleSections.listenersPerEpisode },
+                  { key: 'highestReachShow', label: 'Highest Reach Show', visible: visibleSections.highestReachShow },
                   
                   { key: 'emv', label: 'EMV', visible: visibleSections.emv },
                   { key: 'sov', label: 'Peer Comparison', visible: visibleSections.sov },
