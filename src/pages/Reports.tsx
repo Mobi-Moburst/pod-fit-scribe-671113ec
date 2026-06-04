@@ -3171,7 +3171,9 @@ export default function Reports() {
                               title="Cumulative Impressions"
                               value={formatCompactNumber(cumulativeImpressions)}
                               editableValue={cumulativeImpressions}
+                              editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ cumulative_impressions: next } as any)}
+
                               subtitle={`Total monthly listeners × ${periodMonths} mo`}
                               icon={TrendingUp}
                               tooltip={`Combined listener exposure across all booked shows over the ${periodMonths}-month report window.`}
