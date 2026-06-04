@@ -24,7 +24,7 @@ import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { NextQuarterStrategy } from "@/components/reports/NextQuarterStrategy";
 import { TargetPodcastsSection } from "@/components/reports/TargetPodcastsSection";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
-import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
+import { ReachAnalysisDialog, calculatePeriodMonths } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
 import { getGEOFraming, getGEOCardSubtitle } from "@/lib/geoFraming";
@@ -157,7 +157,11 @@ export default function Reports() {
     totalRecorded: true,
     totalIntroCalls: true,
     socialReach: true,
-    totalReach: true,
+    totalReach: false, // legacy single-card; replaced by the four listenership cards below
+    cumulativeImpressions: true,
+    netImpressionsYtd: true,
+    projectedAnnualListenership: true,
+    avgShowReach: true,
     averageScore: false,
     // Additional Value Metrics
     emv: true,
@@ -208,7 +212,8 @@ export default function Reports() {
   };
   
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || visibleSections.totalRecorded ||
-    visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
+    visibleSections.socialReach || visibleSections.cumulativeImpressions || visibleSections.netImpressionsYtd ||
+    visibleSections.projectedAnnualListenership || visibleSections.avgShowReach || visibleSections.totalReach || visibleSections.averageScore;
   const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || visibleSections.geoScore || visibleSections.contentGap || visibleSections.socialValue;
   
   const { toast } = useToast();
@@ -1152,7 +1157,11 @@ export default function Reports() {
         totalRecorded: savedSections.totalRecorded ?? true,
         totalIntroCalls: savedSections.totalIntroCalls ?? true,
         socialReach: savedSections.socialReach ?? true,
-        totalReach: savedSections.totalReach ?? true,
+        totalReach: savedSections.totalReach ?? false,
+        cumulativeImpressions: savedSections.cumulativeImpressions ?? savedSections.totalReach ?? true,
+        netImpressionsYtd: savedSections.netImpressionsYtd ?? true,
+        projectedAnnualListenership: savedSections.projectedAnnualListenership ?? savedSections.totalReach ?? true,
+        avgShowReach: savedSections.avgShowReach ?? savedSections.totalReach ?? true,
         averageScore: false,
         emv: savedSections.emv ?? true,
         sov: savedSections.sov ?? true,
@@ -2929,7 +2938,10 @@ export default function Reports() {
                   { key: 'totalRecorded', label: 'Total Recorded', visible: visibleSections.totalRecorded },
                   { key: 'totalIntroCalls', label: 'Intro Calls', visible: visibleSections.totalIntroCalls },
                   { key: 'socialReach', label: 'Social Reach', visible: visibleSections.socialReach },
-                  { key: 'totalReach', label: 'Total Listenership', visible: visibleSections.totalReach },
+                  { key: 'cumulativeImpressions', label: 'Cumulative Impressions', visible: visibleSections.cumulativeImpressions },
+                  { key: 'netImpressionsYtd', label: 'Net Impressions YTD', visible: visibleSections.netImpressionsYtd },
+                  { key: 'projectedAnnualListenership', label: 'Projected Annual Listenership', visible: visibleSections.projectedAnnualListenership },
+                  { key: 'avgShowReach', label: 'Avg Show Reach', visible: visibleSections.avgShowReach },
                   
                   { key: 'emv', label: 'EMV', visible: visibleSections.emv },
                   { key: 'sov', label: 'Peer Comparison', visible: visibleSections.sov },
@@ -3035,6 +3047,85 @@ export default function Reports() {
                         onHide={() => toggleSection('totalReach')}
                       />
                     )}
+                    {(() => {
+                      const periodMonths = calculatePeriodMonths(reportData.date_range, reportData.quarter);
+                      const totalReach = reportData.kpis.total_reach || 0;
+                      const k: any = reportData.kpis;
+
+                      const cumulativeImpressions = typeof k.cumulative_impressions === 'number'
+                        ? k.cumulative_impressions
+                        : totalReach * periodMonths;
+                      const projectedAnnual = typeof k.projected_annual_listenership === 'number'
+                        ? k.projected_annual_listenership
+                        : totalReach * 12;
+
+                      const monthlyListensValues = (reportData.podcasts || [])
+                        .map((p: any) => {
+                          const v = p?.monthly_listens;
+                          return typeof v === 'string' ? parseFloat(v) || 0 : (v || 0);
+                        })
+                        .filter((v: number) => v > 0);
+                      const computedAvgShowReach = monthlyListensValues.length
+                        ? Math.round(monthlyListensValues.reduce((a: number, b: number) => a + b, 0) / monthlyListensValues.length)
+                        : 0;
+                      const avgShowReach = typeof k.avg_show_reach === 'number' ? k.avg_show_reach : computedAvgShowReach;
+
+                      const netImpressionsYtd = typeof k.net_impressions_ytd === 'number' ? k.net_impressions_ytd : 0;
+
+                      return (
+                        <>
+                          {visibleSections.cumulativeImpressions && (
+                            <KPICard
+                              title="Cumulative Impressions"
+                              value={cumulativeImpressions.toLocaleString()}
+                              editableValue={cumulativeImpressions}
+                              onValueEdit={(next) => updateReportKpis({ cumulative_impressions: next } as any)}
+                              subtitle={`Total monthly listeners × ${periodMonths} mo • Click for details`}
+                              icon={TrendingUp}
+                              tooltip={`Combined listener exposure across all booked shows over the ${periodMonths}-month report window.`}
+                              onClick={() => setReachDialogOpen(true)}
+                              onHide={() => toggleSection('cumulativeImpressions')}
+                            />
+                          )}
+                          {visibleSections.netImpressionsYtd && (
+                            <KPICard
+                              title="Net Impressions YTD"
+                              value={netImpressionsYtd > 0 ? netImpressionsYtd.toLocaleString() : '—'}
+                              editableValue={netImpressionsYtd}
+                              onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
+                              subtitle={netImpressionsYtd > 0 ? "Year-to-date impressions • Editable" : "Click pencil to enter YTD total"}
+                              icon={TrendingUp}
+                              tooltip="Lifetime impressions accumulated by all published episodes from Jan 1 of the current year through today. Currently entered manually until the YTD Airtable sync is wired up."
+                              onHide={() => toggleSection('netImpressionsYtd')}
+                            />
+                          )}
+                          {visibleSections.projectedAnnualListenership && (
+                            <KPICard
+                              title="Projected Annual Listenership"
+                              value={projectedAnnual.toLocaleString()}
+                              editableValue={projectedAnnual}
+                              onValueEdit={(next) => updateReportKpis({ projected_annual_listenership: next } as any)}
+                              subtitle="Total monthly listeners × 12"
+                              icon={Users}
+                              tooltip="Estimated annual listenership extrapolated from the combined monthly listenership of all booked shows."
+                              onHide={() => toggleSection('projectedAnnualListenership')}
+                            />
+                          )}
+                          {visibleSections.avgShowReach && (
+                            <KPICard
+                              title="Avg Show Reach"
+                              value={avgShowReach.toLocaleString()}
+                              editableValue={avgShowReach}
+                              onValueEdit={(next) => updateReportKpis({ avg_show_reach: next } as any)}
+                              subtitle="Avg monthly listeners per booked show"
+                              icon={Users}
+                              tooltip="Mean of monthly listenership across every podcast booked during this report's date range."
+                              onHide={() => toggleSection('avgShowReach')}
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
                     {/* Fit Score card removed from report UI */}
                   </div>
                 </div>
