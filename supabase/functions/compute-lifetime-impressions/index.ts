@@ -88,8 +88,11 @@ Deno.serve(async (req) => {
     const { company_id, speaker_id, speaker_name } = await req.json();
     if (!company_id) throw new Error('company_id is required');
 
-    // Resolve Airtable connection: speaker-level first, then company-level
-    let connection: any = null;
+    // Resolve Airtable connection(s):
+    //  - Single-speaker report: speaker-level first, then company-level
+    //  - Multi-speaker report (no speaker_id): company-level first; if none, fan out
+    //    across ALL speaker-level connections for the company.
+    let connections: any[] = [];
     if (speaker_id) {
       const { data } = await supabase
         .from('airtable_connections')
@@ -97,69 +100,94 @@ Deno.serve(async (req) => {
         .eq('speaker_id', speaker_id)
         .order('updated_at', { ascending: false })
         .limit(1);
-      connection = data?.[0] || null;
+      if (data?.[0]) connections = [data[0]];
     }
-    if (!connection) {
-      const { data } = await supabase
+    if (connections.length === 0) {
+      const { data: companyLevel } = await supabase
         .from('airtable_connections')
         .select('*')
         .eq('company_id', company_id)
         .is('speaker_id', null)
         .order('updated_at', { ascending: false })
         .limit(1);
-      connection = data?.[0] || null;
+      if (companyLevel?.[0]) {
+        connections = [companyLevel[0]];
+      } else if (!speaker_id) {
+        // Multi-speaker fallback: gather every speaker-level connection for this company.
+        const { data: speakerLevel } = await supabase
+          .from('airtable_connections')
+          .select('*, speakers!inner(id, name)')
+          .eq('company_id', company_id)
+          .not('speaker_id', 'is', null);
+        connections = speakerLevel || [];
+      }
     }
 
-    if (!connection) {
+    if (connections.length === 0) {
       return new Response(
         JSON.stringify({ success: true, net_impressions_lifetime: 0, bookings_considered: 0, missing_metadata: 0, reason: 'No Airtable connection' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    const fieldMapping: FieldMapping = (connection.field_mapping as FieldMapping) || {};
-    const accessToken = (typeof connection.personal_access_token === 'string' ? connection.personal_access_token.trim() : '')
-      || Deno.env.get('AIRTABLE_PAT')?.trim();
-    if (!accessToken) throw new Error('No Airtable access token configured');
+    const envToken = Deno.env.get('AIRTABLE_PAT')?.trim();
+    type Booking = { apple?: string; name?: string; date_booked: Date; rec_id: string };
+    const allBookings: Booking[] = [];
+    const seenRecIds = new Set<string>();
 
-    // Optional speaker filter
-    let filterFormula: string | undefined;
-    if (speaker_name) {
-      const speakerField = connection.speaker_column_name?.trim() || 'speaker';
-      filterFormula = `{${speakerField}}='${speaker_name.replace(/'/g, "\\'")}'`;
-    }
+    for (const connection of connections) {
+      const fieldMapping: FieldMapping = (connection.field_mapping as FieldMapping) || {};
+      const accessToken = (typeof connection.personal_access_token === 'string' ? connection.personal_access_token.trim() : '')
+        || envToken;
+      if (!accessToken) continue;
 
-    const records = await fetchAllRecords(connection.base_id, connection.table_id, accessToken, filterFormula);
-    console.log(`Fetched ${records.length} lifetime records`);
+      // Optional speaker filter (only for single-speaker fetch on a shared base)
+      let filterFormula: string | undefined;
+      const effectiveSpeakerName = speaker_name || connection.speakers?.name;
+      if (speaker_id && effectiveSpeakerName) {
+        const speakerField = connection.speaker_column_name?.trim() || 'speaker';
+        filterFormula = `{${speakerField}}='${effectiveSpeakerName.replace(/'/g, "\\'")}'`;
+      }
 
-    const actionField = fieldMapping.action || 'Action';
-    const bookedField = fieldMapping.date_booked || 'Date Booked';
-    const appleField = fieldMapping.apple_podcast_link || 'Apple Podcast Link';
-    const nameField = fieldMapping.podcast_name || 'Podcast Name';
+      let records: AirtableRecord[] = [];
+      try {
+        records = await fetchAllRecords(connection.base_id, connection.table_id, accessToken, filterFormula);
+      } catch (e) {
+        console.warn(`Airtable fetch failed for base=${connection.base_id} table=${connection.table_id}:`, e);
+        continue;
+      }
+      console.log(`Fetched ${records.length} records from ${connection.base_id}/${connection.table_id}`);
 
-    // Filter to bookings (podcast recording action) with valid date_booked
-    type Booking = { apple?: string; name?: string; date_booked: Date };
-    const bookings: Booking[] = [];
-    for (const rec of records) {
-      const f = rec.fields;
-      const action = String(f[actionField] || '').toLowerCase();
-      if (!action.includes('podcast recording')) continue;
-      const dbRaw = f[bookedField];
-      if (!dbRaw) continue;
-      const d = new Date(dbRaw);
-      if (isNaN(d.getTime())) continue;
-      bookings.push({
-        apple: f[appleField] ? String(f[appleField]) : undefined,
-        name: f[nameField] ? String(f[nameField]) : undefined,
-        date_booked: d,
-      });
+      const actionField = fieldMapping.action || 'Action';
+      const bookedField = fieldMapping.date_booked || 'Date Booked';
+      const appleField = fieldMapping.apple_podcast_link || 'Apple Podcast Link';
+      const nameField = fieldMapping.podcast_name || 'Podcast Name';
+
+      for (const rec of records) {
+        const f = rec.fields;
+        const action = String(f[actionField] || '').toLowerCase();
+        if (!action.includes('podcast recording')) continue;
+        const dbRaw = f[bookedField];
+        if (!dbRaw) continue;
+        const d = new Date(dbRaw);
+        if (isNaN(d.getTime())) continue;
+        // Dedupe across bases by Airtable record id (memory: multi-speaker dedup rule)
+        const key = `${connection.base_id}:${rec.id}`;
+        if (seenRecIds.has(key)) continue;
+        seenRecIds.add(key);
+        allBookings.push({
+          apple: f[appleField] ? String(f[appleField]) : undefined,
+          name: f[nameField] ? String(f[nameField]) : undefined,
+          date_booked: d,
+          rec_id: rec.id,
+        });
+      }
     }
 
     // Look up monthly_listens from podcast_metadata_cache by apple URL
-    const appleUrls = Array.from(new Set(bookings.map((b) => b.apple).filter(Boolean))) as string[];
+    const appleUrls = Array.from(new Set(allBookings.map((b) => b.apple).filter(Boolean))) as string[];
     const metaByUrl = new Map<string, number>();
     if (appleUrls.length > 0) {
-      // chunk to avoid huge IN lists
       const chunkSize = 100;
       for (let i = 0; i < appleUrls.length; i += chunkSize) {
         const chunk = appleUrls.slice(i, i + chunkSize);
@@ -179,7 +207,7 @@ Deno.serve(async (req) => {
     let total = 0;
     let withMeta = 0;
     let missing = 0;
-    for (const b of bookings) {
+    for (const b of allBookings) {
       const listens = b.apple ? (metaByUrl.get(b.apple) || 0) : 0;
       if (!listens) { missing++; continue; }
       const months = monthsBetween(b.date_booked, now) || 1;
@@ -191,13 +219,15 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         net_impressions_lifetime: Math.round(total),
-        bookings_considered: bookings.length,
+        bookings_considered: allBookings.length,
         bookings_with_metadata: withMeta,
         missing_metadata: missing,
+        connections_used: connections.length,
         computed_at: new Date().toISOString(),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
+
   } catch (error) {
     console.error('compute-lifetime-impressions error:', error);
     return new Response(
