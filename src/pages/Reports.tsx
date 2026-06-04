@@ -3204,14 +3204,13 @@ export default function Reports() {
                               subtitle={(() => {
                                 if (netImpressionsYtd > 0) {
                                   return netImpressionsIsAuto
-                                    ? `Lifetime · ${lifetimeImpressionsStatus.withMetadata ?? '?'} of ${lifetimeImpressionsStatus.bookings ?? '?'} bookings`
+                                    ? "Lifetime"
                                     : "Manually set · click pencil to update";
                                 }
                                 if (lifetimeImpressionsStatus.state === 'loading') return "Loading lifetime bookings…";
                                 if (lifetimeImpressionsStatus.state === 'error') return `Couldn't load: ${lifetimeImpressionsStatus.error}`;
                                 if (lifetimeImpressionsStatus.reason) return lifetimeImpressionsStatus.reason;
-                                if ((lifetimeImpressionsStatus.bookings ?? 0) === 0) return "No 'podcast recording' bookings in Airtable";
-                                return `${lifetimeImpressionsStatus.missingMetadata ?? 0} of ${lifetimeImpressionsStatus.bookings} bookings missing cached reach — pencil to set manually`;
+                                return "Click pencil to set manually";
                               })()}
                               icon={TrendingUp}
                               tooltip="Lifetime Net Impressions: for every booking ever in this company's Airtable, monthly listeners × months since the booking date through today. Pulls live from Airtable bookings (not limited to published episodes). Pencil-edit overrides the auto value."
