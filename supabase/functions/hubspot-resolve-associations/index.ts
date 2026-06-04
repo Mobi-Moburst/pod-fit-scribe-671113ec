@@ -73,11 +73,20 @@ serve(async (req) => {
       );
     }
 
+    logger.info('dry_run_resolve_start', { shortlist_id, speaker_id: speaker.id, speaker_name: speaker.name });
     const preview = await resolveAssociations({
       row, speaker, settings, overrides,
       LOVABLE_API_KEY, HUBSPOT_API_KEY, dryRun: true,
       callerEmail: (claims.claims as any)?.email || null,
       supabase,
+    });
+    logger.info('request_completed', {
+      company_id: preview.company.id,
+      company_existing: preview.company.existing,
+      contact_id: preview.contact.id,
+      contact_existing: preview.contact.existing,
+      duplicate_ticket_id: preview.duplicate_ticket_id,
+      duration_ms: Date.now() - started,
     });
 
     return new Response(
@@ -85,7 +94,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('[hubspot-resolve-associations] Error:', err);
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
