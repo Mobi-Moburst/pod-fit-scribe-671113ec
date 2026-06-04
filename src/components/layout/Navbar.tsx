@@ -20,6 +20,8 @@ const researchRoutes = ["/", "/batch", "/history", "/research"];
 export const Navbar = () => {
   const { pathname } = useLocation();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useUserRole();
+  const tabs = baseTabs.filter((t) => !t.adminOnly || isAdmin);
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
