@@ -207,7 +207,7 @@ serve(async (req) => {
       for (let i = 0; i < clientNames.length; i += CHUNK) {
         clientChunks.push(clientNames.slice(i, i + CHUNK));
       }
-      console.log(`[hubspot-sync-tickets] backfill: ${backfillStageIds.length} stages × ${clientChunks.length} client-chunks (${clientNames.length} speakers), monthsBack=${monthsBack}`);
+      logger.info('backfill_plan', { stages: backfillStageIds.length, client_chunks: clientChunks.length, speakers: clientNames.length, months_back: monthsBack });
 
       for (const stageId of backfillStageIds) {
         for (const chunk of clientChunks) {
