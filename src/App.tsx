@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
-import { AdminRoute } from "./components/layout/AdminRoute";
+import { ResearchRoute } from "./components/layout/ResearchRoute";
 import Index from "./pages/Evaluate";
 import Batch from "./pages/Batch";
 import Companies from "./pages/Companies";
@@ -74,7 +74,7 @@ const App = () => (
               <Route path="/" element={<ProtectedRoute><Navigate to="/overview" replace /></ProtectedRoute>} />
               <Route path="/evaluate" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/overview" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
-              <Route path="/research" element={<AdminRoute><Research /></AdminRoute>} />
+              <Route path="/research" element={<ResearchRoute><Research /></ResearchRoute>} />
               <Route path="/studio" element={<ProtectedRoute><Studio /></ProtectedRoute>} />
               <Route path="/batch" element={<ProtectedRoute><Batch /></ProtectedRoute>} />
               <Route path="/companies" element={<ProtectedRoute><Companies /></ProtectedRoute>} />

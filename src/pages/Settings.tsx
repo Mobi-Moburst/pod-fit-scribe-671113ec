@@ -3,6 +3,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, Trash2, Shield, ShieldCheck, Lock, Mail, Plug, ChevronRight, Phone, FileText } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Shield, ShieldCheck, Lock, Mail, Plug, ChevronRight, Phone, FileText, Flag } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
 
@@ -30,6 +32,24 @@ export default function Settings() {
   const { user, updatePassword } = useAuth();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
   const { toast } = useToast();
+  const researchFlag = useFeatureFlag("research_tab");
+  const [isTogglingResearch, setIsTogglingResearch] = useState(false);
+
+  const handleToggleResearch = async (next: boolean) => {
+    setIsTogglingResearch(true);
+    const { error } = await researchFlag.setFlag(next);
+    setIsTogglingResearch(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: next ? "Research enabled for all users" : "Research hidden from non-admins",
+        description: next
+          ? "All signed-in CMs can now see and use the Research tab."
+          : "Only admins can see the Research tab. Toggle back on when ready to roll out.",
+      });
+    }
+  };
 
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -250,6 +270,44 @@ export default function Settings() {
         {isAdmin && (
           <>
             <Separator />
+
+            {/* Feature Flags */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Flag className="h-5 w-5" />
+                  Feature Flags
+                </CardTitle>
+                <CardDescription>
+                  Roll features out gradually. Toggles here control what non-admin users can see. Admins always
+                  have access regardless of these settings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm font-medium">Research tab</Label>
+                      <Badge variant={researchFlag.enabled ? "default" : "outline"} className="text-xs">
+                        {researchFlag.isLoading ? "…" : researchFlag.enabled ? "Visible to all" : "Admins only"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground max-w-xl">
+                      Currently hidden from non-admin users while the Research workflow is still being refined.
+                      When this is off, the Research tab and <code className="text-[11px]">/research</code> route
+                      are only available to admins. Flip the switch on to release Research to all signed-in CMs.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={researchFlag.enabled}
+                    disabled={researchFlag.isLoading || isTogglingResearch}
+                    onCheckedChange={handleToggleResearch}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+
 
 
 
