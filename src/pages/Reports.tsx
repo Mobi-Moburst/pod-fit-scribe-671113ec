@@ -116,7 +116,7 @@ export default function Reports() {
   
   // Advanced EMV settings
   const [cpmRate, setCpmRate] = useState<number>(50);
-  const [speakingTimePct, setSpeakingTimePct] = useState<number>(40);
+  const [speakingTimePct, setSpeakingTimePct] = useState<number>(100);
   const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
   
   // State
