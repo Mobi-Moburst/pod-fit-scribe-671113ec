@@ -89,6 +89,7 @@ serve(async (req) => {
     const showUrlProp = settings.show_url_property as string | null;
     const autoCreate = settings.auto_create_associations !== false;
 
+    logger.info('resolve_start', { shortlist_id, speaker_id: speaker.id, speaker_name: speaker.name, auto_create: autoCreate });
     // Resolve + create company/contact (skip create if user disabled auto-create)
     const resolved = await resolveAssociations({
       row, speaker, settings, overrides,
@@ -97,9 +98,18 @@ serve(async (req) => {
       callerEmail: (claims.claims as any)?.email || null,
       supabase,
     });
+    logger.info('resolve_complete', {
+      company_id: resolved.company.id,
+      company_existing: resolved.company.existing,
+      contact_id: resolved.contact.id,
+      contact_existing: resolved.contact.existing,
+      duplicate_ticket_id: resolved.duplicate_ticket_id,
+      owner_id: resolved.owner_id,
+    });
 
     // Short-circuit on duplicate ticket
     if (resolved.duplicate_ticket_id) {
+      logger.info('ticket_deduped', { ticket_id: resolved.duplicate_ticket_id });
       await supabase.from('research_shortlists').update({
         status: 'sent-to-hubspot',
         hubspot_ticket_id: resolved.duplicate_ticket_id,
@@ -107,6 +117,7 @@ serve(async (req) => {
         hubspot_company_id: resolved.company.id,
         hubspot_synced_at: new Date().toISOString(),
       }).eq('id', shortlist_id);
+      logger.info('request_completed', { deduped: true, duration_ms: Date.now() - started });
       return new Response(
         JSON.stringify({
           success: true,
