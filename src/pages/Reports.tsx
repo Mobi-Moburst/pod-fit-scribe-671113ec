@@ -3252,7 +3252,7 @@ export default function Reports() {
                               value={highestMonthlyListens > 0 ? formatCompactNumber(highestMonthlyListens) : '—'}
                               subtitle={highestReachShow?.show_title || 'No booked shows yet'}
                               icon={TrendingUp}
-                              imageUrl={highestReachShow?.cover_art_url}
+                              imageUrl={highestReachCoverArt}
                               imageAlt={highestReachShow?.show_title}
                               tooltip="The single podcast in this report with the largest monthly listenership."
                               onHide={() => toggleSection('highestReachShow')}
