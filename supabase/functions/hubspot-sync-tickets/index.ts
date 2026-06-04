@@ -58,6 +58,8 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const mode: 'full' | 'incremental' | 'backfill' =
       body.mode === 'full' ? 'full' : body.mode === 'backfill' ? 'backfill' : 'incremental';
+    logger.info('mode_resolved', { mode });
+
 
     // Backfill params (used only when mode === 'backfill')
     const DEFAULT_BACKFILL_STAGES = ['1366108009', '1366108010', '1366108011'];
