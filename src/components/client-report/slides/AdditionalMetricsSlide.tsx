@@ -65,17 +65,7 @@ export const AdditionalMetricsSlide = ({
     });
   }
 
-  // EMV
-  if (visibleSections.emv && totalEmv > 0) {
-    metrics.push({
-      label: "Earned Media Value",
-      value: formatCurrency(totalEmv),
-      subtitle: "Total campaign EMV",
-      icon: DollarSign,
-      color: "hsl(142 76% 36%)",
-      onClick: onEmvClick,
-    });
-  }
+  // EMV card is internal-only — only Total Campaign Value is exposed externally.
 
   // SOV
   if (visibleSections.sov && reportData.sov_analysis) {
