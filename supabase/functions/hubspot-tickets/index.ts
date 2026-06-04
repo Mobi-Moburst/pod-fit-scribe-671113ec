@@ -66,10 +66,11 @@ serve(async (req) => {
       .select('hubspot_ticket_id', { count: 'exact', head: true })
       .eq('org_id', TEAM_ORG_ID);
     if (!count || count === 0) {
+      logger.info('cache_empty_triggering_sync');
       try {
         await supabase.functions.invoke('hubspot-sync-tickets', { body: { mode: 'full' } });
       } catch (e) {
-        console.warn('[hubspot-tickets] inline sync failed', e);
+        logger.warn('inline_sync_failed', { message: e instanceof Error ? e.message : String(e) });
       }
     }
 
