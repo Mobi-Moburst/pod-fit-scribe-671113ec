@@ -3079,7 +3079,26 @@ export default function Reports() {
                             : (highestReachShow.monthly_listens || 0))
                         : 0;
 
-                      const netImpressionsYtd = typeof k.net_impressions_ytd === 'number' ? k.net_impressions_ytd : 0;
+                      // Net Impressions YTD: prefer stored value; otherwise best-effort
+                      // computed from this report's podcasts with a publish date in current year:
+                      // sum(monthly_listens × months_live_since_max(Jan 1, published_date) through today)
+                      let netImpressionsYtd = typeof k.net_impressions_ytd === 'number' ? k.net_impressions_ytd : 0;
+                      if (!netImpressionsYtd) {
+                        const now = new Date();
+                        const yearStart = new Date(now.getFullYear(), 0, 1);
+                        let ytd = 0;
+                        for (const p of (reportData.podcasts || [])) {
+                          const pubRaw = (p as any)?.date_published;
+                          if (!pubRaw) continue;
+                          const pub = new Date(pubRaw);
+                          if (isNaN(pub.getTime()) || pub > now) continue;
+                          const start = pub > yearStart ? pub : yearStart;
+                          const monthsLive = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + (now.getDate() >= start.getDate() ? 1 : 0));
+                          const ml = typeof p.monthly_listens === 'string' ? parseFloat(p.monthly_listens) || 0 : (p.monthly_listens || 0);
+                          ytd += ml * monthsLive;
+                        }
+                        netImpressionsYtd = Math.round(ytd);
+                      }
 
                       return (
                         <>
@@ -3101,9 +3120,9 @@ export default function Reports() {
                               value={netImpressionsYtd > 0 ? netImpressionsYtd.toLocaleString() : '—'}
                               editableValue={netImpressionsYtd}
                               onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
-                              subtitle={netImpressionsYtd > 0 ? "Year-to-date impressions • Editable" : "Click pencil to enter YTD total"}
+                              subtitle={netImpressionsYtd > 0 ? "Sum of monthly listeners × months live YTD" : "No published episodes YTD yet"}
                               icon={TrendingUp}
-                              tooltip="Lifetime impressions accumulated by all published episodes from Jan 1 of the current year through today. Currently entered manually until the YTD Airtable sync is wired up."
+                              tooltip="Year-to-date impressions: for each published episode in this report, monthly listeners × months live since max(Jan 1, publish date) through today. Click the pencil to override."
                               onHide={() => toggleSection('netImpressionsYtd')}
                             />
                           )}
@@ -3137,6 +3156,8 @@ export default function Reports() {
                               value={highestMonthlyListens > 0 ? highestMonthlyListens.toLocaleString() : '—'}
                               subtitle={highestReachShow?.show_title || 'No booked shows yet'}
                               icon={TrendingUp}
+                              imageUrl={highestReachShow?.cover_art_url}
+                              imageAlt={highestReachShow?.show_title}
                               tooltip="The single podcast in this report with the largest monthly listenership."
                               onHide={() => toggleSection('highestReachShow')}
                             />

@@ -10,6 +10,9 @@ interface KPICardProps {
   value: string | number;
   subtitle?: string;
   icon?: LucideIcon;
+  /** Optional image (e.g., podcast cover art) shown in place of the icon. */
+  imageUrl?: string;
+  imageAlt?: string;
   tooltip?: string;
   onClick?: () => void;
   onHide?: () => void;
@@ -30,6 +33,8 @@ export const KPICard = ({
   value,
   subtitle,
   icon: Icon,
+  imageUrl,
+  imageAlt,
   tooltip,
   onClick,
   onHide,
@@ -102,7 +107,13 @@ export const KPICard = ({
               </p>
             )}
           </div>
-          {Icon && (
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={imageAlt || title}
+              className="h-12 w-12 rounded-md object-cover border border-border/60"
+            />
+          ) : Icon && (
             <div className="rounded-full bg-muted/60 p-3">
               <Icon className={cn("h-5 w-5 text-muted-foreground", isLoading && "opacity-50")} />
             </div>
