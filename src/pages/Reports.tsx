@@ -3386,27 +3386,14 @@ export default function Reports() {
                         title="Social Value"
                         value={(() => {
                           const totalSocialReach = reportData.kpis.total_social_reach;
-                          const platformData = {
-                            linkedin: { cpm: 60.00, allocation: 0.60 },
-                            meta: { cpm: 10.50, allocation: 0.20 },
-                            youtube: { cpm: 4.50, allocation: 0.10 },
-                            tiktok: { cpm: 5.50, allocation: 0.07 },
-                            x: { cpm: 1.50, allocation: 0.03 },
-                          };
-                          const visibilityFactor = 1.5;
-                          const premiumFactor = 1.2;
-                          const totalValue = Object.values(platformData).reduce((sum, p) => {
-                            const allocatedReach = totalSocialReach * p.allocation;
-                            const baseValue = (allocatedReach / 1000) * p.cpm;
-                            return sum + baseValue * visibilityFactor * premiumFactor;
-                          }, 0);
+                          const totalValue = (totalSocialReach / 1000) * 60 * 1.5 * 1.2;
                           if (totalValue >= 1000000) return `$${(totalValue / 1000000).toFixed(1)}M`;
                           if (totalValue >= 1000) return `$${(totalValue / 1000).toFixed(0)}K`;
                           return `$${totalValue.toFixed(0)}`;
                         })()}
                         subtitle="Equivalent ad spend • Click to view breakdown"
                         icon={Share2}
-                        tooltip="Calculated from follower reach across LinkedIn, Meta, YouTube, TikTok, and X using platform-specific ad rates with visibility and premium content multipliers."
+                        tooltip="LinkedIn-equivalent ad spend: reach × $60 CPM × 1.5× visibility × 1.2× premium content."
                         onClick={() => setSocialValueDialogOpen(true)}
                         onHide={() => toggleSection('socialValue')}
                       />
