@@ -3167,7 +3167,7 @@ export default function Reports() {
                           {visibleSections.cumulativeImpressions && (
                             <KPICard
                               title="Cumulative Impressions"
-                              value={cumulativeImpressions.toLocaleString()}
+                              value={formatCompactNumber(cumulativeImpressions)}
                               editableValue={cumulativeImpressions}
                               onValueEdit={(next) => updateReportKpis({ cumulative_impressions: next } as any)}
                               subtitle={`Total monthly listeners × ${periodMonths} mo`}
