@@ -10,6 +10,9 @@ interface KPICardProps {
   value: string | number;
   subtitle?: string;
   icon?: LucideIcon;
+  /** Optional image (e.g., podcast cover art) shown in place of the icon. */
+  imageUrl?: string;
+  imageAlt?: string;
   tooltip?: string;
   onClick?: () => void;
   onHide?: () => void;
