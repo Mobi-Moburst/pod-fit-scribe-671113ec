@@ -32,6 +32,24 @@ export default function Settings() {
   const { user, updatePassword } = useAuth();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
   const { toast } = useToast();
+  const researchFlag = useFeatureFlag("research_tab");
+  const [isTogglingResearch, setIsTogglingResearch] = useState(false);
+
+  const handleToggleResearch = async (next: boolean) => {
+    setIsTogglingResearch(true);
+    const { error } = await researchFlag.setFlag(next);
+    setIsTogglingResearch(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: next ? "Research enabled for all users" : "Research hidden from non-admins",
+        description: next
+          ? "All signed-in CMs can now see and use the Research tab."
+          : "Only admins can see the Research tab. Toggle back on when ready to roll out.",
+      });
+    }
+  };
 
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
