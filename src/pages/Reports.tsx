@@ -1317,6 +1317,14 @@ export default function Reports() {
   // Auto-compute lifetime Net Impressions from ALL Airtable bookings for this company/speaker.
   // Stored in kpis.net_impressions_ytd_auto so manual edits to net_impressions_ytd take precedence.
   const lifetimeImpressionsComputedFor = useRef<string | null>(null);
+  const [lifetimeImpressionsStatus, setLifetimeImpressionsStatus] = useState<{
+    state: 'idle' | 'loading' | 'done' | 'error';
+    bookings?: number;
+    withMetadata?: number;
+    missingMetadata?: number;
+    reason?: string;
+    error?: string;
+  }>({ state: 'idle' });
   useEffect(() => {
     if (!reportData || !reportData.kpis) return;
     if (!selectedCompanyId) return;
@@ -1327,6 +1335,7 @@ export default function Reports() {
     const isMulti = !selectedSpeakerId;
     const speakerObj = !isMulti ? speakers.find((s) => s.id === selectedSpeakerId) : null;
 
+    setLifetimeImpressionsStatus({ state: 'loading' });
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('compute-lifetime-impressions', {
@@ -1337,19 +1346,32 @@ export default function Reports() {
           },
         });
         if (error) throw error;
-        if (!data?.success) return;
+        if (!data?.success) {
+          setLifetimeImpressionsStatus({ state: 'error', error: data?.error || 'Unknown error' });
+          return;
+        }
         const auto = Number(data.net_impressions_lifetime) || 0;
+        setLifetimeImpressionsStatus({
+          state: 'done',
+          bookings: Number(data.bookings_considered) || 0,
+          withMetadata: Number(data.bookings_with_metadata) || 0,
+          missingMetadata: Number(data.missing_metadata) || 0,
+          reason: data.reason,
+        });
         setReportData((prev) => {
           if (!prev) return prev;
           const k: any = prev.kpis || {};
           if (k.net_impressions_ytd_auto === auto) return prev;
           return { ...prev, kpis: { ...k, net_impressions_ytd_auto: auto } } as any;
         });
-      } catch (e) {
+      } catch (e: any) {
         console.warn('compute-lifetime-impressions failed:', e);
+        setLifetimeImpressionsStatus({ state: 'error', error: e?.message || 'Failed' });
       }
     })();
   }, [reportData, selectedCompanyId, selectedSpeakerId, speakers, currentReportId]);
+
+
 
 
 
@@ -3149,7 +3171,18 @@ export default function Reports() {
                               value={netImpressionsYtd > 0 ? netImpressionsYtd.toLocaleString() : '—'}
                               editableValue={netImpressionsYtd}
                               onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
-                              subtitle={netImpressionsYtd > 0 ? (netImpressionsIsAuto ? "Lifetime · all bookings × months since booked" : "Manually set · click pencil to update") : "Loading lifetime bookings…"}
+                              subtitle={(() => {
+                                if (netImpressionsYtd > 0) {
+                                  return netImpressionsIsAuto
+                                    ? `Lifetime · ${lifetimeImpressionsStatus.withMetadata ?? '?'} of ${lifetimeImpressionsStatus.bookings ?? '?'} bookings`
+                                    : "Manually set · click pencil to update";
+                                }
+                                if (lifetimeImpressionsStatus.state === 'loading') return "Loading lifetime bookings…";
+                                if (lifetimeImpressionsStatus.state === 'error') return `Couldn't load: ${lifetimeImpressionsStatus.error}`;
+                                if (lifetimeImpressionsStatus.reason) return lifetimeImpressionsStatus.reason;
+                                if ((lifetimeImpressionsStatus.bookings ?? 0) === 0) return "No 'podcast recording' bookings in Airtable";
+                                return `${lifetimeImpressionsStatus.missingMetadata ?? 0} of ${lifetimeImpressionsStatus.bookings} bookings missing cached reach — pencil to set manually`;
+                              })()}
                               icon={TrendingUp}
                               tooltip="Lifetime Net Impressions: for every booking ever in this company's Airtable, monthly listeners × months since the booking date through today. Pulls live from Airtable bookings (not limited to published episodes). Pencil-edit overrides the auto value."
                               onHide={() => toggleSection('netImpressionsYtd')}
