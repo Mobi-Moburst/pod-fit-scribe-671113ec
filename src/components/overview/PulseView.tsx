@@ -119,6 +119,19 @@ function normName(s: string | null) {
   return (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+// Map nickname/alternate CM names to their canonical form so bookings logged
+// under a nickname roll up to the same person on the LTV roster.
+const CM_NICKNAME_ALIASES: Record<string, string> = {
+  abbeywolf: "abigailwolf",
+  abbey: "abigail",
+};
+
+function canonicalCmKey(s: string | null) {
+  const n = normName(s);
+  return CM_NICKNAME_ALIASES[n] ?? n;
+}
+
+
 function pctTone(pct: number | null) {
   if (pct === null) return "text-muted-foreground";
   if (pct >= 100) return "text-emerald-500";
