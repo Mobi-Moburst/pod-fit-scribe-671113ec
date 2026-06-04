@@ -3214,7 +3214,7 @@ export default function Reports() {
                           {visibleSections.listenersPerEpisode && (
                             <KPICard
                               title="Total Monthly Listeners Per Episode"
-                              value={listenersPerEpisode.toLocaleString()}
+                              value={formatCompactNumber(listenersPerEpisode)}
                               editableValue={listenersPerEpisode}
                               onValueEdit={(next) => updateReportKpis({ total_listeners_per_episode: next } as any)}
                               subtitle="Combined per-episode reach"
