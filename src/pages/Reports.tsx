@@ -3179,7 +3179,7 @@ export default function Reports() {
                           {visibleSections.netImpressionsYtd && (
                             <KPICard
                               title="Net Impressions YTD"
-                              value={netImpressionsYtd > 0 ? netImpressionsYtd.toLocaleString() : '—'}
+                              value={netImpressionsYtd > 0 ? formatCompactNumber(netImpressionsYtd) : '—'}
                               editableValue={netImpressionsYtd}
                               onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
                               subtitle={(() => {
