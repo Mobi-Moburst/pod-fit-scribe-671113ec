@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Look up monthly_listens from podcast_metadata_cache by apple URL
+    // Look up monthly_listens from podcast_metadata_cache by apple URL first
     const appleUrls = Array.from(new Set(allBookings.map((b) => b.apple).filter(Boolean))) as string[];
     const metaByUrl = new Map<string, number>();
     if (appleUrls.length > 0) {
@@ -203,12 +203,39 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fallback: look up by podcast_name for bookings with no apple URL or no cache hit
+    const normalizeName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const metaByName = new Map<string, number>();
+    const nameLookupNeeded = new Set<string>();
+    for (const b of allBookings) {
+      const hasReach = b.apple && metaByUrl.has(b.apple);
+      if (!hasReach && b.name) nameLookupNeeded.add(normalizeName(b.name));
+    }
+    if (nameLookupNeeded.size > 0) {
+      // Pull all rows with podcast_name and monthly_listens, then match on normalized name client-side
+      const { data: nameRows } = await supabase
+        .from('podcast_metadata_cache')
+        .select('podcast_name, monthly_listens')
+        .not('podcast_name', 'is', null)
+        .not('monthly_listens', 'is', null);
+      for (const row of nameRows || []) {
+        if (!row.podcast_name || typeof row.monthly_listens !== 'number') continue;
+        const key = normalizeName(String(row.podcast_name));
+        if (nameLookupNeeded.has(key) && !metaByName.has(key)) {
+          metaByName.set(key, row.monthly_listens);
+        }
+      }
+    }
+
     const now = new Date();
     let total = 0;
     let withMeta = 0;
     let missing = 0;
     for (const b of allBookings) {
-      const listens = b.apple ? (metaByUrl.get(b.apple) || 0) : 0;
+      let listens = b.apple ? (metaByUrl.get(b.apple) || 0) : 0;
+      if (!listens && b.name) {
+        listens = metaByName.get(normalizeName(b.name)) || 0;
+      }
       if (!listens) { missing++; continue; }
       const months = monthsBetween(b.date_booked, now) || 1;
       total += listens * months;
