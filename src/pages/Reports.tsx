@@ -3185,7 +3185,9 @@ export default function Reports() {
                               title="Net Impressions YTD"
                               value={netImpressionsYtd > 0 ? formatCompactNumber(netImpressionsYtd) : '—'}
                               editableValue={netImpressionsYtd}
+                              editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
+
                               subtitle={(() => {
                                 if (netImpressionsYtd > 0) {
                                   return netImpressionsIsAuto
