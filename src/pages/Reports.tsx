@@ -157,7 +157,11 @@ export default function Reports() {
     totalRecorded: true,
     totalIntroCalls: true,
     socialReach: true,
-    totalReach: true,
+    totalReach: false, // legacy single-card; replaced by the four listenership cards below
+    cumulativeImpressions: true,
+    netImpressionsYtd: true,
+    projectedAnnualListenership: true,
+    avgShowReach: true,
     averageScore: false,
     // Additional Value Metrics
     emv: true,
