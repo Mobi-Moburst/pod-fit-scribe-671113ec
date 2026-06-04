@@ -106,17 +106,7 @@ export const AdditionalMetricsSlide = ({
     });
   }
 
-  // Social Value
-  if (visibleSections.socialValue && totalSocialReach > 0) {
-    metrics.push({
-      label: "Social Value",
-      value: formatCurrency(totalSocialValue),
-      subtitle: "Equivalent ad spend",
-      icon: Share2,
-      color: "hsl(330 81% 60%)",
-      onClick: onSocialValueClick,
-    });
-  }
+  // Social Value card is internal-only — folded into Total Campaign Value for external clients.
 
   if (metrics.length === 0) return null;
 
