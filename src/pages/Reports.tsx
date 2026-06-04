@@ -116,7 +116,7 @@ export default function Reports() {
   
   // Advanced EMV settings
   const [cpmRate, setCpmRate] = useState<number>(50);
-  const [speakingTimePct, setSpeakingTimePct] = useState<number>(40);
+  const [speakingTimePct, setSpeakingTimePct] = useState<number>(100);
   const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
   
   // State
@@ -2947,12 +2947,12 @@ export default function Reports() {
                       <Input 
                         type="number" 
                         min={20} 
-                        max={60} 
+                        max={100} 
                         value={speakingTimePct} 
-                        onChange={(e) => setSpeakingTimePct(Math.max(20, Math.min(60, parseInt(e.target.value) || 40)))}
+                        onChange={(e) => setSpeakingTimePct(Math.max(20, Math.min(100, parseInt(e.target.value) || 100)))}
                         className="h-8 text-xs mt-1"
                       />
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Guest airtime: 20–60%</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Guest airtime: 20–100%</p>
                     </div>
                   </div>
                 </CollapsibleContent>
