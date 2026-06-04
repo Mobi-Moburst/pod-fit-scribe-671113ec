@@ -223,7 +223,7 @@ export default function ReportPresentation() {
         totalIntroCalls: (reportData.kpis?.total_intro_calls ?? 0) > 0,
         socialReach: true,
         totalReach: true,
-        averageScore: true,
+        averageScore: false,
         campaignOverview: true,
         topCategories: true,
         nextQuarterStrategy: true,

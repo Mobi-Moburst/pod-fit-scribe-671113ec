@@ -158,7 +158,7 @@ export default function Reports() {
     totalIntroCalls: true,
     socialReach: true,
     totalReach: true,
-    averageScore: true,
+    averageScore: false,
     // Additional Value Metrics
     emv: true,
     sov: true,
@@ -1153,7 +1153,7 @@ export default function Reports() {
         totalIntroCalls: savedSections.totalIntroCalls ?? true,
         socialReach: savedSections.socialReach ?? true,
         totalReach: savedSections.totalReach ?? true,
-        averageScore: savedSections.averageScore ?? true,
+        averageScore: false,
         emv: savedSections.emv ?? true,
         sov: savedSections.sov ?? true,
         geoScore: savedSections.geoScore ?? true,
@@ -2930,7 +2930,7 @@ export default function Reports() {
                   { key: 'totalIntroCalls', label: 'Intro Calls', visible: visibleSections.totalIntroCalls },
                   { key: 'socialReach', label: 'Social Reach', visible: visibleSections.socialReach },
                   { key: 'totalReach', label: 'Total Listenership', visible: visibleSections.totalReach },
-                  { key: 'averageScore', label: 'Avg Score', visible: visibleSections.averageScore },
+                  
                   { key: 'emv', label: 'EMV', visible: visibleSections.emv },
                   { key: 'sov', label: 'Peer Comparison', visible: visibleSections.sov },
                   { key: 'geoScore', label: 'GEO', visible: visibleSections.geoScore },
@@ -3035,50 +3035,7 @@ export default function Reports() {
                         onHide={() => toggleSection('totalReach')}
                       />
                     )}
-                    {visibleSections.averageScore && (
-                      reportData.kpis.avg_score === 0 && reportData.contains_live_scores ? (
-                        <div className="group relative rounded-xl border border-border bg-card p-4 flex flex-col items-center justify-center gap-2 min-h-[120px]">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleSection('averageScore');
-                            }}
-                            className="absolute top-2 right-2 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
-                            title="Hide this metric"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                          <p className="text-sm font-medium text-foreground">Fit Scores</p>
-                          <Button
-                            size="sm"
-                            onClick={handleGenerateFitScores}
-                            disabled={isScoringFit}
-                            className="gap-1"
-                          >
-                            {isScoringFit ? (
-                              <>
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                {scoringProgress ? `${scoringProgress.completed}/${scoringProgress.total}` : 'Scoring...'}
-                              </>
-                            ) : (
-                              <>
-                                <TrendingUp className="h-3 w-3" />
-                                Generate Scores
-                              </>
-                            )}
-                          </Button>
-                          <p className="text-xs text-muted-foreground">Score from show notes</p>
-                        </div>
-                      ) : (
-                        <KPICard
-                          title="Average Score"
-                          value={reportData.kpis.avg_score.toFixed(1)}
-                          subtitle="Overall fit rating"
-                          icon={TrendingUp}
-                          onHide={() => toggleSection('averageScore')}
-                        />
-                      )
-                    )}
+                    {/* Fit Score card removed from report UI */}
                   </div>
                 </div>
               )}
