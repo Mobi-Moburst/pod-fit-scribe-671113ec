@@ -271,6 +271,44 @@ export default function Settings() {
           <>
             <Separator />
 
+            {/* Feature Flags */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Flag className="h-5 w-5" />
+                  Feature Flags
+                </CardTitle>
+                <CardDescription>
+                  Roll features out gradually. Toggles here control what non-admin users can see. Admins always
+                  have access regardless of these settings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm font-medium">Research tab</Label>
+                      <Badge variant={researchFlag.enabled ? "default" : "outline"} className="text-xs">
+                        {researchFlag.isLoading ? "…" : researchFlag.enabled ? "Visible to all" : "Admins only"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground max-w-xl">
+                      Currently hidden from non-admin users while the Research workflow is still being refined.
+                      When this is off, the Research tab and <code className="text-[11px]">/research</code> route
+                      are only available to admins. Flip the switch on to release Research to all signed-in CMs.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={researchFlag.enabled}
+                    disabled={researchFlag.isLoading || isTogglingResearch}
+                    onCheckedChange={handleToggleResearch}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+
+
 
 
 
