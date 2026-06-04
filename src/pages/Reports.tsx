@@ -3277,7 +3277,7 @@ export default function Reports() {
                       const emv = reportData.kpis.total_emv || 0;
                       const totalSocialReach = reportData.kpis.total_social_reach;
                       const socialValue = (totalSocialReach / 1000) * 60 * 1.5 * 1.2;
-                      const totalCampaignValue = emv + socialValue;
+                      const totalCampaignValue = Math.ceil(emv) + socialValue;
                       const formatted = `$${Math.round(totalCampaignValue).toLocaleString()}`;
                       return (
                         <KPICard
