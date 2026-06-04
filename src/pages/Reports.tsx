@@ -1314,6 +1314,45 @@ export default function Reports() {
     }
   };
 
+  // Auto-compute lifetime Net Impressions from ALL Airtable bookings for this company/speaker.
+  // Stored in kpis.net_impressions_ytd_auto so manual edits to net_impressions_ytd take precedence.
+  const lifetimeImpressionsComputedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!reportData || !reportData.kpis) return;
+    if (!selectedCompanyId) return;
+    const reportKey = `${currentReportId || 'draft'}::${selectedCompanyId}::${selectedSpeakerId || 'multi'}`;
+    if (lifetimeImpressionsComputedFor.current === reportKey) return;
+    lifetimeImpressionsComputedFor.current = reportKey;
+
+    const isMulti = !selectedSpeakerId;
+    const speakerObj = !isMulti ? speakers.find((s) => s.id === selectedSpeakerId) : null;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('compute-lifetime-impressions', {
+          body: {
+            company_id: selectedCompanyId,
+            speaker_id: isMulti ? null : selectedSpeakerId,
+            speaker_name: speakerObj?.name,
+          },
+        });
+        if (error) throw error;
+        if (!data?.success) return;
+        const auto = Number(data.net_impressions_lifetime) || 0;
+        setReportData((prev) => {
+          if (!prev) return prev;
+          const k: any = prev.kpis || {};
+          if (k.net_impressions_ytd_auto === auto) return prev;
+          return { ...prev, kpis: { ...k, net_impressions_ytd_auto: auto } } as any;
+        });
+      } catch (e) {
+        console.warn('compute-lifetime-impressions failed:', e);
+      }
+    })();
+  }, [reportData, selectedCompanyId, selectedSpeakerId, speakers, currentReportId]);
+
+
+
   // Inline edit for an individual podcast's monthly_listens. Recomputes total_reach.
   const updatePodcastMonthlyListens = async (
     matcher: (p: any) => boolean,
