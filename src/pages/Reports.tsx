@@ -3149,9 +3149,9 @@ export default function Reports() {
                               value={netImpressionsYtd > 0 ? netImpressionsYtd.toLocaleString() : '—'}
                               editableValue={netImpressionsYtd}
                               onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
-                              subtitle={netImpressionsYtd > 0 ? "Sum of monthly listeners × months live YTD" : "No published episodes YTD yet"}
+                              subtitle={netImpressionsYtd > 0 ? (netImpressionsIsAuto ? "Lifetime · all bookings × months since booked" : "Manually set · click pencil to update") : "Loading lifetime bookings…"}
                               icon={TrendingUp}
-                              tooltip="Year-to-date impressions: for each published episode in this report, monthly listeners × months live since max(Jan 1, publish date) through today. Click the pencil to override."
+                              tooltip="Lifetime Net Impressions: for every booking ever in this company's Airtable, monthly listeners × months since the booking date through today. Pulls live from Airtable bookings (not limited to published episodes). Pencil-edit overrides the auto value."
                               onHide={() => toggleSection('netImpressionsYtd')}
                             />
                           )}
