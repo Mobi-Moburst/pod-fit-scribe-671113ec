@@ -213,9 +213,17 @@ serve(async (req) => {
         synced_at: nowIso,
       }, { onConflict: 'org_id,hubspot_ticket_id' });
     } catch (e) {
-      console.warn('[hubspot-create-ticket] cache insert failed', e);
+      logger.warn('cache_insert_failed', { message: e instanceof Error ? e.message : String(e) });
     }
 
+    logger.info('request_completed', {
+      ticket_id: ticketId,
+      contact_id: resolved.contact.id,
+      company_id: resolved.company.id,
+      created_company: !resolved.company.existing,
+      created_contact: !resolved.contact.existing,
+      duration_ms: Date.now() - started,
+    });
     return new Response(
       JSON.stringify({
         success: true,
@@ -231,7 +239,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('[hubspot-create-ticket] Error:', err);
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
