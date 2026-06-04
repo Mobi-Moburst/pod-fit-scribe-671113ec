@@ -3116,7 +3116,9 @@ export default function Reports() {
                         title={reportData.kpis.total_published === 0 ? "Projected Listenership" : "Total Listenership"}
                         value={formatCompactNumber(reportData.kpis.total_reach)}
                         editableValue={reportData.kpis.total_reach}
+                        editableFormat={formatCompactNumber}
                         onValueEdit={(next) => updateReportKpis({ total_reach: next })}
+
                         subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows • Click for details" : "Total monthly listeners • Click for details"}
                         icon={Users}
                         onClick={() => setReachDialogOpen(true)}
