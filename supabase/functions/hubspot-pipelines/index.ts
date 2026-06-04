@@ -13,6 +13,10 @@ const GATEWAY_URL = 'https://connector-gateway.lovable.dev/hubspot';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const started = Date.now();
+  const requestId = newRequestId();
+  const logger = createLogger({ fn: 'hubspot-pipelines', requestId });
+  logger.info('request_received', { method: req.method });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
