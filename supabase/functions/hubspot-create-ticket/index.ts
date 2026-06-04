@@ -157,12 +157,12 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/tickets`, {
+    const resp = await loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/objects/tickets`, {
       method: 'POST', headers: hubspotHeaders, body: JSON.stringify({ properties }),
-    });
+    }, { phase: 'create_ticket' });
     if (!resp.ok) {
       const t = await resp.text();
-      console.error('[hubspot-create-ticket] error', resp.status, t);
+      logger.error('ticket_create_failed', { status: resp.status, body: t.slice(0, 400) });
       return new Response(
         JSON.stringify({ error: `HubSpot create ticket failed (${resp.status}): ${t.slice(0, 400)}` }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -170,15 +170,19 @@ serve(async (req) => {
     }
     const created = await resp.json();
     const ticketId: string = created.id;
+    logger.info('ticket_created', { ticket_id: ticketId });
 
     // Associate
     if (resolved.company.id) {
       await associate('tickets', ticketId, 'companies', resolved.company.id, LOVABLE_API_KEY, HUBSPOT_API_KEY);
+      logger.info('associated', { from: 'ticket', to: 'company', ticket_id: ticketId, company_id: resolved.company.id });
     }
     if (resolved.contact.id) {
       await associate('tickets', ticketId, 'contacts', resolved.contact.id, LOVABLE_API_KEY, HUBSPOT_API_KEY);
+      logger.info('associated', { from: 'ticket', to: 'contact', ticket_id: ticketId, contact_id: resolved.contact.id });
       if (resolved.company.id) {
         await associate('contacts', resolved.contact.id, 'companies', resolved.company.id, LOVABLE_API_KEY, HUBSPOT_API_KEY);
+        logger.info('associated', { from: 'contact', to: 'company', contact_id: resolved.contact.id, company_id: resolved.company.id });
       }
     }
 
