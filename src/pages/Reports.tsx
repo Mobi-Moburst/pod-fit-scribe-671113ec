@@ -3226,7 +3226,7 @@ export default function Reports() {
                           {visibleSections.highestReachShow && (
                             <KPICard
                               title="Highest Reach Show"
-                              value={highestMonthlyListens > 0 ? highestMonthlyListens.toLocaleString() : '—'}
+                              value={highestMonthlyListens > 0 ? formatCompactNumber(highestMonthlyListens) : '—'}
                               subtitle={highestReachShow?.show_title || 'No booked shows yet'}
                               icon={TrendingUp}
                               imageUrl={highestReachShow?.cover_art_url}
