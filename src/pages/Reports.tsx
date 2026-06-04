@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
