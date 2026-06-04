@@ -52,7 +52,18 @@ import { RunAEOAuditButton } from "@/components/reports/RunAEOAuditButton";
 import { AirtableDataPreview } from "@/components/reports/AirtableDataPreview";
 import { ReportPasswordDialog } from "@/components/reports/ReportPasswordDialog";
 
+// Compact number formatter: 833467 -> "833.4K", 1234567 -> "1.2M"
+function formatCompactNumber(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return Math.round(n).toString();
+}
+
 export default function Reports() {
+
   const auditPollIntervalMs = 4000;
   const auditAbsoluteTimeoutMs = 20 * 60 * 1000;
   const auditStallTimeoutMs = 2 * 60 * 1000;
@@ -3093,7 +3104,7 @@ export default function Reports() {
                     {visibleSections.socialReach && (
                       <KPICard
                         title={reportData.kpis.total_published === 0 ? "Projected Social Reach" : "Social Reach"}
-                        value={reportData.kpis.total_social_reach.toLocaleString()}
+                        value={formatCompactNumber(reportData.kpis.total_social_reach)}
                         subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows" : "Combined social following"}
                         icon={Users}
                         tooltip={`The combined number of followers across all of the social media accounts that we found for ${reportData.kpis.total_booked > 1 ? 'these podcasts' : 'this podcast'}`}
@@ -3103,7 +3114,7 @@ export default function Reports() {
                     {visibleSections.totalReach && (
                       <KPICard
                         title={reportData.kpis.total_published === 0 ? "Projected Listenership" : "Total Listenership"}
-                        value={reportData.kpis.total_reach.toLocaleString()}
+                        value={formatCompactNumber(reportData.kpis.total_reach)}
                         editableValue={reportData.kpis.total_reach}
                         onValueEdit={(next) => updateReportKpis({ total_reach: next })}
                         subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows • Click for details" : "Total monthly listeners • Click for details"}
@@ -3156,7 +3167,7 @@ export default function Reports() {
                           {visibleSections.cumulativeImpressions && (
                             <KPICard
                               title="Cumulative Impressions"
-                              value={cumulativeImpressions.toLocaleString()}
+                              value={formatCompactNumber(cumulativeImpressions)}
                               editableValue={cumulativeImpressions}
                               onValueEdit={(next) => updateReportKpis({ cumulative_impressions: next } as any)}
                               subtitle={`Total monthly listeners × ${periodMonths} mo`}
@@ -3168,7 +3179,7 @@ export default function Reports() {
                           {visibleSections.netImpressionsYtd && (
                             <KPICard
                               title="Net Impressions YTD"
-                              value={netImpressionsYtd > 0 ? netImpressionsYtd.toLocaleString() : '—'}
+                              value={netImpressionsYtd > 0 ? formatCompactNumber(netImpressionsYtd) : '—'}
                               editableValue={netImpressionsYtd}
                               onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
                               subtitle={(() => {
@@ -3191,7 +3202,7 @@ export default function Reports() {
                           {visibleSections.projectedAnnualListenership && (
                             <KPICard
                               title="Projected Annual Listenership"
-                              value={projectedAnnual.toLocaleString()}
+                              value={formatCompactNumber(projectedAnnual)}
                               editableValue={projectedAnnual}
                               onValueEdit={(next) => updateReportKpis({ projected_annual_listenership: next } as any)}
                               subtitle="Total monthly listeners × 12"
@@ -3203,7 +3214,7 @@ export default function Reports() {
                           {visibleSections.listenersPerEpisode && (
                             <KPICard
                               title="Total Monthly Listeners Per Episode"
-                              value={listenersPerEpisode.toLocaleString()}
+                              value={formatCompactNumber(listenersPerEpisode)}
                               editableValue={listenersPerEpisode}
                               onValueEdit={(next) => updateReportKpis({ total_listeners_per_episode: next } as any)}
                               subtitle="Combined per-episode reach"
@@ -3215,7 +3226,7 @@ export default function Reports() {
                           {visibleSections.highestReachShow && (
                             <KPICard
                               title="Highest Reach Show"
-                              value={highestMonthlyListens > 0 ? highestMonthlyListens.toLocaleString() : '—'}
+                              value={highestMonthlyListens > 0 ? formatCompactNumber(highestMonthlyListens) : '—'}
                               subtitle={highestReachShow?.show_title || 'No booked shows yet'}
                               icon={TrendingUp}
                               imageUrl={highestReachShow?.cover_art_url}
