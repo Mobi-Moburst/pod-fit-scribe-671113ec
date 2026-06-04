@@ -3120,9 +3120,9 @@ export default function Reports() {
                               value={netImpressionsYtd > 0 ? netImpressionsYtd.toLocaleString() : '—'}
                               editableValue={netImpressionsYtd}
                               onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
-                              subtitle={netImpressionsYtd > 0 ? "Year-to-date impressions • Editable" : "Click pencil to enter YTD total"}
+                              subtitle={netImpressionsYtd > 0 ? "Sum of monthly listeners × months live YTD" : "No published episodes YTD yet"}
                               icon={TrendingUp}
-                              tooltip="Lifetime impressions accumulated by all published episodes from Jan 1 of the current year through today. Currently entered manually until the YTD Airtable sync is wired up."
+                              tooltip="Year-to-date impressions: for each published episode in this report, monthly listeners × months live since max(Jan 1, publish date) through today. Click the pencil to override."
                               onHide={() => toggleSection('netImpressionsYtd')}
                             />
                           )}
