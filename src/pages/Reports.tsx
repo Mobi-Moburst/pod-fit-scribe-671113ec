@@ -3059,16 +3059,21 @@ export default function Reports() {
                         ? k.projected_annual_listenership
                         : totalReach * 12;
 
-                      const monthlyListensValues = (reportData.podcasts || [])
-                        .map((p: any) => {
-                          const v = p?.monthly_listens;
-                          return typeof v === 'string' ? parseFloat(v) || 0 : (v || 0);
-                        })
-                        .filter((v: number) => v > 0);
-                      const computedAvgShowReach = monthlyListensValues.length
-                        ? Math.round(monthlyListensValues.reduce((a: number, b: number) => a + b, 0) / monthlyListensValues.length)
+                      const listenersPerEpisode = typeof k.total_listeners_per_episode === 'number'
+                        ? k.total_listeners_per_episode
                         : 0;
-                      const avgShowReach = typeof k.avg_show_reach === 'number' ? k.avg_show_reach : computedAvgShowReach;
+
+                      // Highest reach show (by monthly_listens)
+                      const highestReachShow = (reportData.podcasts || []).reduce((max: any, p: any) => {
+                        const pListens = typeof p?.monthly_listens === 'string' ? parseFloat(p.monthly_listens) || 0 : (p?.monthly_listens || 0);
+                        const maxListens = typeof max?.monthly_listens === 'string' ? parseFloat(max.monthly_listens) || 0 : (max?.monthly_listens || 0);
+                        return pListens > maxListens ? p : max;
+                      }, null);
+                      const highestMonthlyListens = highestReachShow
+                        ? (typeof highestReachShow.monthly_listens === 'string'
+                            ? parseFloat(highestReachShow.monthly_listens) || 0
+                            : (highestReachShow.monthly_listens || 0))
+                        : 0;
 
                       const netImpressionsYtd = typeof k.net_impressions_ytd === 'number' ? k.net_impressions_ytd : 0;
 
@@ -3080,10 +3085,9 @@ export default function Reports() {
                               value={cumulativeImpressions.toLocaleString()}
                               editableValue={cumulativeImpressions}
                               onValueEdit={(next) => updateReportKpis({ cumulative_impressions: next } as any)}
-                              subtitle={`Total monthly listeners × ${periodMonths} mo • Click for details`}
+                              subtitle={`Total monthly listeners × ${periodMonths} mo`}
                               icon={TrendingUp}
                               tooltip={`Combined listener exposure across all booked shows over the ${periodMonths}-month report window.`}
-                              onClick={() => setReachDialogOpen(true)}
                               onHide={() => toggleSection('cumulativeImpressions')}
                             />
                           )}
@@ -3111,16 +3115,26 @@ export default function Reports() {
                               onHide={() => toggleSection('projectedAnnualListenership')}
                             />
                           )}
-                          {visibleSections.avgShowReach && (
+                          {visibleSections.listenersPerEpisode && (
                             <KPICard
-                              title="Avg Show Reach"
-                              value={avgShowReach.toLocaleString()}
-                              editableValue={avgShowReach}
-                              onValueEdit={(next) => updateReportKpis({ avg_show_reach: next } as any)}
-                              subtitle="Avg monthly listeners per booked show"
+                              title="Total Monthly Listeners Per Episode"
+                              value={listenersPerEpisode.toLocaleString()}
+                              editableValue={listenersPerEpisode}
+                              onValueEdit={(next) => updateReportKpis({ total_listeners_per_episode: next } as any)}
+                              subtitle="Combined per-episode reach"
                               icon={Users}
-                              tooltip="Mean of monthly listenership across every podcast booked during this report's date range."
-                              onHide={() => toggleSection('avgShowReach')}
+                              tooltip="Sum of average listeners-per-episode across all booked shows in this report period."
+                              onHide={() => toggleSection('listenersPerEpisode')}
+                            />
+                          )}
+                          {visibleSections.highestReachShow && (
+                            <KPICard
+                              title="Highest Reach Show"
+                              value={highestMonthlyListens > 0 ? highestMonthlyListens.toLocaleString() : '—'}
+                              subtitle={highestReachShow?.show_title || 'No booked shows yet'}
+                              icon={TrendingUp}
+                              tooltip="The single podcast in this report with the largest monthly listenership."
+                              onHide={() => toggleSection('highestReachShow')}
                             />
                           )}
                         </>
