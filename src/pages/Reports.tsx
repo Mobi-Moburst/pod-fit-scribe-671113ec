@@ -3116,7 +3116,9 @@ export default function Reports() {
                         title={reportData.kpis.total_published === 0 ? "Projected Listenership" : "Total Listenership"}
                         value={formatCompactNumber(reportData.kpis.total_reach)}
                         editableValue={reportData.kpis.total_reach}
+                        editableFormat={formatCompactNumber}
                         onValueEdit={(next) => updateReportKpis({ total_reach: next })}
+
                         subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows • Click for details" : "Total monthly listeners • Click for details"}
                         icon={Users}
                         onClick={() => setReachDialogOpen(true)}
@@ -3169,7 +3171,9 @@ export default function Reports() {
                               title="Cumulative Impressions"
                               value={formatCompactNumber(cumulativeImpressions)}
                               editableValue={cumulativeImpressions}
+                              editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ cumulative_impressions: next } as any)}
+
                               subtitle={`Total monthly listeners × ${periodMonths} mo`}
                               icon={TrendingUp}
                               tooltip={`Combined listener exposure across all booked shows over the ${periodMonths}-month report window.`}
@@ -3181,7 +3185,9 @@ export default function Reports() {
                               title="Net Impressions YTD"
                               value={netImpressionsYtd > 0 ? formatCompactNumber(netImpressionsYtd) : '—'}
                               editableValue={netImpressionsYtd}
+                              editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
+
                               subtitle={(() => {
                                 if (netImpressionsYtd > 0) {
                                   return netImpressionsIsAuto
@@ -3204,7 +3210,9 @@ export default function Reports() {
                               title="Projected Annual Listenership"
                               value={formatCompactNumber(projectedAnnual)}
                               editableValue={projectedAnnual}
+                              editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ projected_annual_listenership: next } as any)}
+
                               subtitle="Total monthly listeners × 12"
                               icon={Users}
                               tooltip="Estimated annual listenership extrapolated from the combined monthly listenership of all booked shows."
@@ -3216,7 +3224,9 @@ export default function Reports() {
                               title="Total Monthly Listeners Per Episode"
                               value={formatCompactNumber(listenersPerEpisode)}
                               editableValue={listenersPerEpisode}
+                              editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ total_listeners_per_episode: next } as any)}
+
                               subtitle="Combined per-episode reach"
                               icon={Users}
                               tooltip="Sum of average listeners-per-episode across all booked shows in this report period."
