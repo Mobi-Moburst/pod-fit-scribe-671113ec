@@ -2,6 +2,7 @@
 // in Settings and we cache pipeline_id / stages / portal_id in hubspot_settings.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createLogger, loggedHubspotFetch, newRequestId } from "../_shared/hubspot-logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,10 @@ const GATEWAY_URL = 'https://connector-gateway.lovable.dev/hubspot';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const started = Date.now();
+  const requestId = newRequestId();
+  const logger = createLogger({ fn: 'hubspot-pipelines', requestId });
+  logger.info('request_received', { method: req.method });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -46,8 +51,8 @@ serve(async (req) => {
     };
 
     const [pipelinesResp, accountResp] = await Promise.all([
-      fetch(`${GATEWAY_URL}/crm/v3/pipelines/tickets`, { headers: hubspotHeaders }),
-      fetch(`${GATEWAY_URL}/account-info/v3/details`, { headers: hubspotHeaders }),
+      loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/pipelines/tickets`, { headers: hubspotHeaders }, { phase: 'list_pipelines' }),
+      loggedHubspotFetch(logger, `${GATEWAY_URL}/account-info/v3/details`, { headers: hubspotHeaders }, { phase: 'account_info' }),
     ]);
 
     if (!pipelinesResp.ok) {
@@ -66,6 +71,7 @@ serve(async (req) => {
         .map((s: any) => ({ id: s.id, label: s.label, order: s.displayOrder ?? 0 })),
     }));
 
+    logger.info('request_completed', { pipelines: pipelines.length, portal_id: accountJson.portalId || null, duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({
         success: true,
@@ -75,7 +81,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('[hubspot-pipelines] Error:', err);
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

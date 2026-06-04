@@ -3,6 +3,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { resolveAssociations, type Overrides } from "../_shared/hubspot-resolve.ts";
+import { createLogger, newRequestId } from "../_shared/hubspot-logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,10 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const started = Date.now();
+  const requestId = newRequestId();
+  const logger = createLogger({ fn: 'hubspot-resolve-associations', requestId });
+  logger.info('request_received', { method: req.method });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -68,11 +73,20 @@ serve(async (req) => {
       );
     }
 
+    logger.info('dry_run_resolve_start', { shortlist_id, speaker_id: speaker.id, speaker_name: speaker.name });
     const preview = await resolveAssociations({
       row, speaker, settings, overrides,
       LOVABLE_API_KEY, HUBSPOT_API_KEY, dryRun: true,
       callerEmail: (claims.claims as any)?.email || null,
       supabase,
+    });
+    logger.info('request_completed', {
+      company_id: preview.company.id,
+      company_existing: preview.company.existing,
+      contact_id: preview.contact.id,
+      contact_existing: preview.contact.existing,
+      duplicate_ticket_id: preview.duplicate_ticket_id,
+      duration_ms: Date.now() - started,
     });
 
     return new Response(
@@ -80,7 +94,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('[hubspot-resolve-associations] Error:', err);
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

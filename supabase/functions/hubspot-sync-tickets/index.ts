@@ -3,6 +3,7 @@
 //        "incremental" (only tickets modified since max(last_modified)).
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createLogger, loggedHubspotFetch, newRequestId } from "../_shared/hubspot-logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,6 +41,10 @@ function shapeRow(orgId: string, t: any, owners: Record<string, any>, showUrlPro
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   const started = Date.now();
+  const requestId = newRequestId();
+  const logger = createLogger({ fn: 'hubspot-sync-tickets', requestId, orgId: TEAM_ORG_ID });
+  logger.info('request_received', { method: req.method });
+
 
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -53,6 +58,8 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const mode: 'full' | 'incremental' | 'backfill' =
       body.mode === 'full' ? 'full' : body.mode === 'backfill' ? 'backfill' : 'incremental';
+    logger.info('mode_resolved', { mode });
+
 
     // Backfill params (used only when mode === 'backfill')
     const DEFAULT_BACKFILL_STAGES = ['1366108009', '1366108010', '1366108011'];
@@ -95,18 +102,19 @@ serve(async (req) => {
 
     let availableProps = new Set<string>(wantProps);
     try {
-      const pr = await fetch(`${GATEWAY_URL}/crm/v3/properties/tickets`, { headers });
+      const pr = await loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/properties/tickets`, { headers }, { phase: 'property_discovery' });
       if (pr.ok) {
         const pj = await pr.json();
         const names = new Set<string>((pj.results || []).map((p: any) => p.name));
         availableProps = new Set(wantProps.filter((p) => names.has(p)));
         const missing = wantProps.filter((p) => !names.has(p));
-        if (missing.length) console.log('[hubspot-sync-tickets] missing ticket props:', missing);
+        if (missing.length) logger.warn('property_discovery_missing', { missing });
       }
     } catch (e) {
-      console.warn('[hubspot-sync-tickets] property discovery failed, using full list', e);
+      logger.warn('property_discovery_failed', { message: e instanceof Error ? e.message : String(e) });
     }
     const properties = Array.from(availableProps);
+
 
     // Build filter
     const yearStart = new Date(new Date().getUTCFullYear(), 0, 1).getTime();
@@ -144,7 +152,7 @@ serve(async (req) => {
           { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: String(cursorTs) },
           ...(opts.extraFilters || []),
         ];
-        const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/tickets/search`, {
+        const resp = await loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/objects/tickets/search`, {
           method: 'POST', headers,
           body: JSON.stringify({
             filterGroups: [{ filters }],
@@ -153,7 +161,7 @@ serve(async (req) => {
             limit: 100,
             after,
           }),
-        });
+        }, { phase: 'ticket_search', label: opts.label, page: pages });
         if (!resp.ok) {
           const t = await resp.text();
           throw new Error(`HubSpot search ${resp.status} (${opts.label} page ${pages}, after=${after}, cursorTs=${cursorTs}): ${t.slice(0, 400)}`);
@@ -199,7 +207,7 @@ serve(async (req) => {
       for (let i = 0; i < clientNames.length; i += CHUNK) {
         clientChunks.push(clientNames.slice(i, i + CHUNK));
       }
-      console.log(`[hubspot-sync-tickets] backfill: ${backfillStageIds.length} stages × ${clientChunks.length} client-chunks (${clientNames.length} speakers), monthsBack=${monthsBack}`);
+      logger.info('backfill_plan', { stages: backfillStageIds.length, client_chunks: clientChunks.length, speakers: clientNames.length, months_back: monthsBack });
 
       for (const stageId of backfillStageIds) {
         for (const chunk of clientChunks) {
@@ -241,10 +249,11 @@ serve(async (req) => {
 
     // Resolve owners (one fetch per unique id)
     const ownerIds = Array.from(new Set(all.map((t) => t.properties?.hubspot_owner_id).filter(Boolean)));
+    logger.info('tickets_fetched', { count: all.length, unique_owners: ownerIds.length, pages });
     const owners: Record<string, { id: string; name: string; email: string }> = {};
     await Promise.all(ownerIds.map(async (id) => {
       try {
-        const r = await fetch(`${GATEWAY_URL}/crm/v3/owners/${id}`, { headers });
+        const r = await loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/owners/${id}`, { headers }, { phase: 'owner_lookup' });
         if (r.ok) {
           const o = await r.json();
           owners[id as string] = {
@@ -293,15 +302,18 @@ serve(async (req) => {
       }
     }
 
+    const duration_ms = Date.now() - started;
+    logger.info('request_completed', { mode, synced: upserted, deleted, pages, duration_ms });
     return new Response(JSON.stringify({
       success: true, mode, synced: upserted, deleted,
-      pages, duration_ms: Date.now() - started,
+      pages, duration_ms,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
-    console.error('[hubspot-sync-tickets]', err);
+    const duration_ms = Date.now() - started;
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms });
     return new Response(JSON.stringify({
       error: err instanceof Error ? err.message : 'Unknown',
-      duration_ms: Date.now() - started,
+      duration_ms,
     }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

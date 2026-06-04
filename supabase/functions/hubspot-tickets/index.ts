@@ -3,6 +3,7 @@
 // is empty.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createLogger, newRequestId } from "../_shared/hubspot-logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +14,10 @@ const TEAM_ORG_ID = '11111111-1111-1111-1111-111111111111';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const started = Date.now();
+  const requestId = newRequestId();
+  const logger = createLogger({ fn: 'hubspot-tickets', requestId, orgId: TEAM_ORG_ID });
+  logger.info('request_received', { method: req.method });
 
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -61,10 +66,11 @@ serve(async (req) => {
       .select('hubspot_ticket_id', { count: 'exact', head: true })
       .eq('org_id', TEAM_ORG_ID);
     if (!count || count === 0) {
+      logger.info('cache_empty_triggering_sync');
       try {
         await supabase.functions.invoke('hubspot-sync-tickets', { body: { mode: 'full' } });
       } catch (e) {
-        console.warn('[hubspot-tickets] inline sync failed', e);
+        logger.warn('inline_sync_failed', { message: e instanceof Error ? e.message : String(e) });
       }
     }
 
@@ -100,6 +106,7 @@ serve(async (req) => {
       tickets: tickets.filter((t) => t.stage_id === s.id),
     }));
 
+    logger.info('request_completed', { speaker_name, total: tickets.length, stages: grouped.length, duration_ms: Date.now() - started });
     return new Response(JSON.stringify({
       success: true,
       portal_id: settings.portal_id || null,
@@ -111,7 +118,7 @@ serve(async (req) => {
       source: 'cache',
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
-    console.error('[hubspot-tickets] Error:', err);
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

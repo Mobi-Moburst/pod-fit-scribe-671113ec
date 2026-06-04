@@ -3,6 +3,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { resolveAssociations, associate, type Overrides } from "../_shared/hubspot-resolve.ts";
+import { createLogger, loggedHubspotFetch, newRequestId } from "../_shared/hubspot-logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +14,10 @@ const GATEWAY_URL = 'https://connector-gateway.lovable.dev/hubspot';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const started = Date.now();
+  const requestId = newRequestId();
+  const logger = createLogger({ fn: 'hubspot-create-ticket', requestId });
+  logger.info('request_received', { method: req.method });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -84,6 +89,7 @@ serve(async (req) => {
     const showUrlProp = settings.show_url_property as string | null;
     const autoCreate = settings.auto_create_associations !== false;
 
+    logger.info('resolve_start', { shortlist_id, speaker_id: speaker.id, speaker_name: speaker.name, auto_create: autoCreate });
     // Resolve + create company/contact (skip create if user disabled auto-create)
     const resolved = await resolveAssociations({
       row, speaker, settings, overrides,
@@ -92,9 +98,18 @@ serve(async (req) => {
       callerEmail: (claims.claims as any)?.email || null,
       supabase,
     });
+    logger.info('resolve_complete', {
+      company_id: resolved.company.id,
+      company_existing: resolved.company.existing,
+      contact_id: resolved.contact.id,
+      contact_existing: resolved.contact.existing,
+      duplicate_ticket_id: resolved.duplicate_ticket_id,
+      owner_id: resolved.owner_id,
+    });
 
     // Short-circuit on duplicate ticket
     if (resolved.duplicate_ticket_id) {
+      logger.info('ticket_deduped', { ticket_id: resolved.duplicate_ticket_id });
       await supabase.from('research_shortlists').update({
         status: 'sent-to-hubspot',
         hubspot_ticket_id: resolved.duplicate_ticket_id,
@@ -102,6 +117,7 @@ serve(async (req) => {
         hubspot_company_id: resolved.company.id,
         hubspot_synced_at: new Date().toISOString(),
       }).eq('id', shortlist_id);
+      logger.info('request_completed', { deduped: true, duration_ms: Date.now() - started });
       return new Response(
         JSON.stringify({
           success: true,
@@ -141,12 +157,12 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    const resp = await fetch(`${GATEWAY_URL}/crm/v3/objects/tickets`, {
+    const resp = await loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/objects/tickets`, {
       method: 'POST', headers: hubspotHeaders, body: JSON.stringify({ properties }),
-    });
+    }, { phase: 'create_ticket' });
     if (!resp.ok) {
       const t = await resp.text();
-      console.error('[hubspot-create-ticket] error', resp.status, t);
+      logger.error('ticket_create_failed', { status: resp.status, body: t.slice(0, 400) });
       return new Response(
         JSON.stringify({ error: `HubSpot create ticket failed (${resp.status}): ${t.slice(0, 400)}` }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -154,15 +170,19 @@ serve(async (req) => {
     }
     const created = await resp.json();
     const ticketId: string = created.id;
+    logger.info('ticket_created', { ticket_id: ticketId });
 
     // Associate
     if (resolved.company.id) {
       await associate('tickets', ticketId, 'companies', resolved.company.id, LOVABLE_API_KEY, HUBSPOT_API_KEY);
+      logger.info('associated', { from: 'ticket', to: 'company', ticket_id: ticketId, company_id: resolved.company.id });
     }
     if (resolved.contact.id) {
       await associate('tickets', ticketId, 'contacts', resolved.contact.id, LOVABLE_API_KEY, HUBSPOT_API_KEY);
+      logger.info('associated', { from: 'ticket', to: 'contact', ticket_id: ticketId, contact_id: resolved.contact.id });
       if (resolved.company.id) {
         await associate('contacts', resolved.contact.id, 'companies', resolved.company.id, LOVABLE_API_KEY, HUBSPOT_API_KEY);
+        logger.info('associated', { from: 'contact', to: 'company', contact_id: resolved.contact.id, company_id: resolved.company.id });
       }
     }
 
@@ -193,9 +213,17 @@ serve(async (req) => {
         synced_at: nowIso,
       }, { onConflict: 'org_id,hubspot_ticket_id' });
     } catch (e) {
-      console.warn('[hubspot-create-ticket] cache insert failed', e);
+      logger.warn('cache_insert_failed', { message: e instanceof Error ? e.message : String(e) });
     }
 
+    logger.info('request_completed', {
+      ticket_id: ticketId,
+      contact_id: resolved.contact.id,
+      company_id: resolved.company.id,
+      created_company: !resolved.company.existing,
+      created_contact: !resolved.contact.existing,
+      duration_ms: Date.now() - started,
+    });
     return new Response(
       JSON.stringify({
         success: true,
@@ -211,7 +239,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('[hubspot-create-ticket] Error:', err);
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms: Date.now() - started });
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
