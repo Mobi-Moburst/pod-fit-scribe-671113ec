@@ -249,10 +249,11 @@ serve(async (req) => {
 
     // Resolve owners (one fetch per unique id)
     const ownerIds = Array.from(new Set(all.map((t) => t.properties?.hubspot_owner_id).filter(Boolean)));
+    logger.info('tickets_fetched', { count: all.length, unique_owners: ownerIds.length, pages });
     const owners: Record<string, { id: string; name: string; email: string }> = {};
     await Promise.all(ownerIds.map(async (id) => {
       try {
-        const r = await fetch(`${GATEWAY_URL}/crm/v3/owners/${id}`, { headers });
+        const r = await loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/owners/${id}`, { headers }, { phase: 'owner_lookup' });
         if (r.ok) {
           const o = await r.json();
           owners[id as string] = {
