@@ -302,15 +302,18 @@ serve(async (req) => {
       }
     }
 
+    const duration_ms = Date.now() - started;
+    logger.info('request_completed', { mode, synced: upserted, deleted, pages, duration_ms });
     return new Response(JSON.stringify({
       success: true, mode, synced: upserted, deleted,
-      pages, duration_ms: Date.now() - started,
+      pages, duration_ms,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
-    console.error('[hubspot-sync-tickets]', err);
+    const duration_ms = Date.now() - started;
+    logger.error('request_failed', { message: err instanceof Error ? err.message : 'Unknown', duration_ms });
     return new Response(JSON.stringify({
       error: err instanceof Error ? err.message : 'Unknown',
-      duration_ms: Date.now() - started,
+      duration_ms,
     }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
