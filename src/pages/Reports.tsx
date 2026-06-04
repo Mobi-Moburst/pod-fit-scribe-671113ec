@@ -2938,7 +2938,10 @@ export default function Reports() {
                   { key: 'totalRecorded', label: 'Total Recorded', visible: visibleSections.totalRecorded },
                   { key: 'totalIntroCalls', label: 'Intro Calls', visible: visibleSections.totalIntroCalls },
                   { key: 'socialReach', label: 'Social Reach', visible: visibleSections.socialReach },
-                  { key: 'totalReach', label: 'Total Listenership', visible: visibleSections.totalReach },
+                  { key: 'cumulativeImpressions', label: 'Cumulative Impressions', visible: visibleSections.cumulativeImpressions },
+                  { key: 'netImpressionsYtd', label: 'Net Impressions YTD', visible: visibleSections.netImpressionsYtd },
+                  { key: 'projectedAnnualListenership', label: 'Projected Annual Listenership', visible: visibleSections.projectedAnnualListenership },
+                  { key: 'avgShowReach', label: 'Avg Show Reach', visible: visibleSections.avgShowReach },
                   
                   { key: 'emv', label: 'EMV', visible: visibleSections.emv },
                   { key: 'sov', label: 'Peer Comparison', visible: visibleSections.sov },
