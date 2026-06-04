@@ -3276,20 +3276,7 @@ export default function Reports() {
                     {visibleSections.emv && visibleSections.socialValue && reportData.kpis.total_social_reach > 0 && (reportData.kpis.total_emv || 0) > 0 && (() => {
                       const emv = reportData.kpis.total_emv || 0;
                       const totalSocialReach = reportData.kpis.total_social_reach;
-                      const platformData = {
-                        linkedin: { cpm: 60.00, allocation: 0.60 },
-                        meta: { cpm: 10.50, allocation: 0.20 },
-                        youtube: { cpm: 4.50, allocation: 0.10 },
-                        tiktok: { cpm: 5.50, allocation: 0.07 },
-                        x: { cpm: 1.50, allocation: 0.03 },
-                      };
-                      const visibilityFactor = 1.5;
-                      const premiumFactor = 1.2;
-                      const socialValue = Object.values(platformData).reduce((sum, p) => {
-                        const allocatedReach = totalSocialReach * p.allocation;
-                        const baseValue = (allocatedReach / 1000) * p.cpm;
-                        return sum + baseValue * visibilityFactor * premiumFactor;
-                      }, 0);
+                      const socialValue = (totalSocialReach / 1000) * 60 * 1.5 * 1.2;
                       const totalCampaignValue = emv + socialValue;
                       let formatted: string;
                       if (totalCampaignValue >= 1000000) formatted = `$${(totalCampaignValue / 1000000).toFixed(1)}M`;
