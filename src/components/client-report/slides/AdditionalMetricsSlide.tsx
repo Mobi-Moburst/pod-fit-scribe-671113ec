@@ -65,17 +65,7 @@ export const AdditionalMetricsSlide = ({
     });
   }
 
-  // EMV
-  if (visibleSections.emv && totalEmv > 0) {
-    metrics.push({
-      label: "Earned Media Value",
-      value: formatCurrency(totalEmv),
-      subtitle: "Total campaign EMV",
-      icon: DollarSign,
-      color: "hsl(142 76% 36%)",
-      onClick: onEmvClick,
-    });
-  }
+  // EMV card is internal-only — only Total Campaign Value is exposed externally.
 
   // SOV
   if (visibleSections.sov && reportData.sov_analysis) {
@@ -116,17 +106,7 @@ export const AdditionalMetricsSlide = ({
     });
   }
 
-  // Social Value
-  if (visibleSections.socialValue && totalSocialReach > 0) {
-    metrics.push({
-      label: "Social Value",
-      value: formatCurrency(totalSocialValue),
-      subtitle: "Equivalent ad spend",
-      icon: Share2,
-      color: "hsl(330 81% 60%)",
-      onClick: onSocialValueClick,
-    });
-  }
+  // Social Value card is internal-only — folded into Total Campaign Value for external clients.
 
   if (metrics.length === 0) return null;
 

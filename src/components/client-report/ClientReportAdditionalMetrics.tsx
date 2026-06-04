@@ -80,21 +80,8 @@ export function ClientReportAdditionalMetrics({
     });
   }
 
-  if (visibleSections.emv) {
-    metrics.push({
-      key: 'emv',
-      visible: true,
-      icon: DollarSign,
-      value: `$${totalEmv.toLocaleString() || '0'}`,
-      label: "Earned Media Value",
-      subtitle: reportData.kpis.total_published === 0
-        ? "Requires published episodes"
-        : onEmvClick ? "Total campaign EMV • Click to view analysis" : "Total campaign EMV",
-      tooltip: "Based on audience size × industry CPM rate × guest speaking time. Reflects the equivalent cost to reach this audience through paid podcast advertising.",
-      onClick: onEmvClick,
-      color: "text-emerald-500",
-      bgColor: "bg-emerald-500/10",
-    });
+  if (visibleSections.emv && visibleSections.sov) {
+    // EMV and Social Value are internal-only — only Total Campaign Value is exposed externally.
   }
 
   if (visibleSections.sov) {
@@ -147,20 +134,8 @@ export function ClientReportAdditionalMetrics({
     });
   }
 
-  if (visibleSections.socialValue && totalSocialReach > 0) {
-    metrics.push({
-      key: 'socialValue',
-      visible: true,
-      icon: Share2,
-      value: formatCurrency(totalSocialValue),
-      label: "Social Value",
-      subtitle: onSocialValueClick ? "Equivalent ad spend • Click to view breakdown" : "Equivalent ad spend",
-      tooltip: "Calculated from follower reach across LinkedIn, Meta, YouTube, TikTok, and X using platform-specific ad rates with visibility and premium content multipliers.",
-      onClick: onSocialValueClick,
-      color: "text-pink-500",
-      bgColor: "bg-pink-500/10",
-    });
-  }
+  // Social Value card is internal-only — folded into Total Campaign Value for external clients.
+
 
   const visibleMetrics = metrics.filter(m => m.visible);
   if (visibleMetrics.length === 0) return null;
