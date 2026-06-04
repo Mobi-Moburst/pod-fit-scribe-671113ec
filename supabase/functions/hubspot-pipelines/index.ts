@@ -51,8 +51,8 @@ serve(async (req) => {
     };
 
     const [pipelinesResp, accountResp] = await Promise.all([
-      fetch(`${GATEWAY_URL}/crm/v3/pipelines/tickets`, { headers: hubspotHeaders }),
-      fetch(`${GATEWAY_URL}/account-info/v3/details`, { headers: hubspotHeaders }),
+      loggedHubspotFetch(logger, `${GATEWAY_URL}/crm/v3/pipelines/tickets`, { headers: hubspotHeaders }, { phase: 'list_pipelines' }),
+      loggedHubspotFetch(logger, `${GATEWAY_URL}/account-info/v3/details`, { headers: hubspotHeaders }, { phase: 'account_info' }),
     ]);
 
     if (!pipelinesResp.ok) {
