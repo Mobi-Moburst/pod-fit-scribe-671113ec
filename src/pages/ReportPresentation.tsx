@@ -223,7 +223,7 @@ export default function ReportPresentation() {
         totalIntroCalls: (reportData.kpis?.total_intro_calls ?? 0) > 0,
         socialReach: true,
         totalReach: true,
-        averageScore: true,
+        averageScore: false,
         campaignOverview: true,
         topCategories: true,
         nextQuarterStrategy: true,
@@ -237,7 +237,7 @@ export default function ReportPresentation() {
         socialValue: (reportData.kpis?.total_social_reach || 0) > 0,
       };
 
-      setVisibleSections(reportData.visibleSections || dataAwareDefaults);
+      setVisibleSections({ ...dataAwareDefaults, ...(reportData.visibleSections || {}), averageScore: false });
       setIsLoading(false);
     };
 
