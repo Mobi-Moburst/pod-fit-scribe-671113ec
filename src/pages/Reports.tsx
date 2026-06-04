@@ -3371,9 +3371,7 @@ export default function Reports() {
                         value={(() => {
                           const totalSocialReach = reportData.kpis.total_social_reach;
                           const totalValue = (totalSocialReach / 1000) * 60 * 1.5 * 1.2;
-                          if (totalValue >= 1000000) return `$${(totalValue / 1000000).toFixed(1)}M`;
-                          if (totalValue >= 1000) return `$${(totalValue / 1000).toFixed(0)}K`;
-                          return `$${totalValue.toFixed(0)}`;
+                          return `$${Math.round(totalValue).toLocaleString()}`;
                         })()}
                         subtitle="Equivalent ad spend • Click to view breakdown"
                         icon={Share2}
