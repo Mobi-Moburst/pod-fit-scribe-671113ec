@@ -3202,7 +3202,7 @@ export default function Reports() {
                           {visibleSections.projectedAnnualListenership && (
                             <KPICard
                               title="Projected Annual Listenership"
-                              value={projectedAnnual.toLocaleString()}
+                              value={formatCompactNumber(projectedAnnual)}
                               editableValue={projectedAnnual}
                               onValueEdit={(next) => updateReportKpis({ projected_annual_listenership: next } as any)}
                               subtitle="Total monthly listeners × 12"
