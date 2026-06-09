@@ -62,9 +62,11 @@ function buildDateFilterFormula(
 
   let formula = `OR(${dateConditions.join(', ')})`;
 
-  // Add speaker filter if provided (fallback to standard "speaker" column when connection setting is empty)
-  if (speakerName) {
-    const speakerField = speakerColumnName?.trim() || 'speaker';
+  // Add speaker filter only when the connection has an explicit speaker column.
+  // Speaker-specific tables often do not have a speaker column, and guessing one
+  // causes Airtable to reject the formula or return 0 rows.
+  if (speakerName && speakerColumnName?.trim()) {
+    const speakerField = speakerColumnName.trim();
     formula = `AND({${speakerField}}='${speakerName}', ${formula})`;
   }
 
@@ -99,6 +101,34 @@ function mapRecordToRow(record: AirtableRecord, fieldMapping: FieldMapping): Air
     show_notes: fieldMapping.show_notes ? fields[fieldMapping.show_notes] : undefined,
     apple_podcast_link: fieldMapping.apple_podcast_link ? fields[fieldMapping.apple_podcast_link] : undefined,
   };
+}
+
+function parseFlexibleDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  // Handles Airtable CSV-style strings like "4/28/2026 6:30am" and "4/21/2026".
+  const mdy = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?/i);
+  if (mdy) {
+    let [, month, day, year, hour = '0', minute = '0', meridiem] = mdy;
+    let yearNum = Number(year);
+    if (yearNum < 100) yearNum += 2000;
+    let hourNum = Number(hour);
+    const minuteNum = Number(minute);
+    if (meridiem) {
+      const marker = meridiem.toLowerCase();
+      if (marker === 'pm' && hourNum < 12) hourNum += 12;
+      if (marker === 'am' && hourNum === 12) hourNum = 0;
+    }
+    const parsed = new Date(yearNum, Number(month) - 1, Number(day), hourNum, minuteNum);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(raw);
+  return isNaN(parsed.getTime()) ? null : parsed;
 }
 
 // Fetch all records with pagination
@@ -163,8 +193,12 @@ function filterRowsByDate(
   dateRangeStart: string,
   dateRangeEnd: string,
 ): AirtableCSVRow[] {
-  const start = new Date(dateRangeStart);
-  const end = new Date(dateRangeEnd);
+  const start = parseFlexibleDate(dateRangeStart);
+  const end = parseFlexibleDate(dateRangeEnd);
+  if (!start || !end) return rows;
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
 
   return rows.filter(row => {
     // Check if ANY date field falls in range
@@ -178,8 +212,8 @@ function filterRowsByDate(
 
     for (const val of dateValues) {
       if (val) {
-        const d = new Date(val);
-        if (!isNaN(d.getTime()) && d >= start && d <= end) return true;
+        const d = parseFlexibleDate(val);
+        if (d && d >= start && d <= end) return true;
       }
     }
 
@@ -235,7 +269,7 @@ Deno.serve(async (req) => {
         date_range_start,
         date_range_end,
         fieldMapping,
-        connection.speaker_column_name,
+        connection.speaker_column_name || (!connection.speaker_id ? 'speaker' : undefined),
         speaker_name
       );
       console.log(`Filter formula: ${filterFormula}`);
@@ -260,6 +294,15 @@ Deno.serve(async (req) => {
       accessToken,
       filterFormula
     );
+
+    if (filterFormula && records.length === 0) {
+      console.warn('Filtered Airtable fetch returned 0 rows; retrying without filter for local date parsing.');
+      records = await fetchAllRecords(
+        connection.base_id,
+        connection.table_id,
+        accessToken
+      );
+    }
 
     console.log(`Total records fetched: ${records.length}`);
 
