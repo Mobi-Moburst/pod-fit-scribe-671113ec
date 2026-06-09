@@ -556,21 +556,69 @@ export default function Reports() {
         // Prepare speaker data
         const speakerDataInputs: SpeakerDataInput[] = [];
         
+        const skippedSpeakers: string[] = [];
+
         for (const speakerId of selectedSpeakerIds) {
           const speaker = speakers.find(s => s.id === speakerId);
           const files = speakerFiles[speakerId];
           const syncedData = speakerSyncedData[speakerId];
-          
+
           if (!speaker) continue;
-          
-          // Use synced data if available, otherwise parse CSV
-          let airtableRows: any[];
+
+          // Use synced data if available, otherwise parse CSV, otherwise auto-sync from Airtable connection
+          let airtableRows: any[] | null = null;
           if (syncedData && syncedData.length > 0) {
             airtableRows = syncedData;
+            console.log(`[Reports] ${speaker.name}: using ${syncedData.length} rows from state cache`);
           } else if (files?.airtableFile) {
             const airtableText = await files.airtableFile.text();
             airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
+            console.log(`[Reports] ${speaker.name}: parsed ${airtableRows.length} rows from uploaded CSV`);
           } else {
+            // Fallback: auto-sync from this speaker's Airtable connection on the fly
+            try {
+              const { data: speakerConnections } = await supabase
+                .from('airtable_connections')
+                .select('id')
+                .eq('speaker_id', speakerId)
+                .order('updated_at', { ascending: false })
+                .limit(1);
+              let connectionId = speakerConnections?.[0]?.id;
+              if (!connectionId && (speaker as any).company_id) {
+                const { data: companyConnections } = await supabase
+                  .from('airtable_connections')
+                  .select('id')
+                  .eq('company_id', (speaker as any).company_id)
+                  .is('speaker_id', null)
+                  .order('updated_at', { ascending: false })
+                  .limit(1);
+                connectionId = companyConnections?.[0]?.id;
+              }
+              if (connectionId) {
+                console.log(`[Reports] ${speaker.name}: auto-syncing from connection ${connectionId}`);
+                const { data: syncResp, error: syncErr } = await supabase.functions.invoke('fetch-airtable-data', {
+                  body: {
+                    connection_id: connectionId,
+                    date_range_start: startDate,
+                    date_range_end: endDate,
+                    speaker_name: speaker.name,
+                  },
+                });
+                if (!syncErr && syncResp?.success && Array.isArray(syncResp.data)) {
+                  airtableRows = syncResp.data;
+                  console.log(`[Reports] ${speaker.name}: auto-synced ${airtableRows.length} rows`);
+                }
+              } else {
+                console.warn(`[Reports] ${speaker.name}: no Airtable connection found for auto-sync`);
+              }
+            } catch (autoSyncErr) {
+              console.warn(`[Reports] ${speaker.name}: auto-sync failed`, autoSyncErr);
+            }
+          }
+
+          if (!airtableRows || airtableRows.length === 0) {
+            console.warn(`[Reports] ⚠️ Skipping ${speaker.name} — no synced data, no CSV uploaded, and auto-sync produced 0 rows`);
+            skippedSpeakers.push(speaker.name);
             continue;
           }
 
@@ -584,11 +632,19 @@ export default function Reports() {
               status: 'success',
               rationale_short: 'Score not yet generated',
             }));
-          
+
           speakerDataInputs.push({
             speaker: speaker as Speaker,
             batchRows,
             airtableRows,
+          });
+        }
+
+        if (skippedSpeakers.length > 0) {
+          toast({
+            title: `${skippedSpeakers.length} speaker(s) skipped`,
+            description: `No data for: ${skippedSpeakers.join(', ')}. Re-sync from Airtable or upload a CSV.`,
+            variant: 'destructive',
           });
         }
         
