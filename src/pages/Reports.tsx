@@ -3244,9 +3244,9 @@ export default function Reports() {
                               editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ cumulative_impressions: next } as any)}
 
-                              subtitle={`Total monthly listeners × ${periodMonths} mo`}
+                              subtitle={`Listeners × ${periodMonths} mo + social reach`}
                               icon={TrendingUp}
-                              tooltip={`Combined listener exposure across all booked shows over the ${periodMonths}-month report window.`}
+                              tooltip={`Combined listener exposure across all booked shows over the ${periodMonths}-month window, plus total social follower reach.`}
                               onHide={() => toggleSection('cumulativeImpressions')}
                             />
                           )}
