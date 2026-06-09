@@ -212,7 +212,7 @@ export const ReachAnalysisDialog = ({
                 {formatNumber(periodReach)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {periodLabel}
+                {periodLabel}{socialReach > 0 ? ' + social reach' : ''}
               </p>
             </CardContent>
           </Card>
