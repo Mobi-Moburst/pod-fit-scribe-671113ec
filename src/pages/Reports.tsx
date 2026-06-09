@@ -3186,9 +3186,10 @@ export default function Reports() {
                       const totalReach = reportData.kpis.total_reach || 0;
                       const k: any = reportData.kpis;
 
+                      const socialReachForImpressions = typeof k.social_reach === 'number' ? k.social_reach : 0;
                       const cumulativeImpressions = typeof k.cumulative_impressions === 'number'
                         ? k.cumulative_impressions
-                        : totalReach * periodMonths;
+                        : (totalReach * periodMonths) + socialReachForImpressions;
                       const projectedAnnual = typeof k.projected_annual_listenership === 'number'
                         ? k.projected_annual_listenership
                         : totalReach * 12;
