@@ -346,8 +346,22 @@ IMPORTANT: Use the web_search tool to find REAL, currently-active podcasts. Do N
         }
       }
 
+      // Re-check exclude using iTunes-normalized name (HubSpot active/booked)
+      const finalNorm = normalizeShowName(candidate.show_name);
+      if (excludeNorms.has(finalNorm) || excludeNames.has(candidate.show_name.toLowerCase())) {
+        continue;
+      }
+
+      // Flag previously-declined (don't exclude — show badge for human review)
+      if (declinedNorms.has(finalNorm)) {
+        candidate.previously_declined = true;
+        const when = declinedNorms.get(finalNorm);
+        if (when) candidate.previously_declined_date = when;
+      }
+
       hydrated.push(candidate);
     }
+
 
     console.log(`[research-suggest-podcasts] ${hydrated.length} after iTunes validation`);
 
