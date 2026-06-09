@@ -33,6 +33,30 @@ interface HydratedCandidate {
   fit_rationale: string;
   niche_tag?: string;
   dropped_reason?: string;
+  previously_declined?: boolean;
+  previously_declined_date?: string;
+}
+
+// HubSpot Agent Master Pipeline stage IDs
+const HUBSPOT_EXCLUDE_STAGE_IDS = new Set([
+  '1366109548', // Working 1
+  '1366109549', // Working 2
+  '1366109550', // Working 3
+  '1373067027', // Command Center Gen
+  '1366108005', // Entered Automation
+  '1366108006', // Emailed Manually
+  '1366108009', // Scheduled
+  '1366108010', // Previously Scheduled
+]);
+const HUBSPOT_DECLINED_STAGE_ID = '1366108011';
+
+function normalizeShowName(s: string): string {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/^the\s+/, '')
+    .replace(/\s+podcast$/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 serve(async (req) => {
