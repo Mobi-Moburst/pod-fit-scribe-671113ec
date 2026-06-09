@@ -296,11 +296,12 @@ const Companies = () => {
   }, [companies.length, autoInferred]);
 
   const toggleCompany = (id: string) => {
-    setActiveCompanyId(prev => (prev === id ? null : id));
+    if (activeCompanyId === id) navigate('/companies');
+    else navigate(`/companies/${id}`);
   };
-  const openCompany = (id: string) => setActiveCompanyId(id);
+  const openCompany = (id: string) => navigate(`/companies/${id}`);
   const closePanel = () => {
-    setActiveCompanyId(null);
+    navigate('/companies');
     if (searchParams.get('company')) {
       const next = new URLSearchParams(searchParams);
       next.delete('company');
