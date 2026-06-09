@@ -786,6 +786,14 @@ const Companies = () => {
                   ? "flex flex-col w-full rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in fade-in duration-200"
                   : "hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"}
               >
+                {detailMode && (
+                  <div className="relative px-5 pt-4">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground -ml-2" onClick={closePanel}>
+                      <ChevronRight className="h-3.5 w-3.5 mr-1 rotate-180" />
+                      All Clients
+                    </Button>
+                  </div>
+                )}
                 {/* Ambient gradient glow */}
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/[0.07] via-cyan-500/[0.04] to-transparent" />
 
