@@ -127,7 +127,7 @@ export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted,
         <Card className="card-surface p-8 text-center">
           <Sparkles className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Click "Generate 25 candidates" to surface a fresh batch of niche, guest-friendly podcasts
+            Click "Generate 10 podcasts" to surface a fresh batch of niche, guest-friendly podcasts
             matched to this speaker's audience and talking points.
           </p>
         </Card>
