@@ -33,6 +33,30 @@ interface HydratedCandidate {
   fit_rationale: string;
   niche_tag?: string;
   dropped_reason?: string;
+  previously_declined?: boolean;
+  previously_declined_date?: string;
+}
+
+// HubSpot Agent Master Pipeline stage IDs
+const HUBSPOT_EXCLUDE_STAGE_IDS = new Set([
+  '1366109548', // Working 1
+  '1366109549', // Working 2
+  '1366109550', // Working 3
+  '1373067027', // Command Center Gen
+  '1366108005', // Entered Automation
+  '1366108006', // Emailed Manually
+  '1366108009', // Scheduled
+  '1366108010', // Previously Scheduled
+]);
+const HUBSPOT_DECLINED_STAGE_ID = '1366108011';
+
+function normalizeShowName(s: string): string {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/^the\s+/, '')
+    .replace(/\s+podcast$/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 serve(async (req) => {
@@ -74,7 +98,14 @@ serve(async (req) => {
       .from('research_shortlists')
       .select('show_name')
       .eq('speaker_id', speaker_id);
-    const excludeNames = new Set((existing || []).map((r: any) => r.show_name.toLowerCase()));
+    const excludeNames = new Set<string>();
+    const excludeNorms = new Set<string>();
+    const addExclude = (name: string) => {
+      if (!name) return;
+      excludeNames.add(name.toLowerCase());
+      excludeNorms.add(normalizeShowName(name));
+    };
+    (existing || []).forEach((r: any) => addExclude(r.show_name));
 
     // Fetch already-booked shows from this speaker's evaluations (read-only, no Airtable write)
     const { data: pastBookings } = await supabase
@@ -82,7 +113,34 @@ serve(async (req) => {
       .select('show_title')
       .eq('speaker_id', speaker_id)
       .limit(500);
-    (pastBookings || []).forEach((r: any) => r.show_title && excludeNames.add(r.show_title.toLowerCase()));
+    (pastBookings || []).forEach((r: any) => r.show_title && addExclude(r.show_title));
+
+    // Pull HubSpot pipeline tickets for this speaker (kc_client === speaker.name)
+    // - Active stages (Working/Automation/Emailed/Scheduled) => exclude
+    // - Declined stage => keep but flag with previously_declined badge
+    const declinedNorms = new Map<string, string>(); // norm -> declined date
+    try {
+      const { data: tickets } = await supabase
+        .from('hubspot_tickets_cache')
+        .select('subject, stage_id, last_modified, close_date')
+        .eq('kc_client', speaker.name);
+      for (const t of tickets || []) {
+        const subj = (t as any).subject as string | null;
+        if (!subj) continue;
+        const stageId = String((t as any).stage_id || '');
+        if (HUBSPOT_EXCLUDE_STAGE_IDS.has(stageId)) {
+          addExclude(subj);
+        } else if (stageId === HUBSPOT_DECLINED_STAGE_ID) {
+          const norm = normalizeShowName(subj);
+          const when = (t as any).close_date || (t as any).last_modified || '';
+          if (!declinedNorms.has(norm)) declinedNorms.set(norm, when);
+        }
+      }
+      console.log(`[research-suggest-podcasts] HubSpot: ${excludeNames.size} excluded, ${declinedNorms.size} declined for ${speaker.name}`);
+    } catch (err) {
+      console.warn('[research-suggest-podcasts] HubSpot cache lookup failed:', err);
+    }
+
 
     const company = (speaker as any).companies;
 
@@ -197,11 +255,13 @@ IMPORTANT: Use the web_search tool to find REAL, currently-active podcasts. Do N
     }
     let raw: RawSuggestion[] = (toolUse.input as any).suggestions || [];
 
-    // Drop non-interview shows and already-known shows
+    // Drop non-interview shows and already-known shows (raw name check)
     raw = raw.filter(r =>
       r.is_interview_format &&
-      !excludeNames.has(r.podcast_name.toLowerCase())
+      !excludeNames.has(r.podcast_name.toLowerCase()) &&
+      !excludeNorms.has(normalizeShowName(r.podcast_name))
     );
+
 
     console.log(`[research-suggest-podcasts] ${raw.length} candidates after format/exclude filter`);
 
@@ -286,8 +346,22 @@ IMPORTANT: Use the web_search tool to find REAL, currently-active podcasts. Do N
         }
       }
 
+      // Re-check exclude using iTunes-normalized name (HubSpot active/booked)
+      const finalNorm = normalizeShowName(candidate.show_name);
+      if (excludeNorms.has(finalNorm) || excludeNames.has(candidate.show_name.toLowerCase())) {
+        continue;
+      }
+
+      // Flag previously-declined (don't exclude — show badge for human review)
+      if (declinedNorms.has(finalNorm)) {
+        candidate.previously_declined = true;
+        const when = declinedNorms.get(finalNorm);
+        if (when) candidate.previously_declined_date = when;
+      }
+
       hydrated.push(candidate);
     }
+
 
     console.log(`[research-suggest-podcasts] ${hydrated.length} after iTunes validation`);
 

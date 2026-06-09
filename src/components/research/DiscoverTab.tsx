@@ -21,7 +21,10 @@ export interface Candidate {
   guest_cadence_label: string;
   niche_fit_score: number;
   fit_rationale: string;
+  previously_declined?: boolean;
+  previously_declined_date?: string;
 }
+
 
 interface Props {
   speakerId: string;
@@ -183,6 +186,16 @@ export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted,
                         <Badge variant="secondary" className="text-xs font-normal">
                           Fit {c.niche_fit_score}
                         </Badge>
+                        {c.previously_declined && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs font-normal border-amber-500/40 text-amber-600 dark:text-amber-400"
+                            title={c.previously_declined_date ? `Declined ${new Date(c.previously_declined_date).toLocaleDateString()}` : 'Previously declined in HubSpot'}
+                          >
+                            Previously declined{c.previously_declined_date ? ` · ${new Date(c.previously_declined_date).toLocaleDateString()}` : ''}
+                          </Badge>
+                        )}
+
                         {c.est_listeners ? (
                           <Badge variant="outline" className="text-xs font-normal">
                             ~{c.est_listeners.toLocaleString()} listeners/ep
