@@ -454,6 +454,7 @@ const Companies = () => {
         <ImportFromAirtableDialog open={showImportDialog} onOpenChange={setShowImportDialog} existingCompanies={companies.map(c => ({ id: c.id, name: c.name }))} onImportComplete={loadData} />
 
         <div className="flex gap-6 items-start">
+          {!detailMode && <>
           {/* ═══ Sidebar ═══ */}
           <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto pr-1">
             {/* Primary actions */}
