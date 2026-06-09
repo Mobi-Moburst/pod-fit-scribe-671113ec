@@ -110,14 +110,14 @@ export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted,
         <div className="flex items-center gap-2">
           {candidates.length > 0 && (
             <Button size="sm" variant="ghost" onClick={() => generate(true)} disabled={loading}>
-              Generate 25 more
+              Generate 10 more
             </Button>
           )}
           <Button size="sm" onClick={() => generate(false)} disabled={loading}>
             {loading ? (
               <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sourcing…</>
             ) : (
-              <><Sparkles className="h-3.5 w-3.5 mr-1.5" /> Generate 25 candidates</>
+              <><Sparkles className="h-3.5 w-3.5 mr-1.5" /> Generate 10 podcasts</>
             )}
           </Button>
         </div>
