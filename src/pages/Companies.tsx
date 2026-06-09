@@ -771,6 +771,7 @@ const Companies = () => {
               )}
             </div>
           </section>
+          </>}
 
           {/* ═══ Right-side workspace panel ═══ */}
           {activeCompanyId && (() => {
@@ -781,7 +782,9 @@ const Companies = () => {
             return (
               <aside
                 key={company.id}
-                className="hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"
+                className={detailMode
+                  ? "flex flex-col w-full rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in fade-in duration-200"
+                  : "hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"}
               >
                 {/* Ambient gradient glow */}
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/[0.07] via-cyan-500/[0.04] to-transparent" />
