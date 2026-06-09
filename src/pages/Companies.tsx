@@ -314,7 +314,7 @@ const Companies = () => {
     const target = searchParams.get('company');
     if (!target || companies.length === 0) return;
     if (companies.some(c => c.id === target)) {
-      setActiveCompanyId(target);
+      navigate(`/companies/${target}`, { replace: true });
     }
   }, [searchParams, companies]);
 
