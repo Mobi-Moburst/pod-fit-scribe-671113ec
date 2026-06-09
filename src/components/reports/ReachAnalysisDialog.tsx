@@ -24,6 +24,8 @@ interface ReachAnalysisDialogProps {
     end: string;
   };
   totalReach?: number;
+  /** Social reach (Rephonic social + YouTube subs). Added to Cumulative Impressions. */
+  socialReach?: number;
   /** When provided, enables inline editing of the listenership figures */
   onEditTotalReach?: (next: number) => void;
   onEditTotalListenersPerEpisode?: (next: number) => void;
