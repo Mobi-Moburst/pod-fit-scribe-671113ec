@@ -42,7 +42,7 @@ export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted,
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('research-suggest-podcasts', {
-        body: { speaker_id: speakerId, num: 25 },
+        body: { speaker_id: speakerId, num: 10 },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -110,14 +110,14 @@ export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted,
         <div className="flex items-center gap-2">
           {candidates.length > 0 && (
             <Button size="sm" variant="ghost" onClick={() => generate(true)} disabled={loading}>
-              Generate 25 more
+              Generate 10 more
             </Button>
           )}
           <Button size="sm" onClick={() => generate(false)} disabled={loading}>
             {loading ? (
               <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sourcing…</>
             ) : (
-              <><Sparkles className="h-3.5 w-3.5 mr-1.5" /> Generate 25 candidates</>
+              <><Sparkles className="h-3.5 w-3.5 mr-1.5" /> Generate 10 podcasts</>
             )}
           </Button>
         </div>
@@ -127,7 +127,7 @@ export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted,
         <Card className="card-surface p-8 text-center">
           <Sparkles className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Click "Generate 25 candidates" to surface a fresh batch of niche, guest-friendly podcasts
+            Click "Generate 10 podcasts" to surface a fresh batch of niche, guest-friendly podcasts
             matched to this speaker's audience and talking points.
           </p>
         </Card>
