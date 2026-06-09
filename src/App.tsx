@@ -78,6 +78,7 @@ const App = () => (
               <Route path="/studio" element={<ProtectedRoute><Studio /></ProtectedRoute>} />
               <Route path="/batch" element={<ProtectedRoute><Batch /></ProtectedRoute>} />
               <Route path="/companies" element={<ProtectedRoute><Companies /></ProtectedRoute>} />
+              <Route path="/companies/:companyId" element={<ProtectedRoute><Companies /></ProtectedRoute>} />
               <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
