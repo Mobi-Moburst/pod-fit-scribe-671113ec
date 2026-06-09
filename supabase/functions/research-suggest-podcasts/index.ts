@@ -255,11 +255,13 @@ IMPORTANT: Use the web_search tool to find REAL, currently-active podcasts. Do N
     }
     let raw: RawSuggestion[] = (toolUse.input as any).suggestions || [];
 
-    // Drop non-interview shows and already-known shows
+    // Drop non-interview shows and already-known shows (raw name check)
     raw = raw.filter(r =>
       r.is_interview_format &&
-      !excludeNames.has(r.podcast_name.toLowerCase())
+      !excludeNames.has(r.podcast_name.toLowerCase()) &&
+      !excludeNorms.has(normalizeShowName(r.podcast_name))
     );
+
 
     console.log(`[research-suggest-podcasts] ${raw.length} candidates after format/exclude filter`);
 
