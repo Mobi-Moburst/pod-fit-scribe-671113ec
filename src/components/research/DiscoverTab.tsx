@@ -42,7 +42,7 @@ export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted,
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('research-suggest-podcasts', {
-        body: { speaker_id: speakerId, num: 25 },
+        body: { speaker_id: speakerId, num: 10 },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
