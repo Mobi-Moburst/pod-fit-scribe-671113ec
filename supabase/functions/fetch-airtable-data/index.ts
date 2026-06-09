@@ -213,7 +213,7 @@ function filterRowsByDate(
     for (const val of dateValues) {
       if (val) {
         const d = parseFlexibleDate(val);
-        if (!isNaN(d.getTime()) && d >= start && d <= end) return true;
+        if (d && d >= start && d <= end) return true;
       }
     }
 
@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
         date_range_start,
         date_range_end,
         fieldMapping,
-        connection.speaker_column_name,
+        connection.speaker_column_name || (!connection.speaker_id ? 'speaker' : undefined),
         speaker_name
       );
       console.log(`Filter formula: ${filterFormula}`);
@@ -294,6 +294,15 @@ Deno.serve(async (req) => {
       accessToken,
       filterFormula
     );
+
+    if (filterFormula && records.length === 0) {
+      console.warn('Filtered Airtable fetch returned 0 rows; retrying without filter for local date parsing.');
+      records = await fetchAllRecords(
+        connection.base_id,
+        connection.table_id,
+        accessToken
+      );
+    }
 
     console.log(`Total records fetched: ${records.length}`);
 
