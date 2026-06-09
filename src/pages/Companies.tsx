@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 
 import { Navbar } from '@/components/layout/Navbar';
 import { BackgroundFX } from '@/components/BackgroundFX';
@@ -77,6 +77,13 @@ const Companies = () => {
   const [editingSpeaker, setEditingSpeaker] = useState<(Speaker & { isNew?: boolean; avoid_text?: string }) | null>(null);
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { companyId: routeCompanyId } = useParams<{ companyId?: string }>();
+  const navigate = useNavigate();
+  const detailMode = !!routeCompanyId;
+
+  useEffect(() => {
+    setActiveCompanyId(routeCompanyId || null);
+  }, [routeCompanyId]);
 
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [industryFilter, setIndustryFilter] = useState<string>('');
@@ -289,11 +296,12 @@ const Companies = () => {
   }, [companies.length, autoInferred]);
 
   const toggleCompany = (id: string) => {
-    setActiveCompanyId(prev => (prev === id ? null : id));
+    if (activeCompanyId === id) navigate('/companies');
+    else navigate(`/companies/${id}`);
   };
-  const openCompany = (id: string) => setActiveCompanyId(id);
+  const openCompany = (id: string) => navigate(`/companies/${id}`);
   const closePanel = () => {
-    setActiveCompanyId(null);
+    navigate('/companies');
     if (searchParams.get('company')) {
       const next = new URLSearchParams(searchParams);
       next.delete('company');
@@ -306,7 +314,7 @@ const Companies = () => {
     const target = searchParams.get('company');
     if (!target || companies.length === 0) return;
     if (companies.some(c => c.id === target)) {
-      setActiveCompanyId(target);
+      navigate(`/companies/${target}`, { replace: true });
     }
   }, [searchParams, companies]);
 
@@ -446,6 +454,7 @@ const Companies = () => {
         <ImportFromAirtableDialog open={showImportDialog} onOpenChange={setShowImportDialog} existingCompanies={companies.map(c => ({ id: c.id, name: c.name }))} onImportComplete={loadData} />
 
         <div className="flex gap-6 items-start">
+          {!detailMode && <>
           {/* ═══ Sidebar ═══ */}
           <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto pr-1">
             {/* Primary actions */}
@@ -762,6 +771,7 @@ const Companies = () => {
               )}
             </div>
           </section>
+          </>}
 
           {/* ═══ Right-side workspace panel ═══ */}
           {activeCompanyId && (() => {
@@ -772,8 +782,18 @@ const Companies = () => {
             return (
               <aside
                 key={company.id}
-                className="hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"
+                className={detailMode
+                  ? "flex flex-col w-full rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in fade-in duration-200"
+                  : "hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"}
               >
+                {detailMode && (
+                  <div className="relative px-5 pt-4">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground -ml-2" onClick={closePanel}>
+                      <ChevronRight className="h-3.5 w-3.5 mr-1 rotate-180" />
+                      All Clients
+                    </Button>
+                  </div>
+                )}
                 {/* Ambient gradient glow */}
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/[0.07] via-cyan-500/[0.04] to-transparent" />
 
