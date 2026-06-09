@@ -2441,8 +2441,51 @@ export async function generateMultiSpeakerReport(
   let allAirtableRows: AirtableCSVRow[] = [];
   
   for (const { speaker, batchRows, airtableRows } of speakerData) {
+    // Per-speaker diagnostic: what actually arrived and what falls inside the date window
+    try {
+      const inRange = (val?: string) => {
+        if (!val) return false;
+        const d = new Date(val);
+        return !isNaN(d.getTime()) && d >= dateRange.start && d <= dateRange.end;
+      };
+      const actionBreakdown: Record<string, number> = {};
+      for (const r of airtableRows) {
+        const a = getActionString(r.action) || '(empty)';
+        actionBreakdown[a] = (actionBreakdown[a] || 0) + 1;
+      }
+      console.log(`[MultiSpeaker] ${speaker.name} (${speaker.id})`, {
+        airtableRowCount: airtableRows.length,
+        batchRowCount: batchRows.length,
+        dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() },
+        actionBreakdown,
+        podcastRecording_inAnyDateRange: airtableRows.filter(r =>
+          getActionString(r.action).toLowerCase().includes('podcast recording') &&
+          (inRange(r.date_booked) || inRange(r.date_published) || inRange(r.scheduled_date_time))
+        ).length,
+        booked_inRange: airtableRows.filter(r =>
+          getActionString(r.action).toLowerCase().includes('podcast recording') && inRange(r.date_booked)
+        ).length,
+        recorded_inRange: airtableRows.filter(r =>
+          getActionString(r.action).toLowerCase().includes('podcast recording') && inRange(r.scheduled_date_time)
+        ).length,
+        introCalls_inRange: airtableRows.filter(r =>
+          getActionString(r.action).toLowerCase().includes('intro call') && inRange(r.scheduled_date_time)
+        ).length,
+        sampleRows: airtableRows.slice(0, 3).map(r => ({
+          podcast_name: r.podcast_name,
+          action: r.action,
+          date_booked: r.date_booked,
+          scheduled_date_time: r.scheduled_date_time,
+          date_published: r.date_published,
+        })),
+      });
+    } catch (logErr) {
+      console.warn('[MultiSpeaker] diagnostic log failed', logErr);
+    }
+
     // Merge per-speaker batch + airtable data
     const mergedPodcasts = mergePodcastData(batchRows, airtableRows);
+    
     
     // Scrape durations and calculate EMV
     const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
