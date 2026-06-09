@@ -21,7 +21,10 @@ export interface Candidate {
   guest_cadence_label: string;
   niche_fit_score: number;
   fit_rationale: string;
+  previously_declined?: boolean;
+  previously_declined_date?: string;
 }
+
 
 interface Props {
   speakerId: string;
