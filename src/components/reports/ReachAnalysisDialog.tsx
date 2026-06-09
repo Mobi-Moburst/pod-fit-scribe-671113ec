@@ -60,6 +60,7 @@ export const ReachAnalysisDialog = ({
   quarter = '',
   dateRange,
   totalReach = 0,
+  socialReach = 0,
   onEditTotalReach,
   onEditTotalListenersPerEpisode,
   onEditPodcastMonthlyListens,
@@ -69,7 +70,8 @@ export const ReachAnalysisDialog = ({
 
   // Calculate period months and period reach
   const periodMonths = calculatePeriodMonths(dateRange, quarter);
-  const periodReach = totalReach * periodMonths;
+  // Cumulative Impressions = listenership over period + social reach
+  const periodReach = (totalReach * periodMonths) + (socialReach || 0);
 
   // Calculate Estimated Annual Listenership from total_reach (consistent with the KPI card)
   const estimatedAnnualListenership = totalReach * 12;
