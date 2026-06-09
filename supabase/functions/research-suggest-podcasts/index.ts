@@ -98,7 +98,14 @@ serve(async (req) => {
       .from('research_shortlists')
       .select('show_name')
       .eq('speaker_id', speaker_id);
-    const excludeNames = new Set((existing || []).map((r: any) => r.show_name.toLowerCase()));
+    const excludeNames = new Set<string>();
+    const excludeNorms = new Set<string>();
+    const addExclude = (name: string) => {
+      if (!name) return;
+      excludeNames.add(name.toLowerCase());
+      excludeNorms.add(normalizeShowName(name));
+    };
+    (existing || []).forEach((r: any) => addExclude(r.show_name));
 
     // Fetch already-booked shows from this speaker's evaluations (read-only, no Airtable write)
     const { data: pastBookings } = await supabase
@@ -106,7 +113,34 @@ serve(async (req) => {
       .select('show_title')
       .eq('speaker_id', speaker_id)
       .limit(500);
-    (pastBookings || []).forEach((r: any) => r.show_title && excludeNames.add(r.show_title.toLowerCase()));
+    (pastBookings || []).forEach((r: any) => r.show_title && addExclude(r.show_title));
+
+    // Pull HubSpot pipeline tickets for this speaker (kc_client === speaker.name)
+    // - Active stages (Working/Automation/Emailed/Scheduled) => exclude
+    // - Declined stage => keep but flag with previously_declined badge
+    const declinedNorms = new Map<string, string>(); // norm -> declined date
+    try {
+      const { data: tickets } = await supabase
+        .from('hubspot_tickets_cache')
+        .select('subject, stage_id, last_modified, close_date')
+        .eq('kc_client', speaker.name);
+      for (const t of tickets || []) {
+        const subj = (t as any).subject as string | null;
+        if (!subj) continue;
+        const stageId = String((t as any).stage_id || '');
+        if (HUBSPOT_EXCLUDE_STAGE_IDS.has(stageId)) {
+          addExclude(subj);
+        } else if (stageId === HUBSPOT_DECLINED_STAGE_ID) {
+          const norm = normalizeShowName(subj);
+          const when = (t as any).close_date || (t as any).last_modified || '';
+          if (!declinedNorms.has(norm)) declinedNorms.set(norm, when);
+        }
+      }
+      console.log(`[research-suggest-podcasts] HubSpot: ${excludeNames.size} excluded, ${declinedNorms.size} declined for ${speaker.name}`);
+    } catch (err) {
+      console.warn('[research-suggest-podcasts] HubSpot cache lookup failed:', err);
+    }
+
 
     const company = (speaker as any).companies;
 
