@@ -3735,6 +3735,7 @@ export default function Reports() {
                 quarter={quarter}
                 dateRange={reportData.date_range}
                 totalReach={reportData.kpis.total_reach}
+                socialReach={(reportData.kpis as any).social_reach || 0}
                 onEditTotalReach={(next) => updateReportKpis({ total_reach: next })}
                 onEditTotalListenersPerEpisode={(next) => updateReportKpis({ total_listeners_per_episode: next })}
                 onEditPodcastMonthlyListens={(podcast, next) =>
