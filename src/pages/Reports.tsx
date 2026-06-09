@@ -3186,9 +3186,10 @@ export default function Reports() {
                       const totalReach = reportData.kpis.total_reach || 0;
                       const k: any = reportData.kpis;
 
+                      const socialReachForImpressions = typeof k.social_reach === 'number' ? k.social_reach : 0;
                       const cumulativeImpressions = typeof k.cumulative_impressions === 'number'
                         ? k.cumulative_impressions
-                        : totalReach * periodMonths;
+                        : (totalReach * periodMonths) + socialReachForImpressions;
                       const projectedAnnual = typeof k.projected_annual_listenership === 'number'
                         ? k.projected_annual_listenership
                         : totalReach * 12;
@@ -3243,9 +3244,9 @@ export default function Reports() {
                               editableFormat={formatCompactNumber}
                               onValueEdit={(next) => updateReportKpis({ cumulative_impressions: next } as any)}
 
-                              subtitle={`Total monthly listeners × ${periodMonths} mo`}
+                              subtitle={`Listeners × ${periodMonths} mo + social reach`}
                               icon={TrendingUp}
-                              tooltip={`Combined listener exposure across all booked shows over the ${periodMonths}-month report window.`}
+                              tooltip={`Combined listener exposure across all booked shows over the ${periodMonths}-month window, plus total social follower reach.`}
                               onHide={() => toggleSection('cumulativeImpressions')}
                             />
                           )}
@@ -3735,6 +3736,7 @@ export default function Reports() {
                 quarter={quarter}
                 dateRange={reportData.date_range}
                 totalReach={reportData.kpis.total_reach}
+                socialReach={(reportData.kpis as any).social_reach || 0}
                 onEditTotalReach={(next) => updateReportKpis({ total_reach: next })}
                 onEditTotalListenersPerEpisode={(next) => updateReportKpis({ total_listeners_per_episode: next })}
                 onEditPodcastMonthlyListens={(podcast, next) =>

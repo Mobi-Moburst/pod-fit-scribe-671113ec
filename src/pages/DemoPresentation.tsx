@@ -325,6 +325,7 @@ export default function DemoPresentation() {
         quarter={quarter}
         dateRange={reportData?.date_range}
         totalReach={reportData?.kpis?.total_reach || 0}
+        socialReach={(reportData?.kpis as any)?.social_reach || 0}
       />
       <EMVAnalysisDialog
         open={emvDialogOpen}

@@ -353,6 +353,7 @@ export default function DemoPublicReport() {
         quarter={quarter}
         dateRange={reportData.date_range}
         totalReach={reportData.kpis.total_reach}
+        socialReach={(reportData.kpis as any).social_reach || 0}
       />
       <SOVChartDialog
         open={sovDialogOpen}
