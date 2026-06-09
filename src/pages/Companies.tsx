@@ -77,6 +77,13 @@ const Companies = () => {
   const [editingSpeaker, setEditingSpeaker] = useState<(Speaker & { isNew?: boolean; avoid_text?: string }) | null>(null);
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { companyId: routeCompanyId } = useParams<{ companyId?: string }>();
+  const navigate = useNavigate();
+  const detailMode = !!routeCompanyId;
+
+  useEffect(() => {
+    setActiveCompanyId(routeCompanyId || null);
+  }, [routeCompanyId]);
 
   const [managerFilter, setManagerFilter] = useState<string>('');
   const [industryFilter, setIndustryFilter] = useState<string>('');
