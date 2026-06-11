@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { LucideIcon, X, Info } from "lucide-react";
+import { LucideIcon, X, Info, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { EditableNumber } from "./EditableNumber";
@@ -10,6 +10,9 @@ interface KPICardProps {
   value: string | number;
   subtitle?: string;
   icon?: LucideIcon;
+  /** Optional image (e.g., podcast cover art) shown in place of the icon. */
+  imageUrl?: string;
+  imageAlt?: string;
   tooltip?: string;
   onClick?: () => void;
   onHide?: () => void;
@@ -20,6 +23,9 @@ interface KPICardProps {
   onValueEdit?: (next: number) => void;
   editableValue?: number;
   editableFormat?: (n: number) => string;
+  /** When true, shows a spinner overlay and a "loading" subtitle hint instead of the value. */
+  isLoading?: boolean;
+  loadingLabel?: string;
 }
 
 export const KPICard = ({
@@ -27,15 +33,19 @@ export const KPICard = ({
   value,
   subtitle,
   icon: Icon,
+  imageUrl,
+  imageAlt,
   tooltip,
   onClick,
   onHide,
   onValueEdit,
   editableValue,
   editableFormat,
+  isLoading,
+  loadingLabel,
 }: KPICardProps) => {
   const [isEditing, setIsEditing] = useState(false);
-  const cardClickable = !!onClick && !isEditing;
+  const cardClickable = !!onClick && !isEditing && !isLoading;
 
   return (
     <Card
@@ -73,7 +83,12 @@ export const KPICard = ({
                 </Tooltip>
               )}
             </div>
-            {onValueEdit && typeof editableValue === "number" ? (
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-2xl font-bold tracking-tight text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-base font-medium">Analyzing…</span>
+              </div>
+            ) : onValueEdit && typeof editableValue === "number" ? (
               <div className="text-2xl font-bold tracking-tight">
                 <EditableNumber
                   value={editableValue}
@@ -86,13 +101,21 @@ export const KPICard = ({
             ) : (
               <p className="text-2xl font-bold tracking-tight">{value}</p>
             )}
-            {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            {(isLoading ? loadingLabel : subtitle) && (
+              <p className="text-xs text-muted-foreground">
+                {isLoading ? (loadingLabel ?? "AEO audit running…") : subtitle}
+              </p>
             )}
           </div>
-          {Icon && (
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={imageAlt || title}
+              className="h-12 w-12 rounded-md object-cover border border-border/60"
+            />
+          ) : Icon && (
             <div className="rounded-full bg-muted/60 p-3">
-              <Icon className="h-5 w-5 text-muted-foreground" />
+              <Icon className={cn("h-5 w-5 text-muted-foreground", isLoading && "opacity-50")} />
             </div>
           )}
         </div>

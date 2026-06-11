@@ -586,6 +586,26 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
           { prompt: "best attribution models for B2B", topic: "Attribution Modeling", stage: "Decision", engines_missing: ["Perplexity"], competitors_present: ["MetricMind"] },
           { prompt: "AI-powered marketing analytics comparison", topic: "AI Integration", stage: "Consideration", engines_missing: ["ChatGPT", "Claude"], competitors_present: ["GrowthPulse AI", "AttriByte"] },
         ],
+        ai_recommendations: [
+          {
+            title: "Own the attribution modeling conversation",
+            description: "Competitors are showing up across decision-stage prompts about B2B attribution while your perspective is missing. Pitch episodes that frame a clear point of view on multi-touch attribution and how AI changes the model.",
+            priority: "high",
+            related_topics: ["Attribution Modeling", "Multi-touch Attribution", "Marketing ROI"],
+          },
+          {
+            title: "Make the case for AI-native marketing analytics",
+            description: "Consideration-stage buyers are asking how AI-powered analytics platforms compare, and answer engines are surfacing competitors first. Use upcoming appearances to define the category and the evaluation criteria that favor your approach.",
+            priority: "high",
+            related_topics: ["AI Integration", "Marketing ROI"],
+          },
+          {
+            title: "Connect ROI proof to data privacy",
+            description: "Privacy is an under-covered angle in your space and a real concern for the buyers you want. A point of view that ties measurable ROI to responsible data practices differentiates you from peers focused only on performance.",
+            priority: "medium",
+            related_topics: ["Data Privacy", "Marketing ROI"],
+          },
+        ],
       },
       next_quarter_strategy: {
         quarter: "{{CURRENT_QUARTER}}",
@@ -833,6 +853,26 @@ By appearing on shows with senior marketing, growth, and RevOps audiences, the c
           { prompt: "how to implement AI governance in enterprise", topic: "AI Governance Frameworks", stage: "Consideration", engines_missing: ["Claude", "Gemini"], competitors_present: ["NextWave Consulting"] },
           { prompt: "AI readiness assessment for CEOs", topic: "Executive AI Readiness", stage: "Awareness", engines_missing: ["Perplexity"], competitors_present: ["Stratus Digital"] },
           { prompt: "secure AI infrastructure for enterprises", topic: "AI Infrastructure Security", stage: "Decision", engines_missing: ["ChatGPT", "Claude"], competitors_present: ["NovaStack Labs"] },
+        ],
+        ai_recommendations: [
+          {
+            title: "Define the enterprise AI governance playbook",
+            description: "Buyers researching AI governance are landing on competitor frameworks because there's no clear answer in market. Pitch a board-ready playbook on Maya's executive podcast circuit to anchor your point of view.",
+            priority: "high",
+            related_topics: ["AI Governance Frameworks", "Executive AI Readiness"],
+          },
+          {
+            title: "Lead the secure-infrastructure conversation",
+            description: "Decision-stage prompts about secure AI infrastructure are dominated by peers. Daniel's CIO/CTO appearances should make the architectural trade-offs concrete and tie them back to measurable risk reduction.",
+            priority: "high",
+            related_topics: ["AI Infrastructure Security", "Data Readiness"],
+          },
+          {
+            title: "Show what AI ROI actually looks like",
+            description: "ROI measurement is a top-five gap and one of the questions every buyer eventually asks. A joint executive-technical appearance that walks through a real before-and-after creates content that travels well across answer engines.",
+            priority: "medium",
+            related_topics: ["AI ROI Measurement", "Executive AI Readiness"],
+          },
         ],
       },
       next_quarter_strategy: {

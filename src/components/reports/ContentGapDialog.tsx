@@ -16,11 +16,12 @@ interface ContentGapDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   gapAnalysis: ContentGapAnalysis | null;
+  hasSOVPeers?: boolean;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--destructive))', '#8884d8', '#82ca9d', '#ffc658'];
 
-export function ContentGapDialog({ open, onOpenChange, gapAnalysis }: ContentGapDialogProps) {
+export function ContentGapDialog({ open, onOpenChange, gapAnalysis, hasSOVPeers = true }: ContentGapDialogProps) {
   if (!gapAnalysis) return null;
 
   const stageData = gapAnalysis.gaps_by_stage.map(s => ({
@@ -50,10 +51,10 @@ export function ContentGapDialog({ open, onOpenChange, gapAnalysis }: ContentGap
         </DialogHeader>
 
         <Tabs defaultValue="summary" className="mt-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className={`grid w-full ${hasSOVPeers ? "grid-cols-4" : "grid-cols-3"}`}>
             <TabsTrigger value="summary">Summary</TabsTrigger>
             <TabsTrigger value="topics">Topics</TabsTrigger>
-            <TabsTrigger value="competitors">Competitors</TabsTrigger>
+            {hasSOVPeers && <TabsTrigger value="competitors">Competitors</TabsTrigger>}
             <TabsTrigger value="priority">Priority Gaps</TabsTrigger>
           </TabsList>
 
@@ -88,7 +89,7 @@ export function ContentGapDialog({ open, onOpenChange, gapAnalysis }: ContentGap
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+            <div className={`grid gap-4 pt-4 border-t ${hasSOVPeers ? "grid-cols-3" : "grid-cols-2"}`}>
               <div className="text-center">
                 <p className="text-2xl font-bold text-primary">{gapAnalysis.total_prompts}</p>
                 <p className="text-xs text-muted-foreground">Total Prompts</p>
@@ -97,10 +98,12 @@ export function ContentGapDialog({ open, onOpenChange, gapAnalysis }: ContentGap
                 <p className="text-2xl font-bold text-destructive">{gapAnalysis.total_gaps}</p>
                 <p className="text-xs text-muted-foreground">Content Gaps</p>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-accent">{gapAnalysis.top_competitors.length}</p>
-                <p className="text-xs text-muted-foreground">Competitors Visible</p>
-              </div>
+              {hasSOVPeers && (
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-accent">{gapAnalysis.top_competitors.length}</p>
+                  <p className="text-xs text-muted-foreground">Competitors Visible</p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -148,39 +151,41 @@ export function ContentGapDialog({ open, onOpenChange, gapAnalysis }: ContentGap
             </div>
           </TabsContent>
 
-          {/* Competitors Tab */}
-          <TabsContent value="competitors" className="mt-4">
-            <div className="space-y-4">
-              <h4 className="font-medium">Top Competitors Appearing in Your Gaps</h4>
-              <p className="text-sm text-muted-foreground">
-                These competitors are showing up in AI responses where you're not present.
-              </p>
-              
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={competitorData} margin={{ left: 20, right: 20, bottom: 60 }}>
-                  <XAxis 
-                    dataKey="name" 
-                    angle={-45} 
-                    textAnchor="end" 
-                    height={80}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="mention_count" fill="hsl(var(--primary))" name="Mentions" />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Competitors Tab — only when SOV peers configured */}
+          {hasSOVPeers && (
+            <TabsContent value="competitors" className="mt-4">
+              <div className="space-y-4">
+                <h4 className="font-medium">Top Competitors Appearing in Your Gaps</h4>
+                <p className="text-sm text-muted-foreground">
+                  These competitors are showing up in AI responses where you're not present.
+                </p>
 
-              {/* Competitor list with badges */}
-              <div className="flex flex-wrap gap-2 pt-4">
-                {gapAnalysis.top_competitors.slice(0, 20).map((comp, idx) => (
-                  <Badge key={idx} variant="secondary" className="text-sm">
-                    {comp.name} ({comp.mention_count})
-                  </Badge>
-                ))}
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={competitorData} margin={{ left: 20, right: 20, bottom: 60 }}>
+                    <XAxis
+                      dataKey="name"
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="mention_count" fill="hsl(var(--primary))" name="Mentions" />
+                  </BarChart>
+                </ResponsiveContainer>
+
+                {/* Competitor list with badges */}
+                <div className="flex flex-wrap gap-2 pt-4">
+                  {gapAnalysis.top_competitors.slice(0, 20).map((comp, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-sm">
+                      {comp.name} ({comp.mention_count})
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-          </TabsContent>
+            </TabsContent>
+          )}
 
           {/* Priority Gaps Tab */}
           <TabsContent value="priority" className="mt-4">
@@ -198,7 +203,7 @@ export function ContentGapDialog({ open, onOpenChange, gapAnalysis }: ContentGap
                       <TableHead>Topic</TableHead>
                       <TableHead>Stage</TableHead>
                       <TableHead>Missing Engines</TableHead>
-                      <TableHead>Competitors</TableHead>
+                      {hasSOVPeers && <TableHead>Competitors</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -223,20 +228,22 @@ export function ContentGapDialog({ open, onOpenChange, gapAnalysis }: ContentGap
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1 max-w-[150px]">
-                            {gap.competitors_present.slice(0, 2).map((comp, i) => (
-                              <Badge key={i} variant="secondary" className="text-xs">
-                                {comp.length > 15 ? comp.substring(0, 15) + '...' : comp}
-                              </Badge>
-                            ))}
-                            {gap.competitors_present.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{gap.competitors_present.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
+                        {hasSOVPeers && (
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1 max-w-[150px]">
+                              {gap.competitors_present.slice(0, 2).map((comp, i) => (
+                                <Badge key={i} variant="secondary" className="text-xs">
+                                  {comp.length > 15 ? comp.substring(0, 15) + '...' : comp}
+                                </Badge>
+                              ))}
+                              {gap.competitors_present.length > 2 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{gap.competitors_present.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

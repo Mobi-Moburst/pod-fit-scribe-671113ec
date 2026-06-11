@@ -1,7 +1,6 @@
 import { MinimalClient, Speaker, Company } from '@/types/clients';
 import { BatchRow } from '@/types/batch';
-import { ReportData, PodcastReportEntry, ContentGapAnalysis, SpeakerBreakdown, GEOAnalysis } from '@/types/reports';
-import { matchPodcastsToGEO } from './geoPodcastMatcher';
+import { ReportData, PodcastReportEntry, ContentGapAnalysis, SpeakerBreakdown } from '@/types/reports';
 import { BatchCSVRow, AirtableCSVRow, SOVCSVRow, GEOCSVRow, ContentGapCSVRow, RephonicCSVRow } from '@/types/csv';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { normalizeTitle, parseAirtableDate, titlesMatch } from './csvParsers';
@@ -1688,11 +1687,7 @@ function calculateSOVAnalysis(
 }
 
 // Calculate GEO analysis from Spotlight export
-function calculateGEOAnalysis(
-  geoRows: GEOCSVRow[],
-  airtableRows?: AirtableCSVRow[],
-  parseWarnings?: string[]
-): GEOAnalysis | undefined {
+function calculateGEOAnalysis(geoRows: GEOCSVRow[]): ReportData['geo_analysis'] {
   if (!geoRows || geoRows.length === 0) return undefined;
 
   // Basic counts
@@ -1762,11 +1757,6 @@ function calculateGEOAnalysis(
     topic: row.topic_name
   }));
   
-  // Run podcast → GEO matching if airtable data is available
-  const podcast_matches = airtableRows && airtableRows.length > 0
-    ? matchPodcastsToGEO(airtableRows, geoRows)
-    : undefined;
-
   return {
     total_podcasts_indexed,
     unique_ai_engines,
@@ -1779,9 +1769,7 @@ function calculateGEOAnalysis(
       topic_relevance: Math.round(topic_relevance),
       prompt_diversity: Math.round(prompt_diversity)
     },
-    podcast_entries,
-    podcast_matches,
-    parse_warnings: parseWarnings && parseWarnings.length > 0 ? parseWarnings : undefined,
+    podcast_entries
   };
 }
 
@@ -2453,8 +2441,51 @@ export async function generateMultiSpeakerReport(
   let allAirtableRows: AirtableCSVRow[] = [];
   
   for (const { speaker, batchRows, airtableRows } of speakerData) {
+    // Per-speaker diagnostic: what actually arrived and what falls inside the date window
+    try {
+      const inRange = (val?: string) => {
+        if (!val) return false;
+        const d = new Date(val);
+        return !isNaN(d.getTime()) && d >= dateRange.start && d <= dateRange.end;
+      };
+      const actionBreakdown: Record<string, number> = {};
+      for (const r of airtableRows) {
+        const a = getActionString(r.action) || '(empty)';
+        actionBreakdown[a] = (actionBreakdown[a] || 0) + 1;
+      }
+      console.log(`[MultiSpeaker] ${speaker.name} (${speaker.id})`, {
+        airtableRowCount: airtableRows.length,
+        batchRowCount: batchRows.length,
+        dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() },
+        actionBreakdown,
+        podcastRecording_inAnyDateRange: airtableRows.filter(r =>
+          getActionString(r.action).toLowerCase().includes('podcast recording') &&
+          (inRange(r.date_booked) || inRange(r.date_published) || inRange(r.scheduled_date_time))
+        ).length,
+        booked_inRange: airtableRows.filter(r =>
+          getActionString(r.action).toLowerCase().includes('podcast recording') && inRange(r.date_booked)
+        ).length,
+        recorded_inRange: airtableRows.filter(r =>
+          getActionString(r.action).toLowerCase().includes('podcast recording') && inRange(r.scheduled_date_time)
+        ).length,
+        introCalls_inRange: airtableRows.filter(r =>
+          getActionString(r.action).toLowerCase().includes('intro call') && inRange(r.scheduled_date_time)
+        ).length,
+        sampleRows: airtableRows.slice(0, 3).map(r => ({
+          podcast_name: r.podcast_name,
+          action: r.action,
+          date_booked: r.date_booked,
+          scheduled_date_time: r.scheduled_date_time,
+          date_published: r.date_published,
+        })),
+      });
+    } catch (logErr) {
+      console.warn('[MultiSpeaker] diagnostic log failed', logErr);
+    }
+
     // Merge per-speaker batch + airtable data
     const mergedPodcasts = mergePodcastData(batchRows, airtableRows);
+    
     
     // Scrape durations and calculate EMV
     const podcastsWithDuration = await batchScrapeDurations(mergedPodcasts);
@@ -2917,7 +2948,6 @@ interface UpdatedCSVData {
   airtableData?: AirtableCSVRow[] | null;
   sovData?: SOVCSVRow[] | null;
   geoData?: GEOCSVRow[] | null;
-  geoParseWarnings?: string[];
   contentGapData?: ContentGapCSVRow[] | null;
   rephonicData?: RephonicCSVRow[] | null;
 }
@@ -3084,8 +3114,7 @@ export async function mergeUpdatedReportData(
   // Update GEO analysis if GEO CSV was updated
   if (updatedCSVTypes.includes('geo') && newData.geoData) {
     updatedReport.geo_csv_uploaded = true;
-    const airtableRows = newData.airtableData || [];
-    const geoAnalysis = calculateGEOAnalysis(newData.geoData, airtableRows, newData.geoParseWarnings);
+    const geoAnalysis = calculateGEOAnalysis(newData.geoData);
     if (geoAnalysis) {
       updatedReport.geo_analysis = geoAnalysis;
       updatedReport.kpis.geo_score = geoAnalysis.geo_score;

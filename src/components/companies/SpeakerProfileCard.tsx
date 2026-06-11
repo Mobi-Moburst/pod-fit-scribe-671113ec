@@ -115,18 +115,18 @@ export function SpeakerProfileCard({
   }
 
   return (
-    <div className="mx-2 my-2 rounded-xl shadow-sm border border-border bg-card overflow-hidden">
+    <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="group/header flex items-start gap-3 p-3 border-b border-border/50">
-        <Avatar className="w-12 h-12 ring-1 ring-border shrink-0">
+      <div className="group/header flex items-start gap-3 p-3.5 border-b border-border/40 bg-gradient-to-b from-secondary/20 to-transparent">
+        <Avatar className="w-11 h-11 ring-1 ring-border shrink-0">
           <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
-          <AvatarFallback className="bg-muted">{initials}</AvatarFallback>
+          <AvatarFallback className="bg-muted text-xs">{initials}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-sm tracking-tight">{speaker.name}</h4>
+          <h4 className="font-semibold text-sm tracking-tight leading-tight">{speaker.name}</h4>
           {speaker.title && (
-            <p className="text-xs text-muted-foreground">
-              {speaker.title} at {companyName}
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+              {speaker.title} <span className="text-muted-foreground/60">· {companyName}</span>
             </p>
           )}
         </div>
@@ -177,121 +177,145 @@ export function SpeakerProfileCard({
 
       {/* Tabbed Content */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full justify-start rounded-none border-b border-border/50 bg-transparent px-3 h-auto py-0">
-          <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
-            <User className="h-3 w-3 mr-1.5" />Overview
-          </TabsTrigger>
-          <TabsTrigger value="strategy" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
-            <BookOpen className="h-3 w-3 mr-1.5" />Strategy
-          </TabsTrigger>
-          <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
-            <FileText className="h-3 w-3 mr-1.5" />Call Notes
-          </TabsTrigger>
-          <TabsTrigger value="insights" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
-            <Sparkles className="h-3 w-3 mr-1.5" />Insights
-          </TabsTrigger>
-          <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2 text-xs">
-            <Clock className="h-3 w-3 mr-1.5" />History
-          </TabsTrigger>
+        <TabsList className="w-full justify-start rounded-none border-b border-border/40 bg-transparent px-2 h-auto py-0 gap-0">
+          {[
+            { v: "overview", icon: User, label: "Overview" },
+            { v: "strategy", icon: BookOpen, label: "Strategy" },
+            { v: "notes", icon: FileText, label: "Call Notes" },
+            { v: "insights", icon: Sparkles, label: "Insights" },
+            { v: "history", icon: Clock, label: "History" },
+          ].map(({ v, icon: Icon, label }) => (
+            <TabsTrigger
+              key={v}
+              value={v}
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none py-2.5 px-2.5 text-[11.5px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Icon className="h-3 w-3 mr-1.5" />{label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        <ScrollArea className="h-[400px]">
+        <div>
           {/* Overview */}
-          <TabsContent value="overview" className="p-4 space-y-4 mt-0">
+          <TabsContent value="overview" className="p-3.5 space-y-3 mt-0">
             {(speaker.target_audiences?.length ?? 0) > 0 && (
-              <Section title="Target Audiences">
+              <PanelCard title="Target Audiences">
                 <div className="flex flex-wrap gap-1.5">
                   {speaker.target_audiences!.map((a) => (
-                    <Badge key={a} variant="secondary" className="text-xs">{a}</Badge>
+                    <span key={a} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-secondary/70 text-foreground/90 border border-border/40">
+                      {a}
+                    </span>
                   ))}
                 </div>
-              </Section>
+              </PanelCard>
             )}
 
             {(speaker.talking_points?.length ?? 0) > 0 && (
-              <Section title="Talking Points">
-                <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
-                  {speaker.talking_points!.map((tp, i) => <li key={i}>{tp}</li>)}
+              <PanelCard title="Talking Points">
+                <ul className="space-y-1.5 text-[13px] text-foreground/90 leading-relaxed">
+                  {speaker.talking_points!.map((tp, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="text-muted-foreground/60 shrink-0 mt-1.5 h-1 w-1 rounded-full bg-primary/60" />
+                      <span>{tp}</span>
+                    </li>
+                  ))}
                 </ul>
-              </Section>
+              </PanelCard>
             )}
 
             {(speaker.avoid?.length ?? 0) > 0 && (
-              <Section title="Things to Avoid">
+              <PanelCard title="Things to Avoid">
                 <div className="flex flex-wrap gap-1.5">
                   {speaker.avoid!.map((a) => (
-                    <Badge key={a} variant="destructive" className="text-xs">{a}</Badge>
+                    <span key={a} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-destructive/10 text-destructive border border-destructive/25">
+                      {a}
+                    </span>
                   ))}
                 </div>
-              </Section>
+              </PanelCard>
             )}
 
             {(speaker.guest_identity_tags?.length ?? 0) > 0 && (
-              <Section title="Guest Identity Tags">
+              <PanelCard title="Guest Identity">
                 <div className="flex flex-wrap gap-1.5">
                   {speaker.guest_identity_tags!.map((t) => (
-                    <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                    <span key={t} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] text-muted-foreground border border-border/50">
+                      {t}
+                    </span>
                   ))}
                 </div>
-              </Section>
+              </PanelCard>
             )}
 
             {(speaker.competitors?.length ?? 0) > 0 && (
-              <Section title="Competitors">
-                <div className="space-y-2">
+              <PanelCard title="Competitors">
+                <div className="grid grid-cols-1 gap-1.5">
                   {speaker.competitors!.map((c: Competitor, i) => (
-                    <div key={i} className="text-sm">
-                      <span className="font-medium">{c.name}</span>
-                      {c.role && <span className="text-muted-foreground"> — {c.role}</span>}
-                      {c.peer_reason && <p className="text-xs text-muted-foreground mt-0.5">{c.peer_reason}</p>}
+                    <div key={i} className="rounded-md border border-border/40 bg-background/40 px-2.5 py-2">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-[13px] font-medium truncate">{c.name}</span>
+                        {c.role && <span className="text-[10.5px] text-muted-foreground truncate">{c.role}</span>}
+                      </div>
+                      {c.peer_reason && (
+                        <p className="text-[11.5px] text-muted-foreground mt-1 leading-snug">{c.peer_reason}</p>
+                      )}
                     </div>
                   ))}
                 </div>
-              </Section>
+              </PanelCard>
             )}
 
-            <div className="flex flex-wrap gap-2 pt-2">
-              {speaker.media_kit_url && (
-                <a href={speaker.media_kit_url} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline" className="h-7 text-xs">
-                    <ExternalLink className="h-3 w-3 mr-1.5" />Media Kit
-                  </Button>
-                </a>
-              )}
-              {speaker.airtable_embed_url && (
-                <a href={speaker.airtable_embed_url} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline" className="h-7 text-xs">
-                    <Link2 className="h-3 w-3 mr-1.5" />Airtable
-                  </Button>
-                </a>
-              )}
-            </div>
+            {(speaker.media_kit_url || speaker.airtable_embed_url) && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {speaker.media_kit_url && (
+                  <a href={speaker.media_kit_url} target="_blank" rel="noreferrer">
+                    <Button size="sm" variant="outline" className="h-7 text-xs">
+                      <ExternalLink className="h-3 w-3 mr-1.5" />Media Kit
+                    </Button>
+                  </a>
+                )}
+                {speaker.airtable_embed_url && (
+                  <a href={speaker.airtable_embed_url} target="_blank" rel="noreferrer">
+                    <Button size="sm" variant="outline" className="h-7 text-xs">
+                      <Link2 className="h-3 w-3 mr-1.5" />Airtable
+                    </Button>
+                  </a>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           {/* Strategy */}
-          <TabsContent value="strategy" className="p-4 space-y-4 mt-0">
+          <TabsContent value="strategy" className="p-3.5 space-y-3 mt-0">
             {(speaker.target_audiences?.length ?? 0) > 0 && (
-              <Section title="Target Audiences">
+              <PanelCard title="Target Audiences">
                 <div className="flex flex-wrap gap-1.5">
                   {speaker.target_audiences!.map((a) => (
-                    <Badge key={a} variant="secondary" className="text-xs">{a}</Badge>
+                    <span key={a} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-secondary/70 text-foreground/90 border border-border/40">
+                      {a}
+                    </span>
                   ))}
                 </div>
-              </Section>
+              </PanelCard>
             )}
 
             {(speaker.talking_points?.length ?? 0) > 0 && (
-              <Section title="Talking Points">
-                <ul className="list-disc list-inside space-y-1 text-sm text-foreground/90">
-                  {speaker.talking_points!.map((tp, i) => <li key={i}>{tp}</li>)}
+              <PanelCard title="Talking Points">
+                <ul className="space-y-1.5 text-[13px] text-foreground/90 leading-relaxed">
+                  {speaker.talking_points!.map((tp, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="shrink-0 mt-1.5 h-1 w-1 rounded-full bg-primary/60" />
+                      <span>{tp}</span>
+                    </li>
+                  ))}
                 </ul>
-              </Section>
+              </PanelCard>
             )}
 
             {speaker.campaign_strategy ? (
-              <Section title="Strategy Narrative">
+              <PanelCard title="Strategy Narrative">
                 <MarkdownRenderer content={speaker.campaign_strategy} className="text-sm [&>p]:text-sm [&_li]:text-sm [&>h1]:text-sm [&>h2]:text-sm [&>h3]:text-sm [&>h4]:text-sm" />
-              </Section>
+              </PanelCard>
             ) : (
               !speaker.target_audiences?.length && !speaker.talking_points?.length && (
                 <p className="text-sm text-muted-foreground">No campaign strategy set.</p>
@@ -299,30 +323,41 @@ export function SpeakerProfileCard({
             )}
 
             {speaker.pitch_template && (
-              <Section title="Pitch Template">
-                <pre className="text-sm whitespace-pre-wrap bg-muted/30 rounded-lg p-3 border border-border/50">
+              <PanelCard title="Pitch Template">
+                <pre className="text-[12.5px] whitespace-pre-wrap bg-background/40 rounded-md p-2.5 border border-border/40 leading-relaxed">
                   {speaker.pitch_template}
                 </pre>
-              </Section>
+              </PanelCard>
             )}
           </TabsContent>
 
           {/* Call Notes */}
-          <TabsContent value="notes" className="p-4 mt-0">
-            <CallNotesList speakerId={speaker.id} maxHeight="400px" />
+          <TabsContent value="notes" className="p-3.5 mt-0">
+            <CallNotesList speakerId={speaker.id} maxHeight="420px" />
           </TabsContent>
 
           {/* Insights */}
-          <TabsContent value="insights" className="p-4 mt-0">
+          <TabsContent value="insights" className="p-3.5 mt-0">
             <StrategyInsightsPanel speakerId={speaker.id} speaker={speaker} onUpdate={onUpdate} />
           </TabsContent>
 
           {/* History / Quarterly Notes */}
-          <TabsContent value="history" className="p-4 mt-0">
+          <TabsContent value="history" className="p-3.5 mt-0">
             <QuarterlyNotesHistory speakerId={speaker.id} notes={speaker.quarterly_notes} onUpdate={onUpdate} />
           </TabsContent>
-        </ScrollArea>
+        </div>
       </Tabs>
+    </div>
+  );
+}
+
+function PanelCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border/40 bg-background/30 p-3">
+      <h5 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.08em] mb-2">
+        {title}
+      </h5>
+      {children}
     </div>
   );
 }

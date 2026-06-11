@@ -4,19 +4,29 @@ import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { LogOut, Settings } from "lucide-react";
 
-const tabs = [
-  { to: "/", label: "Evaluate" },
-  { to: "/batch", label: "Batch" },
+const baseTabs = [
+  { to: "/overview", label: "Overview" },
   { to: "/companies", label: "Companies" },
-  { to: "/history", label: "History" },
+  { to: "/research", label: "Research", flag: "research_tab" as const },
   { to: "/reports", label: "Reports" },
+  { to: "/studio", label: "Studio" },
 ];
+
+const researchRoutes = ["/", "/batch", "/history", "/research"];
 
 export const Navbar = () => {
   const { pathname } = useLocation();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useUserRole();
+  const { enabled: researchEnabled } = useFeatureFlag("research_tab");
+  const tabs = baseTabs.filter((t) => {
+    if (t.flag === "research_tab") return isAdmin || researchEnabled;
+    return true;
+  });
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
@@ -27,18 +37,24 @@ export const Navbar = () => {
         </Link>
 
         <nav className="flex items-center gap-1">
-          {tabs.map((t) => (
-            <Link key={t.to} to={t.to} className="hidden sm:block">
-              <Button
-                variant={pathname === t.to ? "soft" : "ghost"}
-                size="sm"
-                className={cn("rounded-full", pathname === t.to && "border")}
-                aria-current={pathname === t.to ? "page" : undefined}
-              >
-                {t.label}
-              </Button>
-            </Link>
-          ))}
+          {tabs.map((t) => {
+            const isActive =
+              t.to === "/research"
+                ? researchRoutes.includes(pathname)
+                : pathname === t.to || pathname.startsWith(t.to + "/");
+            return (
+              <Link key={t.to} to={t.to} className="hidden sm:block">
+                <Button
+                  variant={isActive ? "soft" : "ghost"}
+                  size="sm"
+                  className={cn("rounded-full", isActive && "border")}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  {t.label}
+                </Button>
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="flex items-center gap-2">

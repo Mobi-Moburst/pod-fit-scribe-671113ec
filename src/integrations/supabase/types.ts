@@ -67,6 +67,78 @@ export type Database = {
           },
         ]
       }
+      aeo_audit_runs: {
+        Row: {
+          body_snapshot: Json | null
+          client_domain: string | null
+          company_id: string | null
+          competitor_names: string[]
+          completed_at: string | null
+          content_gap_analysis: Json | null
+          created_at: string
+          engines_used: string[]
+          error_message: string | null
+          geo_analysis: Json | null
+          id: string
+          model: string
+          org_id: string
+          processed_count: number
+          prompts_failed: number
+          prompts_queue: Json
+          prompts_run: number
+          results_collected: Json
+          status: string
+          topics: string[]
+          triggered_by: string | null
+        }
+        Insert: {
+          body_snapshot?: Json | null
+          client_domain?: string | null
+          company_id?: string | null
+          competitor_names?: string[]
+          completed_at?: string | null
+          content_gap_analysis?: Json | null
+          created_at?: string
+          engines_used?: string[]
+          error_message?: string | null
+          geo_analysis?: Json | null
+          id?: string
+          model: string
+          org_id: string
+          processed_count?: number
+          prompts_failed?: number
+          prompts_queue?: Json
+          prompts_run?: number
+          results_collected?: Json
+          status?: string
+          topics?: string[]
+          triggered_by?: string | null
+        }
+        Update: {
+          body_snapshot?: Json | null
+          client_domain?: string | null
+          company_id?: string | null
+          competitor_names?: string[]
+          completed_at?: string | null
+          content_gap_analysis?: Json | null
+          created_at?: string
+          engines_used?: string[]
+          error_message?: string | null
+          geo_analysis?: Json | null
+          id?: string
+          model?: string
+          org_id?: string
+          processed_count?: number
+          prompts_failed?: number
+          prompts_queue?: Json
+          prompts_run?: number
+          results_collected?: Json
+          status?: string
+          topics?: string[]
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       airtable_connections: {
         Row: {
           base_id: string
@@ -183,7 +255,10 @@ export type Database = {
           company_id: string | null
           created_at: string
           duration_seconds: number | null
+          excluded_at: string | null
+          excluded_reason: string | null
           fathom_meeting_id: string | null
+          fireflies_transcript_id: string | null
           id: string
           meeting_date: string | null
           meeting_title: string | null
@@ -199,7 +274,10 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           duration_seconds?: number | null
+          excluded_at?: string | null
+          excluded_reason?: string | null
           fathom_meeting_id?: string | null
+          fireflies_transcript_id?: string | null
           id?: string
           meeting_date?: string | null
           meeting_title?: string | null
@@ -215,7 +293,10 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           duration_seconds?: number | null
+          excluded_at?: string | null
+          excluded_reason?: string | null
           fathom_meeting_id?: string | null
+          fireflies_transcript_id?: string | null
           id?: string
           meeting_date?: string | null
           meeting_title?: string | null
@@ -333,6 +414,7 @@ export type Database = {
           company_url: string | null
           created_at: string | null
           id: string
+          industry: string | null
           logo_url: string | null
           name: string
           notes: string | null
@@ -349,6 +431,7 @@ export type Database = {
           company_url?: string | null
           created_at?: string | null
           id?: string
+          industry?: string | null
           logo_url?: string | null
           name: string
           notes?: string | null
@@ -365,6 +448,7 @@ export type Database = {
           company_url?: string | null
           created_at?: string | null
           id?: string
+          industry?: string | null
           logo_url?: string | null
           name?: string
           notes?: string | null
@@ -372,6 +456,42 @@ export type Database = {
           product_type?: string | null
           tags?: string[] | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      company_kpi_cache: {
+        Row: {
+          company_id: string
+          computed_at: string
+          created_at: string
+          expires_at: string
+          id: string
+          kpis: Json
+          org_id: string
+          updated_at: string
+          window: string
+        }
+        Insert: {
+          company_id: string
+          computed_at?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kpis?: Json
+          org_id: string
+          updated_at?: string
+          window: string
+        }
+        Update: {
+          company_id?: string
+          computed_at?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kpis?: Json
+          org_id?: string
+          updated_at?: string
+          window?: string
         }
         Relationships: []
       }
@@ -442,6 +562,494 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      feature_flags: {
+        Row: {
+          description: string | null
+          enabled: boolean
+          key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          enabled?: boolean
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          enabled?: boolean
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      fireflies_connections: {
+        Row: {
+          api_key: string
+          created_at: string
+          fireflies_email: string | null
+          fireflies_name: string | null
+          fireflies_user_id: string | null
+          id: string
+          last_sync_error: string | null
+          last_sync_status: string | null
+          last_synced_at: string | null
+          org_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          fireflies_email?: string | null
+          fireflies_name?: string | null
+          fireflies_user_id?: string | null
+          id?: string
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          org_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          fireflies_email?: string | null
+          fireflies_name?: string | null
+          fireflies_user_id?: string | null
+          id?: string
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          org_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hubspot_settings: {
+        Row: {
+          auto_create_associations: boolean
+          created_at: string
+          generic_domains: string[]
+          kc_client_property: string
+          org_id: string
+          pipeline_id: string | null
+          pipeline_label: string | null
+          portal_id: string | null
+          show_url_property: string | null
+          stages: Json
+          updated_at: string
+        }
+        Insert: {
+          auto_create_associations?: boolean
+          created_at?: string
+          generic_domains?: string[]
+          kc_client_property?: string
+          org_id: string
+          pipeline_id?: string | null
+          pipeline_label?: string | null
+          portal_id?: string | null
+          show_url_property?: string | null
+          stages?: Json
+          updated_at?: string
+        }
+        Update: {
+          auto_create_associations?: boolean
+          created_at?: string
+          generic_domains?: string[]
+          kc_client_property?: string
+          org_id?: string
+          pipeline_id?: string | null
+          pipeline_label?: string | null
+          portal_id?: string | null
+          show_url_property?: string | null
+          stages?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hubspot_tickets_cache: {
+        Row: {
+          close_date: string | null
+          created_at: string
+          createdate: string | null
+          hubspot_owner_id: string | null
+          hubspot_ticket_id: string
+          id: string
+          kc_client: string | null
+          kc_shortlist_id: string | null
+          last_modified: string | null
+          org_id: string
+          owner_email: string | null
+          owner_name: string | null
+          pipeline_id: string | null
+          priority: string | null
+          raw_properties: Json
+          show_url: string | null
+          stage_id: string | null
+          subject: string | null
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          close_date?: string | null
+          created_at?: string
+          createdate?: string | null
+          hubspot_owner_id?: string | null
+          hubspot_ticket_id: string
+          id?: string
+          kc_client?: string | null
+          kc_shortlist_id?: string | null
+          last_modified?: string | null
+          org_id: string
+          owner_email?: string | null
+          owner_name?: string | null
+          pipeline_id?: string | null
+          priority?: string | null
+          raw_properties?: Json
+          show_url?: string | null
+          stage_id?: string | null
+          subject?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          close_date?: string | null
+          created_at?: string
+          createdate?: string | null
+          hubspot_owner_id?: string | null
+          hubspot_ticket_id?: string
+          id?: string
+          kc_client?: string | null
+          kc_shortlist_id?: string | null
+          last_modified?: string | null
+          org_id?: string
+          owner_email?: string | null
+          owner_name?: string | null
+          pipeline_id?: string | null
+          priority?: string | null
+          raw_properties?: Json
+          show_url?: string | null
+          stage_id?: string | null
+          subject?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ltv_monthly_snapshots: {
+        Row: {
+          actual_bookings_to_date: number | null
+          airtable_record_id: string
+          campaign_manager: string | null
+          campaign_success_status: string | null
+          client_name: string
+          cohort: string | null
+          created_at: string
+          current_month_cumulative_pct_fulfilled: number | null
+          date_ended: string | null
+          deliverables_completed_this_month: number | null
+          goal_this_month: number | null
+          id: string
+          offboarding: boolean | null
+          org_id: string
+          raw_fields: Json
+          renewal_date: string | null
+          renewed: boolean | null
+          snapshotted_at: string
+          source: string
+          status: string | null
+          total_bookings_per_month: number | null
+          total_planned_bookings_by_eom: number | null
+          updated_at: string
+          year_month: string
+          zz_complete: boolean | null
+        }
+        Insert: {
+          actual_bookings_to_date?: number | null
+          airtable_record_id: string
+          campaign_manager?: string | null
+          campaign_success_status?: string | null
+          client_name: string
+          cohort?: string | null
+          created_at?: string
+          current_month_cumulative_pct_fulfilled?: number | null
+          date_ended?: string | null
+          deliverables_completed_this_month?: number | null
+          goal_this_month?: number | null
+          id?: string
+          offboarding?: boolean | null
+          org_id: string
+          raw_fields?: Json
+          renewal_date?: string | null
+          renewed?: boolean | null
+          snapshotted_at?: string
+          source: string
+          status?: string | null
+          total_bookings_per_month?: number | null
+          total_planned_bookings_by_eom?: number | null
+          updated_at?: string
+          year_month: string
+          zz_complete?: boolean | null
+        }
+        Update: {
+          actual_bookings_to_date?: number | null
+          airtable_record_id?: string
+          campaign_manager?: string | null
+          campaign_success_status?: string | null
+          client_name?: string
+          cohort?: string | null
+          created_at?: string
+          current_month_cumulative_pct_fulfilled?: number | null
+          date_ended?: string | null
+          deliverables_completed_this_month?: number | null
+          goal_this_month?: number | null
+          id?: string
+          offboarding?: boolean | null
+          org_id?: string
+          raw_fields?: Json
+          renewal_date?: string | null
+          renewed?: boolean | null
+          snapshotted_at?: string
+          source?: string
+          status?: string | null
+          total_bookings_per_month?: number | null
+          total_planned_bookings_by_eom?: number | null
+          updated_at?: string
+          year_month?: string
+          zz_complete?: boolean | null
+        }
+        Relationships: []
+      }
+      ltv_offboarding: {
+        Row: {
+          airtable_record_id: string
+          campaign_manager: string | null
+          client_name: string
+          company_id: string | null
+          created_at: string
+          date_ended: string | null
+          id: string
+          org_id: string
+          raw_fields: Json
+          speaker_id: string | null
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          airtable_record_id: string
+          campaign_manager?: string | null
+          client_name: string
+          company_id?: string | null
+          created_at?: string
+          date_ended?: string | null
+          id?: string
+          org_id: string
+          raw_fields?: Json
+          speaker_id?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          airtable_record_id?: string
+          campaign_manager?: string | null
+          client_name?: string
+          company_id?: string | null
+          created_at?: string
+          date_ended?: string | null
+          id?: string
+          org_id?: string
+          raw_fields?: Json
+          speaker_id?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ltv_snapshots: {
+        Row: {
+          actual_bookings_to_date: number | null
+          adjusted_goal: number | null
+          airtable_record_id: string
+          campaign_manager: string | null
+          campaign_success_status: string | null
+          client_name: string
+          cohort: string | null
+          company_id: string | null
+          created_at: string
+          cumulative_pct_fulfilled: number | null
+          current_month_cumulative_pct_fulfilled: number | null
+          deliverables_completed_this_month: number | null
+          eow_recap_sent: boolean | null
+          fulfilled: boolean | null
+          goal_this_month: number | null
+          id: string
+          last_client_checkin: string | null
+          next_checkin_scheduled: string | null
+          offboarding: boolean | null
+          org_id: string
+          payment_paused: boolean | null
+          primary_industry: string | null
+          raw_fields: Json
+          renewal_date: string | null
+          renewed: boolean | null
+          speaker_id: string | null
+          status: string | null
+          synced_at: string
+          total_bookings_per_month: number | null
+          total_planned_bookings_by_eom: number | null
+          trend_vs_last_month: string | null
+          updated_at: string
+          zz_complete: boolean | null
+        }
+        Insert: {
+          actual_bookings_to_date?: number | null
+          adjusted_goal?: number | null
+          airtable_record_id: string
+          campaign_manager?: string | null
+          campaign_success_status?: string | null
+          client_name: string
+          cohort?: string | null
+          company_id?: string | null
+          created_at?: string
+          cumulative_pct_fulfilled?: number | null
+          current_month_cumulative_pct_fulfilled?: number | null
+          deliverables_completed_this_month?: number | null
+          eow_recap_sent?: boolean | null
+          fulfilled?: boolean | null
+          goal_this_month?: number | null
+          id?: string
+          last_client_checkin?: string | null
+          next_checkin_scheduled?: string | null
+          offboarding?: boolean | null
+          org_id: string
+          payment_paused?: boolean | null
+          primary_industry?: string | null
+          raw_fields?: Json
+          renewal_date?: string | null
+          renewed?: boolean | null
+          speaker_id?: string | null
+          status?: string | null
+          synced_at?: string
+          total_bookings_per_month?: number | null
+          total_planned_bookings_by_eom?: number | null
+          trend_vs_last_month?: string | null
+          updated_at?: string
+          zz_complete?: boolean | null
+        }
+        Update: {
+          actual_bookings_to_date?: number | null
+          adjusted_goal?: number | null
+          airtable_record_id?: string
+          campaign_manager?: string | null
+          campaign_success_status?: string | null
+          client_name?: string
+          cohort?: string | null
+          company_id?: string | null
+          created_at?: string
+          cumulative_pct_fulfilled?: number | null
+          current_month_cumulative_pct_fulfilled?: number | null
+          deliverables_completed_this_month?: number | null
+          eow_recap_sent?: boolean | null
+          fulfilled?: boolean | null
+          goal_this_month?: number | null
+          id?: string
+          last_client_checkin?: string | null
+          next_checkin_scheduled?: string | null
+          offboarding?: boolean | null
+          org_id?: string
+          payment_paused?: boolean | null
+          primary_industry?: string | null
+          raw_fields?: Json
+          renewal_date?: string | null
+          renewed?: boolean | null
+          speaker_id?: string | null
+          status?: string | null
+          synced_at?: string
+          total_bookings_per_month?: number | null
+          total_planned_bookings_by_eom?: number | null
+          trend_vs_last_month?: string | null
+          updated_at?: string
+          zz_complete?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltv_snapshots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      momentum_bookings: {
+        Row: {
+          activity_type: string | null
+          airtable_record_id: string
+          campaign_manager: string | null
+          client_name: string | null
+          company_id: string | null
+          created_at: string
+          date_secured: string | null
+          host_name: string | null
+          id: string
+          industry: string | null
+          org_id: string
+          podcast_name: string | null
+          podcast_url: string | null
+          raw_fields: Json
+          start_date_time: string | null
+          synced_at: string
+          updated_at: string
+          year_table: string
+        }
+        Insert: {
+          activity_type?: string | null
+          airtable_record_id: string
+          campaign_manager?: string | null
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          date_secured?: string | null
+          host_name?: string | null
+          id?: string
+          industry?: string | null
+          org_id: string
+          podcast_name?: string | null
+          podcast_url?: string | null
+          raw_fields?: Json
+          start_date_time?: string | null
+          synced_at?: string
+          updated_at?: string
+          year_table: string
+        }
+        Update: {
+          activity_type?: string | null
+          airtable_record_id?: string
+          campaign_manager?: string | null
+          client_name?: string | null
+          company_id?: string | null
+          created_at?: string
+          date_secured?: string | null
+          host_name?: string | null
+          id?: string
+          industry?: string | null
+          org_id?: string
+          podcast_name?: string | null
+          podcast_url?: string | null
+          raw_fields?: Json
+          start_date_time?: string | null
+          synced_at?: string
+          updated_at?: string
+          year_table?: string
+        }
+        Relationships: []
       }
       podcast_metadata_cache: {
         Row: {
@@ -563,6 +1171,131 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      research_angles: {
+        Row: {
+          created_at: string
+          headline: string
+          id: string
+          org_id: string
+          rationale: string
+          shortlist_id: string
+        }
+        Insert: {
+          created_at?: string
+          headline: string
+          id?: string
+          org_id: string
+          rationale: string
+          shortlist_id: string
+        }
+        Update: {
+          created_at?: string
+          headline?: string
+          id?: string
+          org_id?: string
+          rationale?: string
+          shortlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_angles_shortlist_id_fkey"
+            columns: ["shortlist_id"]
+            isOneToOne: false
+            referencedRelation: "research_shortlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_shortlists: {
+        Row: {
+          added_by: string | null
+          categories: string[] | null
+          cover_art_url: string | null
+          created_at: string
+          description: string | null
+          est_listeners: number | null
+          fit_rationale: string | null
+          guest_cadence_label: string | null
+          guest_cadence_score: number | null
+          host_name: string | null
+          hubspot_company_id: string | null
+          hubspot_contact_id: string | null
+          hubspot_synced_at: string | null
+          hubspot_ticket_id: string | null
+          id: string
+          itunes_id: string | null
+          last_episode_date: string | null
+          niche_fit_score: number | null
+          org_id: string
+          passed_reason: string | null
+          rephonic_id: string | null
+          show_name: string
+          show_url: string | null
+          source: string
+          speaker_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          added_by?: string | null
+          categories?: string[] | null
+          cover_art_url?: string | null
+          created_at?: string
+          description?: string | null
+          est_listeners?: number | null
+          fit_rationale?: string | null
+          guest_cadence_label?: string | null
+          guest_cadence_score?: number | null
+          host_name?: string | null
+          hubspot_company_id?: string | null
+          hubspot_contact_id?: string | null
+          hubspot_synced_at?: string | null
+          hubspot_ticket_id?: string | null
+          id?: string
+          itunes_id?: string | null
+          last_episode_date?: string | null
+          niche_fit_score?: number | null
+          org_id: string
+          passed_reason?: string | null
+          rephonic_id?: string | null
+          show_name: string
+          show_url?: string | null
+          source?: string
+          speaker_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string | null
+          categories?: string[] | null
+          cover_art_url?: string | null
+          created_at?: string
+          description?: string | null
+          est_listeners?: number | null
+          fit_rationale?: string | null
+          guest_cadence_label?: string | null
+          guest_cadence_score?: number | null
+          host_name?: string | null
+          hubspot_company_id?: string | null
+          hubspot_contact_id?: string | null
+          hubspot_synced_at?: string | null
+          hubspot_ticket_id?: string | null
+          id?: string
+          itunes_id?: string | null
+          last_episode_date?: string | null
+          niche_fit_score?: number | null
+          org_id?: string
+          passed_reason?: string | null
+          rephonic_id?: string | null
+          show_name?: string
+          show_url?: string | null
+          source?: string
+          speaker_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       speakers: {
         Row: {
