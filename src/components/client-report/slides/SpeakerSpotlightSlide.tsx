@@ -335,7 +335,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
         {kpiItems.map((kpi, index) => (
           <div
             key={index}
-            className="bg-card border border-border rounded-2xl p-5 space-y-2"
+            className="bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-5 space-y-2"
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -357,7 +357,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
         <div className="md:col-span-3 space-y-4">
           {/* Target Audiences */}
           {hasTargetAudiences && (
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <div className="bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-5 space-y-3">
               <h3 className="text-base font-semibold flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
                 Target Audiences
@@ -379,7 +379,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
 
           {/* Talking Points */}
           {hasTalkingPoints && (
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <div className="bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-5 space-y-3">
               <h3 className="text-base font-semibold">Key Talking Points</h3>
               <ol className="space-y-1.5 text-sm text-muted-foreground">
                 {speaker.talking_points?.slice(0, 4).map((point, i) => (
@@ -395,7 +395,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
 
         {/* Right Column - Published Episodes Carousel */}
         {speaker.podcasts && speaker.podcasts.length > 0 && (
-          <div className="md:col-span-2 bg-card border border-border rounded-2xl p-5">
+          <div className="md:col-span-2 bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-5">
             <PublishedEpisodesCarousel 
               podcasts={speaker.podcasts}
               title="Published Episodes"
@@ -410,7 +410,7 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
       {hasAirtable && (
         <button
           onClick={onAirtableClick}
-          className="w-full group bg-card border border-border rounded-2xl p-6 flex items-center justify-between hover:bg-accent/5 hover:border-primary/30 transition-all duration-200"
+          className="w-full group bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-6 flex items-center justify-between hover:bg-accent/5 hover:border-primary/30 transition-all duration-200"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -444,10 +444,10 @@ export const SpeakerSpotlightSlide = ({ speaker, highlightClips = [], onAirtable
             {highlightClips.map((clip) => (
               <div
                 key={clip.id}
-                className="bg-card border border-border rounded-2xl overflow-hidden"
+                className="bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl overflow-hidden"
               >
                 {/* Video/Audio Embed */}
-                <div className={`bg-muted relative ${
+                <div className={`bg-[rgba(255,255,255,0.04)] relative ${
                   highlightClips.length === 1 ? "aspect-video" : "aspect-[16/10]"
                 }`}>
                   <ClipMediaPlayer clip={clip} coverArt={coverArtCache[clip.url]} />

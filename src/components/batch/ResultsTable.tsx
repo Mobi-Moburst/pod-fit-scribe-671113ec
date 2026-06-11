@@ -38,7 +38,7 @@ export function ResultsTable({
   
   const getVerdictColor = (verdict?: string) => {
     switch (verdict) {
-      case 'Fit': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+      case 'Fit': return 'bg-[rgba(16,185,129,0.1)] text-green-800 dark:bg-green-900/20 dark:text-[#b9e045]';
       case 'Consider': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
       case 'Not': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
@@ -47,7 +47,7 @@ export function ResultsTable({
   
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'success': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'success': return <CheckCircle className="h-4 w-4 text-[#10b981]" />;
       case 'error': return <AlertCircle className="h-4 w-4 text-red-500" />;
       case 'processing': return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />;
       default: return <Clock className="h-4 w-4 text-gray-400" />;
@@ -100,7 +100,7 @@ export function ResultsTable({
           {rows.map((row) => (
             <TableRow
               key={row.id}
-              className="cursor-pointer hover:bg-muted/50"
+              className="cursor-pointer hover:bg-[rgba(18,20,24,0.5)]"
               onClick={() => onRowClick(row)}
             >
               <TableCell onClick={(e) => e.stopPropagation()}>

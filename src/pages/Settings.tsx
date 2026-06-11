@@ -284,7 +284,7 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+                <div className="flex items-start justify-between gap-4 rounded-lg border border-[rgba(255,255,255,0.05)] p-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Label className="text-sm font-medium">Research tab</Label>

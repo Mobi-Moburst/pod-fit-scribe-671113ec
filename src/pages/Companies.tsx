@@ -474,7 +474,7 @@ const Companies = () => {
                 <nav className="flex flex-col gap-0.5">
                   {companies.filter(c => pinned.has(c.id) && !c.archived_at).slice(0, 8).map(c => (
                     <button key={c.id} onClick={() => { setNavView('all'); setSearch(c.name); }} className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/60 text-left">
-                      <div className="w-5 h-5 rounded bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/40">
+                      <div className="w-5 h-5 rounded bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)]">
                         {c.logo_url ? <img src={c.logo_url} alt="" className="w-full h-full object-contain p-0.5" /> : <Building2 className="h-3 w-3 text-muted-foreground" />}
                       </div>
                       <span className="text-sm truncate flex-1">{c.name}</span>
@@ -514,7 +514,7 @@ const Companies = () => {
                     const active = managerFilter === name;
                     return (
                       <button key={name} onClick={() => setManagerFilter(active ? '' : name)} className={`group flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
-                        <Avatar className="h-5 w-5"><AvatarFallback className="text-[9px] bg-muted">{name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+                        <Avatar className="h-5 w-5"><AvatarFallback className="text-[9px] bg-[rgba(255,255,255,0.04)]">{name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                         <span className="flex-1 truncate">{name}</span>
                         <span className="text-[11px] text-muted-foreground/60">{count}</span>
                       </button>
@@ -560,7 +560,7 @@ const Companies = () => {
                   {isInferring ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
                   {isInferring ? 'Categorizing…' : 'Auto-categorize'}
                 </Button>
-                <div className="flex items-center gap-1 p-0.5 rounded-md border border-border/60 bg-card">
+                <div className="flex items-center gap-1 p-0.5 rounded-md border border-[rgba(255,255,255,0.05)] bg-card">
                   <button onClick={() => setViewMode('list')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="List view"><List className="h-3.5 w-3.5" /></button>
                   <button onClick={() => setViewMode('grid')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="Grid view"><LayoutGrid className="h-3.5 w-3.5" /></button>
                 </div>
@@ -669,7 +669,7 @@ const Companies = () => {
             </div>
 
             {/* Directory list */}
-            <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
+            <div className="rounded-xl border border-[rgba(255,255,255,0.05)] bg-card/40 overflow-hidden">
               {/* Header row */}
               <div className="hidden md:grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
                 <div>Client</div>
@@ -701,7 +701,7 @@ const Companies = () => {
                           onClick={() => openCompany(company.id)}
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/40">
+                            <div className="w-9 h-9 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)]">
                               {company.logo_url ? (
                                 <img src={company.logo_url} alt="" className="w-full h-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                               ) : (
@@ -729,7 +729,7 @@ const Companies = () => {
                                   {company.speakers.slice(0, 2).map(s => (
                                     <Avatar key={s.id} className="w-6 h-6 ring-2 ring-card">
                                       <AvatarImage src={s.headshot_url || undefined} alt={s.name} />
-                                      <AvatarFallback className="text-[9px] bg-muted">{s.name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
+                                      <AvatarFallback className="text-[9px] bg-[rgba(255,255,255,0.04)]">{s.name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
                                     </Avatar>
                                   ))}
                                 </div>
@@ -783,8 +783,8 @@ const Companies = () => {
               <aside
                 key={company.id}
                 className={detailMode
-                  ? "flex flex-col w-full rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in fade-in duration-200"
-                  : "hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"}
+                  ? "flex flex-col w-full rounded-2xl border border-[rgba(255,255,255,0.05)] bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in fade-in duration-200"
+                  : "hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-2xl border border-[rgba(255,255,255,0.05)] bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"}
               >
                 {detailMode && (
                   <div className="relative px-5 pt-4">
@@ -799,7 +799,7 @@ const Companies = () => {
 
                 {/* ── Header ── */}
                 <div className="relative flex items-start gap-3 p-5 pb-4">
-                  <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center shrink-0 overflow-hidden border border-border/40 shadow-sm">
+                  <div className="w-12 h-12 rounded-xl bg-[rgba(18,20,24,0.5)] flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)] shadow-sm">
                     {company.logo_url ? (
                       <img src={company.logo_url} alt="" className="w-full h-full object-contain p-1.5" />
                     ) : (
@@ -829,7 +829,7 @@ const Companies = () => {
                         </span>
                       )}
                       {(company.campaign_manager || '').split(',').map(m => m.trim()).filter(Boolean).map(cm => (
-                        <span key={cm} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] text-muted-foreground bg-secondary/60 border border-border/40">
+                        <span key={cm} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] text-muted-foreground bg-secondary/60 border border-[rgba(255,255,255,0.05)]">
                           CM: {cm}
                         </span>
                       ))}
@@ -896,7 +896,7 @@ const Companies = () => {
                 </div>
 
                 {/* ── KPI strip ── */}
-                <div className="relative border-y border-border/40 bg-background/20">
+                <div className="relative border-y border-[rgba(255,255,255,0.05)] bg-background/20">
                   <CompanyKpiStrip companyId={company.id} />
                 </div>
 
@@ -966,15 +966,15 @@ const Companies = () => {
                 <div>
                   <Label>Company Logo</Label>
                   {editingCompany.logo_url && !logoError ? (
-                    <div className="flex items-center gap-3 p-3 rounded-md border border-border bg-muted/30">
+                    <div className="flex items-center gap-3 p-3 rounded-md border border-[rgba(255,255,255,0.05)] bg-muted/30">
                       <img src={editingCompany.logo_url} alt="Company logo" className="w-10 h-10 rounded object-contain bg-background" onError={() => setLogoError(true)} />
-                      <p className="text-sm text-muted-foreground flex-1 flex items-center gap-1"><Check className="h-3 w-3 text-green-500" /> Logo loaded</p>
+                      <p className="text-sm text-muted-foreground flex-1 flex items-center gap-1"><Check className="h-3 w-3 text-[#10b981]" /> Logo loaded</p>
                       <Button type="button" variant="ghost" size="sm" onClick={() => setShowManualLogoInput(!showManualLogoInput)}><Pencil className="h-3 w-3" /></Button>
                       <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingCompany({ ...editingCompany, logo_url: '' }); setLogoError(false); }}><X className="h-3 w-3" /></Button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 p-3 rounded-md border border-dashed border-border bg-muted/20">
-                      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>
+                    <div className="flex items-center gap-3 p-3 rounded-md border border-dashed border-[rgba(255,255,255,0.05)] bg-muted/20">
+                      <div className="w-10 h-10 rounded bg-[rgba(255,255,255,0.04)] flex items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>
                       <p className="text-sm text-muted-foreground flex-1">{logoError ? 'Failed to load logo' : 'No logo'}</p>
                       <Button type="button" variant="outline" size="sm" onClick={fetchCompanyBrand} disabled={isFetchingBrand || !editingCompany.company_url?.trim()}>
                         {isFetchingBrand ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Globe className="h-3 w-3 mr-1" />}Fetch
@@ -1049,11 +1049,11 @@ const Companies = () => {
                       <div className="flex items-center gap-4 mt-2">
                         {editingSpeaker.headshot_url ? (
                           <div className="relative group">
-                            <img src={editingSpeaker.headshot_url} alt="Speaker headshot" className="w-20 h-20 rounded-full object-cover border-2 border-border" />
+                            <img src={editingSpeaker.headshot_url} alt="Speaker headshot" className="w-20 h-20 rounded-full object-cover border-2 border-[rgba(255,255,255,0.05)]" />
                             <button type="button" onClick={() => setEditingSpeaker({ ...editingSpeaker, headshot_url: '' })} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                           </div>
                         ) : (
-                          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
+                          <div className="w-20 h-20 rounded-full bg-[rgba(255,255,255,0.04)] flex items-center justify-center border-2 border-dashed border-[rgba(255,255,255,0.05)]">
                             <Upload className="w-6 h-6 text-muted-foreground" />
                           </div>
                         )}
@@ -1115,7 +1115,7 @@ const Companies = () => {
                     </div>
 
                     {/* Competitors */}
-                    <div className="border-t border-border pt-4">
+                    <div className="border-t border-[rgba(255,255,255,0.05)] pt-4">
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <Label className="text-base">Competitors</Label>

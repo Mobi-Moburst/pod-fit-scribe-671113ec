@@ -229,7 +229,7 @@ export const ReachAnalysisDialog = ({
                 {/* Cover Art */}
                 <div className="flex-shrink-0">
                   {isLoadingCoverArt ? (
-                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-md bg-[rgba(255,255,255,0.04)] flex items-center justify-center">
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     </div>
                   ) : coverArtUrl ? (
@@ -239,7 +239,7 @@ export const ReachAnalysisDialog = ({
                       className="w-16 h-16 rounded-md object-cover"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-md bg-[rgba(255,255,255,0.04)] flex items-center justify-center">
                       <Trophy className="h-6 w-6 text-muted-foreground" />
                     </div>
                   )}

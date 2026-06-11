@@ -61,7 +61,7 @@ export function AnglesPanel({ row, onClose }: Props) {
 
   return (
     <Card className="card-surface h-full flex flex-col">
-      <div className="flex items-start justify-between gap-3 p-4 border-b border-border">
+      <div className="flex items-start justify-between gap-3 p-4 border-b border-[rgba(255,255,255,0.05)]">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold truncate">{row.show_name}</div>
           {row.host_name && (
@@ -91,7 +91,7 @@ export function AnglesPanel({ row, onClose }: Props) {
         ) : (
           <>
             {angles.map((a, i) => (
-              <div key={a.id} className="rounded-lg border border-border p-3 space-y-2">
+              <div key={a.id} className="rounded-lg border border-[rgba(255,255,255,0.05)] p-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-xs font-mono text-muted-foreground">#{i + 1}</span>
                   <div className="flex gap-1">

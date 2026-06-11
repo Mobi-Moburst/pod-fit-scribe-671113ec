@@ -299,7 +299,7 @@ export default function DemoPublicReport() {
         {visibleSections.contentGapRecommendations && 
          reportData.content_gap_analysis?.ai_recommendations && 
          reportData.content_gap_analysis.ai_recommendations.length > 0 && (
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <Card className="border-[rgba(255,255,255,0.05)] ">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
@@ -308,7 +308,7 @@ export default function DemoPublicReport() {
             </CardHeader>
             <CardContent className="space-y-4">
               {reportData.content_gap_analysis.ai_recommendations.map((rec, index) => (
-                <div key={index} className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-2">
+                <div key={index} className="p-4 rounded-lg bg-muted/30 border border-[rgba(255,255,255,0.05)] space-y-2">
                   <div className="flex items-start justify-between gap-4">
                     <h4 className="font-medium">{rec.title}</h4>
                     <Badge 

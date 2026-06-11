@@ -42,7 +42,7 @@ const STATUS_LABELS: Record<string, { label: string; tone: string }> = {
   'pitched-elsewhere': { label: 'Pitched', tone: 'bg-amber-500/10 text-amber-500 border-amber-500/30' },
   'sent-to-hubspot': { label: 'In HubSpot', tone: 'bg-orange-500/10 text-orange-500 border-orange-500/30' },
   booked: { label: 'Booked', tone: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' },
-  passed: { label: 'Passed', tone: 'bg-muted text-muted-foreground border-border' },
+  passed: { label: 'Passed', tone: 'bg-[rgba(255,255,255,0.04)] text-muted-foreground border-[rgba(255,255,255,0.05)]' },
 };
 
 export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
@@ -103,7 +103,7 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
             key={r.id}
             onClick={() => onSelect(r.id)}
             className={cn(
-              'card-surface p-3 cursor-pointer transition-colors hover:bg-muted/30',
+              'card-surface p-3 cursor-pointer transition-colors hover:bg-[rgba(255,255,255,0.06)]',
               selected && 'border-primary/40 bg-muted/30',
               r.status === 'passed' && 'opacity-60'
             )}
@@ -112,7 +112,7 @@ export function ShortlistTab({ rows, selectedId, onSelect, onChanged }: Props) {
               {r.cover_art_url ? (
                 <img src={r.cover_art_url} alt={r.show_name} className="h-12 w-12 rounded-md object-cover flex-shrink-0" />
               ) : (
-                <div className="h-12 w-12 rounded-md bg-muted flex-shrink-0" />
+                <div className="h-12 w-12 rounded-md bg-[rgba(255,255,255,0.04)] flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">

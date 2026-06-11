@@ -40,7 +40,7 @@ export function IntegrationCard({ to, icon: Icon, title, description, status, me
         <CardContent className="p-5 flex flex-col h-full gap-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="h-9 w-9 rounded-md border border-border flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-md border border-[rgba(255,255,255,0.05)] flex items-center justify-center shrink-0">
                 <Icon className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
               </div>
               <div className="min-w-0">
@@ -53,7 +53,7 @@ export function IntegrationCard({ to, icon: Icon, title, description, status, me
             <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors mt-1 shrink-0" />
           </div>
           <p className="text-xs text-muted-foreground">{description}</p>
-          {meta && <p className="text-xs text-muted-foreground/80 mt-auto pt-2 border-t border-border/50">{meta}</p>}
+          {meta && <p className="text-xs text-muted-foreground/80 mt-auto pt-2 border-t border-[rgba(255,255,255,0.05)]">{meta}</p>}
         </CardContent>
       </Card>
     </Link>

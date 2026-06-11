@@ -48,7 +48,7 @@ export const NextQuarterSlide = ({ strategy, reportEndDate }: NextQuarterSlidePr
           
           {/* Intro */}
           {strategy.intro_paragraph && (
-            <div className="bg-card/50 border border-border/50 rounded-2xl p-6 backdrop-blur-sm">
+            <div className="bg-card/50 border border-[rgba(255,255,255,0.05)] rounded-2xl p-6 backdrop-blur-sm">
               <MarkdownRenderer 
                 content={strategy.intro_paragraph} 
                 className="text-lg text-muted-foreground leading-relaxed text-center max-w-3xl mx-auto" 
@@ -120,7 +120,7 @@ export const NextQuarterSlide = ({ strategy, reportEndDate }: NextQuarterSlidePr
                 {strategy.strategic_focus_areas.slice(0, 4).map((area, index) => (
                   <div 
                     key={index}
-                    className="group bg-card border border-border hover:border-primary/30 rounded-xl p-5 space-y-2 transition-all duration-300"
+                    className="group bg-card border border-[rgba(255,255,255,0.05)] hover:border-primary/30 rounded-xl p-5 space-y-2 transition-all duration-300"
                   >
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
@@ -188,7 +188,7 @@ export const NextQuarterSlide = ({ strategy, reportEndDate }: NextQuarterSlidePr
 
           {/* Closing */}
           {strategy.closing_paragraph && (
-            <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 border border-border/50 rounded-2xl p-6 text-center">
+            <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 border border-[rgba(255,255,255,0.05)] rounded-2xl p-6 text-center">
               <MarkdownRenderer 
                 content={strategy.closing_paragraph} 
                 className="text-muted-foreground leading-relaxed italic max-w-3xl mx-auto" 

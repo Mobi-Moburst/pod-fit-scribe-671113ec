@@ -287,7 +287,7 @@ export function NextQuarterEditDialog({
             </div>
 
             {/* Talking Points Section - with tabs for multi-speaker */}
-            <div className="space-y-3 pt-4 border-t border-border">
+            <div className="space-y-3 pt-4 border-t border-[rgba(255,255,255,0.05)]">
               <div className="flex items-center justify-between">
                 <Label className="text-base font-semibold">Talking Points Spotlight</Label>
               </div>
@@ -437,7 +437,7 @@ export function NextQuarterEditDialog({
             </div>
 
             {/* Next Quarter KPIs */}
-            <div className="space-y-4 pt-4 border-t border-border">
+            <div className="space-y-4 pt-4 border-t border-[rgba(255,255,255,0.05)]">
               <Label className="text-base font-semibold">Next Quarter Goals</Label>
               
               {/* High-Impact Podcasts Section */}
@@ -456,7 +456,7 @@ export function NextQuarterEditDialog({
                 
                 {/* Per-Speaker Breakdown */}
                 {isMultiSpeaker && (
-                  <div className="space-y-2 pt-2 border-t border-border">
+                  <div className="space-y-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm">Per-Speaker Breakdown</Label>
                       <Button 
@@ -581,7 +581,7 @@ export function NextQuarterEditDialog({
                     </div>
                     
                     {/* Listenership Breakdown Metrics */}
-                    <div className="space-y-3 pt-2 border-t border-border">
+                    <div className="space-y-3 pt-2 border-t border-[rgba(255,255,255,0.05)]">
                       <Label className="text-sm font-medium">Goal Metrics</Label>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -619,7 +619,7 @@ export function NextQuarterEditDialog({
                     </div>
 
                     {/* Current Quarter Baseline */}
-                    <div className="space-y-3 pt-2 border-t border-border">
+                    <div className="space-y-3 pt-2 border-t border-[rgba(255,255,255,0.05)]">
                       <Label className="text-sm font-medium">Current Quarter Baseline</Label>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">

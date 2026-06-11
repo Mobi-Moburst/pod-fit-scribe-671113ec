@@ -35,7 +35,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-card border border-border rounded-lg px-4 py-3 shadow-lg">
+      <div className="bg-card border border-[rgba(255,255,255,0.05)] rounded-lg px-4 py-3 shadow-lg">
         <p className="font-semibold text-foreground">{data.name}</p>
         <p className="text-muted-foreground">
           <span className="text-foreground font-medium">{data.value}</span> interviews
@@ -70,13 +70,13 @@ const CompetitorInfoCard = ({ competitor }: { competitor: {
       </div>
       
       {competitor.peer_reason && (
-        <div className="bg-muted/50 rounded-md p-3">
+        <div className="bg-[rgba(18,20,24,0.5)] rounded-md p-3">
           <p className="text-xs text-muted-foreground mb-1">Peer Reason</p>
           <p className="text-sm text-foreground">{competitor.peer_reason}</p>
         </div>
       )}
       
-      <div className="flex items-center justify-between pt-2 border-t border-border">
+      <div className="flex items-center justify-between pt-2 border-t border-[rgba(255,255,255,0.05)]">
         <div>
           <span className="text-lg font-bold text-foreground">{competitor.interview_count}</span>
           <span className="text-sm text-muted-foreground ml-1">interviews</span>
@@ -97,7 +97,7 @@ const CompetitorInfoCard = ({ competitor }: { competitor: {
 
       {/* Episode details */}
       {competitor.episodes && competitor.episodes.length > 0 ? (
-        <div className="border-t border-border pt-3">
+        <div className="border-t border-[rgba(255,255,255,0.05)] pt-3">
           <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
             <Mic className="h-3 w-3" />
             Episode Details
@@ -126,7 +126,7 @@ const CompetitorInfoCard = ({ competitor }: { competitor: {
           </ScrollArea>
         </div>
       ) : competitor.episode_urls && competitor.episode_urls.length > 0 ? (
-        <div className="border-t border-border pt-3">
+        <div className="border-t border-[rgba(255,255,255,0.05)] pt-3">
           <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
             <ExternalLink className="h-3 w-3" />
             Episode Links
@@ -139,7 +139,7 @@ const CompetitorInfoCard = ({ competitor }: { competitor: {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-xs text-primary hover:underline bg-muted/30 rounded-md px-2.5 py-2 transition-colors hover:bg-muted/50"
+                  className="flex items-center gap-2 text-xs text-primary hover:underline bg-muted/30 rounded-md px-2.5 py-2 transition-colors hover:bg-[rgba(18,20,24,0.5)]"
                 >
                   <ExternalLink className="h-3 w-3 shrink-0" />
                   <span className="truncate">{url}</span>
@@ -149,7 +149,7 @@ const CompetitorInfoCard = ({ competitor }: { competitor: {
           </ScrollArea>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground/60 italic border-t border-border pt-2">
+        <p className="text-xs text-muted-foreground/60 italic border-t border-[rgba(255,255,255,0.05)] pt-2">
           Episode details unavailable — data entered manually or Podchaser plan limited.
         </p>
       )}
@@ -263,7 +263,7 @@ export const SOVChartDialog = ({ open, onOpenChange, sovAnalysis, clientName, da
             return (
               <Popover key={index} open={activeCompetitor === entry.value} onOpenChange={(open) => setActiveCompetitor(open ? entry.value : null)}>
                 <PopoverTrigger asChild>
-                  <button className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-muted/50 transition-colors cursor-pointer border border-transparent hover:border-border">
+                  <button className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-[rgba(18,20,24,0.5)] transition-colors cursor-pointer border border-transparent hover:border-[rgba(255,255,255,0.05)]">
                     <div 
                       className="w-3 h-3 rounded-full" 
                       style={{ backgroundColor: entry.color }}

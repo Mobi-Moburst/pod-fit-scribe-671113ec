@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 import { KitcasterLogo } from "@/components/KitcasterLogo";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,11 +28,13 @@ export const Navbar = () => {
   });
 
   return (
-    <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
-      <div className="container mx-auto flex items-center justify-between h-14 px-3">
-        <Link to="/" className="flex items-center gap-2">
-          <KitcasterLogo className="h-8 w-auto" />
-          <span className="font-semibold">Kitcaster Campaign Command Center</span>
+    <header className="sticky top-0 z-40 h-[64px] bg-[rgba(11,12,16,0.5)] backdrop-blur-[60px] border-b border-[rgba(255,255,255,0.06)]">
+      <div className="container mx-auto flex items-center justify-between h-full px-4">
+        <Link to="/" className="flex items-center gap-3">
+          <KitcasterLogo className="h-10 w-auto" />
+          <span className="font-bold tracking-[-0.5px] text-white hidden md:inline">
+            Kitcaster Campaign Command Center
+          </span>
         </Link>
 
         <nav className="flex items-center gap-1">
@@ -45,9 +46,12 @@ export const Navbar = () => {
             return (
               <Link key={t.to} to={t.to} className="hidden sm:block">
                 <Button
-                  variant={isActive ? "soft" : "ghost"}
+                  variant="ghost"
                   size="sm"
-                  className={cn("rounded-full", isActive && "border")}
+                  className={cn(
+                    "rounded-[12px] text-[14px] tracking-[-0.5px]",
+                    isActive && "nav-active text-white"
+                  )}
                   aria-current={isActive ? "page" : undefined}
                 >
                   {t.label}
@@ -58,14 +62,16 @@ export const Navbar = () => {
         </nav>
 
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           {user && (
             <>
               <Link to="/settings">
                 <Button
-                  variant={pathname === "/settings" ? "soft" : "ghost"}
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground"
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "rounded-full h-[40px] w-[40px] text-[#9ca3af] hover:text-white",
+                    (pathname === "/settings" || pathname.startsWith("/settings/")) && "nav-active text-white"
+                  )}
                   title="Settings"
                 >
                   <Settings className="h-4 w-4" />
@@ -73,9 +79,9 @@ export const Navbar = () => {
               </Link>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={() => signOut()}
-                className="text-muted-foreground hover:text-foreground"
+                className="rounded-full h-[40px] w-[40px] text-[#9ca3af] hover:text-white"
                 title={`Sign out (${user.email})`}
               >
                 <LogOut className="h-4 w-4" />

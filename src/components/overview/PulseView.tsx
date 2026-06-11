@@ -635,7 +635,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
                 {backlogged.map((r) => (
                   <TableRow
                     key={r.client}
-                    className="cursor-pointer hover:bg-muted/40"
+                    className="cursor-pointer hover:bg-[rgba(255,255,255,0.06)]"
                     onClick={() => setSelectedBacklog(r as BacklogRow)}
                   >
                     <TableCell className="font-medium">{r.client}</TableCell>
@@ -730,13 +730,13 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
                     key={r.industry}
                     type="button"
                     onClick={() => setOpenIndustry(r.industry)}
-                    className="w-full text-left space-y-1 rounded-md p-1 -m-1 hover:bg-muted/40 transition-colors"
+                    className="w-full text-left space-y-1 rounded-md p-1 -m-1 hover:bg-[rgba(255,255,255,0.06)] transition-colors"
                   >
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{r.industry}</span>
                       <span className="text-muted-foreground tabular-nums">{r.count}</span>
                     </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-[rgba(255,255,255,0.04)] rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary"
                         style={{ width: `${(r.count / max) * 100}%` }}
@@ -809,7 +809,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
               return (
                 <div
                   key={r.client}
-                  className="border border-border rounded-md p-2.5 bg-card/50"
+                  className="border border-[rgba(255,255,255,0.05)] rounded-md p-2.5 bg-card/50"
                 >
                   <div className="text-sm font-medium truncate" title={r.client}>
                     {r.client}
@@ -826,7 +826,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
                       <span className={`text-xs tabular-nums ${pctTone(pct)}`}>{pct}%</span>
                     )}
                   </div>
-                  <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
+                  <div className="mt-1 h-1 bg-[rgba(255,255,255,0.04)] rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary"
                       style={{ width: `${Math.min(100, pct ?? (r.count > 0 ? 100 : 0))}%` }}
@@ -923,7 +923,7 @@ export function PulseView({ cmFilter, monthFilter = "current", syncSignal = 0 }:
               {leavingThisMonth.map((r) => (
                 <li
                   key={r.client}
-                  className="flex items-center justify-between text-sm border-b border-border/50 last:border-0 pb-1.5 last:pb-0"
+                  className="flex items-center justify-between text-sm border-b border-[rgba(255,255,255,0.05)] last:border-0 pb-1.5 last:pb-0"
                 >
                   <div className="min-w-0">
                     <div className="font-medium truncate">{r.client}</div>

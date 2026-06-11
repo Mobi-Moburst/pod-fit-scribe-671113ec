@@ -744,7 +744,7 @@ const Batch = () => {
                       "relative border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer",
                       isDragging 
                         ? "border-primary bg-primary/5" 
-                        : "border-muted-foreground/25 hover:border-primary/50",
+                        : "border-[rgba(255,255,255,0.05)]-foreground/25 hover:border-primary/50",
                       (!selectedSpeakerId || dataLoading) && "opacity-50 cursor-not-allowed"
                     )}
                   >
@@ -764,7 +764,7 @@ const Batch = () => {
                     >
                       {uploadedFileName ? (
                         <>
-                          <CheckCircle className="h-8 w-8 text-green-600" />
+                          <CheckCircle className="h-8 w-8 text-[#10b981]" />
                           <div className="text-center">
                             <p className="font-medium">{uploadedFileName}</p>
                             <p className="text-xs text-muted-foreground mt-1">

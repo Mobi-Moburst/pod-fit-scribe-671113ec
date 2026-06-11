@@ -104,7 +104,7 @@ export function AEOAuditHistory({ open, onOpenChange, companyId, companyName }: 
                         key={run.id}
                         onClick={() => setSelectedId(run.id)}
                         className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                          isSel ? "border-primary/50 bg-primary/5" : "border-border hover:bg-muted/40"
+                          isSel ? "border-primary/50 bg-primary/5" : "border-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.06)]"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -133,7 +133,7 @@ export function AEOAuditHistory({ open, onOpenChange, companyId, companyName }: 
 
                 {/* Diff vs previous */}
                 {selected && (
-                  <div className="space-y-3 pt-2 border-t border-border">
+                  <div className="space-y-3 pt-2 border-t border-[rgba(255,255,255,0.05)]">
                     <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {previous ? "Change vs previous run" : "Most recent run"}
                     </h4>
@@ -170,7 +170,7 @@ export function AEOAuditHistory({ open, onOpenChange, companyId, companyName }: 
                       <p className="text-xs font-medium text-muted-foreground">Top priority gaps</p>
                       <ul className="space-y-1.5">
                         {(selected.content_gap_analysis?.priority_prompts ?? []).slice(0, 5).map((p: any, i: number) => (
-                          <li key={i} className="text-xs p-2 rounded border border-border bg-muted/30">
+                          <li key={i} className="text-xs p-2 rounded border border-[rgba(255,255,255,0.05)] bg-muted/30">
                             <p className="font-medium">{p.prompt}</p>
                             <p className="text-muted-foreground mt-0.5">
                               {p.topic} · {p.stage}
@@ -212,7 +212,7 @@ function DeltaCard({
   suffix?: string;
 }) {
   return (
-    <div className="p-3 rounded-lg border border-border bg-card">
+    <div className="p-3 rounded-lg border border-[rgba(255,255,255,0.05)] bg-card">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-2xl font-semibold mt-1">
         {current}
@@ -223,7 +223,7 @@ function DeltaCard({
           delta.neutral
             ? "text-muted-foreground"
             : delta.positive
-            ? "text-green-500"
+            ? "text-[#10b981]"
             : "text-destructive"
         }`}>
           {delta.neutral ? <Minus className="h-3 w-3" /> : delta.positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}

@@ -105,7 +105,7 @@ export function CompanyKpiStrip({ companyId }: CompanyKpiStripProps) {
     <div className="px-4 pt-3 pb-2">
       {/* Window selector + refresh */}
       <div className="flex items-center justify-between mb-2">
-        <div className="inline-flex items-center gap-0.5 rounded-md border border-border/50 bg-muted/30 p-0.5">
+        <div className="inline-flex items-center gap-0.5 rounded-md border border-[rgba(255,255,255,0.05)] bg-muted/30 p-0.5">
           {WINDOW_OPTIONS.map((opt) => (
             <button
               key={opt.key}
@@ -123,7 +123,7 @@ export function CompanyKpiStrip({ companyId }: CompanyKpiStripProps) {
         </div>
         <button
           onClick={() => fetchKpis({ force: true })}
-          className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted/40"
+          className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-[rgba(255,255,255,0.06)]"
           title={
             kpis.computed_at
               ? `Updated ${new Date(kpis.computed_at).toLocaleTimeString()}${kpis.cached ? " (cached)" : ""}`
@@ -139,7 +139,7 @@ export function CompanyKpiStrip({ companyId }: CompanyKpiStripProps) {
         {items.map(({ label, value, icon: Icon, tint, iconClass }) => (
           <div
             key={label}
-            className={`relative overflow-hidden rounded-lg border border-border/50 bg-gradient-to-b ${tint} bg-card/40 px-2.5 py-2`}
+            className={`relative overflow-hidden rounded-lg border border-[rgba(255,255,255,0.05)] bg-gradient-to-b ${tint} bg-card/40 px-2.5 py-2`}
           >
             <Icon className={`h-3.5 w-3.5 ${iconClass} mb-1`} />
             <div className="text-base font-semibold tabular-nums leading-none tracking-tight">

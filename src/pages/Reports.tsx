@@ -2043,7 +2043,7 @@ export default function Reports() {
           {/* All Saved Reports Section */}
           {allReports.length > 0 && (
             <Collapsible open={allReportsExpanded} onOpenChange={setAllReportsExpanded}>
-              <Card className="print:hidden border-border/60 shadow-none">
+              <Card className="print:hidden border-[rgba(255,255,255,0.05)] ">
                 <CardHeader className="pb-3">
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center justify-between cursor-pointer">
@@ -2118,7 +2118,7 @@ export default function Reports() {
                               <TableCell>
                                 {report.is_published ? (
                                   <div className="flex items-center gap-2">
-                                    <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
+                                    <Badge variant="default" className="bg-[#10b981]/20 text-[#10b981] border-[rgba(16,185,129,0.3)]">
                                       <Globe className="h-3 w-3 mr-1" />
                                       Published
                                     </Badge>
@@ -2294,7 +2294,7 @@ export default function Reports() {
 
 
           {/* Generate Report Section */}
-          <Card className="print:hidden border-border/60 shadow-none">
+          <Card className="print:hidden border-[rgba(255,255,255,0.05)] ">
             <CardHeader>
               <CardTitle className="text-[15px] font-semibold tracking-tight">Generate Client Report</CardTitle>
               <CardDescription>
@@ -2311,7 +2311,7 @@ export default function Reports() {
                   /* Collapsed: show selected company as a compact chip */
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-primary bg-primary/5 flex-1">
-                      <div className="w-6 h-6 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
+                      <div className="w-6 h-6 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)]">
                         {selectedCompany.logo_url ? (
                           <img src={selectedCompany.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
                         ) : (
@@ -2349,7 +2349,7 @@ export default function Reports() {
                           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                             !selectedCampaignManager
                               ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                              : 'bg-[rgba(255,255,255,0.04)] text-muted-foreground hover:bg-[rgba(255,255,255,0.06)]'
                           }`}
                         >
                           All
@@ -2362,7 +2362,7 @@ export default function Reports() {
                             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                               selectedCampaignManager === manager
                                 ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                : 'bg-[rgba(255,255,255,0.04)] text-muted-foreground hover:bg-[rgba(255,255,255,0.06)]'
                             }`}
                           >
                             {manager}
@@ -2395,9 +2395,9 @@ export default function Reports() {
                               setSpeakerSyncedData({});
                               setIsMultiSpeakerMode(false);
                             }}
-                            className="flex items-center gap-2.5 p-3 rounded-lg border border-border/60 hover:border-border hover:shadow-sm bg-card text-left transition-all"
+                            className="flex items-center gap-2.5 p-3 rounded-lg border border-[rgba(255,255,255,0.05)] hover:border-[rgba(255,255,255,0.05)] hover:shadow-sm bg-card text-left transition-all"
                           >
-                            <div className="w-8 h-8 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
+                            <div className="w-8 h-8 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)]">
                               {company.logo_url ? (
                                 <img src={company.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
                               ) : (
@@ -2432,7 +2432,7 @@ export default function Reports() {
                         <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-primary bg-primary/5 flex-1">
                           <Avatar className="w-6 h-6">
                             <AvatarImage src={selectedSpeaker.headshot_url || undefined} alt={selectedSpeaker.name} />
-                            <AvatarFallback className="text-[10px] bg-muted">
+                            <AvatarFallback className="text-[10px] bg-[rgba(255,255,255,0.04)]">
                               {selectedSpeaker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -2509,7 +2509,7 @@ export default function Reports() {
                               className={`flex items-center gap-3 w-full p-2.5 rounded-lg border text-left transition-all ${
                                 isSelected
                                   ? 'border-primary bg-primary/5'
-                                  : 'border-transparent hover:bg-muted/50'
+                                  : 'border-transparent hover:bg-[rgba(18,20,24,0.5)]'
                               }`}
                             >
                               {isMultiSpeakerMode && (
@@ -2517,7 +2517,7 @@ export default function Reports() {
                               )}
                               <Avatar className="w-7 h-7">
                                 <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
-                                <AvatarFallback className="text-[10px] bg-muted">
+                                <AvatarFallback className="text-[10px] bg-[rgba(255,255,255,0.04)]">
                                   {speaker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
@@ -2613,12 +2613,12 @@ export default function Reports() {
                         const hasAirtableData = !!syncedData;
                         
                         return (
-                          <div key={speakerId} className="border border-border/60 rounded-lg p-3 space-y-2">
+                          <div key={speakerId} className="border border-[rgba(255,255,255,0.05)] rounded-lg p-3 space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium">{speaker?.name}</span>
                                 {hasAirtableData ? (
-                                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                                  <span className="w-2 h-2 rounded-full bg-[#10b981]" />
                                 ) : (
                                   <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
                                 )}
@@ -2662,8 +2662,8 @@ export default function Reports() {
                         </Badge>
                       </div>
                       {airtableSyncedData ? (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                          <Check className="h-4 w-4 text-green-500 shrink-0" />
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[rgba(16,185,129,0.3)] bg-[#10b981]/5">
+                          <Check className="h-4 w-4 text-[#10b981] shrink-0" />
                           <span className="text-sm font-medium flex-1">Airtable synced ({airtableSyncedData.length} records)</span>
                           <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setAirtableSyncedData(null)}>
                             <X className="h-3.5 w-3.5" />
@@ -2696,12 +2696,12 @@ export default function Reports() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Label className="text-xs font-medium">Rephonic Metrics</Label>
-                        <Badge variant="secondary" className="text-[10px] bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30">
+                        <Badge variant="secondary" className="text-[10px] bg-[#10b981]/20 text-[#b9e045] border-[rgba(16,185,129,0.3)]">
                           Auto
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                        <Check className="h-4 w-4 text-green-500 shrink-0" />
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[rgba(16,185,129,0.3)] bg-[#10b981]/5">
+                        <Check className="h-4 w-4 text-[#10b981] shrink-0" />
                         <span className="text-sm flex-1 text-muted-foreground">
                           Listener &amp; reach metrics will be fetched automatically from the Rephonic API during report generation.
                         </span>
@@ -2729,10 +2729,10 @@ export default function Reports() {
                                   const speaker = speakers.find(s => s.id === speakerId);
                                   const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
                                   return (
-                                    <div key={speakerId} className="border border-border/60 rounded-lg p-3 space-y-1.5">
+                                    <div key={speakerId} className="border border-[rgba(255,255,255,0.05)] rounded-lg p-3 space-y-1.5">
                                       <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium">{speaker?.name}</span>
-                                        {files.batchFile && <span className="w-2 h-2 rounded-full bg-green-500" />}
+                                        {files.batchFile && <span className="w-2 h-2 rounded-full bg-[#10b981]" />}
                                       </div>
                                       <Input
                                         type="file"
@@ -2763,9 +2763,9 @@ export default function Reports() {
                   {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
                     <div className="pt-3 pb-1">
                       {reportData ? (
-                        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-4 py-3">
-                          <Check className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
-                          <span className="text-sm font-medium text-green-700 dark:text-green-300">Report generated — scroll down to view, or add optional data below and click Update Report</span>
+                        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-[rgba(16,185,129,0.08)] dark:border-green-900 dark:bg-green-950/30 px-4 py-3">
+                          <Check className="h-5 w-5 text-[#b9e045] shrink-0" />
+                          <span className="text-sm font-medium text-[#10b981] dark:text-green-300">Report generated — scroll down to view, or add optional data below and click Update Report</span>
                         </div>
                       ) : (
                         <>
@@ -2818,7 +2818,7 @@ export default function Reports() {
                           </p>
                           {competitorInterviews.map((comp, index) => (
                             <div key={index} className="space-y-1.5">
-                              <div className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
+                              <div className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-[rgba(255,255,255,0.05)]">
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-xs truncate">{comp.name}</p>
                                   <p className="text-[11px] text-muted-foreground truncate">{comp.role}</p>
@@ -2957,7 +2957,7 @@ export default function Reports() {
 
                   {/* Step 4d: AEO Audit opt-in (replaces GEO + Content Gap CSVs) */}
                   {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
-                    <div className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/20">
+                    <div className="flex items-start gap-2 p-3 rounded-lg border border-[rgba(255,255,255,0.05)] bg-muted/20">
                       <Checkbox
                         id="run-aeo-after-generate"
                         checked={runAEOAfterGenerate}
@@ -3456,7 +3456,7 @@ export default function Reports() {
 
               {/* Interview Highlights */}
               {visibleSections.highlights && (
-                <Card className="relative group border-border/60 shadow-none">
+                <Card className="relative group border-[rgba(255,255,255,0.05)] ">
                   <button
                     onClick={() => toggleSection('highlights')}
                     className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
@@ -3528,7 +3528,7 @@ export default function Reports() {
 
               {/* Top Categories */}
               {visibleSections.topCategories && reportData.kpis.top_categories.length > 0 && (
-                <Card className="relative group border-border/60 shadow-none">
+                <Card className="relative group border-[rgba(255,255,255,0.05)] ">
                   <button
                     onClick={() => toggleSection('topCategories')}
                     className="absolute top-4 right-12 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
@@ -3776,7 +3776,7 @@ export default function Reports() {
               )}
 
               {/* Save Report Section - at bottom after all report content */}
-              <Card className="print:hidden border-border/60 shadow-none">
+              <Card className="print:hidden border-[rgba(255,255,255,0.05)] ">
                 <CardHeader>
                   <CardTitle className="text-[15px] font-semibold tracking-tight">Save Report</CardTitle>
                   <CardDescription>Save this report for future reference</CardDescription>

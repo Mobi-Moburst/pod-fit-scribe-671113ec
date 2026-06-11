@@ -114,7 +114,7 @@ export default function Showcase() {
   return (
     <main className="min-h-screen bg-background text-foreground antialiased">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border/60">
+      <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-[rgba(255,255,255,0.05)]">
         <div className="container mx-auto flex items-center justify-between h-14 px-4">
           <Link to="/showcase" className="flex items-center gap-2">
             <KitcasterLogo className="h-7 w-auto" />
@@ -191,7 +191,7 @@ export default function Showcase() {
             ].map(({ icon: Icon, label }) => (
               <div
                 key={label}
-                className="rounded-xl border border-border/60 bg-card/60 px-4 py-3 flex items-center gap-3"
+                className="rounded-xl border border-[rgba(255,255,255,0.05)] bg-card/60 px-4 py-3 flex items-center gap-3"
               >
                 <div className="rounded-lg bg-muted/60 p-2">
                   <Icon className="h-4 w-4 text-muted-foreground" />
@@ -204,7 +204,7 @@ export default function Showcase() {
       </section>
 
       {/* Three layers */}
-      <section className="border-t border-border/60">
+      <section className="border-t border-[rgba(255,255,255,0.05)]">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-6xl">
           <div className="max-w-3xl mb-16">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-4">
@@ -222,7 +222,7 @@ export default function Showcase() {
             {layers.map((layer, i) => (
               <div
                 key={layer.label}
-                className="rounded-2xl border border-border/60 bg-card p-6 flex flex-col"
+                className="rounded-2xl border border-[rgba(255,255,255,0.05)] bg-card p-6 flex flex-col"
               >
                 <div className="flex items-center gap-2 mb-6">
                   <div className="rounded-lg bg-muted/60 p-2">
@@ -249,7 +249,7 @@ export default function Showcase() {
       </section>
 
       {/* Demo embed */}
-      <section className="border-t border-border/60 bg-muted/20">
+      <section className="border-t border-[rgba(255,255,255,0.05)] bg-muted/20">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-6xl">
           <div className="max-w-3xl mb-12">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-4">
@@ -267,7 +267,7 @@ export default function Showcase() {
           <div className="relative">
             <Link
               to="/demo/report/public"
-              className="group block rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-border transition-colors"
+              className="group block rounded-2xl border border-[rgba(255,255,255,0.05)] bg-card overflow-hidden hover:border-[rgba(255,255,255,0.05)] transition-colors"
             >
               <div className="aspect-[16/9] relative bg-gradient-to-br from-background via-card to-muted/30 flex items-center justify-center">
                 <div className="absolute inset-0 bg-[radial-gradient(40%_50%_at_50%_50%,hsl(var(--primary)/0.12),transparent_70%)]" />
@@ -282,7 +282,7 @@ export default function Showcase() {
                   ].map((k) => (
                     <div
                       key={k.label}
-                      className="rounded-xl border border-border/60 bg-background/80 backdrop-blur p-4"
+                      className="rounded-xl border border-[rgba(255,255,255,0.05)] bg-background/80 backdrop-blur p-4"
                     >
                       <div className="text-xs text-muted-foreground">{k.label}</div>
                       <div className="text-2xl font-semibold tracking-tight mt-1">{k.value}</div>
@@ -290,7 +290,7 @@ export default function Showcase() {
                   ))}
                 </div>
               </div>
-              <div className="flex items-center justify-between px-6 py-5 border-t border-border/60">
+              <div className="flex items-center justify-between px-6 py-5 border-t border-[rgba(255,255,255,0.05)]">
                 <div>
                   <div className="text-sm font-medium">Open the full interactive report</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
@@ -305,7 +305,7 @@ export default function Showcase() {
       </section>
 
       {/* Differentiators */}
-      <section className="border-t border-border/60">
+      <section className="border-t border-[rgba(255,255,255,0.05)]">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-6xl">
           <div className="max-w-3xl mb-16">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-4">
@@ -320,7 +320,7 @@ export default function Showcase() {
             {differentiators.map((d, i) => (
               <div
                 key={d.title}
-                className="rounded-2xl border border-border/60 bg-card p-6"
+                className="rounded-2xl border border-[rgba(255,255,255,0.05)] bg-card p-6"
               >
                 <div className="rounded-lg bg-muted/60 p-2 w-fit">
                   <d.icon className="h-4 w-4 text-muted-foreground" />
@@ -334,7 +334,7 @@ export default function Showcase() {
       </section>
 
       {/* Trust strip */}
-      <section className="border-t border-border/60 bg-muted/20">
+      <section className="border-t border-[rgba(255,255,255,0.05)] bg-muted/20">
         <div className="container mx-auto px-4 py-20 max-w-4xl text-center">
           <p
             className="text-2xl md:text-3xl font-medium tracking-tight text-balance"
@@ -347,7 +347,7 @@ export default function Showcase() {
       </section>
 
       {/* CTA */}
-      <section className="border-t border-border/60">
+      <section className="border-t border-[rgba(255,255,255,0.05)]">
         <div className="container mx-auto px-4 py-24 md:py-32 max-w-4xl text-center">
           <h2 className="text-3xl md:text-5xl font-semibold tracking-tight">
             Ready to see your campaign this way?
@@ -377,7 +377,7 @@ export default function Showcase() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/60">
+      <footer className="border-t border-[rgba(255,255,255,0.05)]">
         <div className="container mx-auto px-4 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 opacity-70">
             <KitcasterLogo className="h-6 w-auto" />

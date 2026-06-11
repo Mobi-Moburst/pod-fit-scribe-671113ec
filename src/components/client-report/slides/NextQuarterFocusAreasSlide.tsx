@@ -25,7 +25,7 @@ export const NextQuarterFocusAreasSlide = ({ strategy }: NextQuarterFocusAreasSl
         {strategy.strategic_focus_areas.slice(0, 4).map((area, index) => (
           <div
             key={index}
-            className="group bg-card border border-border hover:border-primary/30 rounded-xl p-5 space-y-2 transition-all duration-300"
+            className="group bg-card border border-[rgba(255,255,255,0.05)] hover:border-primary/30 rounded-xl p-5 space-y-2 transition-all duration-300"
           >
             <div className="flex items-start gap-3">
               <div className="p-2 bg-primary/10 rounded-lg mt-0.5">

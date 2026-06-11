@@ -267,7 +267,7 @@ const Research = () => {
                       <button
                         key={t.id}
                         onClick={() => setLegacyActive(t)}
-                        className="w-full flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-left hover:bg-muted/40 transition-colors"
+                        className="w-full flex items-start gap-2 rounded-md border border-[rgba(255,255,255,0.05)] bg-card px-3 py-2 text-left hover:bg-[rgba(255,255,255,0.06)] transition-colors"
                       >
                         <Icon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
                         <div className="flex-1 min-w-0">
@@ -349,7 +349,7 @@ const Research = () => {
       {/* Legacy tool modal */}
       <Dialog open={!!legacyActive} onOpenChange={(open) => !open && setLegacyActive(null)}>
         <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] p-0 gap-0 flex flex-col">
-          <DialogHeader className="px-6 py-3 border-b border-border shrink-0">
+          <DialogHeader className="px-6 py-3 border-b border-[rgba(255,255,255,0.05)] shrink-0">
             <DialogTitle className="text-base">{legacyActive?.label}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-hidden bg-background">

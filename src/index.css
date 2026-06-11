@@ -1,189 +1,216 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+Pro:wght@400;600;700&display=swap');
+@import url("https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css");
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Design System — All colors must be HSL variables. */
+/* ============================================================
+   Moburst "Intercept" liquid glass design system
+   Dark-only. Glass frosts against /images/bg-main.svg.
+   ============================================================ */
 
 @layer base {
-  :root {
+  :root, .dark {
     /* Typography */
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+    --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif;
     --font-serif: 'Source Serif Pro', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
 
-    /* Light theme (used when .dark is not set) */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 5%;
-
-    --card: 0 0% 98%;
-    --card-foreground: 0 0% 5%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 5%;
-
-    --primary: 191 100% 55%; /* Cyan (darker for light bg) */
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
-
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-
-    --accent: 51 100% 55%; /* Yellow (darker for light bg) */
-    --accent-foreground: 0 0% 5%;
-
-    --destructive: 355 100% 65%; /* Coral */
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 191 100% 55%;
-
-    --radius: 1rem; /* rounded-2xl vibe */
-
-    /* Sidebar (light) */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 191 100% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 191 100% 55%;
-
-    /* Extras */
-    --brand: 191 100% 62%; /* Moburst cyan */
-    --brand-glow: 191 100% 72%;
-    --yellow: 51 100% 61%; /* Moburst yellow */
-
-    --gradient-primary: linear-gradient(135deg, hsl(191 100% 62%), hsl(51 100% 61%));
-    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 100% 62% / 0.12), transparent 60%);
-    --shadow-elevated: 0 10px 30px -10px hsl(191 100% 62% / 0.25);
-    --transition-smooth: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Dark theme (default) */
-  .dark {
-    --background: 0 0% 5%;  /* #0c0c0c Moburst black */
-    --foreground: 0 0% 100%;  /* #ffffff pure white */
-
-    --card: 0 0% 8%;       /* slightly lighter than bg */
+    --background: 228 23% 5%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 0%;
     --card-foreground: 0 0% 100%;
-
-    --popover: 0 0% 8%;
+    --popover: 224 18% 8%;
     --popover-foreground: 0 0% 100%;
-
-    --primary: 191 100% 62%; /* #3bd4ff Moburst cyan */
-    --primary-foreground: 0 0% 5%;
-
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 70%;
-
-    --accent: 51 100% 61%; /* #ffe43a Moburst yellow */
-    --accent-foreground: 0 0% 5%;
-
-    --destructive: 355 100% 70%; /* #ff6671 Moburst coral */
+    --primary: 72 75% 57%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 220 12% 16%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 222 10% 16%;
+    --muted-foreground: 218 11% 65%;
+    --accent: 222 10% 16%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 100%;
+    --input: 0 0% 100%;
+    --ring: 72 75% 57%;
+    --radius: 1.25rem;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 191 100% 62%;
-
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 191 100% 62%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-background: 228 23% 5%;
+    --sidebar-foreground: 218 11% 65%;
+    --sidebar-primary: 72 75% 57%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 220 12% 16%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 191 100% 62%;
+    --sidebar-border: 220 12% 14%;
+    --sidebar-ring: 72 75% 57%;
 
-    /* Gradient surface for dark mode - matches light mode but explicit */
-    --gradient-primary: linear-gradient(135deg, hsl(191 100% 62%), hsl(51 100% 61%));
-    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(191 100% 62% / 0.15), transparent 60%);
-    --shadow-elevated: 0 10px 30px -10px hsl(191 100% 62% / 0.25);
-  }
+    --chart-1: 72 75% 57%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 30 100% 55%;
+    --chart-4: 280 80% 60%;
+    --chart-5: 160 84% 39%;
 
-  /* 🦇 Bat Cave theme — activated via easter egg */
-  .batcave {
-    --background: 24 25% 8%;       /* Deep cave brown #1a1612 */
-    --foreground: 35 20% 88%;      /* Warm parchment white */
+    /* Brand accents (kept for legacy references) */
+    --brand: 72 75% 57%;
+    --brand-glow: 72 75% 67%;
+    --yellow: 72 75% 57%;
 
-    --card: 24 20% 11%;            /* Stone slab */
-    --card-foreground: 35 20% 88%;
-
-    --popover: 24 20% 11%;
-    --popover-foreground: 35 20% 88%;
-
-    --primary: 174 60% 45%;        /* Gemstone teal from bat wings */
-    --primary-foreground: 24 25% 8%;
-
-    --secondary: 24 15% 16%;       /* Darker cave stone */
-    --secondary-foreground: 35 20% 88%;
-
-    --muted: 24 15% 16%;
-    --muted-foreground: 35 10% 55%;
-
-    --accent: 38 80% 50%;          /* Warm torch amber */
-    --accent-foreground: 24 25% 8%;
-
-    --destructive: 0 65% 55%;      /* Red wing segment */
-    --destructive-foreground: 35 20% 88%;
-
-    --border: 24 15% 18%;          /* Stone crack lines */
-    --input: 24 15% 18%;
-    --ring: 174 60% 45%;
-
-    --sidebar-background: 24 20% 9%;
-    --sidebar-foreground: 35 20% 88%;
-    --sidebar-primary: 174 60% 45%;
-    --sidebar-primary-foreground: 24 25% 8%;
-    --sidebar-accent: 24 15% 16%;
-    --sidebar-accent-foreground: 35 20% 88%;
-    --sidebar-border: 24 15% 18%;
-    --sidebar-ring: 174 60% 45%;
-
-    --brand: 174 60% 45%;
-    --brand-glow: 174 70% 55%;
-    --yellow: 38 80% 50%;
-
-    --gradient-primary: linear-gradient(135deg, hsl(174 60% 45%), hsl(38 80% 50%));
-    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), hsl(38 80% 50% / 0.08), transparent 60%);
-    --shadow-elevated: 0 10px 30px -10px hsl(38 80% 50% / 0.2);
-  }
-
-  /* Bat Cave subtle texture on cards */
-  .batcave .card-surface,
-  .batcave [data-slot="card"] {
-    box-shadow: inset 0 1px 0 0 hsl(35 20% 88% / 0.04), 0 2px 8px -2px hsl(0 0% 0% / 0.4);
-    border-color: hsl(24 15% 20%);
-  }
-
-  /* Warm glow on hover for batcave cards */
-  .batcave .card-surface:hover,
-  .batcave [data-slot="card"]:hover {
-    box-shadow: inset 0 1px 0 0 hsl(35 20% 88% / 0.06), 0 4px 16px -4px hsl(38 80% 50% / 0.15);
+    --gradient-primary: linear-gradient(135deg, hsl(72 75% 57%), hsl(160 84% 39%));
+    --gradient-surface: radial-gradient(1200px 600px at var(--rx,50%) var(--ry,20%), rgba(185,224,69,0.08), transparent 60%);
+    --shadow-elevated: 0 16px 48px rgba(0,0,0,0.3);
+    --transition-smooth: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
 @layer base {
-  * { @apply border-border; }
+  * { border-color: rgba(255, 255, 255, 0.05); }
   html { font-family: var(--font-sans); }
-  body { @apply bg-background text-foreground antialiased; }
+  body {
+    background-color: #0b0c10;
+    color: #ffffff;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Intercept ambient background — applied globally so every page frosts. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background-image: url("/images/bg-main.svg");
+    background-size: cover;
+    background-position: center bottom;
+    opacity: 0.75;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 700px 600px at 8% 90%, rgba(185,224,69,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 500px 500px at 90% 10%, rgba(16,185,129,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 400px 400px at 50% 50%, rgba(139,92,246,0.03) 0%, transparent 70%);
+  }
 }
 
-/* Utility layers */
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+
 @layer components {
+  .intercept-bg {
+    position: relative;
+    background-color: #0b0c10;
+  }
+
+  /* Level 1 — Primary card */
+  .glass {
+    background: rgba(0, 0, 0, 0.20);
+    backdrop-filter: blur(60px) saturate(1.4);
+    -webkit-backdrop-filter: blur(60px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top-color: rgba(255, 255, 255, 0.14);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.04),
+      0 4px 4px rgba(0, 0, 0, 0.25),
+      0 16px 48px rgba(0, 0, 0, 0.3);
+    transition: box-shadow 250ms ease-out, border-color 250ms ease-out, transform 250ms ease-out;
+  }
+  .glass:hover {
+    border-top-color: rgba(255, 255, 255, 0.18);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.05),
+      0 4px 4px rgba(0, 0, 0, 0.25),
+      0 20px 60px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Level 2 — Inner surface */
+  .glass-inner {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-top-color: rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    transition: background 200ms ease-out, border-color 200ms ease-out;
+  }
+  .glass-inner:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.09);
+  }
+
+  /* Level 3 — Accent card (green gradient border) */
+  .glass-accent {
+    background: linear-gradient(135deg, rgba(185,224,69,0) 0%, rgba(0,0,0,0.8) 71%);
+    backdrop-filter: blur(60px) saturate(1.4);
+    -webkit-backdrop-filter: blur(60px) saturate(1.4);
+    border: 1px solid rgba(185, 224, 69, 0.45);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(185, 224, 69, 0.06), inset 0 1px 0 0 rgba(185, 224, 69, 0.12);
+  }
+  .glass-accent:hover {
+    border-color: rgba(185, 224, 69, 0.6);
+    box-shadow: 0 0 60px rgba(185, 224, 69, 0.1), inset 0 1px 0 0 rgba(185, 224, 69, 0.18);
+  }
+
+  /* Level 4 — Elevated surface */
+  .glass-elevated {
+    background: rgba(26, 29, 35, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-top-color: rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Input glass */
+  .input-glass {
+    background: rgba(21, 23, 28, 0.30);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-top-color: rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    transition: border-color 200ms ease-out, box-shadow 200ms ease-out;
+  }
+  .input-glass:focus, .input-glass:focus-within {
+    border-color: rgba(185, 224, 69, 0.35);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04), 0 0 0 2px rgba(185, 224, 69, 0.08);
+  }
+
+  /* Nav active */
+  .nav-active {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  }
+
+  /* Legacy helpers retained for compatibility */
   .card-surface {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius);
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04);
+    background: rgba(0, 0, 0, 0.20);
+    backdrop-filter: blur(60px) saturate(1.4);
+    -webkit-backdrop-filter: blur(60px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top-color: rgba(255, 255, 255, 0.14);
+    border-radius: 20px;
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+      0 16px 48px rgba(0, 0, 0, 0.3);
     transition: var(--transition-smooth);
   }
 
@@ -194,3 +221,27 @@
     color: transparent;
   }
 }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slideUp 500ms ease-out both; }
+.stagger-children > * { animation: slideUp 450ms ease-out both; }
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+.hover-lift { transition: transform 250ms ease-out, box-shadow 250ms ease-out; }
+.hover-lift:hover { transform: translateY(-2px); }
+.press-effect:active { transform: scale(0.97); }
+.hover-glow:hover { box-shadow: 0 0 24px rgba(185, 224, 69, 0.12); }

@@ -157,7 +157,7 @@ export function DiscoverTab({ speakerId, orgId, shortlistedNames, onShortlisted,
                     className="h-14 w-14 rounded-md object-cover flex-shrink-0"
                   />
                 ) : (
-                  <div className="h-14 w-14 rounded-md bg-muted flex-shrink-0" />
+                  <div className="h-14 w-14 rounded-md bg-[rgba(255,255,255,0.04)] flex-shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">

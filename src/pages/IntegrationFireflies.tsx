@@ -235,8 +235,8 @@ export default function IntegrationFireflies() {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : myConnection ? (
               <div className="space-y-4">
-                <div className="flex items-start gap-3 p-4 rounded-md border border-border bg-muted/30">
-                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                <div className="flex items-start gap-3 p-4 rounded-md border border-[rgba(255,255,255,0.05)] bg-muted/30">
+                  <CheckCircle2 className="h-5 w-5 text-[#10b981] mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm">
                       Connected as {myConnection.fireflies_name || myConnection.fireflies_email || "Unknown"}
@@ -291,7 +291,7 @@ export default function IntegrationFireflies() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-start gap-3 p-4 rounded-md border border-dashed border-border">
+                <div className="flex items-start gap-3 p-4 rounded-md border border-dashed border-[rgba(255,255,255,0.05)]">
                   <XCircle className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="flex-1">
                     <div className="font-medium text-sm">Not connected</div>

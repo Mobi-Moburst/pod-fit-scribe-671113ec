@@ -14,7 +14,7 @@ export const ClientReportTargetPodcasts = ({ podcasts }: ClientReportTargetPodca
         {podcasts.map((podcast, index) => (
           <div 
             key={index}
-            className="bg-card border border-border rounded-2xl p-6 space-y-4"
+            className="bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-6 space-y-4"
           >
             <div className="flex items-start gap-4">
               {podcast.cover_art_url ? (
@@ -26,7 +26,7 @@ export const ClientReportTargetPodcasts = ({ podcasts }: ClientReportTargetPodca
                   className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                <div className="w-16 h-16 rounded-xl bg-[rgba(255,255,255,0.04)] flex items-center justify-center flex-shrink-0">
                   <Mic className="h-8 w-8 text-muted-foreground" />
                 </div>
               )}

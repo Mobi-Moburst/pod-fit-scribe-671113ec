@@ -44,7 +44,7 @@ export const CategoriesSlide = ({ categories }: CategoriesSlideProps) => {
               onOpenChange={() => hasPodcasts && handleToggle(category.name)}
             >
               <CollapsibleTrigger 
-                className={`w-full text-left space-y-2 ${hasPodcasts ? 'cursor-pointer hover:bg-muted/30 -mx-3 px-3 py-2 rounded-xl transition-colors' : ''}`}
+                className={`w-full text-left space-y-2 ${hasPodcasts ? 'cursor-pointer hover:bg-[rgba(255,255,255,0.06)] -mx-3 px-3 py-2 rounded-xl transition-colors' : ''}`}
                 disabled={!hasPodcasts}
               >
                 <div className="flex items-center justify-between">
@@ -60,7 +60,7 @@ export const CategoriesSlide = ({ categories }: CategoriesSlideProps) => {
                   </div>
                   <span className="text-lg text-muted-foreground">{category.count}</span>
                 </div>
-                <div className="h-4 bg-muted rounded-full overflow-hidden">
+                <div className="h-4 bg-[rgba(255,255,255,0.04)] rounded-full overflow-hidden">
                   <div 
                     className="h-full rounded-full transition-all duration-700"
                     style={{ 
@@ -79,7 +79,7 @@ export const CategoriesSlide = ({ categories }: CategoriesSlideProps) => {
                         e.stopPropagation();
                         setOpenCategory(null);
                       }}
-                      className="absolute -top-1 right-0 p-1.5 rounded-full bg-muted hover:bg-muted/80 transition-colors z-10"
+                      className="absolute -top-1 right-0 p-1.5 rounded-full bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.06)] transition-colors z-10"
                       aria-label="Close"
                     >
                       <X className="h-4 w-4" />
@@ -91,7 +91,7 @@ export const CategoriesSlide = ({ categories }: CategoriesSlideProps) => {
                         href={podcast.apple_podcast_link || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-start gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors"
+                        className="flex items-start gap-3 p-3 rounded-xl bg-card border border-[rgba(255,255,255,0.05)] hover:bg-[rgba(18,20,24,0.5)] transition-colors"
                       >
                         {podcast.cover_art_url ? (
                           <img 
@@ -100,7 +100,7 @@ export const CategoriesSlide = ({ categories }: CategoriesSlideProps) => {
                             className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                          <div className="w-16 h-16 rounded-lg bg-[rgba(255,255,255,0.04)] flex items-center justify-center flex-shrink-0">
                             <span className="text-lg">🎙️</span>
                           </div>
                         )}

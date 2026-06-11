@@ -108,7 +108,7 @@ export function EditableNumber({
             stop(e);
             commit();
           }}
-          className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+          className="p-1 rounded-md hover:bg-[rgba(255,255,255,0.06)] text-muted-foreground hover:text-foreground"
           title="Save"
         >
           <Check className="h-4 w-4" />
@@ -119,7 +119,7 @@ export function EditableNumber({
             stop(e);
             cancel();
           }}
-          className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-destructive"
+          className="p-1 rounded-md hover:bg-[rgba(255,255,255,0.06)] text-muted-foreground hover:text-destructive"
           title="Cancel"
         >
           <X className="h-4 w-4" />
@@ -138,7 +138,7 @@ export function EditableNumber({
           setEditing(true);
         }}
         className={cn(
-          "opacity-40 hover:opacity-100 group-hover/edit:opacity-100 transition-opacity p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground print:hidden",
+          "opacity-40 hover:opacity-100 group-hover/edit:opacity-100 transition-opacity p-1 rounded-md hover:bg-[rgba(255,255,255,0.06)] text-muted-foreground hover:text-foreground print:hidden",
           iconClassName
         )}
         title="Edit value"

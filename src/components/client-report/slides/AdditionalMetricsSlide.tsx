@@ -127,7 +127,7 @@ export const AdditionalMetricsSlide = ({
             <Component
               key={index}
               onClick={metric.onClick}
-              className={`group bg-card border border-border rounded-3xl p-8 space-y-4 transition-all duration-200 text-left ${
+              className={`group bg-card border border-[rgba(255,255,255,0.05)] rounded-3xl p-8 space-y-4 transition-all duration-200 text-left ${
                 isClickable ? 'hover:scale-[1.03] hover:shadow-xl cursor-pointer' : ''
               }`}
             >

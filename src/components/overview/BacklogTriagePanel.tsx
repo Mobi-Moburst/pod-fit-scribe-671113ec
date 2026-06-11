@@ -191,7 +191,7 @@ export function BacklogTriagePanel({ row, open, onOpenChange }: Props) {
             <Stat label="Goal this mo." value={row.goal} tone={row.status === "backlog" ? "red" : "amber"} />
             <Stat label="Gap" value={row.gap} />
           </div>
-          <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          <div className="rounded-md border border-[rgba(255,255,255,0.05)] bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             {lastBookingDate ? (
               <>
                 Last booking:{" "}
@@ -217,7 +217,7 @@ export function BacklogTriagePanel({ row, open, onOpenChange }: Props) {
           </h3>
 
           {companyMissing ? (
-            <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
+            <div className="rounded-md border border-[rgba(255,255,255,0.05)] bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
               Couldn't link <span className="text-foreground">{row.client}</span> to a company record.
               <div className="mt-2">
                 <Button asChild size="sm" variant="outline" className="h-7 text-xs">
@@ -236,7 +236,7 @@ export function BacklogTriagePanel({ row, open, onOpenChange }: Props) {
               {speakers.map((s) => (
                 <li
                   key={s.id}
-                  className="flex items-center gap-3 rounded-md border border-border/60 bg-card px-3 py-2"
+                  className="flex items-center gap-3 rounded-md border border-[rgba(255,255,255,0.05)] bg-card px-3 py-2"
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={s.headshot_url || undefined} alt={s.name} />
@@ -305,7 +305,7 @@ function Stat({
       ? "text-amber-500"
       : "text-foreground";
   return (
-    <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+    <div className="rounded-md border border-[rgba(255,255,255,0.05)] bg-muted/20 px-3 py-2">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className={`text-base font-semibold tabular-nums ${color}`}>{value}</div>
     </div>

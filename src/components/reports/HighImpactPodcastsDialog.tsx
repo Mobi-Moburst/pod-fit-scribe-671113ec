@@ -93,7 +93,7 @@ export function HighImpactPodcastsDialog({
                 {speakerBreakdown.map((speaker, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-[rgba(18,20,24,0.5)] rounded-lg"
                   >
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-primary/10 rounded-full">

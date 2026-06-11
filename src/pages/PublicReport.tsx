@@ -477,13 +477,13 @@ export default function PublicReport() {
             </h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {reportData.content_gap_analysis.ai_recommendations.map((rec, idx) => (
-                <div key={idx} className="bg-card border border-border rounded-2xl p-6 space-y-3">
+                <div key={idx} className="bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-6 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="font-semibold text-sm">{rec.title}</h4>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       rec.priority === 'high' ? 'bg-destructive/15 text-destructive' :
                       rec.priority === 'medium' ? 'bg-accent/15 text-accent-foreground' :
-                      'bg-muted text-muted-foreground'
+                      'bg-[rgba(255,255,255,0.04)] text-muted-foreground'
                     }`}>
                       {rec.priority}
                     </span>
@@ -492,7 +492,7 @@ export default function PublicReport() {
                   {rec.related_topics.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {rec.related_topics.slice(0, 3).map((topic, i) => (
-                        <span key={i} className="text-xs px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+                        <span key={i} className="text-xs px-2 py-0.5 rounded-full border border-[rgba(255,255,255,0.05)] text-muted-foreground">
                           {topic}
                         </span>
                       ))}

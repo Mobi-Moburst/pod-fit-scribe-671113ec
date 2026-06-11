@@ -11,7 +11,7 @@ export const ClientReportCampaignOverview = ({ campaignOverview }: ClientReportC
     <section className="space-y-6">
       <h2 className="text-2xl font-semibold">Campaign Overview</h2>
 
-      <div className="bg-card border border-border rounded-2xl p-8 space-y-6">
+      <div className="bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-8 space-y-6">
         {/* Strategy */}
         {campaignOverview.strategy && (
           <div className="space-y-2">
@@ -43,7 +43,7 @@ export const ClientReportCampaignOverview = ({ campaignOverview }: ClientReportC
 
             <div className="grid gap-4">
               {campaignOverview.pitch_hooks.map((speakerHooks, speakerIndex) => (
-                <div key={speakerIndex} className="bg-muted/30 border border-border rounded-xl p-5 space-y-3">
+                <div key={speakerIndex} className="bg-muted/30 border border-[rgba(255,255,255,0.05)] rounded-xl p-5 space-y-3">
                   <p className="font-medium text-foreground">{speakerHooks.speaker_name}</p>
                   <ul className="grid gap-2">
                     {speakerHooks.hooks.map((hook, hookIndex) => (

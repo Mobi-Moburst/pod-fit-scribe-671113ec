@@ -68,12 +68,12 @@ export function SpeakerProfileCard({
   if (!expanded) {
     return (
       <div
-        className="flex items-center gap-3 py-3 px-3 cursor-pointer hover:bg-muted/30 rounded-lg transition-colors group/row"
+        className="flex items-center gap-3 py-3 px-3 cursor-pointer hover:bg-[rgba(255,255,255,0.06)] rounded-lg transition-colors group/row"
         onClick={() => setExpanded(true)}
       >
         <Avatar className="w-9 h-9 ring-1 ring-border shrink-0">
           <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
-          <AvatarFallback className="text-[10px] bg-muted">{initials}</AvatarFallback>
+          <AvatarFallback className="text-[10px] bg-[rgba(255,255,255,0.04)]">{initials}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -115,12 +115,12 @@ export function SpeakerProfileCard({
   }
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
+    <div className="rounded-xl border border-[rgba(255,255,255,0.05)] bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="group/header flex items-start gap-3 p-3.5 border-b border-border/40 bg-gradient-to-b from-secondary/20 to-transparent">
+      <div className="group/header flex items-start gap-3 p-3.5 border-b border-[rgba(255,255,255,0.05)] bg-gradient-to-b from-secondary/20 to-transparent">
         <Avatar className="w-11 h-11 ring-1 ring-border shrink-0">
           <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
-          <AvatarFallback className="bg-muted text-xs">{initials}</AvatarFallback>
+          <AvatarFallback className="bg-[rgba(255,255,255,0.04)] text-xs">{initials}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-sm tracking-tight leading-tight">{speaker.name}</h4>
@@ -177,7 +177,7 @@ export function SpeakerProfileCard({
 
       {/* Tabbed Content */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full justify-start rounded-none border-b border-border/40 bg-transparent px-2 h-auto py-0 gap-0">
+        <TabsList className="w-full justify-start rounded-none border-b border-[rgba(255,255,255,0.05)] bg-transparent px-2 h-auto py-0 gap-0">
           {[
             { v: "overview", icon: User, label: "Overview" },
             { v: "strategy", icon: BookOpen, label: "Strategy" },
@@ -202,7 +202,7 @@ export function SpeakerProfileCard({
               <PanelCard title="Target Audiences">
                 <div className="flex flex-wrap gap-1.5">
                   {speaker.target_audiences!.map((a) => (
-                    <span key={a} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-secondary/70 text-foreground/90 border border-border/40">
+                    <span key={a} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-secondary/70 text-foreground/90 border border-[rgba(255,255,255,0.05)]">
                       {a}
                     </span>
                   ))}
@@ -239,7 +239,7 @@ export function SpeakerProfileCard({
               <PanelCard title="Guest Identity">
                 <div className="flex flex-wrap gap-1.5">
                   {speaker.guest_identity_tags!.map((t) => (
-                    <span key={t} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] text-muted-foreground border border-border/50">
+                    <span key={t} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] text-muted-foreground border border-[rgba(255,255,255,0.05)]">
                       {t}
                     </span>
                   ))}
@@ -251,7 +251,7 @@ export function SpeakerProfileCard({
               <PanelCard title="Competitors">
                 <div className="grid grid-cols-1 gap-1.5">
                   {speaker.competitors!.map((c: Competitor, i) => (
-                    <div key={i} className="rounded-md border border-border/40 bg-background/40 px-2.5 py-2">
+                    <div key={i} className="rounded-md border border-[rgba(255,255,255,0.05)] bg-background/40 px-2.5 py-2">
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="text-[13px] font-medium truncate">{c.name}</span>
                         {c.role && <span className="text-[10.5px] text-muted-foreground truncate">{c.role}</span>}
@@ -291,7 +291,7 @@ export function SpeakerProfileCard({
               <PanelCard title="Target Audiences">
                 <div className="flex flex-wrap gap-1.5">
                   {speaker.target_audiences!.map((a) => (
-                    <span key={a} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-secondary/70 text-foreground/90 border border-border/40">
+                    <span key={a} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-secondary/70 text-foreground/90 border border-[rgba(255,255,255,0.05)]">
                       {a}
                     </span>
                   ))}
@@ -324,7 +324,7 @@ export function SpeakerProfileCard({
 
             {speaker.pitch_template && (
               <PanelCard title="Pitch Template">
-                <pre className="text-[12.5px] whitespace-pre-wrap bg-background/40 rounded-md p-2.5 border border-border/40 leading-relaxed">
+                <pre className="text-[12.5px] whitespace-pre-wrap bg-background/40 rounded-md p-2.5 border border-[rgba(255,255,255,0.05)] leading-relaxed">
                   {speaker.pitch_template}
                 </pre>
               </PanelCard>
@@ -353,7 +353,7 @@ export function SpeakerProfileCard({
 
 function PanelCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border/40 bg-background/30 p-3">
+    <div className="rounded-lg border border-[rgba(255,255,255,0.05)] bg-background/30 p-3">
       <h5 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.08em] mb-2">
         {title}
       </h5>
@@ -430,7 +430,7 @@ function QuarterlyNotesHistory({ speakerId, notes, onUpdate }: { speakerId: stri
   return (
     <div className="space-y-3">
       {sorted.map((entry, i) => (
-        <div key={entry.created_at} className="group/note border border-border/50 rounded-lg p-3 space-y-1">
+        <div key={entry.created_at} className="group/note border border-[rgba(255,255,255,0.05)] rounded-lg p-3 space-y-1">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
               {entry.report_slug && <FileText className="h-3 w-3 text-primary" />}

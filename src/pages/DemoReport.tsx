@@ -190,9 +190,9 @@ export default function DemoReport() {
 
         {/* Core KPIs Section */}
         <Collapsible open={coreKPIsExpanded} onOpenChange={setCoreKPIsExpanded}>
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <Card className="border-[rgba(255,255,255,0.05)] ">
             <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardHeader className="cursor-pointer hover:bg-[rgba(18,20,24,0.5)] transition-colors">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-primary" />
@@ -234,9 +234,9 @@ export default function DemoReport() {
 
         {/* Additional Value Metrics Section */}
         <Collapsible open={additionalMetricsExpanded} onOpenChange={setAdditionalMetricsExpanded}>
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <Card className="border-[rgba(255,255,255,0.05)] ">
             <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardHeader className="cursor-pointer hover:bg-[rgba(18,20,24,0.5)] transition-colors">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-primary" />
@@ -324,7 +324,7 @@ export default function DemoReport() {
 
         {/* Interview Highlights */}
         {reportData.highlight_clips && reportData.highlight_clips.length > 0 && (
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <Card className="border-[rgba(255,255,255,0.05)] ">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Video className="h-5 w-5 text-primary" />
@@ -342,7 +342,7 @@ export default function DemoReport() {
 
         {/* Top Categories */}
         {reportData.kpis.top_categories && reportData.kpis.top_categories.length > 0 && (
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <Card className="border-[rgba(255,255,255,0.05)] ">
             <CardHeader>
               <CardTitle>Top Categories</CardTitle>
             </CardHeader>
@@ -374,7 +374,7 @@ export default function DemoReport() {
 
         {/* Content Gap Recommendations (read-only, pre-populated) */}
         {aiRecommendations.length > 0 && (
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <Card className="border-[rgba(255,255,255,0.05)] ">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
@@ -383,7 +383,7 @@ export default function DemoReport() {
             </CardHeader>
             <CardContent className="space-y-4">
               {aiRecommendations.map((rec, index) => (
-                <div key={index} className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-2">
+                <div key={index} className="p-4 rounded-lg bg-muted/30 border border-[rgba(255,255,255,0.05)] space-y-2">
                   <div className="flex items-start justify-between gap-4">
                     <h4 className="font-medium">{rec.title}</h4>
                     <Badge

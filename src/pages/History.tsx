@@ -167,7 +167,7 @@ const History = () => {
     return (
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <div className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
+          <div className="grid grid-cols-12 gap-3 items-center border-b border-[rgba(255,255,255,0.05)] py-3 cursor-pointer hover:bg-[rgba(255,255,255,0.06)] transition-colors">
             <div className="col-span-5 flex items-center gap-2">
               <ChevronRight className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
               <span className="font-medium">{batchName}</span>
@@ -216,9 +216,9 @@ const History = () => {
         </CollapsibleTrigger>
         
         <CollapsibleContent>
-          <div className="ml-8 border-l-2 border-border/40 pl-4">
+          <div className="ml-8 border-l-2 border-[rgba(255,255,255,0.05)] pl-4">
             {evaluations.map((r: any, i: number) => (
-              <div key={i} className="grid grid-cols-12 gap-3 items-center border-b border-border/30 py-2">
+              <div key={i} className="grid grid-cols-12 gap-3 items-center border-b border-[rgba(255,255,255,0.05)] py-2">
                 <div className="col-span-5 truncate">
                   {r.url ? (
                     <a className="underline text-sm" href={r.url} target="_blank" rel="noreferrer" title={r.url}>
@@ -259,7 +259,7 @@ const History = () => {
                               <div className="text-sm font-medium mb-1">Score adjustments</div>
                               <div className="flex flex-wrap gap-2">
                                 {r.applied_adjustments.map((adj: any, i: number) => (
-                                  <span key={i} className="text-xs px-2 py-1 rounded border bg-muted">
+                                  <span key={i} className="text-xs px-2 py-1 rounded border bg-[rgba(255,255,255,0.04)]">
                                     {(adj.type || 'adj').toUpperCase()}: {adj.label}{typeof adj.amount === 'number' ? ` (${adj.amount > 0 ? '+' : ''}${adj.amount.toFixed(1)})` : ''}
                                   </span>
                                 ))}
@@ -335,7 +335,7 @@ const History = () => {
             {groupedData.individual
               .sort((a, b) => b.date - a.date)
               .map((r, i) => (
-                <div key={`ind-${i}`} className="grid grid-cols-12 gap-3 items-center border-b border-border/60 py-3">
+                <div key={`ind-${i}`} className="grid grid-cols-12 gap-3 items-center border-b border-[rgba(255,255,255,0.05)] py-3">
                   <div className="col-span-5 truncate">
                     {r.url ? <a className="underline" href={r.url} target="_blank" rel="noreferrer" title={r.url}>{getDisplayTitle(r)}</a> : <span>{getDisplayTitle(r)}</span>}
                   </div>
@@ -370,7 +370,7 @@ const History = () => {
                                 <div className="text-sm font-medium mb-1">Score adjustments</div>
                                 <div className="flex flex-wrap gap-2">
                                   {r.applied_adjustments.map((adj: any, i: number) => (
-                                    <span key={i} className="text-xs px-2 py-1 rounded border bg-muted">
+                                    <span key={i} className="text-xs px-2 py-1 rounded border bg-[rgba(255,255,255,0.04)]">
                                       {(adj.type || 'adj').toUpperCase()}: {adj.label}{typeof adj.amount === 'number' ? ` (${adj.amount > 0 ? '+' : ''}${adj.amount.toFixed(1)})` : ''}
                                     </span>
                                   ))}

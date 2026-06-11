@@ -46,7 +46,7 @@ function StatusPill({ css, status }: { css: string | null; status: string | null
   };
   const label = css || status || 'Unknown';
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${map[s] ?? 'bg-muted text-muted-foreground border-border'}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${map[s] ?? 'bg-[rgba(255,255,255,0.04)] text-muted-foreground border-[rgba(255,255,255,0.05)]'}`}>
       {label}
     </span>
   );
@@ -115,7 +115,7 @@ export function CampaignHealthCard({ companyId }: { companyId: string }) {
         const renewSoon = dRenew !== null && dRenew >= 0 && dRenew <= 60;
         const staleCheckin = dCheck !== null && dCheck <= -21;
         return (
-          <div key={s.id} className="border-t border-border/40 pt-3 first:border-t-0 first:pt-0 space-y-2">
+          <div key={s.id} className="border-t border-[rgba(255,255,255,0.05)] pt-3 first:border-t-0 first:pt-0 space-y-2">
             {active.length > 1 && (
               <div className="text-xs font-medium text-muted-foreground">{s.client_name}</div>
             )}
@@ -184,7 +184,7 @@ function Metric({
   label, value, hint, tone, icon: Icon,
 }: { label: string; value: string; hint?: string; tone?: 'amber'; icon?: any }) {
   return (
-    <div className="rounded-md border border-border/40 bg-background/30 px-2.5 py-2">
+    <div className="rounded-md border border-[rgba(255,255,255,0.05)] bg-background/30 px-2.5 py-2">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground/80 flex items-center gap-1">
         {Icon && <Icon className="h-3 w-3" />}
         {label}

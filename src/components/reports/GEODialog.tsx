@@ -25,7 +25,7 @@ const TIER_STYLES: Record<number, string> = {
   4: "bg-gradient-to-br from-primary/20 to-primary/5 border-primary/40 text-primary",
   3: "bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30 text-primary",
   2: "bg-gradient-to-br from-accent/15 to-accent/5 border-accent/30 text-accent-foreground",
-  1: "bg-muted/40 border-border text-foreground",
+  1: "bg-muted/40 border-[rgba(255,255,255,0.05)] text-foreground",
 };
 
 const COLORS = [
@@ -157,7 +157,7 @@ export const GEODialog = ({ open, onOpenChange, geoAnalysis, speakerName }: GEOD
                     </TableBody>
                   </Table>
                 )}
-                <div className="mt-4 p-3 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground leading-relaxed">
+                <div className="mt-4 p-3 rounded-lg bg-muted/40 border border-[rgba(255,255,255,0.05)] text-xs text-muted-foreground leading-relaxed">
                   <strong className="text-foreground">What this means:</strong> Each question represents a
                   decision-stage moment where buyers are looking for credible voices. Surfacing here means your
                   thought leadership is shaping the conversation before a sales call ever happens.
@@ -217,7 +217,7 @@ export const GEODialog = ({ open, onOpenChange, geoAnalysis, speakerName }: GEOD
                     </Table>
                   </div>
                 </div>
-                <div className="mt-4 p-3 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground leading-relaxed">
+                <div className="mt-4 p-3 rounded-lg bg-muted/40 border border-[rgba(255,255,255,0.05)] text-xs text-muted-foreground leading-relaxed">
                   <strong className="text-foreground">What this means:</strong> Authority domains are the
                   strategic categories where you've earned algorithmic credibility. Expanding into adjacent
                   domains compounds AI visibility over time.
@@ -242,7 +242,7 @@ export const GEODialog = ({ open, onOpenChange, geoAnalysis, speakerName }: GEOD
                     {framing.enginesTested.map((engine) => (
                       <div
                         key={engine}
-                        className="p-4 rounded-lg border border-border bg-card flex items-center gap-3"
+                        className="p-4 rounded-lg border border-[rgba(255,255,255,0.05)] bg-card flex items-center gap-3"
                       >
                         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                           <Sparkles className="h-5 w-5 text-primary" />

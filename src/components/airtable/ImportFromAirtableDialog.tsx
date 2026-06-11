@@ -259,7 +259,7 @@ export function ImportFromAirtableDialog({ open, onOpenChange, existingCompanies
                   return (
                     <label
                       key={c.raw}
-                      className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-muted/40"
+                      className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-[rgba(255,255,255,0.06)]"
                     >
                       <Checkbox
                         checked={selected.has(c.raw)}

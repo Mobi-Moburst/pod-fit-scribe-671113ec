@@ -31,7 +31,7 @@ export const ClientReportCategories = ({ categories }: ClientReportCategoriesPro
     <section className="space-y-4">
       <h2 className="text-2xl font-semibold">Top Podcast Categories</h2>
       
-      <div className="bg-card border border-border rounded-2xl p-6">
+      <div className="bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-6">
         <div className="space-y-3">
           {categories.slice(0, 8).map((category, index) => {
             const hasPodcasts = category.podcasts && category.podcasts.length > 0;
@@ -44,7 +44,7 @@ export const ClientReportCategories = ({ categories }: ClientReportCategoriesPro
                 onOpenChange={() => hasPodcasts && handleToggle(category.name)}
               >
                 <CollapsibleTrigger 
-                  className={`w-full text-left space-y-1 ${hasPodcasts ? 'cursor-pointer hover:bg-muted/50 -mx-2 px-2 py-1 rounded-lg transition-colors' : ''}`}
+                  className={`w-full text-left space-y-1 ${hasPodcasts ? 'cursor-pointer hover:bg-[rgba(18,20,24,0.5)] -mx-2 px-2 py-1 rounded-lg transition-colors' : ''}`}
                   disabled={!hasPodcasts}
                 >
                   <div className="flex items-center justify-between text-sm">
@@ -60,7 +60,7 @@ export const ClientReportCategories = ({ categories }: ClientReportCategoriesPro
                     </div>
                     <span className="text-muted-foreground">{category.count} podcast{category.count !== 1 ? 's' : ''}</span>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-2 bg-[rgba(255,255,255,0.04)] rounded-full overflow-hidden">
                     <div 
                       className="h-full rounded-full transition-all duration-500"
                       style={{ 
@@ -80,7 +80,7 @@ export const ClientReportCategories = ({ categories }: ClientReportCategoriesPro
                           href={podcast.apple_podcast_link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                          className="flex items-start gap-3 p-2 rounded-lg hover:bg-[rgba(18,20,24,0.5)] transition-colors"
                         >
                           {podcast.cover_art_url ? (
                             <img 

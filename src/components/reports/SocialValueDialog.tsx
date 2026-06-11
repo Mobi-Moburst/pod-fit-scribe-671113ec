@@ -104,14 +104,14 @@ export const SocialValueDialog = ({ open, onOpenChange, totalSocialReach, hideMe
             <p className="text-xs text-muted-foreground">
               {formatNumber(totalSocialReach)} reach × ${LINKEDIN_CPM.toFixed(2)} CPM × {VISIBILITY_FACTOR}× visibility × {PREMIUM_CONTENT_FACTOR}× premium content
             </p>
-            <div className="text-xs text-muted-foreground pt-2 border-t border-border/50">
+            <div className="text-xs text-muted-foreground pt-2 border-t border-[rgba(255,255,255,0.05)]">
               Base ad cost: {formatCurrency(baseValue)} → with multipliers: {formatCurrency(totalSocialValue)}
             </div>
           </CardContent>
         </Card>
 
         {!hideMethodology && (
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+          <div className="mt-6 p-4 bg-[rgba(18,20,24,0.5)] rounded-lg">
             <p className="text-xs text-muted-foreground">
               <strong>Methodology:</strong> Total social reach × LinkedIn CPM ($60), adjusted with a visibility factor (1.5×) for feed resurfacing and cross-posting, plus a premium content factor (1.2×) for podcast-driven thought leadership content.
             </p>

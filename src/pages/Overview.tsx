@@ -112,7 +112,7 @@ function statusBadge(css: string | null, status: string | null) {
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${
-        map[s] ?? "bg-muted text-muted-foreground border-border"
+        map[s] ?? "bg-[rgba(255,255,255,0.04)] text-muted-foreground border-[rgba(255,255,255,0.05)]"
       }`}
     >
       {label}
@@ -446,7 +446,7 @@ const Overview = () => {
                       key={`${item.row.id}-${i}`}
                       onClick={() => clickable && goToCompany(item.row.company_id)}
                       className={`flex items-start gap-2 p-2 rounded-md transition-colors ${
-                        clickable ? "hover:bg-muted/40 cursor-pointer" : "opacity-90"
+                        clickable ? "hover:bg-[rgba(255,255,255,0.06)] cursor-pointer" : "opacity-90"
                       }`}
                       title={clickable ? "Open company" : "Not linked to a company profile yet"}
                     >

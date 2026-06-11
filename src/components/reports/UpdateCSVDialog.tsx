@@ -333,7 +333,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
 
         <div className="space-y-4 py-4">
           {/* Report Info */}
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-[rgba(18,20,24,0.5)] rounded-lg">
             <div>
               <p className="font-medium">{report?.report_name}</p>
               <p className="text-sm text-muted-foreground">
@@ -363,7 +363,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
                     onOpenChange={() => toggleSpeakerExpanded(speaker.speaker_id)}
                   >
                     <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-[rgba(255,255,255,0.06)] transition-colors">
                         <div className="flex items-center gap-2">
                           {expandedSpeakers.has(speaker.speaker_id) ? (
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />

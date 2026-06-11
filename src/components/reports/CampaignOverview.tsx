@@ -33,7 +33,7 @@ export const CampaignOverview = ({
         {onEdit && (
           <button
             onClick={onEdit}
-            className="p-1 rounded-md hover:bg-muted"
+            className="p-1 rounded-md hover:bg-[rgba(255,255,255,0.06)]"
             title="Edit section"
           >
             <Pencil className="h-4 w-4 text-muted-foreground" />
@@ -42,7 +42,7 @@ export const CampaignOverview = ({
         {onHide && (
           <button
             onClick={onHide}
-            className="p-1 rounded-md hover:bg-muted"
+            className="p-1 rounded-md hover:bg-[rgba(255,255,255,0.06)]"
             title="Hide section"
           >
             <X className="h-4 w-4 text-muted-foreground" />

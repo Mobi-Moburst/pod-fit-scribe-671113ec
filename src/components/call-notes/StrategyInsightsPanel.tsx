@@ -243,7 +243,7 @@ export function StrategyInsightsPanel({ speakerId, speaker, onUpdate }: Strategy
                               disabled={accepted}
                               className="shrink-0"
                             >
-                              {accepted ? <Check className="h-3.5 w-3.5 text-green-500" /> : <><Plus className="h-3.5 w-3.5 mr-1" />Add</>}
+                              {accepted ? <Check className="h-3.5 w-3.5 text-[#10b981]" /> : <><Plus className="h-3.5 w-3.5 mr-1" />Add</>}
                             </Button>
                           </Card>
                         );
@@ -272,7 +272,7 @@ export function StrategyInsightsPanel({ speakerId, speaker, onUpdate }: Strategy
                               disabled={accepted}
                               className="shrink-0"
                             >
-                              {accepted ? <Check className="h-3.5 w-3.5 text-green-500" /> : <><Plus className="h-3.5 w-3.5 mr-1" />Add</>}
+                              {accepted ? <Check className="h-3.5 w-3.5 text-[#10b981]" /> : <><Plus className="h-3.5 w-3.5 mr-1" />Add</>}
                             </Button>
                           </Card>
                         );
@@ -322,7 +322,7 @@ export function StrategyInsightsPanel({ speakerId, speaker, onUpdate }: Strategy
                         disabled={accepted}
                         className="shrink-0"
                       >
-                        {accepted ? <Check className="h-3.5 w-3.5 text-green-500" /> : <><Copy className="h-3.5 w-3.5 mr-1" />Copy</>}
+                        {accepted ? <Check className="h-3.5 w-3.5 text-[#10b981]" /> : <><Copy className="h-3.5 w-3.5 mr-1" />Copy</>}
                       </Button>
                     </Card>
                   );
@@ -349,7 +349,7 @@ export function StrategyInsightsPanel({ speakerId, speaker, onUpdate }: Strategy
                     disabled={acceptedItems.has("quarterly")}
                   >
                     {acceptedItems.has("quarterly") ? (
-                      <><Check className="h-3.5 w-3.5 mr-1 text-green-500" />Saved</>
+                      <><Check className="h-3.5 w-3.5 mr-1 text-[#10b981]" />Saved</>
                     ) : (
                       <><Save className="h-3.5 w-3.5 mr-1" />Save to Quarterly Notes</>
                     )}

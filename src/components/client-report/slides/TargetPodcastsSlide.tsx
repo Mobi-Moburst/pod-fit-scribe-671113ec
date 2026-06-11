@@ -23,8 +23,8 @@ export const TargetPodcastsSlide = ({ podcasts }: TargetPodcastsSlideProps) => {
           {podcasts.map((podcast, index) => (
             <div 
               key={index}
-              className={`flex gap-4 p-4 bg-card border border-border rounded-xl transition-colors ${
-                podcast.apple_podcast_url ? 'hover:bg-muted/30 cursor-pointer' : ''
+              className={`flex gap-4 p-4 bg-card border border-[rgba(255,255,255,0.05)] rounded-xl transition-colors ${
+                podcast.apple_podcast_url ? 'hover:bg-[rgba(255,255,255,0.06)] cursor-pointer' : ''
               }`}
               onClick={() => handlePodcastClick(podcast.apple_podcast_url)}
             >
@@ -39,7 +39,7 @@ export const TargetPodcastsSlide = ({ podcasts }: TargetPodcastsSlideProps) => {
                     className="h-24 w-24 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="h-24 w-24 rounded-lg bg-muted flex items-center justify-center">
+                  <div className="h-24 w-24 rounded-lg bg-[rgba(255,255,255,0.04)] flex items-center justify-center">
                     <Mic className="h-8 w-8 text-muted-foreground" />
                   </div>
                 )}

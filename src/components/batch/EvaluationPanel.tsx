@@ -38,7 +38,7 @@ export function EvaluationPanel({ row, onClose, client, autoGeneratePitch }: Eva
   
   const getVerdictColor = (verdict?: string) => {
     switch (verdict) {
-      case 'Fit': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+      case 'Fit': return 'bg-[rgba(16,185,129,0.1)] text-green-800 dark:bg-green-900/20 dark:text-[#b9e045]';
       case 'Consider': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
       case 'Not': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
@@ -348,11 +348,11 @@ export function EvaluationPanel({ row, onClose, client, autoGeneratePitch }: Eva
                 {/* Why Fit */}
                 {row.evaluation_data.why_fit && row.evaluation_data.why_fit.length > 0 && (
                   <div className="mb-4">
-                    <h6 className="text-sm font-medium text-green-600 mb-2">Why This Fits</h6>
+                    <h6 className="text-sm font-medium text-[#10b981] mb-2">Why This Fits</h6>
                     <ul className="space-y-1">
                       {row.evaluation_data.why_fit.map((reason: string, i: number) => (
                         <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <span className="text-green-500 shrink-0">•</span>
+                          <span className="text-[#10b981] shrink-0">•</span>
                           <span className="break-words">{reason}</span>
                         </li>
                       ))}
@@ -429,7 +429,7 @@ export function EvaluationPanel({ row, onClose, client, autoGeneratePitch }: Eva
             
             {/* Show generated pitch */}
             {generatedPitch && (
-              <Card className="p-3 mt-3 bg-muted/50">
+              <Card className="p-3 mt-3 bg-[rgba(18,20,24,0.5)]">
                 <div className="flex items-center justify-between mb-2">
                   <h6 className="text-sm font-medium">Generated Pitch</h6>
                   <Button
