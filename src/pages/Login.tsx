@@ -11,6 +11,7 @@ import { Loader2, Mail, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
+  console.log("hello world");
   const { user, isLoading, signIn, resetPassword } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
