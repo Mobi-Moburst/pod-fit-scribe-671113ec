@@ -176,7 +176,7 @@ function MediaPlayer({ clip, coverArt }: { clip: HighlightClip; coverArt?: strin
 
 function ClipCard({ clip, coverArt }: { clip: HighlightClip; coverArt?: string | null }) {
   return (
-    <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm h-full">
+    <div className="bg-card rounded-xl border border-[rgba(255,255,255,0.05)] overflow-hidden shadow-sm h-full">
       <MediaPlayer clip={clip} coverArt={coverArt} />
       <div className="p-4 space-y-2">
         <h3 className="font-medium text-foreground line-clamp-2">{clip.title}</h3>

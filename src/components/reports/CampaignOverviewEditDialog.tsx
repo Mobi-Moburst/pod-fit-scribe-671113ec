@@ -168,7 +168,7 @@ export function CampaignOverviewEditDialog({
             <Label>Key Talking Points</Label>
             <div className="space-y-2">
               {talkingPoints.map((point, index) => (
-                <div key={index} className="flex items-start gap-2 bg-muted/50 rounded-md p-2">
+                <div key={index} className="flex items-start gap-2 bg-[rgba(18,20,24,0.5)] rounded-md p-2">
                   <span className="flex-1 text-sm">{point}</span>
                   <button
                     type="button"
@@ -230,7 +230,7 @@ export function CampaignOverviewEditDialog({
                 </div>
                 <div className="space-y-2 ml-2">
                   {speaker.hooks.map((hook, hookIndex) => (
-                    <div key={hookIndex} className="flex items-start gap-2 bg-muted/50 rounded-md p-2">
+                    <div key={hookIndex} className="flex items-start gap-2 bg-[rgba(18,20,24,0.5)] rounded-md p-2">
                       <span className="flex-1 text-sm">{hook}</span>
                       <button
                         type="button"

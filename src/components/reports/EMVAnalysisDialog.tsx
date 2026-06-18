@@ -92,7 +92,7 @@ export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelatio
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+        <div className="bg-background border border-[rgba(255,255,255,0.05)] rounded-lg p-3 shadow-lg">
           <p className="font-semibold text-sm mb-1">{data.title}</p>
           <p className="text-xs text-muted-foreground">
             Score: <span className="font-medium text-foreground">{data.score}</span>
@@ -120,7 +120,7 @@ export const EMVAnalysisDialog = ({ open, onOpenChange, podcasts, hideCorrelatio
         </DialogHeader>
 
         {/* Methodology */}
-        <div className="rounded-lg border border-border/60 bg-muted/30 p-3 mt-2">
+        <div className="rounded-lg border border-[rgba(255,255,255,0.05)] bg-muted/30 p-3 mt-2">
           <p className="text-xs font-medium text-muted-foreground mb-1">Methodology</p>
           <p className="text-xs text-muted-foreground leading-relaxed">
             EMV = (Listeners per Episode ÷ 1,000) × ${cpm} CPM × (Episode Duration × {Math.round(speakingTimePct * 100)}% guest speaking time). 

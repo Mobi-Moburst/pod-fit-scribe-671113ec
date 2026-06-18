@@ -12,7 +12,7 @@ import { AdditionalMetricsSlide } from "@/components/client-report/slides/Additi
 import { CampaignOverviewSlide } from "@/components/client-report/slides/CampaignOverviewSlide";
 import { CategoriesSlide } from "@/components/client-report/slides/CategoriesSlide";
 import { NextQuarterSlide } from "@/components/client-report/slides/NextQuarterSlide";
-import { TargetPodcastsSlide } from "@/components/client-report/slides/TargetPodcastsSlide";
+
 import { ThankYouSlide } from "@/components/client-report/slides/ThankYouSlide";
 
 import { SpeakerSpotlightSlide } from "@/components/client-report/slides/SpeakerSpotlightSlide";
@@ -90,7 +90,7 @@ export default function DemoPresentation() {
         totalPublished: true,
         socialReach: true,
         totalReach: true,
-        averageScore: true,
+        averageScore: false,
         emv: true,
         sov: true,
         geoScore: true,
@@ -99,7 +99,7 @@ export default function DemoPresentation() {
         campaignOverview: true,
         topCategories: true,
         nextQuarterStrategy: true,
-        targetPodcasts: true,
+        targetPodcasts: false,
         contentGapRecommendations: true,
         highlights: true,
       });
@@ -164,11 +164,11 @@ export default function DemoPresentation() {
           <AdditionalMetricsSlide 
             reportData={reportData}
             visibleSections={visibleSections}
-            onEmvClick={() => setEmvDialogOpen(true)}
+            onEmvClick={undefined}
             onSovClick={() => setSovDialogOpen(true)}
             onGeoClick={() => setGeoDialogOpen(true)}
             onContentGapClick={() => setContentGapDialogOpen(true)}
-            onSocialValueClick={() => setSocialValueDialogOpen(true)}
+            onSocialValueClick={undefined}
           />
         ),
       });
@@ -220,17 +220,6 @@ export default function DemoPresentation() {
       });
     }
 
-    // Target Podcasts
-    if (visibleSections.targetPodcasts && reportData.target_podcasts && reportData.target_podcasts.length > 0) {
-      slides.push({
-        id: "target-podcasts",
-        component: (
-          <TargetPodcastsSlide 
-            podcasts={reportData.target_podcasts}
-          />
-        ),
-      });
-    }
 
     // Thank you slide always last
     slides.push({
@@ -336,6 +325,7 @@ export default function DemoPresentation() {
         quarter={quarter}
         dateRange={reportData?.date_range}
         totalReach={reportData?.kpis?.total_reach || 0}
+        socialReach={(reportData?.kpis as any)?.social_reach || 0}
       />
       <EMVAnalysisDialog
         open={emvDialogOpen}

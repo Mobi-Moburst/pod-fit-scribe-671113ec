@@ -1,52 +1,38 @@
+## Restructure Integrations page into clickable cards
 
+Move HubSpot config out of Settings and onto the Integrations page, alongside Fireflies, with each integration getting its own clickable detail card.
 
-# Native AEO Audit — Use Claude (Anthropic) Instead of Perplexity
+### New routing
 
-Swap the engine in the previously-approved plan from Perplexity Sonar to Anthropic Claude with **web search** enabled. Claude's `web_search_20250305` tool returns grounded answers with real citation URLs, which is what the audit needs to detect client vs competitor presence in AI responses.
+- `/settings/integrations` — index grid of integration cards (overview only)
+- `/settings/integrations/hubspot` — HubSpot detail (current `HubspotSettingsCard` body)
+- `/settings/integrations/fireflies` — Fireflies detail (current Fireflies card + admin team table)
 
-## Engine choice
+Each card on the index shows:
+- Icon + name
+- One-line description
+- Connection status badge (Connected / Not connected / Needs config / Error)
+- A small status line (e.g. "Last ticket sync: 4 min ago • 312 tickets cached" for HubSpot; "Connected as you@x.com • Last sync 2h ago" for Fireflies)
+- Clicking the card navigates to its detail route
 
-| Option | Citations | Recommendation |
-|---|---|---|
-| Claude + `web_search` tool | Yes — returns `url` + `title` per citation | Primary engine for Phase 1 |
-| Perplexity Sonar | Yes | Skip — no key available |
-| ChatGPT / Gemini | Phase 2 add-on | Defer |
+### File changes
 
-Claude alone gives us a real, single-engine AEO signal. We can layer additional engines later without changing the data shape.
+1. **New `src/components/integrations/IntegrationCard.tsx`** — reusable card: icon, title, description, status badge, status meta line, chevron, wraps a `<Link>`.
 
-## What changes vs the prior plan
+2. **New `src/pages/IntegrationDetail.tsx`** with subroutes — or simpler, two new pages:
+   - `src/pages/IntegrationHubspot.tsx` — back link → renders `<HubspotSettingsCard />` (admin-gated; non-admins see "Admin only")
+   - `src/pages/IntegrationFireflies.tsx` — back link → renders the existing Fireflies card + Team Fireflies Status table (extracted from current `Integrations.tsx`)
 
-Only the engine integration layer differs. Everything else (UI button, caching table, payload shape, domain matching, GEO + Content Gap rendering) stays identical.
+3. **Rewrite `src/pages/Integrations.tsx`** as the index page: a responsive 2-column grid of `IntegrationCard`s for HubSpot and Fireflies. Loads minimal status data:
+   - HubSpot: `hubspot_settings.pipeline_label` + count/last-sync from `hubspot_tickets_cache` (admin only; for non-admins just show "Admin only" badge)
+   - Fireflies: own connection from `fireflies_connections`
 
-### Edge function: `run-aeo-audit`
-- Replace Perplexity call with Anthropic Messages API:
-  - Endpoint: `https://api.anthropic.com/v1/messages`
-  - Model: `claude-sonnet-4-5` (or `claude-haiku-4-5` for cheaper runs)
-  - Header: `x-api-key: ${ANTHROPIC_API_KEY}`, `anthropic-version: 2023-06-01`
-  - Body includes `tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }]`
-- Parse response: walk `content[]` blocks, collect every `web_search_tool_result` → `citations[].url`, plus any `text` blocks' inline `citations[]`.
-- Domain match against client + competitors using the shared normalizer (protocol/`www.`/trailing slash strip, already fixed in `csvParsers.ts`).
-- Concurrency: 3 parallel requests with 300 ms jitter (Anthropic rate limits are tighter than Perplexity's).
-- Engine label stored as `"claude"` so future Perplexity/Gemini runs append, not overwrite.
+4. **`src/pages/Settings.tsx`**: remove `<HubspotSettingsCard />` import + render. Keep the existing Integrations entry card (now points to the new grid).
 
-### Required setup
-- Add **`ANTHROPIC_API_KEY`** secret. The user will be prompted after plan approval; key comes from https://console.anthropic.com/settings/keys.
-- No connector needed — Anthropic is a direct-API integration.
+5. **`src/App.tsx`**: register the two new detail routes under `ProtectedRoute`.
 
-### Unchanged from prior plan
-- New table `aeo_audit_cache` (7-day TTL).
-- "Run AEO Audit" button in `UpdateCSVDialog.tsx` and `Reports.tsx`.
-- Output written to `report_data.content_gap_analysis` + `report_data.geo_analysis`; existing `GEODialog`, `ContentGapRecommendations`, `ClientReportCategories` render it untouched.
-- Per-company toggle: Native AEO vs Spotlight CSV.
-- Cap: 25 prompts/run, 1 run/week per company unless overridden.
+### Out of scope
 
-## Cost note
-
-Claude Sonnet 4.5 with web search ≈ $10/audit at 25 prompts × 5 searches each. Haiku 4.5 ≈ $2/audit. Default to Haiku, expose model choice on the run button.
-
-## Open questions
-
-1. **Model default**: Haiku 4.5 (cheap, ~$2/run) or Sonnet 4.5 (better synthesis, ~$10/run)?
-2. **Tie-breaker**: When both a Spotlight CSV and a native Claude audit exist for a company, which renders in the report — most recent, or always native?
-3. **Phase 2 engines**: Add Perplexity later if the user gets a key, or stay Claude-only and add Gemini via the existing Lovable AI gateway instead?
-
+- No changes to the underlying `HubspotSettingsCard` component or any edge functions.
+- No changes to Fireflies sync logic.
+- No new connectors yet — structure just makes adding more (Airtable, Rephonic, etc.) trivial later.

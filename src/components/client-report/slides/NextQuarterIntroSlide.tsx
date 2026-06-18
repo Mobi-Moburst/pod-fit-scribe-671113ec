@@ -42,7 +42,7 @@ export const NextQuarterIntroSlide = ({ strategy }: NextQuarterIntroSlideProps) 
 
         {/* Intro */}
         {strategy.intro_paragraph && (
-          <div className="bg-card/50 border border-border/50 rounded-2xl p-6 backdrop-blur-sm w-full">
+          <div className="bg-card/50 border border-[rgba(255,255,255,0.05)] rounded-2xl p-6 backdrop-blur-sm w-full">
             <MarkdownRenderer
               content={strategy.intro_paragraph}
               className="text-lg text-muted-foreground leading-relaxed text-center max-w-3xl mx-auto"

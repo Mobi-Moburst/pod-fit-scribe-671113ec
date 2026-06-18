@@ -156,7 +156,7 @@ export default function Demo() {
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-[rgba(255,255,255,0.04)] rounded-full h-2 overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300 ease-out rounded-full"
               style={{ width: `${progress}%` }}
@@ -181,7 +181,7 @@ export default function Demo() {
           </p>
         </div>
 
-        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+        <Card className="border-[rgba(255,255,255,0.05)] ">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
@@ -220,7 +220,7 @@ export default function Demo() {
             {selectedClient && !selectedClient.isMultiSpeaker && selectedClient.speaker && (
               <div className="space-y-2">
                 <Label>Speaker</Label>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border/50">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-[rgba(18,20,24,0.5)] border border-[rgba(255,255,255,0.05)]">
                   {selectedClient.speaker.headshot_url ? (
                     <img
                       src={selectedClient.speaker.headshot_url}
@@ -261,7 +261,7 @@ export default function Demo() {
                         className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
                           isChecked 
                             ? "bg-primary/5 border-primary/30" 
-                            : "bg-muted/50 border-border/50 opacity-60"
+                            : "bg-[rgba(18,20,24,0.5)] border-[rgba(255,255,255,0.05)] opacity-60"
                         }`}
                         onClick={() => {
                           setSelectedSpeakerIds(prev => 

@@ -71,7 +71,7 @@ export function TagInput({ value, onChange, placeholder, suggestions = [] }: Tag
               <button
                 type="button"
                 key={s}
-                className="w-full text-left px-2 py-1.5 hover:bg-muted"
+                className="w-full text-left px-2 py-1.5 hover:bg-[rgba(255,255,255,0.06)]"
                 onClick={() => add(s)}
               >
                 {s}

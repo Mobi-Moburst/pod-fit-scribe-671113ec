@@ -107,7 +107,7 @@ export function ContentGapRecommendations({
     switch (priority) {
       case 'high': return 'bg-destructive text-destructive-foreground';
       case 'medium': return 'bg-accent text-accent-foreground';
-      case 'low': return 'bg-muted text-muted-foreground';
+      case 'low': return 'bg-[rgba(255,255,255,0.04)] text-muted-foreground';
       default: return 'bg-secondary text-secondary-foreground';
     }
   };
@@ -191,7 +191,7 @@ export function ContentGapRecommendations({
                           </Badge>
                           <button
                             onClick={() => startEditing(idx)}
-                            className="p-1 rounded opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-muted print:hidden"
+                            className="p-1 rounded opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-[rgba(255,255,255,0.06)] print:hidden"
                           >
                             <Pencil className="h-3 w-3" />
                           </button>

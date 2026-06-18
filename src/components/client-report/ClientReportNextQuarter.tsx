@@ -33,7 +33,7 @@ export const ClientReportNextQuarter = ({ strategy, reportEndDate }: ClientRepor
       <section className="space-y-6">
         <h2 className="text-2xl font-semibold">Looking Ahead: {nextQuarterLabel}</h2>
         
-        <div className="bg-card border border-border rounded-2xl p-8 space-y-8">
+        <div className="bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-8 space-y-8">
           {/* Intro */}
           {strategy.intro_paragraph && (
             <MarkdownRenderer content={strategy.intro_paragraph} className="text-lg text-muted-foreground leading-relaxed" />
@@ -50,7 +50,7 @@ export const ClientReportNextQuarter = ({ strategy, reportEndDate }: ClientRepor
                 {strategy.strategic_focus_areas.map((area, index) => (
                   <div 
                     key={index}
-                    className="bg-muted/50 rounded-xl p-4 space-y-2"
+                    className="bg-[rgba(18,20,24,0.5)] rounded-xl p-4 space-y-2"
                   >
                     <h4 className="font-medium">{area.title}</h4>
                     <MarkdownRenderer content={area.description} className="text-sm text-muted-foreground" />
@@ -75,7 +75,7 @@ export const ClientReportNextQuarter = ({ strategy, reportEndDate }: ClientRepor
                   {strategy.talking_points_spotlight.map((point, index) => (
                     <div 
                       key={index}
-                      className="bg-muted/50 rounded-lg p-3"
+                      className="bg-[rgba(18,20,24,0.5)] rounded-lg p-3"
                     >
                       <h4 className="font-medium text-sm mb-1">{point.title}</h4>
                       <MarkdownRenderer content={point.description} className="text-xs text-muted-foreground leading-snug" />
@@ -97,7 +97,7 @@ export const ClientReportNextQuarter = ({ strategy, reportEndDate }: ClientRepor
                         {speaker.points.map((point, pointIndex) => (
                           <div 
                             key={pointIndex}
-                            className="bg-muted/50 rounded-lg p-3"
+                            className="bg-[rgba(18,20,24,0.5)] rounded-lg p-3"
                           >
                             <h4 className="font-medium text-sm mb-1">{point.title}</h4>
                             <MarkdownRenderer content={point.description} className="text-xs text-muted-foreground leading-snug" />
@@ -150,7 +150,7 @@ export const ClientReportNextQuarter = ({ strategy, reportEndDate }: ClientRepor
 
           {/* Closing */}
           {strategy.closing_paragraph && (
-            <div className="border-t border-border pt-6">
+            <div className="border-t border-[rgba(255,255,255,0.05)] pt-6">
               <MarkdownRenderer content={strategy.closing_paragraph} className="text-muted-foreground leading-relaxed" />
             </div>
           )}

@@ -59,9 +59,9 @@ export function SpeakerAccordion({ speakerBreakdowns, defaultOpen, visibleSectio
           <AccordionItem 
             key={speaker.speaker_id} 
             value={speaker.speaker_id}
-            className="border border-border/60 rounded-lg bg-card overflow-hidden"
+            className="border border-[rgba(255,255,255,0.05)] rounded-lg bg-card overflow-hidden"
           >
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 transition-colors">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[rgba(18,20,24,0.5)] transition-colors">
               <div className="flex items-center justify-between w-full gap-4 text-left">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <Avatar className="h-10 w-10 shrink-0 border border-primary/20">

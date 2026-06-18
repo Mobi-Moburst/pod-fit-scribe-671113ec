@@ -126,7 +126,7 @@ export const ClientReportKPIs = ({ kpis, visibleSections, onReachClick, onBooked
             <div 
               key={kpi.key}
               onClick={kpi.onClick}
-              className={`bg-card border border-border rounded-2xl p-6 space-y-3 transition-all duration-200 ${
+              className={`bg-card border border-[rgba(255,255,255,0.05)] rounded-2xl p-6 space-y-3 transition-all duration-200 ${
                 isClickable 
                   ? 'cursor-pointer hover:scale-[1.02] hover:shadow-lg group' 
                   : ''

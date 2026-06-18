@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Loader2, FileText, Check, RefreshCw, Upload, ChevronDown, ChevronRight, User, Link2, Sparkles } from "lucide-react";
-import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
+import { parseBatchCSV, parseAirtableCSV, parseSOVCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { mergeUpdatedReportData } from "@/utils/reportGenerator";
 import { ReportData, SpeakerBreakdown } from "@/types/reports";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +31,7 @@ interface UpdateCSVDialogProps {
   onUpdated: () => void;
 }
 
-type CSVType = 'batch' | 'airtable' | 'sov' | 'geo' | 'content_gap' | 'rephonic';
+type CSVType = 'batch' | 'airtable' | 'sov' | 'rephonic';
 
 interface CSVStatus {
   hasData: boolean;
@@ -52,8 +52,6 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
   // Company-level optional CSVs
   const [csvFiles, setCsvFiles] = useState<Record<Exclude<CSVType, 'batch' | 'airtable'>, CSVStatus>>({
     sov: { hasData: false, newFile: null },
-    geo: { hasData: false, newFile: null },
-    content_gap: { hasData: false, newFile: null },
     rephonic: { hasData: false, newFile: null },
   });
 
@@ -79,10 +77,6 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
         return true;
       case 'sov':
         return !!reportData.sov_analysis;
-      case 'geo':
-        return !!reportData.geo_analysis || reportData.geo_csv_uploaded === true;
-      case 'content_gap':
-        return !!reportData.content_gap_analysis || reportData.content_gap_csv_uploaded === true;
       case 'rephonic':
         return reportData.podcasts?.some(p => p.true_emv && p.true_emv > 0) || false;
       default:
@@ -183,9 +177,6 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
       let newBatchData: any[] | null = null;
       let newAirtableData: any[] | null = null;
       let newSOVData: any[] | null = null;
-      let newGEOData: any[] | null = null;
-      let newGEOParseWarnings: string[] = [];
-      let newContentGapData: any[] | null = null;
       let newRephonicData: any[] | null = null;
 
       // Handle single-speaker vs multi-speaker batch/airtable files
@@ -250,24 +241,6 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
         updatedCSVTypes.push('sov');
       }
       
-      if (csvFiles.geo.newFile) {
-        const csvText = await readFileAsText(csvFiles.geo.newFile);
-        const { rows: geoRows, parseWarnings } = parseGEOCSV(csvText);
-        newGEOData = geoRows;
-        newGEOParseWarnings = parseWarnings;
-        updatedCSVTypes.push('geo');
-        if (parseWarnings.length > 0) {
-          console.warn('[UpdateCSVDialog] GEO parse warnings:', parseWarnings);
-        }
-      }
-      
-      if (csvFiles.content_gap.newFile) {
-        const csvText = await readFileAsText(csvFiles.content_gap.newFile);
-        const clientDomain = existingReportData.client?.company_url || '';
-        newContentGapData = parseContentGapCSV(csvText, clientDomain);
-        updatedCSVTypes.push('content_gap');
-      }
-      
       if (csvFiles.rephonic.newFile) {
         const csvText = await readFileAsText(csvFiles.rephonic.newFile);
         newRephonicData = parseRephonicCSV(csvText);
@@ -288,9 +261,8 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
           batchData: newBatchData,
           airtableData: newAirtableData,
           sovData: newSOVData,
-          geoData: newGEOData,
-          geoParseWarnings: newGEOParseWarnings,
-          contentGapData: newContentGapData,
+          geoData: null,
+          contentGapData: null,
           rephonicData: newRephonicData,
         },
         updatedCSVTypes,
@@ -333,8 +305,6 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
   const resetForm = () => {
     setCsvFiles({
       sov: { hasData: false, newFile: null },
-      geo: { hasData: false, newFile: null },
-      content_gap: { hasData: false, newFile: null },
       rephonic: { hasData: false, newFile: null },
     });
     setSingleSpeakerFiles({ batchFile: null, airtableFile: null, airtableSyncedData: null });
@@ -344,8 +314,6 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
 
   const optionalCsvConfigs: { type: Exclude<CSVType, 'batch' | 'airtable'>; label: string; description: string }[] = [
     { type: 'sov', label: 'SOV CSV', description: 'Share of Voice data' },
-    { type: 'geo', label: 'GEO CSV', description: 'AI visibility data' },
-    { type: 'content_gap', label: 'Content Gap CSV', description: 'Content gap analysis' },
     { type: 'rephonic', label: 'Rephonic EMV CSV', description: 'Earned media value data' },
   ];
 
@@ -365,7 +333,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
 
         <div className="space-y-4 py-4">
           {/* Report Info */}
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-[rgba(18,20,24,0.5)] rounded-lg">
             <div>
               <p className="font-medium">{report?.report_name}</p>
               <p className="text-sm text-muted-foreground">
@@ -395,7 +363,7 @@ export function UpdateCSVDialog({ open, onOpenChange, report, onUpdated }: Updat
                     onOpenChange={() => toggleSpeakerExpanded(speaker.speaker_id)}
                   >
                     <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-[rgba(255,255,255,0.06)] transition-colors">
                         <div className="flex items-center gap-2">
                           {expandedSpeakers.has(speaker.speaker_id) ? (
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />

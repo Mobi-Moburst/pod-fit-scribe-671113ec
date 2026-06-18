@@ -82,20 +82,20 @@ export function ListenershipGoalDialog({
           {/* Breakdown Cards */}
           <div className="grid grid-cols-2 gap-4">
             {displayMonthlyListenersPerEpisodeGoal > 0 && (
-              <div className="p-4 bg-muted/50 rounded-lg text-center">
+              <div className="p-4 bg-[rgba(18,20,24,0.5)] rounded-lg text-center">
                 <Headphones className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
                 <p className="text-2xl font-bold">{formatNumber(displayMonthlyListenersPerEpisodeGoal)}</p>
                 <p className="text-xs text-muted-foreground">Monthly Listeners/Episode</p>
               </div>
             )}
-            <div className="p-4 bg-muted/50 rounded-lg text-center">
+            <div className="p-4 bg-[rgba(18,20,24,0.5)] rounded-lg text-center">
               <Calendar className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
               <p className="text-2xl font-bold">{formatNumber(displayAnnualGoal)}</p>
               <p className="text-xs text-muted-foreground">Est. Annual Listenership</p>
             </div>
-            <div className="p-4 bg-muted/50 rounded-lg text-center">
+            <div className="p-4 bg-[rgba(18,20,24,0.5)] rounded-lg text-center">
               <TrendingUp className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
-              <p className="text-2xl font-bold text-green-500">+{displayGrowthPercentage}%</p>
+              <p className="text-2xl font-bold text-[#10b981]">+{displayGrowthPercentage}%</p>
               <p className="text-xs text-muted-foreground">Growth Target</p>
             </div>
           </div>
@@ -108,7 +108,7 @@ export function ListenershipGoalDialog({
               </h4>
               <div className="space-y-2">
                 {currentListenership !== undefined && currentListenership > 0 && (
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-[rgba(18,20,24,0.5)] rounded-lg">
                     <div className="flex items-center gap-3">
                       <Users className="h-5 w-5 text-muted-foreground" />
                       <span>Current Monthly Listeners</span>
@@ -117,7 +117,7 @@ export function ListenershipGoalDialog({
                   </div>
                 )}
                 {currentMonthlyListenersPerEpisode > 0 && (
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-[rgba(18,20,24,0.5)] rounded-lg">
                     <div className="flex items-center gap-3">
                       <Headphones className="h-5 w-5 text-muted-foreground" />
                       <span>Current Listeners/Episode</span>
@@ -126,7 +126,7 @@ export function ListenershipGoalDialog({
                   </div>
                 )}
                 {currentAnnualListenership !== undefined && currentAnnualListenership > 0 && (
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-[rgba(18,20,24,0.5)] rounded-lg">
                     <div className="flex items-center gap-3">
                       <Calendar className="h-5 w-5 text-muted-foreground" />
                       <span>Current Est. Annual Listenership</span>

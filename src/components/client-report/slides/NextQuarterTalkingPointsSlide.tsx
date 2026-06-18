@@ -70,7 +70,7 @@ export const NextQuarterTalkingPointsSlide = ({ strategy }: NextQuarterTalkingPo
 
         {/* Closing */}
         {strategy.closing_paragraph && (
-          <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 border border-border/50 rounded-2xl p-6 text-center">
+          <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 border border-[rgba(255,255,255,0.05)] rounded-2xl p-6 text-center">
             <MarkdownRenderer
               content={strategy.closing_paragraph}
               className="text-muted-foreground leading-relaxed italic max-w-3xl mx-auto"

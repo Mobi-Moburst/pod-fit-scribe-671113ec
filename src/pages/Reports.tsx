@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { BackgroundFX } from "@/components/BackgroundFX";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import type { Company, Speaker, MinimalClient, Competitor } from "@/types/client
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_ORG_ID } from "@/integrations/supabase/client";
 import { generateReportFromMultipleCSVs, generateMultiSpeakerReport, SpeakerDataInput, generateTalkingPointDescription, generateAITalkingPoints, generatePodcastCategories, scoreAirtablePodcasts } from "@/utils/reportGenerator";
-import { parseBatchCSV, parseAirtableCSV, parseGEOCSV, parseContentGapCSV, parseRephonicCSV } from "@/utils/csvParsers";
+import { parseBatchCSV, parseAirtableCSV, parseRephonicCSV } from "@/utils/csvParsers";
 import { ReportData, TargetPodcast } from "@/types/reports";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { KPICard } from "@/components/reports/KPICard";
@@ -24,9 +24,10 @@ import { CampaignOverview } from "@/components/reports/CampaignOverview";
 import { NextQuarterStrategy } from "@/components/reports/NextQuarterStrategy";
 import { TargetPodcastsSection } from "@/components/reports/TargetPodcastsSection";
 import { EMVAnalysisDialog } from "@/components/reports/EMVAnalysisDialog";
-import { ReachAnalysisDialog } from "@/components/reports/ReachAnalysisDialog";
+import { ReachAnalysisDialog, calculatePeriodMonths } from "@/components/reports/ReachAnalysisDialog";
 import { SOVChartDialog } from "@/components/reports/SOVChartDialog";
 import { GEODialog } from "@/components/reports/GEODialog";
+import { getGEOFraming, getGEOCardSubtitle } from "@/lib/geoFraming";
 import { ContentGapDialog } from "@/components/reports/ContentGapDialog";
 import { SocialValueDialog } from "@/components/reports/SocialValueDialog";
 import { PodcastListDialog } from "@/components/reports/PodcastListDialog";
@@ -47,10 +48,26 @@ import ClientReportHighlights from "@/components/client-report/ClientReportHighl
 import { CampaignOverviewEditDialog } from "@/components/reports/CampaignOverviewEditDialog";
 import { NextQuarterEditDialog } from "@/components/reports/NextQuarterEditDialog";
 import { UpdateCSVDialog } from "@/components/reports/UpdateCSVDialog";
+import { RunAEOAuditButton } from "@/components/reports/RunAEOAuditButton";
 import { AirtableDataPreview } from "@/components/reports/AirtableDataPreview";
 import { ReportPasswordDialog } from "@/components/reports/ReportPasswordDialog";
 
+// Compact number formatter: 833467 -> "833.4K", 1234567 -> "1.2M"
+function formatCompactNumber(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return Math.round(n).toString();
+}
+
 export default function Reports() {
+
+  const auditPollIntervalMs = 4000;
+  const auditAbsoluteTimeoutMs = 20 * 60 * 1000;
+  const auditStallTimeoutMs = 2 * 60 * 1000;
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -79,9 +96,10 @@ export default function Reports() {
   
   // Company-level file uploads (shared for multi-speaker)
   const [sovFile, setSOVFile] = useState<File | null>(null); // kept for backward compat, always null
-  const [geoFile, setGeoFile] = useState<File | null>(null);
-  const [contentGapFile, setContentGapFile] = useState<File | null>(null);
   const [rephonicEmvFile, setRephonicEmvFile] = useState<File | null>(null);
+
+  // Opt-in: run AEO audit immediately after report is generated (Haiku, ~$2)
+  const [runAEOAfterGenerate, setRunAEOAfterGenerate] = useState<boolean>(false);
   
   // Manual SOV inputs
   const [manualSOVMode, setManualSOVMode] = useState(false);
@@ -98,7 +116,7 @@ export default function Reports() {
   
   // Advanced EMV settings
   const [cpmRate, setCpmRate] = useState<number>(50);
-  const [speakingTimePct, setSpeakingTimePct] = useState<number>(40);
+  const [speakingTimePct, setSpeakingTimePct] = useState<number>(100);
   const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
   
   // State
@@ -112,6 +130,8 @@ export default function Reports() {
   const [dataSourcesOpen, setDataSourcesOpen] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAuditRunning, setIsAuditRunning] = useState(false);
+  const [auditProgress, setAuditProgress] = useState<{ processed: number; total: number } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [emvDialogOpen, setEmvDialogOpen] = useState(false);
   const [reachDialogOpen, setReachDialogOpen] = useState(false);
@@ -148,8 +168,13 @@ export default function Reports() {
     totalRecorded: true,
     totalIntroCalls: true,
     socialReach: true,
-    totalReach: true,
-    averageScore: true,
+    totalReach: false, // legacy single-card; replaced by the listenership cards below
+    cumulativeImpressions: true,
+    netImpressionsYtd: true,
+    projectedAnnualListenership: true,
+    listenersPerEpisode: true,
+    highestReachShow: true,
+    averageScore: false,
     // Additional Value Metrics
     emv: true,
     sov: true,
@@ -199,7 +224,9 @@ export default function Reports() {
   };
   
   const coreKPIsVisible = visibleSections.totalBooked || visibleSections.totalPublished || visibleSections.totalRecorded ||
-    visibleSections.socialReach || visibleSections.totalReach || visibleSections.averageScore;
+    visibleSections.socialReach || visibleSections.cumulativeImpressions || visibleSections.netImpressionsYtd ||
+    visibleSections.projectedAnnualListenership || visibleSections.listenersPerEpisode || visibleSections.highestReachShow ||
+    visibleSections.totalReach || visibleSections.averageScore;
   const additionalMetricsVisible = visibleSections.emv || visibleSections.sov || visibleSections.geoScore || visibleSections.contentGap || visibleSections.socialValue;
   
   const { toast } = useToast();
@@ -529,21 +556,69 @@ export default function Reports() {
         // Prepare speaker data
         const speakerDataInputs: SpeakerDataInput[] = [];
         
+        const skippedSpeakers: string[] = [];
+
         for (const speakerId of selectedSpeakerIds) {
           const speaker = speakers.find(s => s.id === speakerId);
           const files = speakerFiles[speakerId];
           const syncedData = speakerSyncedData[speakerId];
-          
+
           if (!speaker) continue;
-          
-          // Use synced data if available, otherwise parse CSV
-          let airtableRows: any[];
+
+          // Use synced data if available, otherwise parse CSV, otherwise auto-sync from Airtable connection
+          let airtableRows: any[] | null = null;
           if (syncedData && syncedData.length > 0) {
             airtableRows = syncedData;
+            console.log(`[Reports] ${speaker.name}: using ${syncedData.length} rows from state cache`);
           } else if (files?.airtableFile) {
             const airtableText = await files.airtableFile.text();
             airtableRows = parseAirtableCSV(airtableText, startDate, endDate);
+            console.log(`[Reports] ${speaker.name}: parsed ${airtableRows.length} rows from uploaded CSV`);
           } else {
+            // Fallback: auto-sync from this speaker's Airtable connection on the fly
+            try {
+              const { data: speakerConnections } = await supabase
+                .from('airtable_connections')
+                .select('id')
+                .eq('speaker_id', speakerId)
+                .order('updated_at', { ascending: false })
+                .limit(1);
+              let connectionId = speakerConnections?.[0]?.id;
+              if (!connectionId && (speaker as any).company_id) {
+                const { data: companyConnections } = await supabase
+                  .from('airtable_connections')
+                  .select('id')
+                  .eq('company_id', (speaker as any).company_id)
+                  .is('speaker_id', null)
+                  .order('updated_at', { ascending: false })
+                  .limit(1);
+                connectionId = companyConnections?.[0]?.id;
+              }
+              if (connectionId) {
+                console.log(`[Reports] ${speaker.name}: auto-syncing from connection ${connectionId}`);
+                const { data: syncResp, error: syncErr } = await supabase.functions.invoke('fetch-airtable-data', {
+                  body: {
+                    connection_id: connectionId,
+                    date_range_start: startDate,
+                    date_range_end: endDate,
+                    speaker_name: speaker.name,
+                  },
+                });
+                if (!syncErr && syncResp?.success && Array.isArray(syncResp.data)) {
+                  airtableRows = syncResp.data;
+                  console.log(`[Reports] ${speaker.name}: auto-synced ${airtableRows.length} rows`);
+                }
+              } else {
+                console.warn(`[Reports] ${speaker.name}: no Airtable connection found for auto-sync`);
+              }
+            } catch (autoSyncErr) {
+              console.warn(`[Reports] ${speaker.name}: auto-sync failed`, autoSyncErr);
+            }
+          }
+
+          if (!airtableRows || airtableRows.length === 0) {
+            console.warn(`[Reports] ⚠️ Skipping ${speaker.name} — no synced data, no CSV uploaded, and auto-sync produced 0 rows`);
+            skippedSpeakers.push(speaker.name);
             continue;
           }
 
@@ -557,29 +632,35 @@ export default function Reports() {
               status: 'success',
               rationale_short: 'Score not yet generated',
             }));
-          
+
           speakerDataInputs.push({
             speaker: speaker as Speaker,
             batchRows,
             airtableRows,
           });
         }
+
+        if (skippedSpeakers.length > 0) {
+          toast({
+            title: `${skippedSpeakers.length} speaker(s) skipped`,
+            description: `No data for: ${skippedSpeakers.join(', ')}. Re-sync from Airtable or upload a CSV.`,
+            variant: 'destructive',
+          });
+        }
         
-        // Parse company-level CSVs
+        // Parse company-level CSVs (GEO + Content Gap CSVs removed — use Run AEO Audit instead)
         const sovText: string | null = null;
-        const geoText = geoFile ? await geoFile.text() : null;
-        const contentGapText = contentGapFile ? await contentGapFile.text() : null;
-        
+
         // Parse Rephonic CSV from per-speaker batchFile uploads
         let rephonicRows: ReturnType<typeof parseRephonicCSV> | undefined;
         const firstSpeakerFiles = speakerFiles[selectedSpeakerIds[0]];
         if (firstSpeakerFiles?.batchFile) {
           rephonicRows = parseRephonicCSV(await firstSpeakerFiles.batchFile.text());
         }
-        
+
         const sovRows = null;
-        const geoRows = geoText ? parseGEOCSV(geoText).rows : [];
-        const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText, selectedCompany?.company_url || '') : [];
+        const geoRows: any[] = [];
+        const contentGapRows: any[] = [];
         
         // Prepare manual SOV data (include episode URLs)
         const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -599,8 +680,8 @@ export default function Reports() {
           manualSOVCompetitors,
           cpmRate,
           rephonicRows,
-          !!geoFile, // geoCsvProvided
-          !!contentGapFile, // contentGapCsvProvided
+          false, // geoCsvProvided — removed from UI
+          false, // contentGapCsvProvided — removed from UI
           speakingTimePct / 100, // Convert percentage to decimal
           // Merge quarterly notes from all selected speakers
           selectedSpeakerIds.flatMap(id => {
@@ -651,11 +732,9 @@ export default function Reports() {
     setIsProcessing(true);
     
     try {
-      // Read CSV files
+      // Read CSV files (GEO + Content Gap CSVs removed — use Run AEO Audit instead)
       const sovText: string | null = null;
-      const geoText = geoFile ? await geoFile.text() : null;
-      const contentGapText = contentGapFile ? await contentGapFile.text() : null;
-      
+
       // Parse Airtable data - use synced data first, fall back to file
       let airtableRows: any[];
       if (airtableSyncedData && airtableSyncedData.length > 0) {
@@ -682,8 +761,8 @@ export default function Reports() {
         }));
 
       const sovRows = null;
-      const geoRows = geoText ? parseGEOCSV(geoText).rows : [];
-      const contentGapRows = contentGapText ? parseContentGapCSV(contentGapText, selectedCompany?.company_url || '') : [];
+      const geoRows: any[] = [];
+      const contentGapRows: any[] = [];
       
       // Prepare manual SOV data if in manual mode
       const manualSOVCompetitors = manualSOVMode && competitorInterviews.length > 0
@@ -705,8 +784,8 @@ export default function Reports() {
         manualSOVCompetitors,
         cpmRate,
         rephonicRows,
-        !!geoFile, // geoCsvProvided
-        !!contentGapFile, // contentGapCsvProvided
+        false, // geoCsvProvided — removed from UI
+        false, // contentGapCsvProvided — removed from UI
         speakingTimePct / 100, // Convert percentage to decimal
         (selectedSpeaker?.quarterly_notes as Array<{ quarter: string; notes: string }>) || undefined
       );
@@ -722,6 +801,103 @@ export default function Reports() {
         title: "Report generated",
         description: `Successfully processed ${report.kpis.total_interviews} podcasts with ${report.kpis.total_booked} booked and ${report.kpis.total_published} published.`,
       });
+
+      // Opt-in: kick off AEO audit immediately after generation (background job + poll)
+      if (runAEOAfterGenerate && selectedCompany?.id) {
+        setIsAuditRunning(true);
+        toast({ title: "AEO audit starting…", description: "Running ~25 prompts via Claude + Gemini + GPT in the background. This can take several minutes." });
+        const competitorNames = (selectedSpeaker?.competitors as Competitor[] | undefined)?.map(c => c.name) ?? [];
+        const { data: { user } } = await supabase.auth.getUser();
+        (async () => {
+          try {
+            const { data: kick, error: kickErr } = await supabase.functions.invoke("run-aeo-audit", {
+              body: {
+                company_id: selectedCompany.id,
+                org_id: TEAM_ORG_ID,
+                company_name: selectedCompany.name,
+                client_domain: selectedCompany.company_url,
+                speaker_name: selectedSpeaker?.name,
+                topics: report.campaign_overview?.target_audiences ?? [],
+                competitors: competitorNames.map(name => ({ name })),
+                campaign_strategy: selectedSpeaker?.campaign_strategy ?? "",
+                talking_points: selectedSpeaker?.talking_points ?? [],
+                professional_credentials: selectedSpeaker?.professional_credentials ?? [],
+                model: "claude-haiku-4-5",
+                prompt_cap: 25,
+                triggered_by: user?.id,
+              },
+            });
+            if (kickErr || kick?.error || !kick?.run_id) {
+              throw new Error(kickErr?.message ?? kick?.error ?? "Failed to start audit");
+            }
+
+            const runId = kick.run_id;
+            const startedAt = Date.now();
+            let lastProgressAt = Date.now();
+            let lastProcessed = -1;
+            let lastTotal = 0;
+
+            while (Date.now() - startedAt < auditAbsoluteTimeoutMs) {
+              await new Promise(r => setTimeout(r, auditPollIntervalMs));
+              const { data: poll, error: pollErr } = await supabase.functions.invoke("run-aeo-audit", {
+                body: { run_id: runId },
+              });
+
+              if (pollErr) {
+                console.warn("[run-aeo-audit] auto-run poll error:", pollErr);
+                continue;
+              }
+
+              if (poll?.progress) {
+                const processed = poll.progress.processed ?? 0;
+                const total = poll.progress.total ?? 0;
+
+                setAuditProgress({ processed, total });
+
+                if (processed > lastProcessed) {
+                  lastProcessed = processed;
+                  lastTotal = total;
+                  lastProgressAt = Date.now();
+                }
+              }
+
+              if (poll?.status === "completed") {
+                setReportData(prev => prev ? {
+                  ...prev,
+                  content_gap_analysis: poll.content_gap_analysis,
+                  geo_analysis: poll.geo_analysis,
+                  geo_csv_uploaded: true,
+                  content_gap_csv_uploaded: true,
+                } : prev);
+                toast({ title: "AEO audit complete", description: `Ran ${poll.prompts_run} prompts.` });
+                return;
+              }
+              if (poll?.status === "failed") {
+                throw new Error(poll.error_message || "Audit failed");
+              }
+
+              if (Date.now() - lastProgressAt > auditStallTimeoutMs) {
+                throw new Error(
+                  lastTotal > 0
+                    ? `Audit stalled at ${lastProcessed}/${lastTotal} prompts. Please try again.`
+                    : "Audit stalled before processing prompts. Please try again.",
+                );
+              }
+            }
+
+            throw new Error(
+              lastTotal > 0
+                ? `Audit is taking longer than expected (${lastProcessed}/${lastTotal} prompts processed). Please try again.`
+                : "Audit is taking longer than expected. Please try again.",
+            );
+          } catch (e: any) {
+            toast({ title: "AEO audit failed", description: e?.message ?? "Unknown error", variant: "destructive" });
+          } finally {
+            setIsAuditRunning(false);
+            setAuditProgress(null);
+          }
+        })();
+      }
     } catch (error) {
       console.error("Error generating report:", error);
       toast({
@@ -1050,8 +1226,13 @@ export default function Reports() {
         totalRecorded: savedSections.totalRecorded ?? true,
         totalIntroCalls: savedSections.totalIntroCalls ?? true,
         socialReach: savedSections.socialReach ?? true,
-        totalReach: savedSections.totalReach ?? true,
-        averageScore: savedSections.averageScore ?? true,
+        totalReach: savedSections.totalReach ?? false,
+        cumulativeImpressions: savedSections.cumulativeImpressions ?? savedSections.totalReach ?? true,
+        netImpressionsYtd: savedSections.netImpressionsYtd ?? true,
+        projectedAnnualListenership: savedSections.projectedAnnualListenership ?? savedSections.totalReach ?? true,
+        listenersPerEpisode: savedSections.listenersPerEpisode ?? savedSections.totalReach ?? true,
+        highestReachShow: savedSections.highestReachShow ?? savedSections.totalReach ?? true,
+        averageScore: false,
         emv: savedSections.emv ?? true,
         sov: savedSections.sov ?? true,
         geoScore: savedSections.geoScore ?? true,
@@ -1199,6 +1380,67 @@ export default function Reports() {
       });
     }
   };
+
+  // Auto-compute lifetime Net Impressions from ALL Airtable bookings for this company/speaker.
+  // Stored in kpis.net_impressions_ytd_auto so manual edits to net_impressions_ytd take precedence.
+  const lifetimeImpressionsComputedFor = useRef<string | null>(null);
+  const [lifetimeImpressionsStatus, setLifetimeImpressionsStatus] = useState<{
+    state: 'idle' | 'loading' | 'done' | 'error';
+    bookings?: number;
+    withMetadata?: number;
+    missingMetadata?: number;
+    reason?: string;
+    error?: string;
+  }>({ state: 'idle' });
+  useEffect(() => {
+    if (!reportData || !reportData.kpis) return;
+    if (!selectedCompanyId) return;
+    const reportKey = `${currentReportId || 'draft'}::${selectedCompanyId}::${selectedSpeakerId || 'multi'}`;
+    if (lifetimeImpressionsComputedFor.current === reportKey) return;
+    lifetimeImpressionsComputedFor.current = reportKey;
+
+    const isMulti = !selectedSpeakerId;
+    const speakerObj = !isMulti ? speakers.find((s) => s.id === selectedSpeakerId) : null;
+
+    setLifetimeImpressionsStatus({ state: 'loading' });
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('compute-lifetime-impressions', {
+          body: {
+            company_id: selectedCompanyId,
+            speaker_id: isMulti ? null : selectedSpeakerId,
+            speaker_name: speakerObj?.name,
+          },
+        });
+        if (error) throw error;
+        if (!data?.success) {
+          setLifetimeImpressionsStatus({ state: 'error', error: data?.error || 'Unknown error' });
+          return;
+        }
+        const auto = Number(data.net_impressions_lifetime) || 0;
+        setLifetimeImpressionsStatus({
+          state: 'done',
+          bookings: Number(data.bookings_considered) || 0,
+          withMetadata: Number(data.bookings_with_metadata) || 0,
+          missingMetadata: Number(data.missing_metadata) || 0,
+          reason: data.reason,
+        });
+        setReportData((prev) => {
+          if (!prev) return prev;
+          const k: any = prev.kpis || {};
+          if (k.net_impressions_ytd_auto === auto) return prev;
+          return { ...prev, kpis: { ...k, net_impressions_ytd_auto: auto } } as any;
+        });
+      } catch (e: any) {
+        console.warn('compute-lifetime-impressions failed:', e);
+        setLifetimeImpressionsStatus({ state: 'error', error: e?.message || 'Failed' });
+      }
+    })();
+  }, [reportData, selectedCompanyId, selectedSpeakerId, speakers, currentReportId]);
+
+
+
+
 
   // Inline edit for an individual podcast's monthly_listens. Recomputes total_reach.
   const updatePodcastMonthlyListens = async (
@@ -1801,7 +2043,7 @@ export default function Reports() {
           {/* All Saved Reports Section */}
           {allReports.length > 0 && (
             <Collapsible open={allReportsExpanded} onOpenChange={setAllReportsExpanded}>
-              <Card className="print:hidden border-border/60 shadow-none">
+              <Card className="print:hidden border-[rgba(255,255,255,0.05)] ">
                 <CardHeader className="pb-3">
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center justify-between cursor-pointer">
@@ -1876,7 +2118,7 @@ export default function Reports() {
                               <TableCell>
                                 {report.is_published ? (
                                   <div className="flex items-center gap-2">
-                                    <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
+                                    <Badge variant="default" className="bg-[#10b981]/20 text-[#10b981] border-[rgba(16,185,129,0.3)]">
                                       <Globe className="h-3 w-3 mr-1" />
                                       Published
                                     </Badge>
@@ -1963,6 +2205,29 @@ export default function Reports() {
                                     <RefreshCw className="h-3.5 w-3.5 mr-1" />
                                     Update
                                   </Button>
+                                  <RunAEOAuditButton
+                                    report={report}
+                                    variant="compact"
+                                    label="AEO"
+                                    onComplete={async ({ content_gap_analysis, geo_analysis }) => {
+                                      const updated = {
+                                        ...(report.report_data as ReportData),
+                                        content_gap_analysis,
+                                        geo_analysis,
+                                        geo_csv_uploaded: true,
+                                        content_gap_csv_uploaded: true,
+                                      };
+                                      const { error } = await supabase
+                                        .from('reports')
+                                        .update({
+                                          report_data: updated as any,
+                                          generated_at: new Date().toISOString(),
+                                        })
+                                        .eq('id', report.id);
+                                      if (error) throw error;
+                                      loadAllReports();
+                                    }}
+                                  />
                                   {report.is_published ? (
                                     <>
                                       <Button
@@ -2029,7 +2294,7 @@ export default function Reports() {
 
 
           {/* Generate Report Section */}
-          <Card className="print:hidden border-border/60 shadow-none">
+          <Card className="print:hidden border-[rgba(255,255,255,0.05)] ">
             <CardHeader>
               <CardTitle className="text-[15px] font-semibold tracking-tight">Generate Client Report</CardTitle>
               <CardDescription>
@@ -2046,7 +2311,7 @@ export default function Reports() {
                   /* Collapsed: show selected company as a compact chip */
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-primary bg-primary/5 flex-1">
-                      <div className="w-6 h-6 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
+                      <div className="w-6 h-6 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)]">
                         {selectedCompany.logo_url ? (
                           <img src={selectedCompany.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
                         ) : (
@@ -2084,7 +2349,7 @@ export default function Reports() {
                           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                             !selectedCampaignManager
                               ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                              : 'bg-[rgba(255,255,255,0.04)] text-muted-foreground hover:bg-[rgba(255,255,255,0.06)]'
                           }`}
                         >
                           All
@@ -2097,7 +2362,7 @@ export default function Reports() {
                             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                               selectedCampaignManager === manager
                                 ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                : 'bg-[rgba(255,255,255,0.04)] text-muted-foreground hover:bg-[rgba(255,255,255,0.06)]'
                             }`}
                           >
                             {manager}
@@ -2130,9 +2395,9 @@ export default function Reports() {
                               setSpeakerSyncedData({});
                               setIsMultiSpeakerMode(false);
                             }}
-                            className="flex items-center gap-2.5 p-3 rounded-lg border border-border/60 hover:border-border hover:shadow-sm bg-card text-left transition-all"
+                            className="flex items-center gap-2.5 p-3 rounded-lg border border-[rgba(255,255,255,0.05)] hover:border-[rgba(255,255,255,0.05)] hover:shadow-sm bg-card text-left transition-all"
                           >
-                            <div className="w-8 h-8 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
+                            <div className="w-8 h-8 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)]">
                               {company.logo_url ? (
                                 <img src={company.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
                               ) : (
@@ -2167,7 +2432,7 @@ export default function Reports() {
                         <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-primary bg-primary/5 flex-1">
                           <Avatar className="w-6 h-6">
                             <AvatarImage src={selectedSpeaker.headshot_url || undefined} alt={selectedSpeaker.name} />
-                            <AvatarFallback className="text-[10px] bg-muted">
+                            <AvatarFallback className="text-[10px] bg-[rgba(255,255,255,0.04)]">
                               {selectedSpeaker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -2244,7 +2509,7 @@ export default function Reports() {
                               className={`flex items-center gap-3 w-full p-2.5 rounded-lg border text-left transition-all ${
                                 isSelected
                                   ? 'border-primary bg-primary/5'
-                                  : 'border-transparent hover:bg-muted/50'
+                                  : 'border-transparent hover:bg-[rgba(18,20,24,0.5)]'
                               }`}
                             >
                               {isMultiSpeakerMode && (
@@ -2252,7 +2517,7 @@ export default function Reports() {
                               )}
                               <Avatar className="w-7 h-7">
                                 <AvatarImage src={speaker.headshot_url || undefined} alt={speaker.name} />
-                                <AvatarFallback className="text-[10px] bg-muted">
+                                <AvatarFallback className="text-[10px] bg-[rgba(255,255,255,0.04)]">
                                   {speaker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
@@ -2348,12 +2613,12 @@ export default function Reports() {
                         const hasAirtableData = !!syncedData;
                         
                         return (
-                          <div key={speakerId} className="border border-border/60 rounded-lg p-3 space-y-2">
+                          <div key={speakerId} className="border border-[rgba(255,255,255,0.05)] rounded-lg p-3 space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium">{speaker?.name}</span>
                                 {hasAirtableData ? (
-                                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                                  <span className="w-2 h-2 rounded-full bg-[#10b981]" />
                                 ) : (
                                   <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
                                 )}
@@ -2397,8 +2662,8 @@ export default function Reports() {
                         </Badge>
                       </div>
                       {airtableSyncedData ? (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                          <Check className="h-4 w-4 text-green-500 shrink-0" />
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[rgba(16,185,129,0.3)] bg-[#10b981]/5">
+                          <Check className="h-4 w-4 text-[#10b981] shrink-0" />
                           <span className="text-sm font-medium flex-1">Airtable synced ({airtableSyncedData.length} records)</span>
                           <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setAirtableSyncedData(null)}>
                             <X className="h-3.5 w-3.5" />
@@ -2431,12 +2696,12 @@ export default function Reports() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Label className="text-xs font-medium">Rephonic Metrics</Label>
-                        <Badge variant="secondary" className="text-[10px] bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30">
+                        <Badge variant="secondary" className="text-[10px] bg-[#10b981]/20 text-[#b9e045] border-[rgba(16,185,129,0.3)]">
                           Auto
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                        <Check className="h-4 w-4 text-green-500 shrink-0" />
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[rgba(16,185,129,0.3)] bg-[#10b981]/5">
+                        <Check className="h-4 w-4 text-[#10b981] shrink-0" />
                         <span className="text-sm flex-1 text-muted-foreground">
                           Listener &amp; reach metrics will be fetched automatically from the Rephonic API during report generation.
                         </span>
@@ -2464,10 +2729,10 @@ export default function Reports() {
                                   const speaker = speakers.find(s => s.id === speakerId);
                                   const files = speakerFiles[speakerId] || { batchFile: null, airtableFile: null };
                                   return (
-                                    <div key={speakerId} className="border border-border/60 rounded-lg p-3 space-y-1.5">
+                                    <div key={speakerId} className="border border-[rgba(255,255,255,0.05)] rounded-lg p-3 space-y-1.5">
                                       <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium">{speaker?.name}</span>
-                                        {files.batchFile && <span className="w-2 h-2 rounded-full bg-green-500" />}
+                                        {files.batchFile && <span className="w-2 h-2 rounded-full bg-[#10b981]" />}
                                       </div>
                                       <Input
                                         type="file"
@@ -2498,9 +2763,9 @@ export default function Reports() {
                   {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
                     <div className="pt-3 pb-1">
                       {reportData ? (
-                        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-4 py-3">
-                          <Check className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
-                          <span className="text-sm font-medium text-green-700 dark:text-green-300">Report generated — scroll down to view, or add optional data below and click Update Report</span>
+                        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-[rgba(16,185,129,0.08)] dark:border-green-900 dark:bg-green-950/30 px-4 py-3">
+                          <Check className="h-5 w-5 text-[#b9e045] shrink-0" />
+                          <span className="text-sm font-medium text-[#10b981] dark:text-green-300">Report generated — scroll down to view, or add optional data below and click Update Report</span>
                         </div>
                       ) : (
                         <>
@@ -2553,7 +2818,7 @@ export default function Reports() {
                           </p>
                           {competitorInterviews.map((comp, index) => (
                             <div key={index} className="space-y-1.5">
-                              <div className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
+                              <div className="flex items-center gap-3 p-2.5 bg-secondary/30 rounded-lg border border-[rgba(255,255,255,0.05)]">
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-xs truncate">{comp.name}</p>
                                   <p className="text-[11px] text-muted-foreground truncate">{comp.role}</p>
@@ -2690,42 +2955,23 @@ export default function Reports() {
                     </div>
                   )}
 
-                  {/* Step 4d: GEO & Content Gap (shows after Airtable) */}
+                  {/* Step 4d: AEO Audit opt-in (replaces GEO + Content Gap CSVs) */}
                   {(airtableSyncedData || Object.values(speakerSyncedData).some(Boolean)) && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs font-medium">GEO CSV</Label>
-                          <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{geoFile ? "Uploaded" : "Optional"}</Badge>
-                        </div>
-                        {geoFile ? (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                            <span className="text-xs flex-1 truncate">{geoFile.name}</span>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setGeoFile(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Input type="file" accept=".csv" onChange={(e) => setGeoFile(e.target.files?.[0] || null)} />
-                        )}
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs font-medium">Content Gap CSV</Label>
-                          <Badge variant="secondary" className="text-[10px] bg-secondary text-muted-foreground">{contentGapFile ? "Uploaded" : "Optional"}</Badge>
-                        </div>
-                        {contentGapFile ? (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/5">
-                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                            <span className="text-xs flex-1 truncate">{contentGapFile.name}</span>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setContentGapFile(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Input type="file" accept=".csv" onChange={(e) => setContentGapFile(e.target.files?.[0] || null)} />
-                        )}
+                    <div className="flex items-start gap-2 p-3 rounded-lg border border-[rgba(255,255,255,0.05)] bg-muted/20">
+                      <Checkbox
+                        id="run-aeo-after-generate"
+                        checked={runAEOAfterGenerate}
+                        onCheckedChange={(v) => setRunAEOAfterGenerate(!!v)}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="run-aeo-after-generate" className="text-xs font-medium cursor-pointer">
+                          Run AEO audit after generating
+                          <Badge variant="secondary" className="ml-2 text-[10px]">Claude + Gemini + GPT</Badge>
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Queries Claude (Haiku), Gemini 2.5 Flash, and GPT-5-mini in parallel with web search across ~25 buyer-journey prompts to populate AEO + Content Gap analyses. You can also run it later from the report list.
+                        </p>
                       </div>
                     </div>
                   )}
@@ -2757,12 +3003,12 @@ export default function Reports() {
                       <Input 
                         type="number" 
                         min={20} 
-                        max={60} 
+                        max={100} 
                         value={speakingTimePct} 
-                        onChange={(e) => setSpeakingTimePct(Math.max(20, Math.min(60, parseInt(e.target.value) || 40)))}
+                        onChange={(e) => setSpeakingTimePct(Math.max(20, Math.min(100, parseInt(e.target.value) || 100)))}
                         className="h-8 text-xs mt-1"
                       />
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Guest airtime: 20–60%</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Guest airtime: 20–100%</p>
                     </div>
                   </div>
                 </CollapsibleContent>
@@ -2823,8 +3069,12 @@ export default function Reports() {
                   { key: 'totalRecorded', label: 'Total Recorded', visible: visibleSections.totalRecorded },
                   { key: 'totalIntroCalls', label: 'Intro Calls', visible: visibleSections.totalIntroCalls },
                   { key: 'socialReach', label: 'Social Reach', visible: visibleSections.socialReach },
-                  { key: 'totalReach', label: 'Total Listenership', visible: visibleSections.totalReach },
-                  { key: 'averageScore', label: 'Avg Score', visible: visibleSections.averageScore },
+                  { key: 'cumulativeImpressions', label: 'Cumulative Impressions', visible: visibleSections.cumulativeImpressions },
+                  { key: 'netImpressionsYtd', label: 'Net Impressions YTD', visible: visibleSections.netImpressionsYtd },
+                  { key: 'projectedAnnualListenership', label: 'Projected Annual Listenership', visible: visibleSections.projectedAnnualListenership },
+                  { key: 'listenersPerEpisode', label: 'Listeners Per Episode', visible: visibleSections.listenersPerEpisode },
+                  { key: 'highestReachShow', label: 'Highest Reach Show', visible: visibleSections.highestReachShow },
+                  
                   { key: 'emv', label: 'EMV', visible: visibleSections.emv },
                   { key: 'sov', label: 'Peer Comparison', visible: visibleSections.sov },
                   { key: 'geoScore', label: 'GEO', visible: visibleSections.geoScore },
@@ -2910,7 +3160,7 @@ export default function Reports() {
                     {visibleSections.socialReach && (
                       <KPICard
                         title={reportData.kpis.total_published === 0 ? "Projected Social Reach" : "Social Reach"}
-                        value={reportData.kpis.total_social_reach.toLocaleString()}
+                        value={formatCompactNumber(reportData.kpis.total_social_reach)}
                         subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows" : "Combined social following"}
                         icon={Users}
                         tooltip={`The combined number of followers across all of the social media accounts that we found for ${reportData.kpis.total_booked > 1 ? 'these podcasts' : 'this podcast'}`}
@@ -2920,59 +3170,154 @@ export default function Reports() {
                     {visibleSections.totalReach && (
                       <KPICard
                         title={reportData.kpis.total_published === 0 ? "Projected Listenership" : "Total Listenership"}
-                        value={reportData.kpis.total_reach.toLocaleString()}
+                        value={formatCompactNumber(reportData.kpis.total_reach)}
                         editableValue={reportData.kpis.total_reach}
+                        editableFormat={formatCompactNumber}
                         onValueEdit={(next) => updateReportKpis({ total_reach: next })}
+
                         subtitle={reportData.kpis.total_published === 0 ? "Based on booked shows • Click for details" : "Total monthly listeners • Click for details"}
                         icon={Users}
                         onClick={() => setReachDialogOpen(true)}
                         onHide={() => toggleSection('totalReach')}
                       />
                     )}
-                    {visibleSections.averageScore && (
-                      reportData.kpis.avg_score === 0 && reportData.contains_live_scores ? (
-                        <div className="group relative rounded-xl border border-border bg-card p-4 flex flex-col items-center justify-center gap-2 min-h-[120px]">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleSection('averageScore');
-                            }}
-                            className="absolute top-2 right-2 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
-                            title="Hide this metric"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                          <p className="text-sm font-medium text-foreground">Fit Scores</p>
-                          <Button
-                            size="sm"
-                            onClick={handleGenerateFitScores}
-                            disabled={isScoringFit}
-                            className="gap-1"
-                          >
-                            {isScoringFit ? (
-                              <>
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                {scoringProgress ? `${scoringProgress.completed}/${scoringProgress.total}` : 'Scoring...'}
-                              </>
-                            ) : (
-                              <>
-                                <TrendingUp className="h-3 w-3" />
-                                Generate Scores
-                              </>
-                            )}
-                          </Button>
-                          <p className="text-xs text-muted-foreground">Score from show notes</p>
-                        </div>
-                      ) : (
-                        <KPICard
-                          title="Average Score"
-                          value={reportData.kpis.avg_score.toFixed(1)}
-                          subtitle="Overall fit rating"
-                          icon={TrendingUp}
-                          onHide={() => toggleSection('averageScore')}
-                        />
-                      )
-                    )}
+                    {(() => {
+                      const periodMonths = calculatePeriodMonths(reportData.date_range, reportData.quarter);
+                      const totalReach = reportData.kpis.total_reach || 0;
+                      const k: any = reportData.kpis;
+
+                      const socialReachForImpressions = typeof k.social_reach === 'number' ? k.social_reach : 0;
+                      const cumulativeImpressions = typeof k.cumulative_impressions === 'number'
+                        ? k.cumulative_impressions
+                        : (totalReach * periodMonths) + socialReachForImpressions;
+                      const projectedAnnual = typeof k.projected_annual_listenership === 'number'
+                        ? k.projected_annual_listenership
+                        : totalReach * 12;
+
+                      const listenersPerEpisode = typeof k.total_listeners_per_episode === 'number'
+                        ? k.total_listeners_per_episode
+                        : 0;
+
+                      // Highest reach show (by monthly_listens)
+                      const highestReachShow = (reportData.podcasts || []).reduce((max: any, p: any) => {
+                        const pListens = typeof p?.monthly_listens === 'string' ? parseFloat(p.monthly_listens) || 0 : (p?.monthly_listens || 0);
+                        const maxListens = typeof max?.monthly_listens === 'string' ? parseFloat(max.monthly_listens) || 0 : (max?.monthly_listens || 0);
+                        return pListens > maxListens ? p : max;
+                      }, null);
+                      const highestMonthlyListens = highestReachShow
+                        ? (typeof highestReachShow.monthly_listens === 'string'
+                            ? parseFloat(highestReachShow.monthly_listens) || 0
+                            : (highestReachShow.monthly_listens || 0))
+                        : 0;
+                      // Cover art isn't stored on podcast entries — look it up from top_categories.podcasts
+                      const highestReachCoverArt = (() => {
+                        if (!highestReachShow?.show_title) return undefined;
+                        const target = String(highestReachShow.show_title).toLowerCase().trim();
+                        for (const cat of ((k as any).top_categories || [])) {
+                          for (const pod of (cat.podcasts || [])) {
+                            if (pod.cover_art_url && String(pod.show_title || '').toLowerCase().trim() === target) {
+                              return pod.cover_art_url as string;
+                            }
+                          }
+                        }
+                        return undefined;
+                      })();
+
+                      // Net Impressions (lifetime): computed from ALL Airtable bookings
+                      // for this company/speaker (see compute-lifetime-impressions edge fn).
+                      // Manual edit (k.net_impressions_ytd) always wins; otherwise use auto.
+                      const netImpressionsYtd =
+                        typeof k.net_impressions_ytd === 'number' && k.net_impressions_ytd > 0
+                          ? k.net_impressions_ytd
+                          : (typeof k.net_impressions_ytd_auto === 'number' ? k.net_impressions_ytd_auto : 0);
+                      const netImpressionsIsAuto =
+                        !(typeof k.net_impressions_ytd === 'number' && k.net_impressions_ytd > 0)
+                        && typeof k.net_impressions_ytd_auto === 'number';
+
+                      return (
+                        <>
+                          {visibleSections.cumulativeImpressions && (
+                            <KPICard
+                              title="Cumulative Impressions"
+                              value={formatCompactNumber(cumulativeImpressions)}
+                              editableValue={cumulativeImpressions}
+                              editableFormat={formatCompactNumber}
+                              onValueEdit={(next) => updateReportKpis({ cumulative_impressions: next } as any)}
+
+                              subtitle={`Listeners × ${periodMonths} mo + social reach`}
+                              icon={TrendingUp}
+                              tooltip={`Combined listener exposure across all booked shows over the ${periodMonths}-month window, plus total social follower reach.`}
+                              onHide={() => toggleSection('cumulativeImpressions')}
+                            />
+                          )}
+                          {visibleSections.netImpressionsYtd && (
+                            <KPICard
+                              title="Net Impressions YTD"
+                              value={netImpressionsYtd > 0 ? formatCompactNumber(netImpressionsYtd) : '—'}
+                              editableValue={netImpressionsYtd}
+                              editableFormat={formatCompactNumber}
+                              onValueEdit={(next) => updateReportKpis({ net_impressions_ytd: next } as any)}
+
+                              subtitle={(() => {
+                                if (netImpressionsYtd > 0) {
+                                  return netImpressionsIsAuto
+                                    ? "Lifetime"
+                                    : "Manually set · click pencil to update";
+                                }
+                                if (lifetimeImpressionsStatus.state === 'loading') return "Loading lifetime bookings…";
+                                if (lifetimeImpressionsStatus.state === 'error') return `Couldn't load: ${lifetimeImpressionsStatus.error}`;
+                                if (lifetimeImpressionsStatus.reason) return lifetimeImpressionsStatus.reason;
+                                return "Click pencil to set manually";
+                              })()}
+                              icon={TrendingUp}
+                              tooltip="Lifetime Net Impressions: for every booking ever in this company's Airtable, monthly listeners × months since the booking date through today. Pulls live from Airtable bookings (not limited to published episodes). Pencil-edit overrides the auto value."
+                              onHide={() => toggleSection('netImpressionsYtd')}
+                            />
+                          )}
+                          {visibleSections.projectedAnnualListenership && (
+                            <KPICard
+                              title="Projected Annual Listenership"
+                              value={formatCompactNumber(projectedAnnual)}
+                              editableValue={projectedAnnual}
+                              editableFormat={formatCompactNumber}
+                              onValueEdit={(next) => updateReportKpis({ projected_annual_listenership: next } as any)}
+
+                              subtitle="Total monthly listeners × 12"
+                              icon={Users}
+                              tooltip="Estimated annual listenership extrapolated from the combined monthly listenership of all booked shows."
+                              onHide={() => toggleSection('projectedAnnualListenership')}
+                            />
+                          )}
+                          {visibleSections.listenersPerEpisode && (
+                            <KPICard
+                              title="Total Monthly Listeners Per Episode"
+                              value={formatCompactNumber(listenersPerEpisode)}
+                              editableValue={listenersPerEpisode}
+                              editableFormat={formatCompactNumber}
+                              onValueEdit={(next) => updateReportKpis({ total_listeners_per_episode: next } as any)}
+
+                              subtitle="Combined per-episode reach"
+                              icon={Users}
+                              tooltip="Sum of average listeners-per-episode across all booked shows in this report period."
+                              onHide={() => toggleSection('listenersPerEpisode')}
+                            />
+                          )}
+                          {visibleSections.highestReachShow && (
+                            <KPICard
+                              title="Highest Reach Show"
+                              value={highestMonthlyListens > 0 ? formatCompactNumber(highestMonthlyListens) : '—'}
+                              subtitle={highestReachShow?.show_title || 'No booked shows yet'}
+                              icon={TrendingUp}
+                              imageUrl={highestReachCoverArt}
+                              imageAlt={highestReachShow?.show_title}
+                              tooltip="The single podcast in this report with the largest monthly listenership."
+                              onHide={() => toggleSection('highestReachShow')}
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
+                    {/* Fit Score card removed from report UI */}
                   </div>
                 </div>
               )}
@@ -2988,32 +3333,16 @@ export default function Reports() {
                     {visibleSections.emv && visibleSections.socialValue && reportData.kpis.total_social_reach > 0 && (reportData.kpis.total_emv || 0) > 0 && (() => {
                       const emv = reportData.kpis.total_emv || 0;
                       const totalSocialReach = reportData.kpis.total_social_reach;
-                      const platformData = {
-                        linkedin: { cpm: 60.00, allocation: 0.60 },
-                        meta: { cpm: 10.50, allocation: 0.20 },
-                        youtube: { cpm: 4.50, allocation: 0.10 },
-                        tiktok: { cpm: 5.50, allocation: 0.07 },
-                        x: { cpm: 1.50, allocation: 0.03 },
-                      };
-                      const visibilityFactor = 1.5;
-                      const premiumFactor = 1.2;
-                      const socialValue = Object.values(platformData).reduce((sum, p) => {
-                        const allocatedReach = totalSocialReach * p.allocation;
-                        const baseValue = (allocatedReach / 1000) * p.cpm;
-                        return sum + baseValue * visibilityFactor * premiumFactor;
-                      }, 0);
-                      const totalCampaignValue = emv + socialValue;
-                      let formatted: string;
-                      if (totalCampaignValue >= 1000000) formatted = `$${(totalCampaignValue / 1000000).toFixed(1)}M`;
-                      else if (totalCampaignValue >= 1000) formatted = `$${(totalCampaignValue / 1000).toFixed(0)}K`;
-                      else formatted = `$${totalCampaignValue.toFixed(0)}`;
+                      const socialValue = (totalSocialReach / 1000) * 60 * 1.5 * 1.2;
+                      const totalCampaignValue = Math.ceil(emv) + socialValue;
+                      const formatted = `$${Math.round(totalCampaignValue).toLocaleString()}`;
                       return (
                         <KPICard
                           title="Total Campaign Value"
                           value={formatted}
                           subtitle="EMV + Social Value combined"
                           icon={TrendingUp}
-                          tooltip="Combined earned media value and social amplification value generated by this campaign."
+                          tooltip={`$${Math.round(emv).toLocaleString()} EMV + $${Math.round(socialValue).toLocaleString()} Social Value`}
                         />
                       );
                     })()}
@@ -3028,7 +3357,7 @@ export default function Reports() {
                     {visibleSections.emv && (
                       <KPICard
                         title="Earned Media Value"
-                        value={`$${reportData.kpis.total_emv?.toLocaleString() || '0'}`}
+                        value={`$${Math.ceil(reportData.kpis.total_emv || 0).toLocaleString()}`}
                         subtitle={reportData.kpis.total_published === 0 ? "Requires published episodes" : "Total campaign EMV • Click to view analysis"}
                         icon={DollarSign}
                         tooltip="Based on audience size × industry CPM rate × guest speaking time. Reflects the equivalent cost to reach this audience through paid podcast advertising."
@@ -3047,23 +3376,31 @@ export default function Reports() {
                         onHide={() => toggleSection('sov')}
                       />
                     )}
-                    {visibleSections.geoScore && (
-                      <KPICard
-                        title="GEO Score"
-                        value={reportData.geo_analysis ? `${reportData.geo_analysis.geo_score}/100` : '0/100'}
-                        subtitle={
-                          reportData.geo_analysis 
-                            ? `${reportData.geo_analysis.total_podcasts_indexed} podcasts • ${reportData.geo_analysis.unique_ai_engines.length} AI engines • Click for details`
-                            : reportData.geo_csv_uploaded
-                              ? "No podcast visibility found in AI search"
-                              : "Upload GEO CSV to analyze"
-                        }
-                        icon={Sparkles}
-                        tooltip="Generative Engine Optimization score measuring how often your podcast appearances surface in AI search engines like Perplexity, Gemini, and ChatGPT."
-                        onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
-                        onHide={() => toggleSection('geoScore')}
-                      />
-                    )}
+                    {visibleSections.geoScore && (() => {
+                      const geoFraming = getGEOFraming(reportData.geo_analysis, reportData.client?.name);
+                      const showLoading = isAuditRunning && !reportData.geo_analysis;
+                      return (
+                        <KPICard
+                          title="AI Visibility"
+                          value={geoFraming ? geoFraming.tier.label : '—'}
+                          subtitle={
+                            geoFraming
+                              ? getGEOCardSubtitle(geoFraming)
+                              : reportData.geo_csv_uploaded
+                                ? "No AI visibility detected yet"
+                                : "Run AEO audit to analyze"
+                          }
+                          icon={Sparkles}
+                          tooltip="How AI assistants (Claude, ChatGPT, Gemini) surface your podcast appearances when buyers ask high-intent questions."
+                          onClick={reportData.geo_analysis ? () => setGeoDialogOpen(true) : undefined}
+                          onHide={() => toggleSection('geoScore')}
+                          isLoading={showLoading}
+                          loadingLabel={auditProgress && auditProgress.total > 0
+                            ? `Querying Claude, Gemini & GPT… ${auditProgress.processed}/${auditProgress.total}`
+                            : "Querying Claude, Gemini & GPT…"}
+                        />
+                      );
+                    })()}
                     {visibleSections.contentGap && (
                       <KPICard
                         title="Content Gap"
@@ -3079,6 +3416,10 @@ export default function Reports() {
                         tooltip="Analyzes AI search prompts where competitors appear but you don't, identifying content opportunities to close visibility gaps."
                         onClick={reportData.content_gap_analysis ? () => setContentGapDialogOpen(true) : undefined}
                         onHide={() => toggleSection('contentGap')}
+                        isLoading={isAuditRunning && !reportData.content_gap_analysis}
+                        loadingLabel={auditProgress && auditProgress.total > 0
+                          ? `Analyzing competitor coverage… ${auditProgress.processed}/${auditProgress.total}`
+                          : "Analyzing competitor coverage…"}
                       />
                     )}
                     {visibleSections.socialValue && reportData.kpis.total_social_reach > 0 && (
@@ -3086,27 +3427,12 @@ export default function Reports() {
                         title="Social Value"
                         value={(() => {
                           const totalSocialReach = reportData.kpis.total_social_reach;
-                          const platformData = {
-                            linkedin: { cpm: 60.00, allocation: 0.60 },
-                            meta: { cpm: 10.50, allocation: 0.20 },
-                            youtube: { cpm: 4.50, allocation: 0.10 },
-                            tiktok: { cpm: 5.50, allocation: 0.07 },
-                            x: { cpm: 1.50, allocation: 0.03 },
-                          };
-                          const visibilityFactor = 1.5;
-                          const premiumFactor = 1.2;
-                          const totalValue = Object.values(platformData).reduce((sum, p) => {
-                            const allocatedReach = totalSocialReach * p.allocation;
-                            const baseValue = (allocatedReach / 1000) * p.cpm;
-                            return sum + baseValue * visibilityFactor * premiumFactor;
-                          }, 0);
-                          if (totalValue >= 1000000) return `$${(totalValue / 1000000).toFixed(1)}M`;
-                          if (totalValue >= 1000) return `$${(totalValue / 1000).toFixed(0)}K`;
-                          return `$${totalValue.toFixed(0)}`;
+                          const totalValue = (totalSocialReach / 1000) * 60 * 1.5 * 1.2;
+                          return `$${Math.round(totalValue).toLocaleString()}`;
                         })()}
                         subtitle="Equivalent ad spend • Click to view breakdown"
                         icon={Share2}
-                        tooltip="Calculated from follower reach across LinkedIn, Meta, YouTube, TikTok, and X using platform-specific ad rates with visibility and premium content multipliers."
+                        tooltip="LinkedIn-equivalent ad spend: reach × $60 CPM × 1.5× visibility × 1.2× premium content."
                         onClick={() => setSocialValueDialogOpen(true)}
                         onHide={() => toggleSection('socialValue')}
                       />
@@ -3130,7 +3456,7 @@ export default function Reports() {
 
               {/* Interview Highlights */}
               {visibleSections.highlights && (
-                <Card className="relative group border-border/60 shadow-none">
+                <Card className="relative group border-[rgba(255,255,255,0.05)] ">
                   <button
                     onClick={() => toggleSection('highlights')}
                     className="absolute top-4 right-4 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
@@ -3202,7 +3528,7 @@ export default function Reports() {
 
               {/* Top Categories */}
               {visibleSections.topCategories && reportData.kpis.top_categories.length > 0 && (
-                <Card className="relative group border-border/60 shadow-none">
+                <Card className="relative group border-[rgba(255,255,255,0.05)] ">
                   <button
                     onClick={() => toggleSection('topCategories')}
                     className="absolute top-4 right-12 p-1 rounded-full bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive print:hidden z-10"
@@ -3349,6 +3675,7 @@ export default function Reports() {
                 open={contentGapDialogOpen}
                 onOpenChange={setContentGapDialogOpen}
                 gapAnalysis={reportData.content_gap_analysis || null}
+                hasSOVPeers={(reportData.sov_analysis?.competitors?.length ?? 0) > 0}
               />
               
               <SocialValueDialog
@@ -3409,6 +3736,7 @@ export default function Reports() {
                 quarter={quarter}
                 dateRange={reportData.date_range}
                 totalReach={reportData.kpis.total_reach}
+                socialReach={(reportData.kpis as any).social_reach || 0}
                 onEditTotalReach={(next) => updateReportKpis({ total_reach: next })}
                 onEditTotalListenersPerEpisode={(next) => updateReportKpis({ total_listeners_per_episode: next })}
                 onEditPodcastMonthlyListens={(podcast, next) =>
@@ -3448,7 +3776,7 @@ export default function Reports() {
               )}
 
               {/* Save Report Section - at bottom after all report content */}
-              <Card className="print:hidden border-border/60 shadow-none">
+              <Card className="print:hidden border-[rgba(255,255,255,0.05)] ">
                 <CardHeader>
                   <CardTitle className="text-[15px] font-semibold tracking-tight">Save Report</CardTitle>
                   <CardDescription>Save this report for future reference</CardDescription>

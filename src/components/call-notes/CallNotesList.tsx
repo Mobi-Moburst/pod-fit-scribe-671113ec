@@ -109,8 +109,8 @@ export function CallNotesList({ speakerId, companyId, maxHeight = "400px" }: Cal
       <div className="space-y-2 pr-2">
         {notes.map(note => (
           <Collapsible key={note.id} open={expandedNotes.has(note.id)} onOpenChange={() => toggleNote(note.id)}>
-            <Card className="bg-muted/20 border-border/50">
-              <CollapsibleTrigger className="w-full text-left p-3 flex items-start gap-2 hover:bg-muted/30 transition-colors rounded-t-lg">
+            <Card className="bg-muted/20 border-[rgba(255,255,255,0.05)]">
+              <CollapsibleTrigger className="w-full text-left p-3 flex items-start gap-2 hover:bg-[rgba(255,255,255,0.06)] transition-colors rounded-t-lg">
                 {expandedNotes.has(note.id) ? (
                   <ChevronDown className="h-4 w-4 mt-0.5 shrink-0" />
                 ) : (
@@ -145,12 +145,12 @@ export function CallNotesList({ speakerId, companyId, maxHeight = "400px" }: Cal
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="px-3 pb-3 space-y-3 border-t border-border/30 pt-3">
+                <div className="px-3 pb-3 space-y-3 border-t border-[rgba(255,255,255,0.05)] pt-3">
                   {/* Summary */}
                   {note.summary && (
                     <div>
                       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Summary</h4>
-                      <div className="max-h-48 overflow-y-auto rounded border border-border/20 p-2">
+                      <div className="max-h-48 overflow-y-auto rounded border border-[rgba(255,255,255,0.05)] p-2">
                         <MarkdownRenderer content={note.summary} className="text-sm" />
                       </div>
                     </div>

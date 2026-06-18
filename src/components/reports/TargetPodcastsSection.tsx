@@ -423,7 +423,7 @@ export function TargetPodcastsSection({
       <CardContent>
         <div className="space-y-6">
           {podcasts.map((podcast, index) => (
-            <div key={index} className="flex gap-4 p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors relative group/item">
+            <div key={index} className="flex gap-4 p-4 border rounded-lg bg-card hover:bg-[rgba(255,255,255,0.06)] transition-colors relative group/item">
               {/* Individual Remove & Regenerate Buttons */}
               <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity print:hidden">
                 <Button
@@ -468,7 +468,7 @@ export function TargetPodcastsSection({
                     className="h-24 w-24 rounded-lg object-cover shadow-md"
                   />
                 ) : (
-                  <div className="h-24 w-24 rounded-lg bg-muted flex items-center justify-center">
+                  <div className="h-24 w-24 rounded-lg bg-[rgba(255,255,255,0.04)] flex items-center justify-center">
                     <Mic className="h-8 w-8 text-muted-foreground" />
                   </div>
                 )}

@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, ChevronDown, ChevronRight, Plus, Pencil, Trash, Link2, Archive, RotateCcw } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, Plus, Pencil, Trash, Link2, Archive, RotateCcw, History } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { Company, Speaker } from "@/types/clients";
 
@@ -13,6 +13,7 @@ interface CompanyCardProps {
   onDelete: () => void;
   onAddSpeaker: () => void;
   onAirtable: () => void;
+  onHistory?: () => void;
   isArchived?: boolean;
   onArchive?: () => void;
   onRestore?: () => void;
@@ -27,6 +28,7 @@ export function CompanyCard({
   onDelete,
   onAddSpeaker,
   onAirtable,
+  onHistory,
   isArchived,
   onArchive,
   onRestore,
@@ -37,8 +39,8 @@ export function CompanyCard({
       <div
         className={`group rounded-xl border bg-card transition-all duration-200 ${
           isExpanded
-            ? "shadow-sm border-border"
-            : "border-border/60 hover:shadow-md hover:border-border cursor-pointer"
+            ? "shadow-sm border-[rgba(255,255,255,0.05)]"
+            : "border-[rgba(255,255,255,0.05)] hover:shadow-md hover:border-[rgba(255,255,255,0.05)] cursor-pointer"
         }`}
       >
         {/* Card Header */}
@@ -47,7 +49,7 @@ export function CompanyCard({
           onClick={onToggle}
         >
           {/* Logo */}
-          <div className="w-10 h-10 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
+          <div className="w-10 h-10 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)]">
             {company.logo_url ? (
               <img
                 src={company.logo_url}
@@ -87,7 +89,7 @@ export function CompanyCard({
             {company.campaign_manager && (
               <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                 {company.campaign_manager.split(',').map(m => m.trim()).filter(Boolean).map((cm) => (
-                  <span key={cm} className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-muted-foreground border border-border">
+                  <span key={cm} className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-muted-foreground border border-[rgba(255,255,255,0.05)]">
                     CM: {cm}
                   </span>
                 ))}
@@ -100,13 +102,13 @@ export function CompanyCard({
             {company.speakers.slice(0, 4).map((s) => (
               <Avatar key={s.id} className="w-7 h-7 ring-2 ring-background">
                 <AvatarImage src={s.headshot_url || undefined} alt={s.name} />
-                <AvatarFallback className="text-[10px] bg-muted">
+                <AvatarFallback className="text-[10px] bg-[rgba(255,255,255,0.04)]">
                   {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             ))}
             {company.speakers.length > 4 && (
-              <div className="w-7 h-7 rounded-full bg-muted ring-2 ring-background flex items-center justify-center text-[10px] text-muted-foreground">
+              <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.04)] ring-2 ring-background flex items-center justify-center text-[10px] text-muted-foreground">
                 +{company.speakers.length - 4}
               </div>
             )}
@@ -129,9 +131,9 @@ export function CompanyCard({
 
         {/* Expanded content */}
         {isExpanded && (
-          <div className="border-t border-border/50">
+          <div className="border-t border-[rgba(255,255,255,0.05)]">
             {/* Action bar */}
-            <div className="group/actions flex items-center gap-1 px-4 py-2 border-b border-border/30">
+            <div className="group/actions flex items-center gap-1 px-4 py-2 border-b border-[rgba(255,255,255,0.05)]">
               {!isArchived && (
                 <>
                   <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onAddSpeaker(); }}>
@@ -143,6 +145,11 @@ export function CompanyCard({
                   <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                     <Pencil className="h-3.5 w-3.5 mr-1" />Edit
                   </Button>
+                  {onHistory && (
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onHistory(); }}>
+                      <History className="h-3.5 w-3.5 mr-1" />AEO History
+                    </Button>
+                  )}
                 </>
               )}
               <div className="flex-1" />

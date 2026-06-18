@@ -190,7 +190,7 @@ export default function HighlightUploadDialog({
                 {clips.map((clip) => (
                   <div
                     key={clip.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30"
+                    className="flex items-center justify-between p-3 rounded-lg border border-[rgba(255,255,255,0.05)] bg-muted/30"
                   >
                     <div className="flex items-center gap-3">
                       {clip.media_type === 'video' ? (
@@ -219,7 +219,7 @@ export default function HighlightUploadDialog({
           )}
 
           {/* Add New Clip */}
-          <div className="space-y-4 pt-4 border-t border-border">
+          <div className="space-y-4 pt-4 border-t border-[rgba(255,255,255,0.05)]">
             <Label className="text-sm font-medium">Add New Clip</Label>
             
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'url' | 'upload')}>
@@ -474,7 +474,7 @@ export default function HighlightUploadDialog({
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+        <div className="flex justify-end gap-3 pt-4 border-t border-[rgba(255,255,255,0.05)]">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

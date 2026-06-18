@@ -142,10 +142,10 @@ export function PublishedEpisodesCarousel({
             return (
               <div 
                 key={`${episode.show_title}-${index}`}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border group"
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-[rgba(18,20,24,0.5)] transition-colors border border-transparent hover:border-[rgba(255,255,255,0.05)] group"
               >
                 {/* Small Artwork */}
-                <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 bg-muted relative">
+                <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 bg-[rgba(255,255,255,0.04)] relative">
                   {isLoadingArt ? (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -241,9 +241,9 @@ export function PublishedEpisodesCarousel({
                   key={`${episode.show_title}-${index}`}
                   className="basis-full"
                 >
-                  <Card className={`overflow-hidden bg-card/50 border mx-auto ${compact ? "max-w-full" : "max-w-md"}`}>
+                  <Card className={`overflow-hidden border mx-auto ${compact ? "max-w-full" : "max-w-md"}`}>
                     {/* Cover Art Section */}
-                    <div className={`relative bg-muted ${compact ? "aspect-[4/3]" : "aspect-square"}`}>
+                    <div className={`relative bg-[rgba(255,255,255,0.04)] ${compact ? "aspect-[4/3]" : "aspect-square"}`}>
                       {isLoadingArt ? (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -343,7 +343,7 @@ export function PublishedEpisodesCarousel({
                 className={`rounded-full transition-all ${
                   index === current 
                     ? `bg-primary ${compact ? "w-3 h-1.5" : "w-4 h-2"}` 
-                    : `bg-muted-foreground/30 hover:bg-muted-foreground/50 ${compact ? "w-1.5 h-1.5" : "w-2 h-2"}`
+                    : `bg-muted-foreground/30 hover:bg-[rgba(255,255,255,0.06)]-foreground/50 ${compact ? "w-1.5 h-1.5" : "w-2 h-2"}`
                 }`}
                 aria-label={`Go to episode ${index + 1}`}
               />

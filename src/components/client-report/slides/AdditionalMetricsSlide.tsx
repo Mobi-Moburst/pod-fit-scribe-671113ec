@@ -1,24 +1,12 @@
 import { ReportData } from "@/types/reports";
 import { DollarSign, PieChart, Globe, Target, Share2, TrendingUp } from "lucide-react";
 
-// Platform data for social value calculation (allocation and CPM rates)
-const PLATFORM_DATA = {
-  linkedin: { cpm: 60.00, allocation: 0.60 },
-  meta: { cpm: 10.50, allocation: 0.20 },
-  youtube: { cpm: 4.50, allocation: 0.10 },
-  tiktok: { cpm: 5.50, allocation: 0.07 },
-  x: { cpm: 1.50, allocation: 0.03 },
-};
-
+const LINKEDIN_CPM = 60.0;
 const VISIBILITY_FACTOR = 1.5;
 const PREMIUM_CONTENT_FACTOR = 1.2;
 
 const calculateTotalSocialValue = (totalSocialReach: number): number => {
-  return Object.values(PLATFORM_DATA).reduce((sum, platform) => {
-    const allocatedReach = totalSocialReach * platform.allocation;
-    const baseValue = (allocatedReach / 1000) * platform.cpm;
-    return sum + baseValue * VISIBILITY_FACTOR * PREMIUM_CONTENT_FACTOR;
-  }, 0);
+  return (totalSocialReach / 1000) * LINKEDIN_CPM * VISIBILITY_FACTOR * PREMIUM_CONTENT_FACTOR;
 };
 
 interface AdditionalMetricsSlideProps {
@@ -77,17 +65,7 @@ export const AdditionalMetricsSlide = ({
     });
   }
 
-  // EMV
-  if (visibleSections.emv && totalEmv > 0) {
-    metrics.push({
-      label: "Earned Media Value",
-      value: formatCurrency(totalEmv),
-      subtitle: "Total campaign EMV",
-      icon: DollarSign,
-      color: "hsl(142 76% 36%)",
-      onClick: onEmvClick,
-    });
-  }
+  // EMV card is internal-only — only Total Campaign Value is exposed externally.
 
   // SOV
   if (visibleSections.sov && reportData.sov_analysis) {
@@ -128,17 +106,7 @@ export const AdditionalMetricsSlide = ({
     });
   }
 
-  // Social Value
-  if (visibleSections.socialValue && totalSocialReach > 0) {
-    metrics.push({
-      label: "Social Value",
-      value: formatCurrency(totalSocialValue),
-      subtitle: "Equivalent ad spend",
-      icon: Share2,
-      color: "hsl(330 81% 60%)",
-      onClick: onSocialValueClick,
-    });
-  }
+  // Social Value card is internal-only — folded into Total Campaign Value for external clients.
 
   if (metrics.length === 0) return null;
 
@@ -159,7 +127,7 @@ export const AdditionalMetricsSlide = ({
             <Component
               key={index}
               onClick={metric.onClick}
-              className={`group bg-card border border-border rounded-3xl p-8 space-y-4 transition-all duration-200 text-left ${
+              className={`group bg-card border border-[rgba(255,255,255,0.05)] rounded-3xl p-8 space-y-4 transition-all duration-200 text-left ${
                 isClickable ? 'hover:scale-[1.03] hover:shadow-xl cursor-pointer' : ''
               }`}
             >

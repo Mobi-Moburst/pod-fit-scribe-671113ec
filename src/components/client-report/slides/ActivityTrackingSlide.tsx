@@ -43,7 +43,7 @@ export const ActivityTrackingSlide = ({ embedUrl, clientName }: ActivityTracking
         </Button>
       </div>
 
-      <div className="flex-1 min-h-0 rounded-2xl border border-border overflow-hidden bg-card">
+      <div className="flex-1 min-h-0 rounded-2xl border border-[rgba(255,255,255,0.05)] overflow-hidden bg-card">
         {embeddableUrl && (
           <iframe
             src={embeddableUrl}

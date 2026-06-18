@@ -28,6 +28,7 @@ export interface Company {
   product_type?: string;
   tags?: string[];
   notes?: string;
+  industry?: string | null;
   archived_at?: string | null;
 }
 

@@ -42,7 +42,7 @@ export function AirtableEmbed({ embedUrl, onHide }: AirtableEmbedProps) {
         <div className="print:hidden">
           <iframe
             src={embedSrc}
-            className="w-full rounded-md border border-border"
+            className="w-full rounded-md border border-[rgba(255,255,255,0.05)]"
             style={{ height: '500px' }}
             title="Airtable Activity View"
           />
@@ -50,7 +50,7 @@ export function AirtableEmbed({ embedUrl, onHide }: AirtableEmbedProps) {
         
         {/* Print: Show link message */}
         <div className="hidden print:block">
-          <div className="flex items-center gap-2 p-4 bg-muted/30 rounded-md border border-border">
+          <div className="flex items-center gap-2 p-4 bg-muted/30 rounded-md border border-[rgba(255,255,255,0.05)]">
             <ExternalLink className="h-5 w-5 text-primary" />
             <div>
               <p className="font-medium">Live Activity View</p>

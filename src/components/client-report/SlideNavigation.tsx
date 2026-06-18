@@ -45,7 +45,7 @@ export const SlideNavigation = ({
         </Button>
         
         {/* Progress indicator */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-background/80 backdrop-blur-sm rounded-full border border-border">
+        <div className="flex items-center gap-2 px-4 py-2 bg-background/80 backdrop-blur-sm rounded-full border border-[rgba(255,255,255,0.05)]">
           <span className="text-sm font-medium">{currentSlide + 1}</span>
           <span className="text-muted-foreground">/</span>
           <span className="text-sm text-muted-foreground">{totalSlides}</span>
@@ -63,7 +63,7 @@ export const SlideNavigation = ({
       </div>
 
       {/* Progress bar */}
-      <div className="fixed bottom-0 left-0 right-0 h-1 bg-muted">
+      <div className="fixed bottom-0 left-0 right-0 h-1 bg-[rgba(255,255,255,0.04)]">
         <div 
           className="h-full bg-primary transition-all duration-300"
           style={{ width: `${((currentSlide + 1) / totalSlides) * 100}%` }}

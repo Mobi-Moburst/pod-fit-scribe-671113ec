@@ -21,7 +21,7 @@ export const ExpandableTalkingPoint = ({ title, description }: ExpandableTalking
   return (
     <div 
       className={cn(
-        "group bg-card border border-border hover:border-accent/30 rounded-lg p-3 transition-all duration-300",
+        "group bg-card border border-[rgba(255,255,255,0.05)] hover:border-accent/30 rounded-lg p-3 transition-all duration-300",
         needsExpansion && "cursor-pointer"
       )}
       onClick={() => needsExpansion && setIsExpanded(!isExpanded)}

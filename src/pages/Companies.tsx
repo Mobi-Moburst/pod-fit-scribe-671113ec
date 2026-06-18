@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
+
 import { Navbar } from '@/components/layout/Navbar';
 import { BackgroundFX } from '@/components/BackgroundFX';
 import { Card } from '@/components/ui/card';
@@ -7,19 +9,49 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import type { Company, Speaker, Competitor } from '@/types/clients';
 import { useToast } from '@/components/ui/use-toast';
 import { pickTopAudienceTags } from '@/lib/campaignStrategy';
 import { supabase, TEAM_ORG_ID } from '@/integrations/supabase/client';
-import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, Archive } from 'lucide-react';
+import { Trash, Sparkles, Loader2, Plus, X, Building2, User, Globe, ImageIcon, Pencil, Check, Upload, Link2, Download, Archive, History, Search, ChevronRight, ChevronDown, Pin, PinOff, Users, Clock, LayoutGrid, List, ArrowUpDown, Filter, MoreHorizontal, RotateCcw } from 'lucide-react';
 import { AirtableConnectionDialog } from '@/components/airtable/AirtableConnectionDialog';
 import { ImportFromAirtableDialog } from '@/components/airtable/ImportFromAirtableDialog';
-import { SyncFathomButton } from '@/components/call-notes/SyncFathomButton';
-import { CompanyCard } from '@/components/companies/CompanyCard';
+
 import { SpeakerProfileCard } from '@/components/companies/SpeakerProfileCard';
+import { AEOAuditHistory } from '@/components/companies/AEOAuditHistory';
+import { CompanyKpiStrip } from '@/components/companies/CompanyKpiStrip';
+import { CampaignHealthCard } from '@/components/companies/CampaignHealthCard';
+
+import { industryStyle } from '@/lib/industryColors';
+
+// Relative timestamp helper
+function relativeTime(iso?: string | null): string {
+  if (!iso) return '—';
+  const then = new Date(iso).getTime();
+  const diff = Date.now() - then;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return 'Yesterday';
+  if (d < 7) return `${d}d ago`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return `${w}w ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(d / 365)}y ago`;
+}
+
+type NavView = 'pinned' | 'my' | 'all' | 'recent' | 'archived';
+type SortMode = 'recent' | 'alpha' | 'created' | 'speakers';
 
 const emptyCompany: Omit<Company, 'id'> = {
   name: '', company_url: '', logo_url: '', brand_colors: undefined, campaign_manager: '', airtable_embed_url: '', product_type: '', tags: [], notes: '',
@@ -33,6 +65,9 @@ const emptySpeaker: Omit<Speaker, 'id' | 'company_id'> = {
 
 interface CompanyWithSpeakers extends Company {
   speakers: Speaker[];
+  industry?: string | null;
+  updated_at?: string;
+  created_at?: string;
 }
 
 const Companies = () => {
@@ -40,9 +75,35 @@ const Companies = () => {
   const [companies, setCompanies] = useState<CompanyWithSpeakers[]>([]);
   const [editingCompany, setEditingCompany] = useState<(Company & { isNew?: boolean }) | null>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<(Speaker & { isNew?: boolean; avoid_text?: string }) | null>(null);
-  const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
+  const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { companyId: routeCompanyId } = useParams<{ companyId?: string }>();
+  const navigate = useNavigate();
+  const detailMode = !!routeCompanyId;
+
+  useEffect(() => {
+    setActiveCompanyId(routeCompanyId || null);
+  }, [routeCompanyId]);
+
   const [managerFilter, setManagerFilter] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+  const [industryFilter, setIndustryFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'with_speakers' | 'no_speakers'>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const [search, setSearch] = useState('');
+  const [navView, setNavView] = useState<NavView>('all');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [pinned, setPinned] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('companies:pinned') || '[]')); } catch { return new Set(); }
+  });
+  const togglePin = (id: string) => {
+    setPinned(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      localStorage.setItem('companies:pinned', JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
+  const [isInferring, setIsInferring] = useState(false);
   const [isSuggestingCompetitors, setIsSuggestingCompetitors] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const [isScrapingStrategy, setIsScrapingStrategy] = useState(false);
@@ -51,6 +112,7 @@ const Companies = () => {
   const [logoError, setLogoError] = useState(false);
   const [airtableDialog, setAirtableDialog] = useState<{ companyId?: string; speakerId?: string; entityName: string } | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [aeoHistoryFor, setAeoHistoryFor] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
 
   // ── Data fetching ──
@@ -71,6 +133,8 @@ const Companies = () => {
       toast({ title: 'Failed to fetch brand', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     } finally { setIsFetchingBrand(false); }
   };
+
+
 
   const scrapeStrategyFromMediaKit = async () => {
     if (!editingSpeaker?.media_kit_url) { toast({ title: 'Enter a media kit URL first', variant: 'destructive' }); return; }
@@ -111,19 +175,57 @@ const Companies = () => {
   };
 
   const managers = useMemo(() => {
-    const names = new Set<string>();
-    companies.forEach((c) => (c.campaign_manager || '').split(',').map(m => m.trim()).filter(Boolean).forEach(m => names.add(m)));
-    return Array.from(names).sort();
+    const counts = new Map<string, number>();
+    companies.filter(c => !c.archived_at).forEach((c) => (c.campaign_manager || '').split(',').map(m => m.trim()).filter(Boolean).forEach(m => counts.set(m, (counts.get(m) || 0) + 1)));
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [companies]);
-  const filtered = useMemo(() => {
-    const byView = companies.filter((c) => viewMode === 'active' ? !c.archived_at : !!c.archived_at);
-    return byView.filter((c) => !managerFilter || (c.campaign_manager || '').split(',').map(m => m.trim()).includes(managerFilter)).sort((a, b) => a.name.localeCompare(b.name));
-  }, [companies, managerFilter, viewMode]);
+  const industries = useMemo(() => {
+    const counts = new Map<string, number>();
+    companies.filter(c => !c.archived_at).forEach(c => {
+      const ind = (c.industry || '').trim();
+      if (ind) counts.set(ind, (counts.get(ind) || 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [companies]);
   const archivedCount = useMemo(() => companies.filter(c => !!c.archived_at).length, [companies]);
+  const pinnedCount = useMemo(() => companies.filter(c => pinned.has(c.id) && !c.archived_at).length, [companies, pinned]);
+
+  const filtered = useMemo(() => {
+    let list = companies.slice();
+    // Nav view
+    if (navView === 'archived') list = list.filter(c => !!c.archived_at);
+    else list = list.filter(c => !c.archived_at);
+    if (navView === 'pinned') list = list.filter(c => pinned.has(c.id));
+    if (navView === 'recent') {
+      list.sort((a, b) => new Date(b.updated_at || b.created_at || 0).getTime() - new Date(a.updated_at || a.created_at || 0).getTime());
+    }
+    // Filters
+    if (managerFilter) list = list.filter(c => (c.campaign_manager || '').split(',').map(m => m.trim()).includes(managerFilter));
+    if (industryFilter) list = list.filter(c => (c.industry || '') === industryFilter);
+    if (statusFilter === 'with_speakers') list = list.filter(c => c.speakers.length > 0);
+    if (statusFilter === 'no_speakers') list = list.filter(c => c.speakers.length === 0);
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        (c.tags || []).some(t => t.toLowerCase().includes(q)) ||
+        c.speakers.some(s => s.name.toLowerCase().includes(q))
+      );
+    }
+    // Sort (recent is already applied above; allow override)
+    if (navView !== 'recent') {
+      if (sortMode === 'recent') list.sort((a, b) => new Date(b.updated_at || b.created_at || 0).getTime() - new Date(a.updated_at || a.created_at || 0).getTime());
+      else if (sortMode === 'alpha') list.sort((a, b) => a.name.localeCompare(b.name));
+      else if (sortMode === 'created') list.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      else if (sortMode === 'speakers') list.sort((a, b) => b.speakers.length - a.speakers.length);
+    }
+    return list;
+  }, [companies, navView, pinned, managerFilter, industryFilter, statusFilter, search, sortMode]);
 
   const loadData = async () => {
     const [companiesRes, speakersRes] = await Promise.all([
-      supabase.from('companies').select('*').order('created_at', { ascending: false }),
+      supabase.from('companies').select('*').order('updated_at', { ascending: false }),
       supabase.from('speakers').select('*').order('created_at', { ascending: false }),
     ]);
     if (companiesRes.error) { toast({ title: 'Error', description: 'Failed to load companies.', variant: 'destructive' }); return; }
@@ -146,15 +248,77 @@ const Companies = () => {
       brand_colors: c.brand_colors || undefined, campaign_manager: c.campaign_manager || '',
       airtable_embed_url: c.airtable_embed_url || '', product_type: c.product_type || '',
       tags: c.tags || [], notes: c.notes || '', speakers: speakersMap.get(c.id) || [],
+      industry: c.industry || null,
       archived_at: c.archived_at || null,
+      updated_at: c.updated_at, created_at: c.created_at,
     })));
   };
 
   useEffect(() => { loadData(); }, []);
 
-  const toggleCompany = (id: string) => {
-    setExpandedCompanies(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const inferIndustries = async (companyIds?: string[], { silent = false } = {}) => {
+    const targets = companyIds && companyIds.length
+      ? companyIds
+      : companies.filter(c => !c.archived_at && !c.industry).map(c => c.id);
+    if (!targets.length) {
+      if (!silent) toast({ title: 'All clients already categorized' });
+      return;
+    }
+    setIsInferring(true);
+    try {
+      // Batch in chunks of 20 to keep prompt small
+      const chunks: string[][] = [];
+      for (let i = 0; i < targets.length; i += 20) chunks.push(targets.slice(i, i + 20));
+      let total = 0;
+      for (const chunk of chunks) {
+        const { data, error } = await supabase.functions.invoke('infer-company-industries', { body: { company_ids: chunk } });
+        if (error) throw error;
+        total += (data?.results || []).length;
+      }
+      await loadData();
+      if (!silent) toast({ title: 'Industries inferred', description: `${total} client${total === 1 ? '' : 's'} categorized.` });
+    } catch (e) {
+      if (!silent) toast({ title: 'Inference failed', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsInferring(false);
+    }
   };
+
+  // Auto-infer in background on first load (one-shot per session)
+  const [autoInferred, setAutoInferred] = useState(false);
+  useEffect(() => {
+    if (autoInferred) return;
+    const missing = companies.filter(c => !c.archived_at && !c.industry);
+    if (missing.length === 0 || companies.length === 0) return;
+    setAutoInferred(true);
+    inferIndustries(missing.slice(0, 40).map(c => c.id), { silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length, autoInferred]);
+
+  const toggleCompany = (id: string) => {
+    if (activeCompanyId === id) navigate('/companies');
+    else navigate(`/companies/${id}`);
+  };
+  const openCompany = (id: string) => navigate(`/companies/${id}`);
+  const closePanel = () => {
+    navigate('/companies');
+    if (searchParams.get('company')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('company');
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  // Open a company when arriving with ?company=<id> (e.g. from the Overview page)
+  useEffect(() => {
+    const target = searchParams.get('company');
+    if (!target || companies.length === 0) return;
+    if (companies.some(c => c.id === target)) {
+      navigate(`/companies/${target}`, { replace: true });
+    }
+  }, [searchParams, companies]);
+
+
 
   // ── Company CRUD ──
   const startNewCompany = () => { setEditingCompany({ ...emptyCompany, id: crypto.randomUUID(), isNew: true }); setShowManualLogoInput(false); setLogoError(false); };
@@ -190,7 +354,7 @@ const Companies = () => {
   // ── Speaker CRUD ──
   const startNewSpeaker = (companyId: string) => {
     setEditingSpeaker({ ...emptySpeaker, id: crypto.randomUUID(), company_id: companyId, isNew: true, avoid_text: '' });
-    setExpandedCompanies(prev => new Set(prev).add(companyId));
+    setActiveCompanyId(companyId);
   };
   const startEditSpeaker = (s: Speaker) => { setEditingSpeaker({ ...s, avoid_text: (s.avoid || []).join(', ') }); };
   const cancelSpeaker = () => setEditingSpeaker(null);
@@ -286,86 +450,489 @@ const Companies = () => {
     <div>
       <BackgroundFX />
       <Navbar />
-      <main className="container mx-auto px-3 py-6 grid gap-6">
-        {/* Header */}
-        <Card className="p-4 card-surface flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl font-semibold">Companies</h1>
-            <p className="text-sm text-muted-foreground">Manage companies and their speakers for podcast campaigns.</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            
-            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
-              <Download className="h-4 w-4 mr-2" />Import from Airtable
-            </Button>
-            <Button variant="hero" onClick={startNewCompany}>
-              <Building2 className="h-4 w-4 mr-2" />New Company
-            </Button>
-          </div>
-        </Card>
-
+      <main className="w-full px-4 lg:px-6 py-4">
         <ImportFromAirtableDialog open={showImportDialog} onOpenChange={setShowImportDialog} existingCompanies={companies.map(c => ({ id: c.id, name: c.name }))} onImportComplete={loadData} />
 
-        {/* View mode tabs + Filter */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'active' | 'archived')} className="w-auto">
-            <TabsList className="h-9">
-              <TabsTrigger value="active" className="text-xs px-3">Active</TabsTrigger>
-              <TabsTrigger value="archived" className="text-xs px-3">
-                <Archive className="h-3 w-3 mr-1.5" />Archived{archivedCount > 0 && ` (${archivedCount})`}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {managers.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Label className="text-sm shrink-0">Campaign Manager</Label>
-              <select className="h-9 rounded-md border bg-background px-3 text-sm" value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)}>
-                <option value="">All</option>
-                {managers.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
+        <div className="flex gap-6 items-start">
+          {!detailMode && <>
+          {/* ═══ Sidebar ═══ */}
+          <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto pr-1">
+            {/* Primary actions */}
+            <div className="flex flex-col gap-2 mb-5">
+              <Button variant="hero" size="sm" className="justify-center h-9" onClick={startNewCompany}>
+                <Plus className="h-4 w-4 mr-1.5" />New Client
+              </Button>
+              <Button variant="soft" size="sm" className="justify-center h-9" onClick={() => setShowImportDialog(true)}>
+                <Download className="h-4 w-4 mr-1.5" />Import from Airtable
+              </Button>
             </div>
-          )}
-          {managerFilter && <SyncFathomButton onSyncComplete={loadData} />}
+
+            {/* Pinned */}
+            {pinnedCount > 0 && (
+              <div className="mb-5">
+                <p className="px-2 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Pinned</p>
+                <nav className="flex flex-col gap-0.5">
+                  {companies.filter(c => pinned.has(c.id) && !c.archived_at).slice(0, 8).map(c => (
+                    <button key={c.id} onClick={() => { setNavView('all'); setSearch(c.name); }} className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/60 text-left">
+                      <div className="w-5 h-5 rounded bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)]">
+                        {c.logo_url ? <img src={c.logo_url} alt="" className="w-full h-full object-contain p-0.5" /> : <Building2 className="h-3 w-3 text-muted-foreground" />}
+                      </div>
+                      <span className="text-sm truncate flex-1">{c.name}</span>
+                      <Pin className="h-3 w-3 text-muted-foreground/60 fill-current" />
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            )}
+
+            {/* Navigation */}
+            <nav className="flex flex-col gap-0.5 mb-5">
+              {([
+                { key: 'my', label: 'My Clients', icon: User },
+                { key: 'all', label: 'All Clients', icon: Users },
+                { key: 'recent', label: 'Recently Active', icon: Clock },
+                { key: 'archived', label: 'Archived', icon: Archive, count: archivedCount },
+              ] as const).map(item => {
+                const Icon = item.icon;
+                const active = navView === item.key;
+                return (
+                  <button key={item.key} onClick={() => setNavView(item.key)} className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {'count' in item && item.count ? <span className="text-[11px] text-muted-foreground/70">{item.count}</span> : null}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Campaign Managers */}
+            {managers.length > 0 && (
+              <div className="mb-5">
+                <p className="px-2 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Campaign Managers</p>
+                <nav className="flex flex-col gap-0.5">
+                  {managers.map(([name, count]) => {
+                    const active = managerFilter === name;
+                    return (
+                      <button key={name} onClick={() => setManagerFilter(active ? '' : name)} className={`group flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+                        <Avatar className="h-5 w-5"><AvatarFallback className="text-[9px] bg-[rgba(255,255,255,0.04)]">{name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+                        <span className="flex-1 truncate">{name}</span>
+                        <span className="text-[11px] text-muted-foreground/60">{count}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+            )}
+
+            {/* Industries */}
+            {industries.length > 0 && (
+              <div className="mb-5">
+                <p className="px-2 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Industries</p>
+                <nav className="flex flex-col gap-0.5">
+                  {industries.slice(0, 12).map(([tag, count]) => {
+                    const active = industryFilter === tag;
+                    const s = industryStyle(tag);
+                    return (
+                      <button key={tag} onClick={() => setIndustryFilter(active ? '' : tag)} className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.fg }} />
+                        <span className="flex-1 truncate">{tag}</span>
+                        <span className="text-[11px] text-muted-foreground/60">{count}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+            )}
+          </aside>
+
+          {/* ═══ Main content ═══ */}
+          <section className="flex-1 min-w-0">
+            {/* Page heading */}
+            <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {navView === 'archived' ? 'Archived' : navView === 'recent' ? 'Recently Active' : navView === 'pinned' ? 'Pinned' : navView === 'my' ? 'My Clients' : 'All Clients'}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-0.5">Browse and manage all your client campaigns.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="soft" size="sm" className="h-9" onClick={() => inferIndustries()} disabled={isInferring}>
+                  {isInferring ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                  {isInferring ? 'Categorizing…' : 'Auto-categorize'}
+                </Button>
+                <div className="flex items-center gap-1 p-0.5 rounded-md border border-[rgba(255,255,255,0.05)] bg-card">
+                  <button onClick={() => setViewMode('list')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="List view"><List className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setViewMode('grid')} className={`h-7 w-8 flex items-center justify-center rounded ${viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`} title="Grid view"><LayoutGrid className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients, speakers, industries…" className="h-9 pl-9 bg-card" />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="soft" size="sm" className="h-9">
+                    Campaign Manager{managerFilter ? `: ${managerFilter}` : ''}
+                    <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto">
+                  <DropdownMenuItem onClick={() => setManagerFilter('')}>All managers</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {managers.map(([name, count]) => (
+                    <DropdownMenuCheckboxItem key={name} checked={managerFilter === name} onCheckedChange={() => setManagerFilter(managerFilter === name ? '' : name)}>
+                      {name} <span className="ml-auto text-xs text-muted-foreground">{count}</span>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="soft" size="sm" className="h-9">
+                    Industry{industryFilter ? `: ${industryFilter}` : ''}
+                    <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto">
+                  <DropdownMenuItem onClick={() => setIndustryFilter('')}>All industries</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {industries.map(([tag, count]) => (
+                    <DropdownMenuCheckboxItem key={tag} checked={industryFilter === tag} onCheckedChange={() => setIndustryFilter(industryFilter === tag ? '' : tag)}>
+                      {tag} <span className="ml-auto text-xs text-muted-foreground">{count}</span>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="soft" size="sm" className="h-9">
+                    Status{statusFilter !== 'all' ? `: ${statusFilter === 'with_speakers' ? 'With speakers' : 'No speakers'}` : ''}
+                    <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuCheckboxItem checked={statusFilter === 'all'} onCheckedChange={() => setStatusFilter('all')}>All</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={statusFilter === 'with_speakers'} onCheckedChange={() => setStatusFilter('with_speakers')}>With speakers</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={statusFilter === 'no_speakers'} onCheckedChange={() => setStatusFilter('no_speakers')}>No speakers</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="soft" size="sm" className="h-9">
+                    <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
+                    {sortMode === 'recent' ? 'Recently Active' : sortMode === 'alpha' ? 'Alphabetical' : sortMode === 'created' ? 'Recently Added' : 'Most Speakers'}
+                    <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem checked={sortMode === 'recent'} onCheckedChange={() => setSortMode('recent')}>Recently Active</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={sortMode === 'alpha'} onCheckedChange={() => setSortMode('alpha')}>Alphabetical</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={sortMode === 'created'} onCheckedChange={() => setSortMode('created')}>Recently Added</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={sortMode === 'speakers'} onCheckedChange={() => setSortMode('speakers')}>Most Speakers</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Result count + active filter chips */}
+            <div className="flex items-center gap-2 mb-3 flex-wrap text-xs text-muted-foreground">
+              <span>{filtered.length} {filtered.length === 1 ? 'client' : 'clients'}</span>
+              {(managerFilter || industryFilter || statusFilter !== 'all' || search) && (
+                <>
+                  <span className="text-border">·</span>
+                  {managerFilter && (
+                    <button onClick={() => setManagerFilter('')} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-foreground hover:bg-secondary/80">
+                      CM: {managerFilter} <X className="h-3 w-3" />
+                    </button>
+                  )}
+                  {industryFilter && (
+                    <button onClick={() => setIndustryFilter('')} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-foreground hover:bg-secondary/80">
+                      {industryFilter} <X className="h-3 w-3" />
+                    </button>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <button onClick={() => setStatusFilter('all')} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-foreground hover:bg-secondary/80">
+                      {statusFilter === 'with_speakers' ? 'With speakers' : 'No speakers'} <X className="h-3 w-3" />
+                    </button>
+                  )}
+                  {search && (
+                    <button onClick={() => setSearch('')} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-foreground hover:bg-secondary/80">
+                      "{search}" <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Directory list */}
+            <div className="rounded-xl border border-[rgba(255,255,255,0.05)] bg-card/40 overflow-hidden">
+              {/* Header row */}
+              <div className="hidden md:grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                <div>Client</div>
+                <div>Speaker(s)</div>
+                <div>Industry</div>
+                <div>Recent Activity</div>
+                <div />
+              </div>
+
+              {filtered.length === 0 ? (
+                <div className="p-12 text-center text-sm text-muted-foreground">
+                  {navView === 'archived' ? 'No archived clients.' : 'No clients match your filters.'}
+                </div>
+              ) : (
+                <div className="px-2 pb-2">
+                  {filtered.map(company => {
+                    const isActive = activeCompanyId === company.id;
+                    const isPinned = pinned.has(company.id);
+                    const ind = company.industry;
+                    const indStyle = industryStyle(ind);
+                    return (
+                      <div key={company.id} className="mb-0.5 last:mb-0">
+                        <div
+                          className={`group grid grid-cols-[1fr_1fr_180px_140px_40px] gap-4 items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${
+                            isActive
+                              ? 'bg-secondary/70 ring-1 ring-primary/30'
+                              : 'hover:bg-secondary/40'
+                          }`}
+                          onClick={() => openCompany(company.id)}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-md bg-muted/60 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)]">
+                              {company.logo_url ? (
+                                <img src={company.logo_url} alt="" className="w-full h-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              ) : (
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex items-center gap-1.5">
+                              <span className="font-medium text-[15px] truncate">{company.name}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); togglePin(company.id); }}
+                                className={`shrink-0 p-1 rounded transition-opacity ${isPinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-60 hover:!opacity-100'}`}
+                                title={isPinned ? 'Unpin' : 'Pin'}
+                              >
+                                {isPinned ? <Pin className="h-3 w-3 fill-current" /> : <Pin className="h-3 w-3" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 min-w-0">
+                            {company.speakers.length === 0 ? (
+                              <span className="text-xs text-muted-foreground italic">No speakers</span>
+                            ) : (
+                              <>
+                                <div className="flex items-center -space-x-2">
+                                  {company.speakers.slice(0, 2).map(s => (
+                                    <Avatar key={s.id} className="w-6 h-6 ring-2 ring-card">
+                                      <AvatarImage src={s.headshot_url || undefined} alt={s.name} />
+                                      <AvatarFallback className="text-[9px] bg-[rgba(255,255,255,0.04)]">{s.name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                  ))}
+                                </div>
+                                <span className="text-sm truncate">
+                                  {company.speakers[0].name}
+                                  {company.speakers.length > 1 && <span className="text-muted-foreground"> +{company.speakers.length - 1}</span>}
+                                </span>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            {ind ? (
+                              <span
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium border"
+                                style={{ backgroundColor: indStyle.bg, color: indStyle.fg, borderColor: indStyle.ring }}
+                              >
+                                {ind}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] text-muted-foreground/70 italic">
+                                {isInferring ? 'Categorizing…' : 'Uncategorized'}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-muted-foreground">
+                            {relativeTime(company.updated_at || company.created_at)}
+                          </div>
+
+                          <div className={`flex justify-end transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                            <ChevronRight className="h-4 w-4" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+          </>}
+
+          {/* ═══ Right-side workspace panel ═══ */}
+          {activeCompanyId && (() => {
+            const company = companies.find(c => c.id === activeCompanyId);
+            if (!company) return null;
+            const ind = company.industry;
+            const indStyle = industryStyle(ind);
+            return (
+              <aside
+                key={company.id}
+                className={detailMode
+                  ? "flex flex-col w-full rounded-2xl border border-[rgba(255,255,255,0.05)] bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in fade-in duration-200"
+                  : "hidden xl:flex flex-col w-[38%] max-w-[560px] min-w-[420px] shrink-0 sticky top-4 max-h-[calc(100vh-2rem)] rounded-2xl border border-[rgba(255,255,255,0.05)] bg-card/70 backdrop-blur-xl shadow-[0_8px_40px_-12px_hsl(var(--primary)/0.3)] overflow-hidden animate-in slide-in-from-right-4 fade-in duration-200"}
+              >
+                {detailMode && (
+                  <div className="relative px-5 pt-4">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground -ml-2" onClick={closePanel}>
+                      <ChevronRight className="h-3.5 w-3.5 mr-1 rotate-180" />
+                      All Clients
+                    </Button>
+                  </div>
+                )}
+                {/* Ambient gradient glow */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/[0.07] via-cyan-500/[0.04] to-transparent" />
+
+                {/* ── Header ── */}
+                <div className="relative flex items-start gap-3 p-5 pb-4">
+                  <div className="w-12 h-12 rounded-xl bg-[rgba(18,20,24,0.5)] flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.05)] shadow-sm">
+                    {company.logo_url ? (
+                      <img src={company.logo_url} alt="" className="w-full h-full object-contain p-1.5" />
+                    ) : (
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-semibold text-[17px] tracking-tight truncate leading-tight">{company.name}</h2>
+                    {company.company_url && (
+                      <a
+                        href={company.company_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-muted-foreground hover:text-foreground truncate block mt-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {company.company_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                      </a>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+                      {ind && (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-medium border"
+                          style={{ backgroundColor: indStyle.bg, color: indStyle.fg, borderColor: indStyle.ring }}
+                        >
+                          {ind}
+                        </span>
+                      )}
+                      {(company.campaign_manager || '').split(',').map(m => m.trim()).filter(Boolean).map(cm => (
+                        <span key={cm} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] text-muted-foreground bg-secondary/60 border border-[rgba(255,255,255,0.05)]">
+                          CM: {cm}
+                        </span>
+                      ))}
+                      {!company.archived_at && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_hsl(142_70%_55%/0.8)]" />
+                          Active
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 -mr-1" onClick={closePanel} title="Close">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* ── Action row ── */}
+                <div className="relative flex items-center gap-0.5 px-3 pb-3">
+                  {!company.archived_at && (
+                    <>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => startNewSpeaker(company.id)}>
+                        <Plus className="h-3.5 w-3.5 mr-1" />Speaker
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}>
+                        <Link2 className="h-3.5 w-3.5 mr-1" />Airtable
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => startEditCompany(company)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" />Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setAeoHistoryFor({ id: company.id, name: company.name })}>
+                        <History className="h-3.5 w-3.5 mr-1" />AEO
+                      </Button>
+                    </>
+                  )}
+                  <div className="flex-1" />
+                  {company.archived_at ? (
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => restoreCompany(company.id)}>
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" />Restore
+                    </Button>
+                  ) : (
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => archiveCompany(company.id)} title="Archive">
+                      <Archive className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {!company.archived_at && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" title="Delete">
+                          <Trash className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete client?</AlertDialogTitle>
+                          <AlertDialogDescription>This will permanently remove {company.name} and all its speakers.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => { removeCompany(company.id); closePanel(); }}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+
+                {/* ── KPI strip ── */}
+                <div className="relative border-y border-[rgba(255,255,255,0.05)] bg-background/20">
+                  <CompanyKpiStrip companyId={company.id} />
+                </div>
+
+                {/* ── Scrollable speakers / workspace content ── */}
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-3">
+                    <CampaignHealthCard companyId={company.id} />
+                  </div>
+
+                  {company.speakers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-10 text-center px-4">No speakers yet. Add one to get started.</p>
+                  ) : (
+                    <div className="p-3 space-y-3">
+                      {company.speakers.map(speaker => (
+                        <SpeakerProfileCard
+                          key={speaker.id}
+                          speaker={speaker}
+                          companyName={company.name}
+                          onEdit={() => startEditSpeaker(speaker)}
+                          onDelete={() => removeSpeaker(speaker.id)}
+                          onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
+                          onUpdate={loadData}
+                          isArchived={!!speaker.archived_at}
+                          onArchive={() => archiveSpeaker(speaker.id)}
+                          onRestore={() => restoreSpeaker(speaker.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </aside>
+            );
+          })()}
         </div>
 
-        {/* Company Card Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(company => (
-            <CompanyCard
-              key={company.id}
-              company={company}
-              isExpanded={expandedCompanies.has(company.id)}
-              onToggle={() => toggleCompany(company.id)}
-              onEdit={() => startEditCompany(company)}
-              onDelete={() => removeCompany(company.id)}
-              onAddSpeaker={() => startNewSpeaker(company.id)}
-              onAirtable={() => setAirtableDialog({ companyId: company.id, entityName: company.name })}
-              isArchived={!!company.archived_at}
-              onArchive={() => archiveCompany(company.id)}
-              onRestore={() => restoreCompany(company.id)}
-            >
-              {company.speakers.map(speaker => (
-                <SpeakerProfileCard
-                  key={speaker.id}
-                  speaker={speaker}
-                  companyName={company.name}
-                  onEdit={() => startEditSpeaker(speaker)}
-                  onDelete={() => removeSpeaker(speaker.id)}
-                  onAirtable={() => setAirtableDialog({ companyId: company.id, speakerId: speaker.id, entityName: speaker.name })}
-                  onUpdate={loadData}
-                  isArchived={!!speaker.archived_at}
-                  onArchive={() => archiveSpeaker(speaker.id)}
-                  onRestore={() => restoreSpeaker(speaker.id)}
-                />
-              ))}
-            </CompanyCard>
-          ))}
-          {!filtered.length && (
-            <p className="text-sm text-muted-foreground col-span-full">
-              {viewMode === 'archived' ? 'No archived companies.' : 'No companies yet.'}
-            </p>
-          )}
-        </div>
+
 
         {/* ═══ Company Edit Sheet ═══ */}
         <Sheet open={!!editingCompany} onOpenChange={(open) => !open && cancelCompany()}>
@@ -399,15 +966,15 @@ const Companies = () => {
                 <div>
                   <Label>Company Logo</Label>
                   {editingCompany.logo_url && !logoError ? (
-                    <div className="flex items-center gap-3 p-3 rounded-md border border-border bg-muted/30">
+                    <div className="flex items-center gap-3 p-3 rounded-md border border-[rgba(255,255,255,0.05)] bg-muted/30">
                       <img src={editingCompany.logo_url} alt="Company logo" className="w-10 h-10 rounded object-contain bg-background" onError={() => setLogoError(true)} />
-                      <p className="text-sm text-muted-foreground flex-1 flex items-center gap-1"><Check className="h-3 w-3 text-green-500" /> Logo loaded</p>
+                      <p className="text-sm text-muted-foreground flex-1 flex items-center gap-1"><Check className="h-3 w-3 text-[#10b981]" /> Logo loaded</p>
                       <Button type="button" variant="ghost" size="sm" onClick={() => setShowManualLogoInput(!showManualLogoInput)}><Pencil className="h-3 w-3" /></Button>
                       <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingCompany({ ...editingCompany, logo_url: '' }); setLogoError(false); }}><X className="h-3 w-3" /></Button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 p-3 rounded-md border border-dashed border-border bg-muted/20">
-                      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>
+                    <div className="flex items-center gap-3 p-3 rounded-md border border-dashed border-[rgba(255,255,255,0.05)] bg-muted/20">
+                      <div className="w-10 h-10 rounded bg-[rgba(255,255,255,0.04)] flex items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>
                       <p className="text-sm text-muted-foreground flex-1">{logoError ? 'Failed to load logo' : 'No logo'}</p>
                       <Button type="button" variant="outline" size="sm" onClick={fetchCompanyBrand} disabled={isFetchingBrand || !editingCompany.company_url?.trim()}>
                         {isFetchingBrand ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Globe className="h-3 w-3 mr-1" />}Fetch
@@ -482,11 +1049,11 @@ const Companies = () => {
                       <div className="flex items-center gap-4 mt-2">
                         {editingSpeaker.headshot_url ? (
                           <div className="relative group">
-                            <img src={editingSpeaker.headshot_url} alt="Speaker headshot" className="w-20 h-20 rounded-full object-cover border-2 border-border" />
+                            <img src={editingSpeaker.headshot_url} alt="Speaker headshot" className="w-20 h-20 rounded-full object-cover border-2 border-[rgba(255,255,255,0.05)]" />
                             <button type="button" onClick={() => setEditingSpeaker({ ...editingSpeaker, headshot_url: '' })} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                           </div>
                         ) : (
-                          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
+                          <div className="w-20 h-20 rounded-full bg-[rgba(255,255,255,0.04)] flex items-center justify-center border-2 border-dashed border-[rgba(255,255,255,0.05)]">
                             <Upload className="w-6 h-6 text-muted-foreground" />
                           </div>
                         )}
@@ -548,7 +1115,7 @@ const Companies = () => {
                     </div>
 
                     {/* Competitors */}
-                    <div className="border-t border-border pt-4">
+                    <div className="border-t border-[rgba(255,255,255,0.05)] pt-4">
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <Label className="text-base">Competitors</Label>
@@ -592,6 +1159,14 @@ const Companies = () => {
 
         {/* Airtable Connection Dialog */}
         <AirtableConnectionDialog open={!!airtableDialog} onOpenChange={(open) => !open && setAirtableDialog(null)} companyId={airtableDialog?.companyId} speakerId={airtableDialog?.speakerId} entityName={airtableDialog?.entityName || ''} />
+
+        {/* AEO Audit History Panel */}
+        <AEOAuditHistory
+          open={!!aeoHistoryFor}
+          onOpenChange={(open) => !open && setAeoHistoryFor(null)}
+          companyId={aeoHistoryFor?.id ?? ''}
+          companyName={aeoHistoryFor?.name ?? ''}
+        />
       </main>
     </div>
   );

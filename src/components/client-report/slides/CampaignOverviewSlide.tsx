@@ -37,7 +37,7 @@ export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlid
             <h3 className="text-lg font-semibold text-muted-foreground">Key Talking Points</h3>
             <div className="space-y-2">
               {campaignOverview.talking_points!.slice(0, 4).map((point, index) => (
-                <div key={index} className="flex items-start gap-2 bg-card border border-border rounded-lg p-3">
+                <div key={index} className="flex items-start gap-2 bg-card border border-[rgba(255,255,255,0.05)] rounded-lg p-3">
                   <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-xs font-medium">
                     {index + 1}
                   </span>
@@ -57,7 +57,7 @@ export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlid
             {campaignOverview.target_audiences!.map((audience, index) => (
               <div 
                 key={index} 
-                className="flex items-center gap-3 bg-card/50 backdrop-blur border border-border/50 rounded-xl p-4 hover:bg-card/70 transition-colors"
+                className="flex items-center gap-3 bg-card/50 backdrop-blur border border-[rgba(255,255,255,0.05)] rounded-xl p-4 hover:bg-card/70 transition-colors"
               >
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <Target className="w-5 h-5 text-primary" />
@@ -74,7 +74,7 @@ export const CampaignOverviewSlide = ({ campaignOverview }: CampaignOverviewSlid
           <h3 className="text-lg font-semibold text-muted-foreground text-center">Pitch Positioning & Core Hooks</h3>
           <div className={`grid gap-3 ${speakerCount === 1 ? 'grid-cols-1 max-w-xl mx-auto' : speakerCount === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
             {campaignOverview.pitch_hooks!.map((speakerHooks, speakerIndex) => (
-              <div key={speakerIndex} className="bg-card border border-border rounded-lg p-3 space-y-2 h-full max-h-40 flex flex-col">
+              <div key={speakerIndex} className="bg-card border border-[rgba(255,255,255,0.05)] rounded-lg p-3 space-y-2 h-full max-h-40 flex flex-col">
                 <p className="text-sm font-semibold flex-shrink-0">{speakerHooks.speaker_name}</p>
                 <ul className="space-y-1 overflow-y-auto flex-1 pr-1">
                   {speakerHooks.hooks.map((hook, hookIndex) => (

@@ -24,6 +24,8 @@ interface ReachAnalysisDialogProps {
     end: string;
   };
   totalReach?: number;
+  /** Social reach (Rephonic social + YouTube subs). Added to Cumulative Impressions. */
+  socialReach?: number;
   /** When provided, enables inline editing of the listenership figures */
   onEditTotalReach?: (next: number) => void;
   onEditTotalListenersPerEpisode?: (next: number) => void;
@@ -33,7 +35,7 @@ interface ReachAnalysisDialogProps {
 }
 
 // Calculate months in reporting period
-const calculatePeriodMonths = (dateRange?: { start: string; end: string }, quarter?: string): number => {
+export const calculatePeriodMonths = (dateRange?: { start: string; end: string }, quarter?: string): number => {
   // If it's a quarter-based report, always return 3
   if (quarter && /^Q\d\s*\d{4}$/.test(quarter)) {
     return 3;
@@ -58,6 +60,7 @@ export const ReachAnalysisDialog = ({
   quarter = '',
   dateRange,
   totalReach = 0,
+  socialReach = 0,
   onEditTotalReach,
   onEditTotalListenersPerEpisode,
   onEditPodcastMonthlyListens,
@@ -67,7 +70,8 @@ export const ReachAnalysisDialog = ({
 
   // Calculate period months and period reach
   const periodMonths = calculatePeriodMonths(dateRange, quarter);
-  const periodReach = totalReach * periodMonths;
+  // Cumulative Impressions = listenership over period + social reach
+  const periodReach = (totalReach * periodMonths) + (socialReach || 0);
 
   // Calculate Estimated Annual Listenership from total_reach (consistent with the KPI card)
   const estimatedAnnualListenership = totalReach * 12;
@@ -208,7 +212,7 @@ export const ReachAnalysisDialog = ({
                 {formatNumber(periodReach)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {periodLabel}
+                {periodLabel}{socialReach > 0 ? ' + social reach' : ''}
               </p>
             </CardContent>
           </Card>
@@ -225,7 +229,7 @@ export const ReachAnalysisDialog = ({
                 {/* Cover Art */}
                 <div className="flex-shrink-0">
                   {isLoadingCoverArt ? (
-                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-md bg-[rgba(255,255,255,0.04)] flex items-center justify-center">
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     </div>
                   ) : coverArtUrl ? (
@@ -235,7 +239,7 @@ export const ReachAnalysisDialog = ({
                       className="w-16 h-16 rounded-md object-cover"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-md bg-[rgba(255,255,255,0.04)] flex items-center justify-center">
                       <Trophy className="h-6 w-6 text-muted-foreground" />
                     </div>
                   )}

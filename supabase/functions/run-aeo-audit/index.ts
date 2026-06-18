@@ -12,8 +12,13 @@ const corsHeaders = {
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const GEMINI_MODEL = "gemini-2.5-flash";
+const OPENAI_MODEL = "gpt-5-mini";
 
 const CACHE_TTL_DAYS = 7;
 const DEFAULT_PROMPT_CAP = 25;
@@ -29,6 +34,11 @@ interface RunBody {
   prompt_cap?: number;
   model?: string; // e.g. "claude-haiku-4-5" | "claude-sonnet-4-5"
   org_id?: string;
+  triggered_by?: string;
+  // Richer context
+  campaign_strategy?: string;
+  talking_points?: string[];
+  professional_credentials?: string[];
 }
 
 function normalizeDomain(input: string): string {
@@ -51,19 +61,40 @@ async function generatePrompts(input: {
   company_name: string;
   speaker_name?: string;
   topics: string[];
+  competitor_names: string[];
+  campaign_strategy?: string;
+  talking_points?: string[];
+  credentials?: string[];
   cap: number;
 }): Promise<Array<{ prompt: string; topic: string; stage: string }>> {
   const sys =
-    "You generate realistic buyer-journey search queries that real people would type into AI assistants (ChatGPT, Perplexity, Claude). Return strict JSON only.";
+    "You generate realistic buyer-journey search queries that real people would type into AI assistants (ChatGPT, Perplexity, Claude). Ground prompts in the company's actual positioning and named competitors — avoid generic industry boilerplate. Return strict JSON only.";
+
+  const contextLines: string[] = [
+    `Company: ${input.company_name}`,
+    input.speaker_name ? `Key person: ${input.speaker_name}` : "",
+    input.credentials?.length ? `Credentials: ${input.credentials.slice(0, 4).join("; ")}` : "",
+    input.campaign_strategy
+      ? `Positioning: ${input.campaign_strategy.slice(0, 600)}`
+      : "",
+    `Topics: ${input.topics.join(", ") || "general industry"}`,
+    input.talking_points?.length
+      ? `Talking points: ${input.talking_points.slice(0, 8).join("; ")}`
+      : "",
+    input.competitor_names.length
+      ? `Named competitors: ${input.competitor_names.join(", ")}`
+      : "",
+  ].filter(Boolean);
+
   const user = `Generate ${input.cap} prompts to audit AI visibility for:
-Company: ${input.company_name}
-${input.speaker_name ? `Key person: ${input.speaker_name}` : ""}
-Topics: ${input.topics.join(", ") || "general industry"}
+${contextLines.join("\n")}
 
 Distribute across stages:
-- awareness (~40%): broad questions about the topic / category
-- consideration (~40%): comparison, "best", "top experts", "who should I follow"
-- decision (~20%): specific brand/person queries
+- awareness (~40%): broad questions about the topics / category a buyer would research first
+- consideration (~40%): comparison and "best", "top experts", "who should I follow", explicitly include named competitors where natural
+- decision (~20%): brand- or person-led queries (e.g. "is X credible", "{Company} vs {Competitor}")
+
+Use the positioning + talking points to derive specific, realistic queries — not generic ones.
 
 Return JSON: { "prompts": [ { "prompt": string, "topic": string, "stage": "awareness"|"consideration"|"decision" } ] }`;
 
@@ -148,6 +179,77 @@ async function queryClaude(prompt: string, model: string): Promise<ClaudeResult>
   return { text: textParts.join("\n"), citations };
 }
 
+async function queryGemini(prompt: string): Promise<ClaudeResult> {
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      tools: [{ google_search: {} }],
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Gemini error ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const cand = data.candidates?.[0];
+  const text = (cand?.content?.parts ?? [])
+    .map((p: any) => p?.text ?? "")
+    .filter(Boolean)
+    .join("\n");
+  const citations: Array<{ url: string; title?: string }> = [];
+  const chunks = cand?.groundingMetadata?.groundingChunks ?? [];
+  for (const ch of chunks) {
+    const w = ch?.web;
+    if (w?.uri) citations.push({ url: w.uri, title: w.title });
+  }
+  return { text, citations };
+}
+
+async function queryOpenAI(prompt: string): Promise<ClaudeResult> {
+  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      tools: [{ type: "web_search" }],
+      input: prompt,
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`OpenAI error ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const textParts: string[] = [];
+  const citations: Array<{ url: string; title?: string }> = [];
+
+  for (const item of data.output ?? []) {
+    if (item.type === "message") {
+      for (const c of item.content ?? []) {
+        if (c.type === "output_text") {
+          if (c.text) textParts.push(c.text);
+          for (const ann of c.annotations ?? []) {
+            if (ann.type === "url_citation" && ann.url) {
+              citations.push({ url: ann.url, title: ann.title });
+            }
+          }
+        }
+      }
+    }
+  }
+  if (!textParts.length && typeof data.output_text === "string") {
+    textParts.push(data.output_text);
+  }
+  return { text: textParts.join("\n"), citations };
+}
 function detectPresence(
   result: ClaudeResult,
   clientDomain: string,
@@ -203,16 +305,18 @@ function buildPayloads(input: {
     clientPresent: boolean;
     competitorsPresent: string[];
     citations: Array<{ url: string; title?: string }>;
+    enginesMissing?: string[];
+    engineCounts?: { claude: number; gemini: number; openai: number };
   }>;
   competitors: Array<{ name: string }>;
+  enginesUsed: string[];
 }) {
-  const { results } = input;
+  const { results, enginesUsed } = input;
   const total = results.length;
   const gaps = results.filter((r) => !r.clientPresent);
   const totalGaps = gaps.length;
   const coverage = total === 0 ? 0 : ((total - totalGaps) / total) * 100;
 
-  // gaps_by_stage
   const stageMap = new Map<string, { stage: string; gap_count: number; total: number }>();
   for (const r of results) {
     const cur = stageMap.get(r.stage) ?? { stage: r.stage, gap_count: 0, total: 0 };
@@ -221,7 +325,6 @@ function buildPayloads(input: {
     stageMap.set(r.stage, cur);
   }
 
-  // gaps_by_topic
   const topicMap = new Map<string, { topic: string; gap_count: number; total: number }>();
   for (const r of results) {
     const cur = topicMap.get(r.topic) ?? { topic: r.topic, gap_count: 0, total: 0 };
@@ -230,7 +333,6 @@ function buildPayloads(input: {
     topicMap.set(r.topic, cur);
   }
 
-  // top_competitors
   const compCount = new Map<string, number>();
   for (const r of results) {
     for (const c of r.competitorsPresent) {
@@ -241,13 +343,14 @@ function buildPayloads(input: {
     .sort((a, b) => b[1] - a[1])
     .map(([name, count]) => ({ name, mention_count: count }));
 
-  // priority_prompts: gaps with most competitors present
   const priorityPrompts = gaps
     .map((g) => ({
       prompt: g.prompt,
       topic: g.topic,
       stage: g.stage,
-      engines_missing: ["claude"],
+      engines_missing: g.enginesMissing && g.enginesMissing.length > 0
+        ? g.enginesMissing
+        : enginesUsed,
       competitors_present: g.competitorsPresent,
     }))
     .sort((a, b) => b.competitors_present.length - a.competitors_present.length)
@@ -263,8 +366,17 @@ function buildPayloads(input: {
     priority_prompts: priorityPrompts,
   };
 
-  // GEO payload
-  const ai_engine_counts = [{ engine: "claude", count: total }];
+  // GEO payload — per-engine counts
+  const engineCountTotals = { claude: 0, gemini: 0, openai: 0 };
+  for (const r of results) {
+    engineCountTotals.claude += r.engineCounts?.claude ?? 0;
+    engineCountTotals.gemini += r.engineCounts?.gemini ?? 0;
+    engineCountTotals.openai += r.engineCounts?.openai ?? 0;
+  }
+  const ai_engine_counts = enginesUsed.map((engine) => ({
+    engine,
+    count: (engineCountTotals as any)[engine] ?? 0,
+  }));
   const top_prompts = results
     .map((r) => ({ prompt: r.prompt, count: 1 }))
     .slice(0, 10);
@@ -281,7 +393,7 @@ function buildPayloads(input: {
 
   const geo_analysis = {
     total_podcasts_indexed: 0,
-    unique_ai_engines: ["claude"],
+    unique_ai_engines: enginesUsed,
     ai_engine_counts,
     top_prompts,
     topic_distribution,
@@ -293,11 +405,367 @@ function buildPayloads(input: {
   return { content_gap_analysis, geo_analysis };
 }
 
+// Chunk size: how many prompts to process per self-invocation.
+// Each prompt = up to 3 LLM calls (Claude+Gemini+OpenAI), so keep this small.
+const CHUNK_SIZE = 3;
+
+function scheduleBackgroundWork(work: Promise<unknown>) {
+  const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime;
+  if (edgeRuntime?.waitUntil) {
+    edgeRuntime.waitUntil(work);
+    return;
+  }
+
+  work.catch((error) => {
+    console.error("[run-aeo-audit] unscheduled background work failed:", error);
+  });
+}
+
+async function selfInvoke(payload: Record<string, unknown>) {
+  const phase = String(payload.phase ?? "unknown");
+  const runId = String(payload.run_id ?? "unknown");
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/run-aeo-audit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+          "apikey": SERVICE_ROLE_KEY,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`selfInvoke ${phase} ${response.status}: ${body.slice(0, 300)}`);
+      }
+
+      console.log(`[run-aeo-audit] ${runId} queued ${phase} (attempt ${attempt})`);
+      return;
+    } catch (error) {
+      console.error(`[run-aeo-audit] ${runId} failed to queue ${phase} on attempt ${attempt}:`, error);
+      if (attempt === 3) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+    }
+  }
+}
+
+async function markFailed(supabase: any, runId: string, message: string) {
+  await supabase
+    .from("aeo_audit_runs")
+    .update({
+      status: "failed",
+      error_message: message.slice(0, 1000),
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", runId);
+}
+
+// Phase 1: prepare prompts and store them in the queue, then trigger first chunk.
+async function handlePrepare(supabase: any, runId: string) {
+  const { data: run, error } = await supabase
+    .from("aeo_audit_runs")
+    .select("body_snapshot, status")
+    .eq("id", runId)
+    .maybeSingle();
+  if (error || !run) throw new Error(`run not found: ${error?.message ?? "missing"}`);
+
+  const body = run.body_snapshot as RunBody;
+  const cap = Math.min(body.prompt_cap ?? DEFAULT_PROMPT_CAP, 50);
+  const competitors = (body.competitors ?? []).map((c) => ({
+    name: competitorName(c),
+    domain: competitorDomain(c),
+  })).filter((c) => c.name);
+
+  const prompts = await generatePrompts({
+    company_name: body.company_name,
+    speaker_name: body.speaker_name,
+    topics: body.topics ?? [],
+    competitor_names: competitors.map((c) => c.name),
+    campaign_strategy: body.campaign_strategy,
+    talking_points: body.talking_points,
+    credentials: body.professional_credentials,
+    cap,
+  });
+
+  const enginesUsed = ["claude"];
+  if (GEMINI_API_KEY) enginesUsed.push("gemini");
+  if (OPENAI_API_KEY) enginesUsed.push("openai");
+
+  await supabase
+    .from("aeo_audit_runs")
+    .update({
+      status: "processing",
+      prompts_queue: prompts,
+      results_collected: [],
+      processed_count: 0,
+      engines_used: enginesUsed,
+    })
+    .eq("id", runId);
+
+  console.log(`[run-aeo-audit] ${runId} prepared with ${prompts.length} prompts; firing first chunk`);
+  await selfInvoke({ phase: "chunk", run_id: runId });
+}
+
+// Phase 2: process the next CHUNK_SIZE prompts, then either trigger next chunk or finalize.
+async function handleChunk(supabase: any, runId: string) {
+  const { data: run, error } = await supabase
+    .from("aeo_audit_runs")
+    .select("body_snapshot, prompts_queue, results_collected, processed_count, engines_used, model, client_domain, status")
+    .eq("id", runId)
+    .maybeSingle();
+  if (error || !run) throw new Error(`run not found: ${error?.message ?? "missing"}`);
+  if (run.status === "completed" || run.status === "failed") {
+    console.log(`[run-aeo-audit] ${runId} already ${run.status}, skipping chunk`);
+    return;
+  }
+
+  const body = run.body_snapshot as RunBody;
+  const allPrompts: Array<{ prompt: string; topic: string; stage: string }> = run.prompts_queue ?? [];
+  const collected: any[] = run.results_collected ?? [];
+  const processed: number = run.processed_count ?? 0;
+  const enginesUsed: string[] = run.engines_used ?? ["claude"];
+  const model: string = run.model ?? "claude-haiku-4-5";
+  const clientDomain: string = run.client_domain ?? "";
+  const competitors = (body.competitors ?? []).map((c) => ({
+    name: competitorName(c),
+    domain: competitorDomain(c),
+  })).filter((c) => c.name);
+
+  const chunk = allPrompts.slice(processed, processed + CHUNK_SIZE);
+  if (chunk.length === 0) {
+    console.log(`[run-aeo-audit] ${runId} no more prompts, finalizing`);
+    await selfInvoke({ phase: "finalize", run_id: runId });
+    return;
+  }
+
+  // Cache lookup for just the prompts in this chunk
+  const cutoff = new Date(Date.now() - CACHE_TTL_DAYS * 86400_000).toISOString();
+  const cacheMap = new Map<string, any>();
+  if (body.company_id) {
+    const { data: cached } = await supabase
+      .from("aeo_audit_cache")
+      .select("prompt, engine, response_text, citations, client_present, competitors_present")
+      .eq("company_id", body.company_id)
+      .in("prompt", chunk.map((p) => p.prompt))
+      .in("engine", enginesUsed)
+      .gte("created_at", cutoff);
+    for (const c of cached ?? []) {
+      cacheMap.set(`${c.engine}::${c.prompt}`, c);
+    }
+  }
+
+  const geminiEnabled = enginesUsed.includes("gemini") && !!GEMINI_API_KEY;
+  const openaiEnabled = enginesUsed.includes("openai") && !!OPENAI_API_KEY;
+
+  // Process this chunk concurrently across prompts (each prompt fires up to 3 engines in parallel)
+  const chunkResults = await runWithConcurrency(chunk, CONCURRENCY, async (p) => {
+    const runEngine = async (
+      engine: "claude" | "gemini" | "openai",
+    ): Promise<{ clientPresent: boolean; competitorsPresent: string[]; citations: any[] } | null> => {
+      const key = `${engine}::${p.prompt}`;
+      const hit = cacheMap.get(key);
+      if (hit) {
+        return {
+          clientPresent: !!hit.client_present,
+          competitorsPresent: hit.competitors_present ?? [],
+          citations: hit.citations ?? [],
+        };
+      }
+      try {
+        const result = engine === "claude"
+          ? await queryClaude(p.prompt, model)
+          : engine === "gemini"
+            ? await queryGemini(p.prompt)
+            : await queryOpenAI(p.prompt);
+        const { clientPresent, competitorsPresent } = detectPresence(
+          result,
+          clientDomain,
+          competitors,
+        );
+        if (body.company_id && body.org_id) {
+          await supabase.from("aeo_audit_cache").insert({
+            org_id: body.org_id,
+            company_id: body.company_id,
+            prompt: p.prompt,
+            engine,
+            topic: p.topic,
+            stage: p.stage,
+            response_text: result.text.slice(0, 8000),
+            citations: result.citations,
+            client_present: clientPresent,
+            competitors_present: competitorsPresent,
+          });
+        }
+        return { clientPresent, competitorsPresent, citations: result.citations };
+      } catch (e) {
+        console.warn(`[run-aeo-audit] ${engine} failed for prompt:`, (e as Error).message);
+        return null;
+      }
+    };
+
+    const [claudeRes, geminiRes, openaiRes] = await Promise.all([
+      runEngine("claude"),
+      geminiEnabled ? runEngine("gemini") : Promise.resolve(null),
+      openaiEnabled ? runEngine("openai") : Promise.resolve(null),
+    ]);
+
+    if (!claudeRes && !geminiRes && !openaiRes) {
+      return { error: "all engines failed", ...p } as any;
+    }
+
+    const enginesMissing: string[] = [];
+    if (claudeRes && !claudeRes.clientPresent) enginesMissing.push("claude");
+    if (geminiRes && !geminiRes.clientPresent) enginesMissing.push("gemini");
+    if (openaiRes && !openaiRes.clientPresent) enginesMissing.push("openai");
+
+    return {
+      ...p,
+      clientPresent: !!(claudeRes?.clientPresent || geminiRes?.clientPresent || openaiRes?.clientPresent),
+      competitorsPresent: Array.from(new Set([
+        ...(claudeRes?.competitorsPresent ?? []),
+        ...(geminiRes?.competitorsPresent ?? []),
+        ...(openaiRes?.competitorsPresent ?? []),
+      ])),
+      citations: [
+        ...(claudeRes?.citations ?? []),
+        ...(geminiRes?.citations ?? []),
+        ...(openaiRes?.citations ?? []),
+      ],
+      enginesMissing,
+      engineCounts: {
+        claude: claudeRes ? 1 : 0,
+        gemini: geminiRes ? 1 : 0,
+        openai: openaiRes ? 1 : 0,
+      },
+    };
+  });
+
+  const newCollected = [...collected, ...chunkResults];
+  const newProcessed = processed + chunk.length;
+
+  await supabase
+    .from("aeo_audit_runs")
+    .update({
+      results_collected: newCollected,
+      processed_count: newProcessed,
+    })
+    .eq("id", runId);
+
+  console.log(`[run-aeo-audit] ${runId} chunk done: ${newProcessed}/${allPrompts.length}`);
+
+  if (newProcessed >= allPrompts.length) {
+    await selfInvoke({ phase: "finalize", run_id: runId });
+  } else {
+    await selfInvoke({ phase: "chunk", run_id: runId });
+  }
+}
+
+// Phase 3: aggregate collected results into final payloads.
+async function handleFinalize(supabase: any, runId: string) {
+  const { data: run, error } = await supabase
+    .from("aeo_audit_runs")
+    .select("results_collected, engines_used, body_snapshot")
+    .eq("id", runId)
+    .maybeSingle();
+  if (error || !run) throw new Error(`run not found: ${error?.message ?? "missing"}`);
+
+  const body = run.body_snapshot as RunBody;
+  const competitors = (body.competitors ?? []).map((c) => ({ name: competitorName(c) }));
+  const collected: any[] = run.results_collected ?? [];
+  const valid = collected.filter((r: any) => r && !r.error);
+  const payloads = buildPayloads({
+    results: valid as any,
+    competitors,
+    enginesUsed: run.engines_used ?? ["claude"],
+  });
+  const promptsRun = valid.length;
+  const promptsFailed = collected.length - valid.length;
+
+  await supabase
+    .from("aeo_audit_runs")
+    .update({
+      status: "completed",
+      prompts_run: promptsRun,
+      prompts_failed: promptsFailed,
+      content_gap_analysis: payloads.content_gap_analysis,
+      geo_analysis: payloads.geo_analysis,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", runId);
+
+  console.log(`[run-aeo-audit] run ${runId} finalized: ${promptsRun} ok, ${promptsFailed} failed`);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch (_e) {
+    return new Response(
+      JSON.stringify({ error: "invalid JSON" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  // Internal phases: prepare / chunk / finalize. These run in fresh workers.
+  const phase = body.phase as string | undefined;
+  if (phase && body.run_id) {
+    const runId = body.run_id as string;
+    scheduleBackgroundWork((async () => {
+      try {
+        if (phase === "prepare") await handlePrepare(supabase, runId);
+        else if (phase === "chunk") await handleChunk(supabase, runId);
+        else if (phase === "finalize") await handleFinalize(supabase, runId);
+        else console.warn(`[run-aeo-audit] unknown phase: ${phase}`);
+      } catch (e) {
+        console.error(`[run-aeo-audit] phase ${phase} failed for ${runId}:`, e);
+        await markFailed(supabase, runId, (e as Error).message ?? "unknown error");
+      }
+    })());
+
+    return new Response(
+      JSON.stringify({ ok: true, phase, run_id: runId }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // Polling endpoint: status check via { run_id } only
+  if (body.run_id && !body.company_name && !phase) {
+    const { data, error } = await supabase
+      .from("aeo_audit_runs")
+      .select("id, status, error_message, prompts_run, prompts_failed, processed_count, prompts_queue, model, content_gap_analysis, geo_analysis, completed_at, created_at")
+      .eq("id", body.run_id)
+      .maybeSingle();
+    if (error || !data) {
+      return new Response(
+        JSON.stringify({ error: "run not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    // Add progress hint for the client UI
+    const total = Array.isArray(data.prompts_queue) ? data.prompts_queue.length : 0;
+    return new Response(
+      JSON.stringify({
+        ...data,
+        progress: { processed: data.processed_count ?? 0, total },
+        prompts_queue: undefined, // strip large field from response
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // Initial entrypoint: create run row and kick off prepare phase
   try {
     if (!ANTHROPIC_API_KEY) {
       return new Response(
@@ -306,98 +774,65 @@ Deno.serve(async (req) => {
       );
     }
 
-    const body = (await req.json()) as RunBody;
-    if (!body.company_name) {
+    const runBody = body as RunBody;
+    if (!runBody.company_name) {
       return new Response(
         JSON.stringify({ error: "company_name required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+    if (!runBody.company_id || !runBody.org_id) {
+      return new Response(
+        JSON.stringify({ error: "company_id and org_id required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
-    const cap = Math.min(body.prompt_cap ?? DEFAULT_PROMPT_CAP, 50);
-    const model = body.model ?? "claude-haiku-4-5";
-    const clientDomain = normalizeDomain(body.client_domain ?? "");
-    const competitors = (body.competitors ?? []).map((c) => ({
+    const cap = Math.min(runBody.prompt_cap ?? DEFAULT_PROMPT_CAP, 50);
+    const model = runBody.model ?? "claude-haiku-4-5";
+    const clientDomain = normalizeDomain(runBody.client_domain ?? "");
+    const competitors = (runBody.competitors ?? []).map((c) => ({
       name: competitorName(c),
       domain: competitorDomain(c),
     })).filter((c) => c.name);
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const { data: runRow, error: runErr } = await supabase
+      .from("aeo_audit_runs")
+      .insert({
+        org_id: runBody.org_id,
+        company_id: runBody.company_id,
+        model,
+        prompts_run: 0,
+        prompts_failed: 0,
+        client_domain: clientDomain || null,
+        competitor_names: competitors.map((c) => c.name),
+        topics: runBody.topics ?? [],
+        triggered_by: runBody.triggered_by ?? null,
+        status: "pending",
+        body_snapshot: { ...runBody, prompt_cap: cap },
+      })
+      .select("id")
+      .single();
 
-    // 1) generate prompts
-    const prompts = await generatePrompts({
-      company_name: body.company_name,
-      speaker_name: body.speaker_name,
-      topics: body.topics ?? [],
-      cap,
-    });
-
-    // 2) cache lookup (per company, 7-day TTL)
-    const cutoff = new Date(Date.now() - CACHE_TTL_DAYS * 86400_000).toISOString();
-    let cached: any[] = [];
-    if (body.company_id) {
-      const { data } = await supabase
-        .from("aeo_audit_cache")
-        .select("prompt, response_text, citations, client_present, competitors_present")
-        .eq("company_id", body.company_id)
-        .eq("engine", "claude")
-        .gte("created_at", cutoff);
-      cached = data ?? [];
-    }
-    const cacheMap = new Map(cached.map((c: any) => [c.prompt, c]));
-
-    // 3) query Claude with concurrency
-    const queried = await runWithConcurrency(prompts, CONCURRENCY, async (p) => {
-      const hit = cacheMap.get(p.prompt);
-      if (hit) {
-        return {
-          ...p,
-          clientPresent: !!hit.client_present,
-          competitorsPresent: hit.competitors_present ?? [],
-          citations: hit.citations ?? [],
-        };
-      }
-      const result = await queryClaude(p.prompt, model);
-      const { clientPresent, competitorsPresent } = detectPresence(
-        result,
-        clientDomain,
-        competitors,
+    if (runErr || !runRow) {
+      return new Response(
+        JSON.stringify({ error: `failed to create run: ${runErr?.message ?? "unknown"}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
-      // persist (best-effort)
-      if (body.company_id && body.org_id) {
-        await supabase.from("aeo_audit_cache").insert({
-          org_id: body.org_id,
-          company_id: body.company_id,
-          prompt: p.prompt,
-          engine: "claude",
-          topic: p.topic,
-          stage: p.stage,
-          response_text: result.text.slice(0, 8000),
-          citations: result.citations,
-          client_present: clientPresent,
-          competitors_present: competitorsPresent,
-        });
-      }
-      return {
-        ...p,
-        clientPresent,
-        competitorsPresent,
-        citations: result.citations,
-      };
-    });
+    }
 
-    const valid = queried.filter((r: any) => r && !r.error);
-    const payloads = buildPayloads({ results: valid as any, competitors });
+    scheduleBackgroundWork((async () => {
+      try {
+        await handlePrepare(supabase, runRow.id);
+      } catch (error) {
+        console.error(`[run-aeo-audit] initial prepare failed for ${runRow.id}:`, error);
+        await markFailed(supabase, runRow.id, (error as Error).message ?? "unknown error");
+      }
+    })());
 
     return new Response(
-      JSON.stringify({
-        ...payloads,
-        prompts_run: valid.length,
-        prompts_failed: queried.length - valid.length,
-        engine: "claude",
-        model,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ run_id: runRow.id, status: "pending" }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("[run-aeo-audit] error:", err);

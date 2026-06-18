@@ -84,7 +84,7 @@ export function NextQuarterStrategy({
           {onEdit && (
             <button
               onClick={onEdit}
-              className="p-1 rounded-full bg-muted/80 text-muted-foreground hover:bg-muted"
+              className="p-1 rounded-full bg-muted/80 text-muted-foreground hover:bg-[rgba(255,255,255,0.06)]"
               title="Edit this section"
             >
               <Pencil className="h-3 w-3" />
@@ -196,7 +196,7 @@ export function NextQuarterStrategy({
 
           {/* Next Quarter KPIs */}
           {next_quarter_kpis && (next_quarter_kpis.high_impact_podcasts_goal > 0 || next_quarter_kpis.listenership_goal > 0) && (
-            <div className="space-y-3 pt-4 border-t border-border">
+            <div className="space-y-3 pt-4 border-t border-[rgba(255,255,255,0.05)]">
               <h4 className="text-sm font-semibold text-foreground">{nextQuarterLabel} Goals</h4>
               <div className={`grid gap-4 ${next_quarter_kpis.high_impact_podcasts_goal > 0 && next_quarter_kpis.listenership_goal > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {next_quarter_kpis.high_impact_podcasts_goal > 0 && (
